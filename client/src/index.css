@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+/* Mobile-first base: comfortable tap targets, no accidental horizontal scroll. */
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  overflow-x: hidden;
+  font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans Thai", sans-serif;
+}
