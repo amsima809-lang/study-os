@@ -6,7 +6,10 @@
  */
 import { Router } from "express";
 import type { DB } from "./db.js";
-import { bangkokToday } from "./api.js";
+import { bangkokToday, addDaysISO } from "./api.js";
+
+// Re-exported so existing tests importing it from here keep working.
+export { addDaysISO };
 import {
   isAiConfigured,
   AiNotConfiguredError,
@@ -18,13 +21,6 @@ import {
 } from "./ai.js";
 
 const QUESTION_COUNT = 10;
-
-/** Add `n` days to a "YYYY-MM-DD" date, returning "YYYY-MM-DD". */
-export function addDaysISO(dateISO: string, n: number): string {
-  const d = new Date(`${dateISO}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + n);
-  return d.toISOString().slice(0, 10);
-}
 
 /** Deterministic MCQ grading: exact match on the chosen option. */
 export function gradeMcq(modelAnswer: string, myAnswer: string): { score: 0 | 2; feedback: string } {

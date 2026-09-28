@@ -118,3 +118,15 @@ export type AnswerResult = {
   modelAnswer: string;
   flashcardCreated: boolean;
 };
+
+// ---------- Phase 5: flashcards ----------
+export type DueCard = {
+  id: number;
+  box: number;
+  question: string;
+  model_answer: string;
+  type: "short" | "mcq";
+  choices: string[];
+  topic: string | null;
+  course_name: string | null;
+};

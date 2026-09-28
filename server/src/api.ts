@@ -32,6 +32,13 @@ export function daysBetween(from: string, to: string): number {
   return Math.round((b - a) / 86_400_000);
 }
 
+/** Add `n` days to a "YYYY-MM-DD" date, returning "YYYY-MM-DD". */
+export function addDaysISO(dateISO: string, n: number): string {
+  const d = new Date(`${dateISO}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
 // ---------- settings ----------
 function getSetting(db: DB, key: string, fallback: string): string {
   const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(key) as
