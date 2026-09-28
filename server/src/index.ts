@@ -9,6 +9,7 @@ import { env } from "./env.js";
 import { openDb } from "./db.js";
 import { createApiRouter } from "./api.js";
 import { createNotesRouter } from "./notes.js";
+import { createQuizRouter } from "./quiz.js";
 
 const app = express();
 const db = openDb(env.dbPath);
@@ -51,6 +52,9 @@ app.use("/api", createApiRouter(db));
 
 // Phase 3: notes + AI summary
 app.use("/api", createNotesRouter(db));
+
+// Phase 4: quiz + grading
+app.use("/api", createQuizRouter(db));
 
 // AI token usage totals (for a future settings/cost page).
 app.get("/api/ai/usage", (_req, res) => {

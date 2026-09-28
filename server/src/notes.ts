@@ -99,7 +99,7 @@ export function createNotesRouter(db: DB): Router {
       }
 
       const learning = await generateNoteLearning(
-        noteModelCall(db, { text: rawText, images: aiImages, courseCode: courseCode ?? undefined }),
+        noteModelCall(db, { text: rawText, images: aiImages }),
       );
 
       const info = db

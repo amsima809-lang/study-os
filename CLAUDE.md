@@ -71,7 +71,7 @@ study-os/
 - [x] Phase 1 — Database + Seed (+ TH/EN language switch)
 - [x] Phase 2 — Today + Schedule
 - [x] Phase 3 — Notes → AI Summary
-- [ ] Phase 4 — Quiz Me + Grading
+- [x] Phase 4 — Quiz Me + Grading
 - [ ] Phase 5 — Flashcards (spaced repetition)
 - [ ] Phase 6 — Tracker & Analytics
 - [ ] Phase 7 — Degree Planner

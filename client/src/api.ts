@@ -90,3 +90,31 @@ export async function postForm<T>(url: string, form: FormData): Promise<T> {
   if (!r.ok) throw data as ApiError;
   return data as T;
 }
+
+/** POST JSON; returns parsed JSON or throws an ApiError-shaped error. */
+export async function postJSON<T>(url: string, body: unknown): Promise<T> {
+  const r = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await r.json().catch(() => ({ error: "unknown" }));
+  if (!r.ok) throw data as ApiError;
+  return data as T;
+}
+
+// ---------- Phase 4: quiz ----------
+export type QuizQuestion = {
+  id: number;
+  topic: string;
+  question: string;
+  type: "short" | "mcq";
+  choices: string[];
+};
+
+export type AnswerResult = {
+  score: number;
+  feedback: string;
+  modelAnswer: string;
+  flashcardCreated: boolean;
+};

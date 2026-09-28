@@ -4,8 +4,9 @@ import Today from "./screens/Today.tsx";
 import Week from "./screens/Week.tsx";
 import Exams from "./screens/Exams.tsx";
 import Notes from "./screens/Notes.tsx";
+import Quiz from "./screens/Quiz.tsx";
 
-type Tab = "today" | "week" | "exams" | "notes";
+type Tab = "today" | "week" | "exams" | "notes" | "quiz";
 
 function Shell() {
   const { t } = useT();
@@ -16,6 +17,7 @@ function Shell() {
     { id: "week", icon: "🗓️" },
     { id: "exams", icon: "📝" },
     { id: "notes", icon: "📓" },
+    { id: "quiz", icon: "🎯" },
   ];
 
   return (
@@ -32,6 +34,7 @@ function Shell() {
         {tab === "week" && <Week />}
         {tab === "exams" && <Exams />}
         {tab === "notes" && <Notes />}
+        {tab === "quiz" && <Quiz />}
       </main>
 
       {/* bottom navigation */}
