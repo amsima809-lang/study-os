@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { LanguageProvider, LanguageToggle, useT } from "./i18n.tsx";
 import Today from "./screens/Today.tsx";
-import Week from "./screens/Week.tsx";
-import Exams from "./screens/Exams.tsx";
+import Schedule from "./screens/Schedule.tsx";
 import Notes from "./screens/Notes.tsx";
 import Quiz from "./screens/Quiz.tsx";
 import Review from "./screens/Review.tsx";
+import Stats from "./screens/Stats.tsx";
 
-type Tab = "today" | "week" | "exams" | "notes" | "quiz" | "review";
+type Tab = "today" | "schedule" | "notes" | "quiz" | "review" | "stats";
 
 function Shell() {
   const { t } = useT();
@@ -15,11 +15,11 @@ function Shell() {
 
   const tabs: Array<{ id: Tab; icon: string }> = [
     { id: "today", icon: "📅" },
-    { id: "week", icon: "🗓️" },
-    { id: "exams", icon: "📝" },
+    { id: "schedule", icon: "🗓️" },
     { id: "notes", icon: "📓" },
     { id: "quiz", icon: "🎯" },
     { id: "review", icon: "🔁" },
+    { id: "stats", icon: "📊" },
   ];
 
   return (
@@ -33,11 +33,11 @@ function Shell() {
       {/* screen content */}
       <main className="flex-1 px-5 py-5 max-w-lg w-full mx-auto pb-24">
         {tab === "today" && <Today />}
-        {tab === "week" && <Week />}
-        {tab === "exams" && <Exams />}
+        {tab === "schedule" && <Schedule />}
         {tab === "notes" && <Notes />}
         {tab === "quiz" && <Quiz />}
         {tab === "review" && <Review />}
+        {tab === "stats" && <Stats />}
       </main>
 
       {/* bottom navigation */}

@@ -119,6 +119,28 @@ export type AnswerResult = {
   flashcardCreated: boolean;
 };
 
+// ---------- Phase 6: analytics ----------
+export type CourseAnalytics = {
+  code: string;
+  name_th: string;
+  difficulty: number;
+  targetWeeklyHours: number;
+  actualWeeklyHours: number;
+  quizAverage: number | null;
+  attempts: number;
+  daysToExam: number | null;
+  weakestTopics: { name: string; mastery: number }[];
+  risk: "green" | "yellow" | "red";
+  riskScore: number;
+};
+
+export type AnalyticsData = {
+  term: string;
+  weekStart: string;
+  weeklyTarget: number;
+  courses: CourseAnalytics[];
+};
+
 // ---------- Phase 5: flashcards ----------
 export type DueCard = {
   id: number;
