@@ -75,5 +75,5 @@ study-os/
 - [x] Phase 5 — Flashcards (spaced repetition)
 - [x] Phase 6 — Tracker & Analytics
 - [x] Phase 7 — Degree Planner
-- [ ] Phase 8 — Mock Exam Mode
+- [x] Phase 8 — Mock Exam Mode
 - [ ] Phase 9 — PWA + Deploy

@@ -13,6 +13,7 @@ import { createQuizRouter } from "./quiz.js";
 import { createFlashcardsRouter } from "./flashcards.js";
 import { createAnalyticsRouter } from "./analytics.js";
 import { createPlannerRouter } from "./planner.js";
+import { createMockRouter } from "./mock.js";
 
 const app = express();
 const db = openDb(env.dbPath);
@@ -67,6 +68,9 @@ app.use("/api", createAnalyticsRouter(db));
 
 // Phase 7: degree planner
 app.use("/api", createPlannerRouter(db));
+
+// Phase 8: mock exam
+app.use("/api", createMockRouter(db));
 
 // AI token usage totals (for a future settings/cost page).
 app.get("/api/ai/usage", (_req, res) => {

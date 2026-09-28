@@ -3,8 +3,9 @@ import { useT } from "../i18n.tsx";
 import Schedule from "./Schedule.tsx";
 import Stats from "./Stats.tsx";
 import Planner from "./Planner.tsx";
+import Mock from "./Mock.tsx";
 
-type Sub = "schedule" | "stats" | "planner";
+type Sub = "schedule" | "stats" | "planner" | "mock";
 
 /** Secondary-screen hub, so the bottom nav stays small as features grow. */
 export default function More() {
@@ -15,6 +16,7 @@ export default function More() {
     { id: "schedule", icon: "🗓️" },
     { id: "stats", icon: "📊" },
     { id: "planner", icon: "🎓" },
+    { id: "mock", icon: "📝" },
   ];
 
   if (sub) {
@@ -26,6 +28,7 @@ export default function More() {
         {sub === "schedule" && <Schedule />}
         {sub === "stats" && <Stats />}
         {sub === "planner" && <Planner />}
+        {sub === "mock" && <Mock />}
       </div>
     );
   }

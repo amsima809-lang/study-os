@@ -119,6 +119,22 @@ export type AnswerResult = {
   flashcardCreated: boolean;
 };
 
+// ---------- Phase 8: mock exam ----------
+export type MockCourse = {
+  code: string;
+  name_th: string;
+  daysToExam: number;
+  bankCount: number;
+  available: boolean;
+};
+
+export type MockResult = {
+  score: number;
+  maxScore: number;
+  questionCount: number;
+  weakTopics: { name: string; mastery: number }[];
+};
+
 // ---------- Phase 7: degree planner ----------
 export type PlanItem = {
   course_code: string | null;
