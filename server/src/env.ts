@@ -3,6 +3,11 @@
  * Everything else in the server imports `env` from here.
  */
 import "dotenv/config";
+import { fileURLToPath } from "node:url";
+
+// Resolve default data paths to the repo root, so they don't depend on which
+// directory `npm run ...` was launched from (workspace scripts run in server/).
+const repoRoot = fileURLToPath(new URL("../../", import.meta.url));
 
 function required(name: string, fallback?: string): string {
   const value = process.env[name] ?? fallback;
@@ -18,8 +23,8 @@ export const env = {
   tz: process.env.TZ ?? "Asia/Bangkok",
   appPassword: required("APP_PASSWORD", "change-me"),
   sessionSecret: required("SESSION_SECRET", "dev-secret"),
-  dbPath: process.env.DB_PATH ?? "./data/studyos.db",
-  uploadDir: process.env.UPLOAD_DIR ?? "./data/uploads",
+  dbPath: process.env.DB_PATH ?? `${repoRoot}data/studyos.db`,
+  uploadDir: process.env.UPLOAD_DIR ?? `${repoRoot}data/uploads`,
   anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? "",
   anthropicModel: process.env.ANTHROPIC_MODEL ?? "claude-sonnet-5",
 } as const;

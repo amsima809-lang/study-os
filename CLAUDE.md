@@ -31,6 +31,9 @@ Starts semester 2/2569 (Nov 2026), target graduation ~Oct 2572.
 - AI: Anthropic SDK, all calls through `server/src/ai.ts`. Model + key from env.
 - Timezone: `Asia/Bangkok`. Store ISO dates; display พ.ศ. in the UI.
 - Deploy: Fly.io (Singapore), persistent volume at `/data`.
+- i18n: in-house, no library. Dictionary in `client/src/i18n.tsx`, `useT()` hook,
+  TH (default) / EN toggle, choice saved in localStorage. UI chrome only —
+  course names come from the DB (Thai; `name_en` is NULL until confirmed).
 
 ## Commands (run from repo root)
 | Command | What it does |
@@ -65,7 +68,7 @@ study-os/
 
 ## Phase status
 - [x] Phase 0 — Setup
-- [ ] Phase 1 — Database + Seed
+- [x] Phase 1 — Database + Seed (+ TH/EN language switch)
 - [ ] Phase 2 — Today + Schedule
 - [ ] Phase 3 — Notes → AI Summary
 - [ ] Phase 4 — Quiz Me + Grading

@@ -9,9 +9,9 @@ node_modules/
 client/dist/
 server/dist/
 
-# runtime data (database, uploaded note images, backups)
-data/*.db
-data/*.db-*
+# runtime data (database, uploaded note images, backups) — anywhere in the repo
+**/studyos.db
+**/studyos.db-*
 data/uploads/*
 data/backups/*
 !data/uploads/.gitkeep
