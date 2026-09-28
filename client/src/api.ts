@@ -58,3 +58,35 @@ export async function getJSON<T>(url: string): Promise<T> {
   if (!r.ok) throw new Error(`${r.status} ${url}`);
   return (await r.json()) as T;
 }
+
+// ---------- Phase 3: notes ----------
+export type Course = { code: string; name_th: string; name_en: string | null; category: string };
+
+export type KeyTerm = { term: string; definition: string };
+
+export type NoteLearning = {
+  id?: number;
+  summary_md: string;
+  key_terms: KeyTerm[];
+  mindmap_md: string;
+  topics: string[];
+  image_paths?: string[];
+};
+
+export type NoteListItem = {
+  id: number;
+  course_code: string | null;
+  course_name: string | null;
+  title: string | null;
+  created_at: string;
+};
+
+export type ApiError = { error: string; code?: string };
+
+/** POST multipart form; returns parsed JSON or throws an ApiError-shaped error. */
+export async function postForm<T>(url: string, form: FormData): Promise<T> {
+  const r = await fetch(url, { method: "POST", body: form });
+  const data = await r.json().catch(() => ({ error: "unknown" }));
+  if (!r.ok) throw data as ApiError;
+  return data as T;
+}

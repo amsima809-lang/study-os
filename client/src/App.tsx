@@ -3,8 +3,9 @@ import { LanguageProvider, LanguageToggle, useT } from "./i18n.tsx";
 import Today from "./screens/Today.tsx";
 import Week from "./screens/Week.tsx";
 import Exams from "./screens/Exams.tsx";
+import Notes from "./screens/Notes.tsx";
 
-type Tab = "today" | "week" | "exams";
+type Tab = "today" | "week" | "exams" | "notes";
 
 function Shell() {
   const { t } = useT();
@@ -14,6 +15,7 @@ function Shell() {
     { id: "today", icon: "📅" },
     { id: "week", icon: "🗓️" },
     { id: "exams", icon: "📝" },
+    { id: "notes", icon: "📓" },
   ];
 
   return (
@@ -29,6 +31,7 @@ function Shell() {
         {tab === "today" && <Today />}
         {tab === "week" && <Week />}
         {tab === "exams" && <Exams />}
+        {tab === "notes" && <Notes />}
       </main>
 
       {/* bottom navigation */}

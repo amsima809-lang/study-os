@@ -8,12 +8,16 @@ import cookieParser from "cookie-parser";
 import { env } from "./env.js";
 import { openDb } from "./db.js";
 import { createApiRouter } from "./api.js";
+import { createNotesRouter } from "./notes.js";
 
 const app = express();
 const db = openDb(env.dbPath);
 
 app.use(express.json({ limit: "10mb" }));
 app.use(cookieParser(env.sessionSecret));
+
+// Serve uploaded note images through the /api proxy.
+app.use("/api/uploads", express.static(env.uploadDir));
 
 // Health check — used by the client and by Fly.io deploy checks.
 app.get("/api/health", (_req, res) => {
@@ -44,6 +48,22 @@ app.get("/api/stats", (_req, res) => {
 
 // Phase 2: Today / weekly schedule / exams
 app.use("/api", createApiRouter(db));
+
+// Phase 3: notes + AI summary
+app.use("/api", createNotesRouter(db));
+
+// AI token usage totals (for a future settings/cost page).
+app.get("/api/ai/usage", (_req, res) => {
+  const row = db
+    .prepare(
+      `SELECT COALESCE(SUM(input_tokens),0) AS input_tokens,
+              COALESCE(SUM(output_tokens),0) AS output_tokens,
+              COUNT(*) AS calls
+       FROM ai_usage`,
+    )
+    .get();
+  res.json(row);
+});
 
 app.listen(env.port, () => {
   console.log(`[StudyOS] server listening on http://localhost:${env.port}`);
