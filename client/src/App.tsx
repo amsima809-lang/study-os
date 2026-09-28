@@ -1,75 +1,51 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { LanguageProvider, LanguageToggle, useT } from "./i18n.tsx";
+import Today from "./screens/Today.tsx";
+import Week from "./screens/Week.tsx";
+import Exams from "./screens/Exams.tsx";
 
-type Health = { ok: boolean; phase: number; tz: string };
-type Stats = { courses: number; terms: number; plannedCredits: number };
+type Tab = "today" | "week" | "exams";
 
-function Home() {
+function Shell() {
   const { t } = useT();
-  const [health, setHealth] = useState<Health | null>(null);
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [error, setError] = useState(false);
+  const [tab, setTab] = useState<Tab>("today");
 
-  useEffect(() => {
-    Promise.all([
-      fetch("/api/health").then((r) => r.json()),
-      fetch("/api/stats").then((r) => r.json()),
-    ])
-      .then(([h, s]) => {
-        setHealth(h);
-        setStats(s);
-      })
-      .catch(() => setError(true));
-  }, []);
+  const tabs: Array<{ id: Tab; icon: string }> = [
+    { id: "today", icon: "📅" },
+    { id: "week", icon: "🗓️" },
+    { id: "exams", icon: "📝" },
+  ];
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col items-center gap-5 px-6 py-10">
-      <div className="w-full max-w-sm flex justify-end">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
+      {/* top bar */}
+      <div className="flex justify-between items-center px-5 py-3 bg-white shadow-sm sticky top-0 z-10">
+        <span className="font-bold text-indigo-600">{t("app.name")}</span>
         <LanguageToggle />
       </div>
 
-      <header className="text-center mt-6">
-        <h1 className="text-3xl font-bold text-indigo-600">{t("app.name")}</h1>
-        <p className="text-slate-600 mt-1">{t("app.tagline")}</p>
-        {health && (
-          <p className="text-green-600 text-sm mt-2 font-medium">
-            {t("phase.ready", { n: health.phase })} ✅
-          </p>
-        )}
-      </header>
+      {/* screen content */}
+      <main className="flex-1 px-5 py-5 max-w-lg w-full mx-auto pb-24">
+        {tab === "today" && <Today />}
+        {tab === "week" && <Week />}
+        {tab === "exams" && <Exams />}
+      </main>
 
-      {/* Server status */}
-      <div className="rounded-xl bg-white shadow px-4 py-3 text-sm w-full max-w-sm">
-        {error && <span className="text-red-600">{t("status.error")}</span>}
-        {!error && !health && <span className="text-slate-400">{t("status.connecting")}</span>}
-        {health && (
-          <div className="flex justify-between">
-            <span>{t("status.server")}</span>
-            <span className="text-green-600 font-medium">{t("status.connected")}</span>
-          </div>
-        )}
-      </div>
-
-      {/* Curriculum stats from the seeded database */}
-      {stats && (
-        <div className="rounded-xl bg-white shadow px-4 py-3 w-full max-w-sm">
-          <h2 className="font-semibold text-slate-700 mb-2">{t("stats.title")}</h2>
-          <dl className="space-y-1 text-sm">
-            <Row label={t("stats.courses")} value={stats.courses} />
-            <Row label={t("stats.credits")} value={stats.plannedCredits} />
-            <Row label={t("stats.terms")} value={stats.terms} />
-          </dl>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Row({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="flex justify-between">
-      <dt className="text-slate-500">{label}</dt>
-      <dd className="font-medium text-slate-800">{value}</dd>
+      {/* bottom navigation */}
+      <nav className="fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 flex justify-around max-w-lg mx-auto">
+        {tabs.map((tb) => (
+          <button
+            key={tb.id}
+            onClick={() => setTab(tb.id)}
+            className={`flex-1 flex flex-col items-center py-2 text-xs gap-0.5 ${
+              tab === tb.id ? "text-indigo-600 font-semibold" : "text-slate-400"
+            }`}
+          >
+            <span className="text-lg">{tb.icon}</span>
+            {t(`nav.${tb.id}`)}
+          </button>
+        ))}
+      </nav>
     </div>
   );
 }
@@ -77,7 +53,7 @@ function Row({ label, value }: { label: string; value: number }) {
 export default function App() {
   return (
     <LanguageProvider>
-      <Home />
+      <Shell />
     </LanguageProvider>
   );
 }

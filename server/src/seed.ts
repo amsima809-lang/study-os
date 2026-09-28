@@ -140,9 +140,21 @@ const SLOT_TIMES: Record<"A" | "B", { start: string; end: string }> = {
   B: { start: "14:00", end: "16:30" },
 };
 
+// Default app settings. INSERT OR IGNORE so re-seeding never overwrites the
+// student's own changes.
+const DEFAULT_SETTINGS: Array<[string, string]> = [
+  ["current_term_id", "2/69"],
+  ["weekly_target_hours", "36"],
+];
+
 /** Insert every seed row. Idempotent: clears seed tables first, then re-inserts. */
 export function seedDatabase(db: DB): void {
   const tx = db.transaction(() => {
+    const insSetting = db.prepare(
+      "INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)",
+    );
+    for (const [k, v] of DEFAULT_SETTINGS) insSetting.run(k, v);
+
     // Clear seed-owned tables (leave user data like notes/attempts untouched).
     db.exec(`
       DELETE FROM exams;

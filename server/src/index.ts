@@ -7,6 +7,7 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import { env } from "./env.js";
 import { openDb } from "./db.js";
+import { createApiRouter } from "./api.js";
 
 const app = express();
 const db = openDb(env.dbPath);
@@ -40,6 +41,9 @@ app.get("/api/stats", (_req, res) => {
   ).credits;
   res.json({ courses, terms, plannedCredits });
 });
+
+// Phase 2: Today / weekly schedule / exams
+app.use("/api", createApiRouter(db));
 
 app.listen(env.port, () => {
   console.log(`[StudyOS] server listening on http://localhost:${env.port}`);

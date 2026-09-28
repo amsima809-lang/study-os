@@ -69,7 +69,7 @@ study-os/
 ## Phase status
 - [x] Phase 0 — Setup
 - [x] Phase 1 — Database + Seed (+ TH/EN language switch)
-- [ ] Phase 2 — Today + Schedule
+- [x] Phase 2 — Today + Schedule
 - [ ] Phase 3 — Notes → AI Summary
 - [ ] Phase 4 — Quiz Me + Grading
 - [ ] Phase 5 — Flashcards (spaced repetition)
