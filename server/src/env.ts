@@ -25,6 +25,7 @@ export const env = {
   sessionSecret: required("SESSION_SECRET", "dev-secret"),
   dbPath: process.env.DB_PATH ?? `${repoRoot}data/studyos.db`,
   uploadDir: process.env.UPLOAD_DIR ?? `${repoRoot}data/uploads`,
+  clientDist: process.env.CLIENT_DIST ?? `${repoRoot}client/dist`,
   anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? "",
   anthropicModel: process.env.ANTHROPIC_MODEL ?? "claude-sonnet-5",
 } as const;

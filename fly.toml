@@ -1,0 +1,35 @@
+# Fly.io config for StudyOS. Change `app` to your own unique name.
+app = "studyos"
+primary_region = "sin"  # Singapore (closest to Thailand)
+
+[build]
+
+[env]
+  NODE_ENV = "production"
+  PORT = "8080"
+  TZ = "Asia/Bangkok"
+  DB_PATH = "/data/studyos.db"
+  UPLOAD_DIR = "/data/uploads"
+
+# Persistent volume for the SQLite database, uploads and backups.
+[[mounts]]
+  source = "studyos_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "15s"
+    method = "GET"
+    path = "/api/health"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

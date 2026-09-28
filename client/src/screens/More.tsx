@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useT } from "../i18n.tsx";
+import { postJSON } from "../api.ts";
 import Schedule from "./Schedule.tsx";
 import Stats from "./Stats.tsx";
 import Planner from "./Planner.tsx";
@@ -50,6 +51,20 @@ export default function More() {
           </li>
         ))}
       </ul>
+
+      <button
+        onClick={async () => {
+          try {
+            await postJSON("/api/logout", {});
+          } catch {
+            /* ignore */
+          }
+          window.location.reload();
+        }}
+        className="w-full text-slate-400 text-sm py-3 mt-2"
+      >
+        {t("auth.logout")}
+      </button>
     </div>
   );
 }

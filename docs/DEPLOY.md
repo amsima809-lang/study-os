@@ -1,0 +1,88 @@
+# วิธี Deploy StudyOS ขึ้น Fly.io (ทีละขั้น)
+
+> เป้าหมาย: เอาแอปขึ้นเซิร์ฟเวอร์ที่สิงคโปร์ แล้วเปิดบนมือถือ + ติดตั้งลงหน้าจอได้
+> ทำครั้งแรกครั้งเดียว หลังจากนั้นแค่ `fly deploy` เวลาแก้โค้ด
+
+## 0) เตรียมของ
+- สมัคร Fly.io: https://fly.io/app/sign-up (มีบัตรเครดิตไว้ยืนยันตัวตน แต่มีแพ็กเกจฟรีเล็ก ๆ)
+- มี API key ของ Anthropic (สำหรับฟีเจอร์ AI)
+
+## 1) ติดตั้ง flyctl (เครื่องมือของ Fly)
+บน macOS:
+```bash
+brew install flyctl
+```
+แล้วล็อกอิน:
+```bash
+fly auth login
+```
+
+## 2) สร้างแอปบน Fly (ยังไม่ deploy)
+อยู่ในโฟลเดอร์ `study-os` แล้วรัน:
+```bash
+fly launch --no-deploy --copy-config --name studyos-pploy --region sin
+```
+- `--copy-config` = ใช้ไฟล์ `fly.toml` ที่มีอยู่แล้ว
+- เปลี่ยน `studyos-pploy` เป็นชื่อที่ไม่ซ้ำใคร (ตัวเล็ก/ตัวเลข/ขีด)
+- ถ้ามันถามว่าจะสร้าง Postgres/Redis ไหม ให้ตอบ **No** ทั้งหมด
+
+> ถ้าเปลี่ยนชื่อแอป อย่าลืมแก้บรรทัด `app = "..."` ใน `fly.toml` ให้ตรงกัน
+
+## 3) สร้าง volume เก็บข้อมูล (ฐานข้อมูล + รูป + สำรอง)
+```bash
+fly volumes create studyos_data --region sin --size 1
+```
+(1 GB พอเหลือ ๆ สำหรับใช้ส่วนตัว)
+
+## 4) ตั้งค่าลับ (secrets) — ห้ามใส่ในไฟล์ที่ push ขึ้น git
+```bash
+fly secrets set \
+  APP_PASSWORD='ตั้งรหัสผ่านเข้าแอปของคุณ' \
+  SESSION_SECRET='สุ่มข้อความยาว ๆ มั่ว ๆ ไว้เซ็นคุกกี้' \
+  ANTHROPIC_API_KEY='sk-ant-xxxxxxxx'
+```
+เคล็ดลับสุ่ม SESSION_SECRET:
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+## 5) Deploy!
+```bash
+fly deploy
+```
+รอสักครู่ ระบบจะ build (Docker) แล้วรันให้ ครั้งแรกฐานข้อมูลจะ **ใส่ข้อมูลหลักสูตรให้อัตโนมัติ**
+
+## 6) เปิดใช้งาน
+```bash
+fly open
+```
+จะเปิดเว็บที่ `https://<ชื่อแอป>.fly.dev` → ใส่รหัสผ่าน (ตาม APP_PASSWORD) → เข้าใช้ได้เลย
+
+### ติดตั้งลงหน้าจอ iPhone
+เปิดเว็บใน Safari → กดปุ่มแชร์ → **"เพิ่มลงหน้าจอโฮม"** → จะได้ไอคอน StudyOS เหมือนแอปจริง
+
+## เวลาแก้โค้ดแล้วอยากอัปเดต
+```bash
+fly deploy
+```
+
+## คำสั่งที่ใช้บ่อย
+| อยากทำอะไร | คำสั่ง |
+|---|---|
+| ดู log | `fly logs` |
+| เข้าไปในเครื่อง | `fly ssh console` |
+| สั่ง seed ใหม่ (ปกติไม่ต้อง) | `fly ssh console -C "npm run seed"` |
+| ดูสถานะ | `fly status` |
+| ดูรายการ secret | `fly secrets list` |
+
+## เรื่องสำรองข้อมูล (backup)
+เซิร์ฟเวอร์จะ **สำรองฐานข้อมูลอัตโนมัติทุกวัน** ไว้ที่ `/data/backups/` (เก็บ 14 ไฟล์ล่าสุด)
+ถ้าอยากดึงไฟล์สำรองลงเครื่อง:
+```bash
+fly ssh sftp get /data/backups/studyos-YYYY-MM-DD.db ./backup.db
+```
+
+## แก้ปัญหาที่เจอบ่อย
+- **เข้าเว็บแล้วขึ้น error 502/หมุน ๆ**: รอ 1–2 นาทีให้เครื่องบูตเสร็จ แล้วลองใหม่ (`fly logs` ดูสาเหตุ)
+- **ลืมรหัสผ่าน**: ตั้งใหม่ด้วย `fly secrets set APP_PASSWORD='รหัสใหม่'` แล้ว `fly deploy`
+- **AI ใช้ไม่ได้**: เช็กว่า `fly secrets list` มี `ANTHROPIC_API_KEY` แล้ว

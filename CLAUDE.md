@@ -44,7 +44,8 @@ Starts semester 2/2569 (Nov 2026), target graduation ~Oct 2572.
 | `npm run typecheck` | Type-check both workspaces (must be 0 errors) |
 | `npm test` | Run server tests (vitest) |
 | `npm run seed` | Load seed data into the database |
-| `npm start` | Run the server in production mode |
+| `npm start` | Run the server in production mode (serves built client) |
+| `fly deploy` | Deploy to Fly.io — see `docs/DEPLOY.md` |
 
 ## Folder map
 ```
@@ -76,4 +77,4 @@ study-os/
 - [x] Phase 6 — Tracker & Analytics
 - [x] Phase 7 — Degree Planner
 - [x] Phase 8 — Mock Exam Mode
-- [ ] Phase 9 — PWA + Deploy
+- [x] Phase 9 — PWA + Deploy — 🎉 all phases complete

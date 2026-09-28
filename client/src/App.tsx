@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { LanguageProvider, LanguageToggle, useT } from "./i18n.tsx";
+import { getJSON } from "./api.ts";
+import Login from "./screens/Login.tsx";
 import Today from "./screens/Today.tsx";
 import Notes from "./screens/Notes.tsx";
 import Quiz from "./screens/Quiz.tsx";
@@ -56,10 +58,24 @@ function Shell() {
   );
 }
 
+function AuthGate() {
+  const [authed, setAuthed] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    getJSON<{ authed: boolean }>("/api/me")
+      .then((d) => setAuthed(d.authed))
+      .catch(() => setAuthed(false));
+  }, []);
+
+  if (authed === null) return <div className="min-h-screen bg-slate-50" />;
+  if (!authed) return <Login onAuthed={() => setAuthed(true)} />;
+  return <Shell />;
+}
+
 export default function App() {
   return (
     <LanguageProvider>
-      <Shell />
+      <AuthGate />
     </LanguageProvider>
   );
 }
