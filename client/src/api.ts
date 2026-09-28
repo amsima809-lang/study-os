@@ -119,6 +119,36 @@ export type AnswerResult = {
   flashcardCreated: boolean;
 };
 
+// ---------- Phase 7: degree planner ----------
+export type PlanItem = {
+  course_code: string | null;
+  placeholder_label: string | null;
+  name_th: string | null;
+  credits: number;
+  category: string | null;
+  difficulty: number | null;
+  status: "PLANNED" | "PASSED" | "FAILED" | "ENROLLED" | "WITHDRAWN" | null;
+};
+
+export type PlanTerm = {
+  term_id: string;
+  ord: number;
+  max_credits: number;
+  credits: number;
+  runningTotal: number;
+  items: PlanItem[];
+};
+
+export type PlanData = {
+  terms: PlanTerm[];
+  totalPassedCredits: number;
+  totalPlannedCredits: number;
+  categoryProgress: { category: string; required: number; passed: number }[];
+  failed: { course_code: string; name_th: string; retakeTerm: string | null }[];
+  blocked: { course_code: string; name_th: string; dueTo: string[] }[];
+  internship: { eligible: boolean; rules: { id: string; ok: boolean; detail: string }[] };
+};
+
 // ---------- Phase 6: analytics ----------
 export type CourseAnalytics = {
   code: string;

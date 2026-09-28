@@ -74,6 +74,6 @@ study-os/
 - [x] Phase 4 — Quiz Me + Grading
 - [x] Phase 5 — Flashcards (spaced repetition)
 - [x] Phase 6 — Tracker & Analytics
-- [ ] Phase 7 — Degree Planner
+- [x] Phase 7 — Degree Planner
 - [ ] Phase 8 — Mock Exam Mode
 - [ ] Phase 9 — PWA + Deploy

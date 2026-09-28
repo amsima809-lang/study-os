@@ -1,13 +1,12 @@
 import { useState } from "react";
 import { LanguageProvider, LanguageToggle, useT } from "./i18n.tsx";
 import Today from "./screens/Today.tsx";
-import Schedule from "./screens/Schedule.tsx";
 import Notes from "./screens/Notes.tsx";
 import Quiz from "./screens/Quiz.tsx";
 import Review from "./screens/Review.tsx";
-import Stats from "./screens/Stats.tsx";
+import More from "./screens/More.tsx";
 
-type Tab = "today" | "schedule" | "notes" | "quiz" | "review" | "stats";
+type Tab = "today" | "notes" | "quiz" | "review" | "more";
 
 function Shell() {
   const { t } = useT();
@@ -15,11 +14,10 @@ function Shell() {
 
   const tabs: Array<{ id: Tab; icon: string }> = [
     { id: "today", icon: "📅" },
-    { id: "schedule", icon: "🗓️" },
     { id: "notes", icon: "📓" },
     { id: "quiz", icon: "🎯" },
     { id: "review", icon: "🔁" },
-    { id: "stats", icon: "📊" },
+    { id: "more", icon: "⋯" },
   ];
 
   return (
@@ -33,11 +31,10 @@ function Shell() {
       {/* screen content */}
       <main className="flex-1 px-5 py-5 max-w-lg w-full mx-auto pb-24">
         {tab === "today" && <Today />}
-        {tab === "schedule" && <Schedule />}
         {tab === "notes" && <Notes />}
         {tab === "quiz" && <Quiz />}
         {tab === "review" && <Review />}
-        {tab === "stats" && <Stats />}
+        {tab === "more" && <More />}
       </main>
 
       {/* bottom navigation */}
