@@ -1,111 +1,270 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { useT } from "../i18n.tsx";
 
 export type HandwritingHandle = {
   exportBlob: () => Promise<Blob | null>;
   clear: () => void;
-  undo: () => void;
   isEmpty: () => boolean;
 };
 
-const MAX_HISTORY = 40;
+// Logical drawing resolution (exported at this size). Displayed scaled by zoom.
+const CANVAS_W = 1000;
+const CANVAS_H = 1400;
+
+const COLORS = ["#1f2937", "#2563eb", "#dc2626", "#16a34a", "#ea580c"];
+const WIDTHS: Array<{ key: "thin" | "medium" | "thick"; val: number }> = [
+  { key: "thin", val: 4 },
+  { key: "medium", val: 9 },
+  { key: "thick", val: 16 },
+];
+const ERASER_WIDTH = 34;
+
+type Point = { x: number; y: number };
+type Stroke = { tool: "pen" | "eraser"; color: string; width: number; points: Point[] };
 
 /**
- * A canvas you can write on with a stylus/finger during class.
- * On submit the drawing is exported as a JPEG image and sent to the AI as a
- * note photo (so it reads your handwriting).
+ * A full drawing pad: pen + eraser, colors, stroke widths, undo/redo, clear,
+ * zoom in/out, and an expand toggle. Strokes are stored as vectors (light +
+ * redo-friendly) and exported as a JPEG for the AI to read.
  */
 export const HandwritingPad = forwardRef<HandwritingHandle>((_props, ref) => {
+  const { t } = useT();
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [strokes, setStrokes] = useState<Stroke[]>([]);
+  const [redoStack, setRedoStack] = useState<Stroke[]>([]);
+  const [tool, setTool] = useState<"pen" | "eraser">("pen");
+  const [color, setColor] = useState(COLORS[0]);
+  const [width, setWidth] = useState(WIDTHS[1].val);
+  const [zoom, setZoom] = useState(1);
+  const [expanded, setExpanded] = useState(false);
+
   const drawing = useRef(false);
-  const dirty = useRef(false);
-  const last = useRef<{ x: number; y: number } | null>(null);
-  const history = useRef<ImageData[]>([]); // canvas snapshot before each stroke
+  const current = useRef<Stroke | null>(null);
+  const last = useRef<Point | null>(null);
 
   function ctxOf() {
     return canvasRef.current!.getContext("2d")!;
   }
 
-  function paintBackground() {
-    const c = canvasRef.current!;
-    const rect = c.getBoundingClientRect();
-    const ctx = ctxOf();
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, rect.width, rect.height);
-    ctx.strokeStyle = "#1f2937";
-    ctx.lineWidth = 2.5;
+  function paintStroke(ctx: CanvasRenderingContext2D, s: Stroke) {
+    const col = s.tool === "eraser" ? "#ffffff" : s.color;
+    ctx.strokeStyle = col;
+    ctx.fillStyle = col;
+    ctx.lineWidth = s.width;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
+    const pts = s.points;
+    if (pts.length === 1) {
+      ctx.beginPath();
+      ctx.arc(pts[0].x, pts[0].y, s.width / 2, 0, Math.PI * 2);
+      ctx.fill();
+      return;
+    }
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+    ctx.stroke();
   }
 
+  function redraw() {
+    const ctx = ctxOf();
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    for (const s of strokes) paintStroke(ctx, s);
+  }
+
+  // init + redraw whenever committed strokes change
   useEffect(() => {
     const c = canvasRef.current!;
-    const rect = c.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
-    c.width = rect.width * dpr;
-    c.height = rect.height * dpr;
-    ctxOf().scale(dpr, dpr);
-    paintBackground();
+    if (c.width !== CANVAS_W) {
+      c.width = CANVAS_W;
+      c.height = CANVAS_H;
+    }
+    redraw();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [strokes]);
 
-  function pos(e: React.PointerEvent) {
+  function toCanvas(e: React.PointerEvent): Point {
     const r = canvasRef.current!.getBoundingClientRect();
-    return { x: e.clientX - r.left, y: e.clientY - r.top };
+    return {
+      x: ((e.clientX - r.left) / r.width) * CANVAS_W,
+      y: ((e.clientY - r.top) / r.height) * CANVAS_H,
+    };
   }
+
   function down(e: React.PointerEvent) {
-    // snapshot the canvas BEFORE this stroke, so it can be undone
-    const c = canvasRef.current!;
-    history.current.push(ctxOf().getImageData(0, 0, c.width, c.height));
-    if (history.current.length > MAX_HISTORY) history.current.shift();
     drawing.current = true;
-    last.current = pos(e);
-    c.setPointerCapture(e.pointerId);
+    const p = toCanvas(e);
+    const w = tool === "eraser" ? ERASER_WIDTH : width;
+    current.current = { tool, color, width: w, points: [p] };
+    last.current = p;
+    canvasRef.current!.setPointerCapture(e.pointerId);
+    // draw the initial dot live
+    paintStroke(ctxOf(), current.current);
   }
   function move(e: React.PointerEvent) {
-    if (!drawing.current) return;
+    if (!drawing.current || !current.current) return;
+    const p = toCanvas(e);
+    current.current.points.push(p);
+    // draw just the new segment live
     const ctx = ctxOf();
-    const p = pos(e);
+    ctx.strokeStyle = tool === "eraser" ? "#ffffff" : color;
+    ctx.lineWidth = current.current.width;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
     ctx.beginPath();
     ctx.moveTo(last.current!.x, last.current!.y);
     ctx.lineTo(p.x, p.y);
     ctx.stroke();
     last.current = p;
-    dirty.current = true;
   }
   function up() {
+    if (!drawing.current || !current.current) return;
     drawing.current = false;
+    const done = current.current;
+    current.current = null;
     last.current = null;
+    setStrokes((prev) => [...prev, done]);
+    setRedoStack([]);
+  }
+
+  function undo() {
+    setStrokes((prev) => {
+      if (prev.length === 0) return prev;
+      setRedoStack((r) => [...r, prev[prev.length - 1]]);
+      return prev.slice(0, -1);
+    });
+  }
+  function redo() {
+    setRedoStack((prev) => {
+      if (prev.length === 0) return prev;
+      setStrokes((s) => [...s, prev[prev.length - 1]]);
+      return prev.slice(0, -1);
+    });
+  }
+  function clearAll() {
+    setStrokes([]);
+    setRedoStack([]);
   }
 
   useImperativeHandle(ref, () => ({
     exportBlob: () =>
       new Promise((resolve) => {
-        if (!dirty.current) return resolve(null);
+        if (strokes.length === 0) return resolve(null);
         canvasRef.current!.toBlob((b) => resolve(b), "image/jpeg", 0.9);
       }),
-    clear: () => {
-      paintBackground();
-      history.current = [];
-      dirty.current = false;
-    },
-    undo: () => {
-      const prev = history.current.pop();
-      if (!prev) return;
-      ctxOf().putImageData(prev, 0, 0);
-      dirty.current = history.current.length > 0;
-    },
-    isEmpty: () => !dirty.current,
+    clear: clearAll,
+    isEmpty: () => strokes.length === 0,
   }));
 
+  const toolBtn = (active: boolean) =>
+    `px-2.5 py-1 rounded-md text-sm font-medium ${
+      active ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600"
+    }`;
+
   return (
-    <canvas
-      ref={canvasRef}
-      onPointerDown={down}
-      onPointerMove={move}
-      onPointerUp={up}
-      onPointerLeave={up}
-      className="w-full h-64 border border-slate-200 rounded-lg bg-white"
-      style={{ touchAction: "none" }}
-    />
+    <div className="border border-slate-200 rounded-lg overflow-hidden">
+      {/* toolbar */}
+      <div className="bg-slate-50 border-b border-slate-200 p-2 space-y-2">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button className={toolBtn(tool === "pen")} onClick={() => setTool("pen")} title={t("draw.pen")}>
+            ✏️
+          </button>
+          <button
+            className={toolBtn(tool === "eraser")}
+            onClick={() => setTool("eraser")}
+            title={t("draw.eraser")}
+          >
+            🧽
+          </button>
+
+          <span className="w-px h-5 bg-slate-200 mx-0.5" />
+
+          {COLORS.map((c) => (
+            <button
+              key={c}
+              onClick={() => {
+                setColor(c);
+                setTool("pen");
+              }}
+              title={t("draw.color")}
+              className={`w-6 h-6 rounded-full border-2 ${
+                color === c && tool === "pen" ? "border-slate-800" : "border-white"
+              }`}
+              style={{ backgroundColor: c }}
+            />
+          ))}
+
+          <span className="w-px h-5 bg-slate-200 mx-0.5" />
+
+          {WIDTHS.map((w) => (
+            <button
+              key={w.key}
+              onClick={() => {
+                setWidth(w.val);
+                setTool("pen");
+              }}
+              title={t(`draw.${w.key}`)}
+              className={`w-8 h-7 rounded-md flex items-center justify-center ${
+                width === w.val ? "bg-indigo-100" : "bg-slate-100"
+              }`}
+            >
+              <span className="rounded-full bg-slate-700" style={{ width: w.val / 2 + 2, height: w.val / 2 + 2 }} />
+            </button>
+          ))}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button className={toolBtn(false)} onClick={undo} disabled={strokes.length === 0} title={t("draw.undo")}>
+            ↩︎
+          </button>
+          <button className={toolBtn(false)} onClick={redo} disabled={redoStack.length === 0} title={t("draw.redo")}>
+            ↪︎
+          </button>
+          <button className={toolBtn(false)} onClick={clearAll} title={t("draw.clear")}>
+            🗑️
+          </button>
+
+          <span className="w-px h-5 bg-slate-200 mx-0.5" />
+
+          <button
+            className={toolBtn(false)}
+            onClick={() => setZoom((z) => Math.max(0.5, Math.round((z - 0.25) * 100) / 100))}
+            title={t("draw.zoomOut")}
+          >
+            🔍−
+          </button>
+          <span className="text-xs text-slate-500 w-10 text-center">{Math.round(zoom * 100)}%</span>
+          <button
+            className={toolBtn(false)}
+            onClick={() => setZoom((z) => Math.min(4, Math.round((z + 0.25) * 100) / 100))}
+            title={t("draw.zoomIn")}
+          >
+            🔍+
+          </button>
+
+          <button
+            className={`${toolBtn(expanded)} ml-auto`}
+            onClick={() => setExpanded((v) => !v)}
+            title={t(expanded ? "draw.collapse" : "draw.expand")}
+          >
+            ⤢
+          </button>
+        </div>
+      </div>
+
+      {/* scrollable canvas area */}
+      <div className={`overflow-auto bg-slate-100 ${expanded ? "h-[70vh]" : "h-72"}`}>
+        <canvas
+          ref={canvasRef}
+          onPointerDown={down}
+          onPointerMove={move}
+          onPointerUp={up}
+          onPointerLeave={up}
+          className="bg-white touch-none block"
+          style={{ width: `${zoom * 100}%`, aspectRatio: `${CANVAS_W} / ${CANVAS_H}`, touchAction: "none" }}
+        />
+      </div>
+    </div>
   );
 });

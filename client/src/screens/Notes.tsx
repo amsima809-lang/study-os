@@ -207,20 +207,6 @@ function AddNote({
           <div>
             <p className="text-xs text-slate-400 mb-1">{t("notes.drawHint")}</p>
             <HandwritingPad ref={padRef} />
-            <div className="mt-1 flex gap-3">
-              <button
-                onClick={() => padRef.current?.undo()}
-                className="text-xs text-slate-600 font-medium"
-              >
-                {t("notes.undoDraw")}
-              </button>
-              <button
-                onClick={() => padRef.current?.clear()}
-                className="text-xs text-slate-500 underline"
-              >
-                {t("notes.clearDraw")}
-              </button>
-            </div>
           </div>
         )}
 
