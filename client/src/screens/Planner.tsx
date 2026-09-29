@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useT } from "../i18n.tsx";
 import { getJSON, postJSON, type PlanData, type PlanItem, type PlanTerm } from "../api.ts";
 import { Card, Loading } from "../components/ui.tsx";
+import { CourseTitle } from "../components/CourseTitle.tsx";
 
 export default function Planner() {
   const { t } = useT();
@@ -165,7 +166,13 @@ function ItemRow({
 
   return (
     <li className={`flex items-center gap-2 text-sm rounded-md px-2 py-1 ${STATUS_STYLE[item.status ?? ""] ?? ""}`}>
-      <span className="flex-1 text-slate-800">{item.name_th}</span>
+      <CourseTitle
+        code={item.course_code}
+        name_th={item.name_th}
+        name_en={item.name_en}
+        className="flex-1 text-slate-800"
+      />
+
       <select
         value={item.status ?? "PLANNED"}
         onChange={(e) => onSetStatus(item.course_code!, e.target.value)}

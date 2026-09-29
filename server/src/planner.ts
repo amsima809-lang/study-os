@@ -97,7 +97,7 @@ export function createPlannerRouter(db: DB): Router {
       .prepare("SELECT term_id, ord, max_credits FROM plan_terms ORDER BY ord")
       .all() as Array<{ term_id: string; ord: number; max_credits: number }>;
     const itemStmt = db.prepare(
-      `SELECT pi.course_code, pi.placeholder_label, c.name_th, c.credits, c.category, c.difficulty
+      `SELECT pi.course_code, pi.placeholder_label, c.name_th, c.name_en, c.credits, c.category, c.difficulty
        FROM plan_items pi LEFT JOIN courses c ON c.code = pi.course_code
        WHERE pi.term_id = ? ORDER BY pi.id`,
     );
@@ -108,6 +108,7 @@ export function createPlannerRouter(db: DB): Router {
         course_code: string | null;
         placeholder_label: string | null;
         name_th: string | null;
+        name_en: string | null;
         credits: number | null;
         category: string | null;
         difficulty: number | null;
@@ -115,6 +116,7 @@ export function createPlannerRouter(db: DB): Router {
         course_code: it.course_code,
         placeholder_label: it.placeholder_label,
         name_th: it.name_th,
+        name_en: it.name_en,
         credits: it.credits ?? 3,
         category: it.category,
         difficulty: it.difficulty,

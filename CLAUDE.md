@@ -32,8 +32,12 @@ Starts semester 2/2569 (Nov 2026), target graduation ~Oct 2572.
 - Timezone: `Asia/Bangkok`. Store ISO dates; display พ.ศ. in the UI.
 - Deploy: Fly.io (Singapore), persistent volume at `/data`.
 - i18n: in-house, no library. Dictionary in `client/src/i18n.tsx`, `useT()` hook,
-  TH (default) / EN toggle, choice saved in localStorage. UI chrome only —
-  course names come from the DB (Thai; `name_en` is NULL until confirmed).
+  TH (default) / EN toggle, choice saved in localStorage. Course names ARE
+  bilingual now: `<CourseTitle>` shows "(CODE) primary" + the other language
+  faint, switching with the UI language. `name_en` values in `seed.ts` NAME_EN
+  are UNOFFICIAL translations — verify against RU's catalogue.
+- Notes input: type, OR handwrite on a canvas (HandwritingPad -> exported as a
+  JPEG sent to the AI), plus separate camera / gallery photo buttons.
 
 ## Commands (run from repo root)
 | Command | What it does |

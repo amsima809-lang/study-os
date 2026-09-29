@@ -3,6 +3,7 @@
 export type StudyTarget = {
   code: string;
   name_th: string;
+  name_en: string | null;
   difficulty: number;
   weeklyHours: number;
   dailyHours: number;
@@ -16,6 +17,7 @@ export type TodayData = {
   nextExam: {
     course_code: string;
     name_th: string;
+    name_en: string | null;
     date: string;
     slot: string | null;
     daysLeft: number;
@@ -27,6 +29,7 @@ export type TodayData = {
 export type ClassSession = {
   course_code: string;
   name_th: string;
+  name_en: string | null;
   weekday: number;
   start_time: string;
   end_time: string;
@@ -38,6 +41,7 @@ export type WeekData = { term: string; classes: ClassSession[] };
 export type Exam = {
   course_code: string;
   name_th: string;
+  name_en: string | null;
   date: string;
   start: string;
   end: string;
@@ -77,6 +81,7 @@ export type NoteListItem = {
   id: number;
   course_code: string | null;
   course_name: string | null;
+  course_name_en: string | null;
   title: string | null;
   created_at: string;
 };
@@ -123,6 +128,7 @@ export type AnswerResult = {
 export type MockCourse = {
   code: string;
   name_th: string;
+  name_en: string | null;
   daysToExam: number;
   bankCount: number;
   available: boolean;
@@ -140,6 +146,7 @@ export type PlanItem = {
   course_code: string | null;
   placeholder_label: string | null;
   name_th: string | null;
+  name_en: string | null;
   credits: number;
   category: string | null;
   difficulty: number | null;
@@ -169,6 +176,7 @@ export type PlanData = {
 export type CourseAnalytics = {
   code: string;
   name_th: string;
+  name_en: string | null;
   difficulty: number;
   targetWeeklyHours: number;
   actualWeeklyHours: number;
@@ -196,5 +204,7 @@ export type DueCard = {
   type: "short" | "mcq";
   choices: string[];
   topic: string | null;
+  course_code: string | null;
   course_name: string | null;
+  course_name_en: string | null;
 };

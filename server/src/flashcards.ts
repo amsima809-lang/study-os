@@ -30,6 +30,7 @@ type DueCard = {
   topic: string | null;
   course_code: string | null;
   course_name: string | null;
+  course_name_en: string | null;
 };
 
 export function createFlashcardsRouter(db: DB): Router {
@@ -42,7 +43,7 @@ export function createFlashcardsRouter(db: DB): Router {
       .prepare(
         `SELECT f.id, f.box, f.next_review_date,
                 q.question, q.model_answer, q.type, q.choices_json, q.topic, q.course_code,
-                c.name_th AS course_name
+                c.name_th AS course_name, c.name_en AS course_name_en
          FROM flashcards f
          JOIN questions q ON q.id = f.question_id
          LEFT JOIN courses c ON c.code = q.course_code
@@ -61,7 +62,9 @@ export function createFlashcardsRouter(db: DB): Router {
         type: r.type,
         choices: r.choices_json ? (JSON.parse(r.choices_json) as string[]) : [],
         topic: r.topic,
+        course_code: r.course_code,
         course_name: r.course_name,
+        course_name_en: r.course_name_en,
       })),
     });
   });

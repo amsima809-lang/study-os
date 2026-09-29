@@ -9,6 +9,7 @@ import {
   type ApiError,
 } from "../api.ts";
 import { Card, ErrorBox, Loading } from "../components/ui.tsx";
+import { CourseTitle } from "../components/CourseTitle.tsx";
 
 type Phase = "list" | "loading" | "exam" | "result";
 
@@ -97,7 +98,12 @@ function CourseList({
       {error && <ErrorBox>{error}</ErrorBox>}
       {courses.map((c) => (
         <Card key={c.code}>
-          <div className="font-medium text-slate-800 text-sm">{c.name_th}</div>
+          <CourseTitle
+            code={c.code}
+            name_th={c.name_th}
+            name_en={c.name_en}
+            className="font-medium text-slate-800 text-sm"
+          />
           {c.available ? (
             <button
               onClick={() => start(c.code)}

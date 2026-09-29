@@ -71,6 +71,49 @@ const COURSES: CourseSeed[] = [
   { code: "PSY2406", name_th: "วิชาเอกเลือก (PSY2406)", category: "MAJOR_ELEC", difficulty: 1, notes: "TODO: เติมชื่อวิชาไทย/อังกฤษ" },
 ];
 
+// English course names. UNOFFICIAL working translations of the Thai titles —
+// verify against RU's official English catalogue and edit as needed.
+const NAME_EN: Record<string, string> = {
+  RAM1301: "Virtue and Knowledge",
+  RAM1111: "English in Daily Life",
+  RAM1101: "Thai Language Skills",
+  RAM1112: "English Language and Culture",
+  RAM1131: "Digital Literacy Skills",
+  RAM1141: "The Science of Personality",
+  RAM1204: "Mathematics and Statistics for Modern Life",
+  RAM1211: "The Science of Entrepreneurship",
+  RAM1302: "Politics and Law in Daily Life",
+  RAM1312: "Contemporary Culture and Digital Transformation",
+  PSY1002: "Introduction to Psychology",
+  PSY2001: "Psychology of Learning",
+  PSY2002: "Psychology of Personality and Adjustment",
+  PSY2005: "Introduction to Social Psychology",
+  PSY2006: "Developmental Psychology",
+  PSY2007: "Physiological Psychology",
+  PSY2008: "Introduction to Quantitative Analysis in Psychology",
+  PSY2009: "Theory and Practice of Group Dynamics",
+  PSY2010: "English for Psychologists",
+  PSY3001: "Psychology of Perception and Cognition",
+  PSY3002: "Psychological Testing and Measurement",
+  PSY3003: "Research Methods in Psychology",
+  PSY3004: "Introduction to Experimental Psychology",
+  PSY3005: "Psychology of Individual Differences",
+  PSY4001: "Systems and Theories in Psychology",
+  PSY2401: "Introduction to Industrial and Organizational Psychology",
+  PSY2402: "Psychology of Personnel Management",
+  PSY2404: "Leadership Behavior",
+  PSY3401: "Counseling Psychology for Employee Quality of Life",
+  PSY3402: "Marketing and Consumer Psychology",
+  PSY3403: "Work Motivation and Morale",
+  PSY3408: "Behavior Modification in Organizations",
+  PSY4401: "Psychological Testing and Assessment in I/O Settings",
+  PSY4405: "Research and Development for Training",
+  PSY4499: "Internship in Industrial and Organizational Psychology",
+  PSY2403: "Major Elective (PSY2403)",
+  PSY2405: "Major Elective (PSY2405)",
+  PSY2406: "Major Elective (PSY2406)",
+};
+
 // ---------- Prerequisites (course requires ...) ----------
 const PREREQUISITES: Array<[string, string]> = [
   ["PSY2008", "RAM1204"],
@@ -167,12 +210,13 @@ export function seedDatabase(db: DB): void {
 
     const insCourse = db.prepare(
       `INSERT INTO courses (code, name_th, name_en, credits, category, difficulty, notes)
-       VALUES (@code, @name_th, NULL, @credits, @category, @difficulty, @notes)`,
+       VALUES (@code, @name_th, @name_en, @credits, @category, @difficulty, @notes)`,
     );
     for (const c of COURSES) {
       insCourse.run({
         code: c.code,
         name_th: c.name_th,
+        name_en: NAME_EN[c.code] ?? null,
         credits: c.credits ?? 3,
         category: c.category,
         difficulty: c.difficulty,

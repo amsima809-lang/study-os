@@ -52,13 +52,13 @@ function currentTermId(db: DB): string {
 }
 
 // ---------- shared queries ----------
-type CourseRow = { code: string; name_th: string; difficulty: number };
+type CourseRow = { code: string; name_th: string; name_en: string | null; difficulty: number };
 
 /** Real courses (not placeholders) planned in the current term. */
 function currentTermCourses(db: DB, termId: string): CourseRow[] {
   return db
     .prepare(
-      `SELECT c.code, c.name_th, c.difficulty
+      `SELECT c.code, c.name_th, c.name_en, c.difficulty
        FROM plan_items pi
        JOIN courses c ON c.code = pi.course_code
        WHERE pi.term_id = ?
@@ -86,6 +86,7 @@ export function studyTargets(db: DB, termId: string) {
       return {
         code: c.code,
         name_th: c.name_th,
+        name_en: c.name_en,
         difficulty: c.difficulty,
         weeklyHours: Math.round(weekly * 10) / 10,
         dailyHours: Math.round((weekly / 7) * 10) / 10,
@@ -97,6 +98,7 @@ export function studyTargets(db: DB, termId: string) {
 type ClassRow = {
   course_code: string;
   name_th: string;
+  name_en: string | null;
   weekday: number;
   start_time: string;
   end_time: string;
@@ -106,7 +108,7 @@ type ClassRow = {
 function weekClasses(db: DB, termId: string): ClassRow[] {
   return db
     .prepare(
-      `SELECT cs.course_code, c.name_th, cs.weekday, cs.start_time, cs.end_time, cs.room
+      `SELECT cs.course_code, c.name_th, c.name_en, cs.weekday, cs.start_time, cs.end_time, cs.room
        FROM class_sessions cs
        JOIN courses c ON c.code = cs.course_code
        WHERE cs.term_id = ?
@@ -118,6 +120,7 @@ function weekClasses(db: DB, termId: string): ClassRow[] {
 type ExamRow = {
   course_code: string;
   name_th: string;
+  name_en: string | null;
   datetime_start: string;
   datetime_end: string;
   slot: string | null;
@@ -127,7 +130,7 @@ type ExamRow = {
 function termExams(db: DB, termId: string): ExamRow[] {
   return db
     .prepare(
-      `SELECT e.course_code, c.name_th, e.datetime_start, e.datetime_end, e.slot, e.location
+      `SELECT e.course_code, c.name_th, c.name_en, e.datetime_start, e.datetime_end, e.slot, e.location
        FROM exams e
        JOIN courses c ON c.code = e.course_code
        WHERE e.term_id = ?
@@ -199,6 +202,7 @@ export function createApiRouter(db: DB): Router {
         ? {
             course_code: nextExam.course_code,
             name_th: nextExam.name_th,
+            name_en: nextExam.name_en,
             date: nextExam.datetime_start.slice(0, 10),
             slot: nextExam.slot,
             daysLeft: nextExam.daysLeft,
@@ -220,6 +224,7 @@ export function createApiRouter(db: DB): Router {
     const exams = termExams(db, term).map((e) => ({
       course_code: e.course_code,
       name_th: e.name_th,
+      name_en: e.name_en,
       date: e.datetime_start.slice(0, 10),
       start: e.datetime_start,
       end: e.datetime_end,

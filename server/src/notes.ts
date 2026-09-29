@@ -50,7 +50,8 @@ export function createNotesRouter(db: DB): Router {
   router.get("/notes", (_req, res) => {
     const rows = db
       .prepare(
-        `SELECT n.id, n.course_code, c.name_th AS course_name, n.title, n.created_at
+        `SELECT n.id, n.course_code, c.name_th AS course_name, c.name_en AS course_name_en,
+              n.title, n.created_at
          FROM notes n LEFT JOIN courses c ON c.code = n.course_code
          ORDER BY n.created_at DESC`,
       )

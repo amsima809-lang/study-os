@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useT } from "../i18n.tsx";
 import {
   getJSON,
@@ -11,6 +11,8 @@ import {
 import { formatDate } from "../format.ts";
 import { Card, ErrorBox, Loading } from "../components/ui.tsx";
 import { Markdown } from "../components/Markdown.tsx";
+import { CourseTitle } from "../components/CourseTitle.tsx";
+import { HandwritingPad, type HandwritingHandle } from "../components/HandwritingPad.tsx";
 
 type Mode = "list" | "add";
 
@@ -65,12 +67,25 @@ function NotesList() {
       {notes.map((n) => (
         <Card key={n.id}>
           <div className="font-medium text-slate-800">
-            {n.title || n.course_name || `#${n.id}`}
+            {n.title ? (
+              n.title
+            ) : n.course_name ? (
+              <CourseTitle inline code={n.course_code} name_th={n.course_name} name_en={n.course_name_en} />
+            ) : (
+              `#${n.id}`
+            )}
           </div>
-          <div className="text-xs text-slate-400">
-            {[n.course_name, formatDate(n.created_at.slice(0, 10), lang)]
-              .filter(Boolean)
-              .join(" · ")}
+          <div className="text-xs text-slate-400 flex gap-1 flex-wrap">
+            {n.title && n.course_name && (
+              <CourseTitle
+                inline
+                code={n.course_code}
+                name_th={n.course_name}
+                name_en={n.course_name_en}
+                className="text-slate-400"
+              />
+            )}
+            {(n.title && n.course_name ? "· " : "") + formatDate(n.created_at.slice(0, 10), lang)}
           </div>
         </Card>
       ))}
@@ -90,9 +105,13 @@ function AddNote({
   const [courseCode, setCourseCode] = useState("");
   const [title, setTitle] = useState("");
   const [text, setText] = useState("");
-  const [files, setFiles] = useState<FileList | null>(null);
+  const [mode, setMode] = useState<"type" | "draw">("type");
+  const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const padRef = useRef<HandwritingHandle>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     getJSON<{ courses: Course[] }>("/api/courses")
@@ -100,17 +119,24 @@ function AddNote({
       .catch(() => setCourses([]));
   }, []);
 
+  function addFiles(list: FileList | null) {
+    if (list) setFiles((prev) => [...prev, ...Array.from(list)]);
+  }
+
   async function submit() {
     setError(null);
-    if (!text.trim() && (!files || files.length === 0)) {
+    const handwriting = mode === "draw" ? await padRef.current?.exportBlob() : null;
+    const hasText = mode === "type" && text.trim().length > 0;
+    if (!hasText && files.length === 0 && !handwriting) {
       setError(t("notes.needInput"));
       return;
     }
     const form = new FormData();
     if (courseCode) form.append("course_code", courseCode);
     if (title) form.append("title", title);
-    if (text) form.append("raw_text", text);
-    if (files) for (const f of Array.from(files)) form.append("images", f);
+    if (hasText) form.append("raw_text", text);
+    for (const f of files) form.append("images", f);
+    if (handwriting) form.append("images", handwriting, "handwriting.jpg");
 
     setBusy(true);
     try {
@@ -154,28 +180,104 @@ function AddNote({
           className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
         />
 
-        <label className="block text-sm">
-          <span className="text-slate-500">{t("notes.text")}</span>
+        {/* input mode: type or handwrite */}
+        <div className="flex gap-2">
+          {(["type", "draw"] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => setMode(m)}
+              className={`flex-1 rounded-lg py-2 text-sm font-medium ${
+                mode === m ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-500"
+              }`}
+            >
+              {t(m === "type" ? "notes.modeType" : "notes.modeDraw")}
+            </button>
+          ))}
+        </div>
+
+        {mode === "type" ? (
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder={t("notes.textPlaceholder")}
             rows={5}
-            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
           />
-        </label>
+        ) : (
+          <div>
+            <p className="text-xs text-slate-400 mb-1">{t("notes.drawHint")}</p>
+            <HandwritingPad ref={padRef} />
+            <button
+              onClick={() => padRef.current?.clear()}
+              className="mt-1 text-xs text-slate-500 underline"
+            >
+              {t("notes.clearDraw")}
+            </button>
+          </div>
+        )}
 
-        <label className="block text-sm">
-          <span className="text-slate-500">{t("notes.photo")}</span>
+        {/* photo buttons — camera + gallery */}
+        <div className="flex gap-2">
           <input
+            ref={cameraRef}
             type="file"
             accept="image/*"
             capture="environment"
-            multiple
-            onChange={(e) => setFiles(e.target.files)}
-            className="mt-1 w-full text-sm"
+            className="hidden"
+            onChange={(e) => {
+              addFiles(e.target.files);
+              e.target.value = "";
+            }}
           />
-        </label>
+          <input
+            ref={galleryRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              addFiles(e.target.files);
+              e.target.value = "";
+            }}
+          />
+          <button
+            onClick={() => cameraRef.current?.click()}
+            className="flex-1 bg-slate-100 text-slate-700 rounded-lg py-2 text-sm font-medium"
+          >
+            {t("notes.camera")}
+          </button>
+          <button
+            onClick={() => galleryRef.current?.click()}
+            className="flex-1 bg-slate-100 text-slate-700 rounded-lg py-2 text-sm font-medium"
+          >
+            {t("notes.gallery")}
+          </button>
+        </div>
+
+        {/* image thumbnails */}
+        {files.length > 0 && (
+          <div>
+            <p className="text-xs text-slate-400 mb-1">{t("notes.photoCount", { n: files.length })}</p>
+            <div className="flex flex-wrap gap-2">
+              {files.map((f, i) => (
+                <div key={i} className="relative">
+                  <img
+                    src={URL.createObjectURL(f)}
+                    alt=""
+                    className="w-16 h-16 object-cover rounded-lg border border-slate-200"
+                  />
+                  <button
+                    onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))}
+                    className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-5 h-5 text-xs leading-none"
+                    aria-label={t("notes.removeImage")}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {error && <ErrorBox>{error}</ErrorBox>}
 

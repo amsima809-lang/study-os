@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useT } from "../i18n.tsx";
 import { getJSON, postJSON, type DueCard } from "../api.ts";
 import { Card, Loading } from "../components/ui.tsx";
+import { CourseTitle } from "../components/CourseTitle.tsx";
 
 const SWIPE_THRESHOLD = 110;
 
@@ -111,9 +112,19 @@ function Flashcard({ card, onRate }: { card: DueCard; onRate: (correct: boolean)
             transition: dragging ? "none" : "transform 0.25s ease",
           }}
         >
-          <div className="text-xs text-slate-400 mb-3 flex justify-between">
-            <span>{[card.course_name, card.topic].filter(Boolean).join(" · ")}</span>
-            <span>{t("review.box", { n: card.box })}</span>
+          <div className="text-xs text-slate-400 mb-3 flex justify-between gap-2">
+            <span>
+              {card.course_name ? (
+                <CourseTitle
+                  inline
+                  code={card.course_code}
+                  name_th={card.course_name}
+                  name_en={card.course_name_en}
+                />
+              ) : null}
+              {card.topic ? ` · ${card.topic}` : ""}
+            </span>
+            <span className="whitespace-nowrap">{t("review.box", { n: card.box })}</span>
           </div>
 
           <p className="text-lg font-medium text-slate-800 flex-1">{card.question}</p>

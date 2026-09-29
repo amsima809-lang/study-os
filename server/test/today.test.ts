@@ -41,9 +41,9 @@ describe("Phase 2 — exam clashes", () => {
 
   it("detects a same-date same-slot clash", () => {
     const clashes = findExamClashes([
-      { course_code: "X1", name_th: "", datetime_start: "2027-03-10T09:30:00+07:00", datetime_end: "", slot: "A", location: null },
-      { course_code: "X2", name_th: "", datetime_start: "2027-03-10T09:30:00+07:00", datetime_end: "", slot: "A", location: null },
-      { course_code: "X3", name_th: "", datetime_start: "2027-03-10T14:00:00+07:00", datetime_end: "", slot: "B", location: null },
+      { course_code: "X1", name_th: "", name_en: null, datetime_start: "2027-03-10T09:30:00+07:00", datetime_end: "", slot: "A", location: null },
+      { course_code: "X2", name_th: "", name_en: null, datetime_start: "2027-03-10T09:30:00+07:00", datetime_end: "", slot: "A", location: null },
+      { course_code: "X3", name_th: "", name_en: null, datetime_start: "2027-03-10T14:00:00+07:00", datetime_end: "", slot: "B", location: null },
     ]);
     expect(clashes).toHaveLength(1);
     expect(clashes[0].courses).toEqual(["X1", "X2"]);
@@ -51,8 +51,8 @@ describe("Phase 2 — exam clashes", () => {
 
   it("detects an A,B course overlapping another exam the same day", () => {
     const clashes = findExamClashes([
-      { course_code: "Y1", name_th: "", datetime_start: "2027-03-12T09:30:00+07:00", datetime_end: "", slot: "A,B", location: null },
-      { course_code: "Y2", name_th: "", datetime_start: "2027-03-12T14:00:00+07:00", datetime_end: "", slot: "B", location: null },
+      { course_code: "Y1", name_th: "", name_en: null, datetime_start: "2027-03-12T09:30:00+07:00", datetime_end: "", slot: "A,B", location: null },
+      { course_code: "Y2", name_th: "", name_en: null, datetime_start: "2027-03-12T14:00:00+07:00", datetime_end: "", slot: "B", location: null },
     ]);
     expect(clashes).toHaveLength(1);
   });

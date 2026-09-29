@@ -3,6 +3,7 @@ import { useT } from "../i18n.tsx";
 import { getJSON, type TodayData } from "../api.ts";
 import { formatDate, timeRange } from "../format.ts";
 import { Card, ErrorBox, Loading } from "../components/ui.tsx";
+import { CourseTitle } from "../components/CourseTitle.tsx";
 
 export default function Today() {
   const { t, lang } = useT();
@@ -31,7 +32,12 @@ export default function Today() {
         {data.nextExam ? (
           <div className="flex items-center justify-between">
             <div>
-              <div className="font-medium text-slate-800">{data.nextExam.name_th}</div>
+              <CourseTitle
+                code={data.nextExam.course_code}
+                name_th={data.nextExam.name_th}
+                name_en={data.nextExam.name_en}
+                className="font-medium text-slate-800"
+              />
               <div className="text-sm text-slate-500">{formatDate(data.nextExam.date, lang)}</div>
             </div>
             <span className="text-indigo-600 font-semibold">
@@ -53,9 +59,14 @@ export default function Today() {
         ) : (
           <ul className="space-y-2">
             {data.classes.map((c) => (
-              <li key={c.course_code} className="flex justify-between text-sm">
-                <span className="font-medium text-slate-800">{c.name_th}</span>
-                <span className="text-slate-500 text-right">
+              <li key={c.course_code} className="flex justify-between text-sm gap-2">
+                <CourseTitle
+                  code={c.course_code}
+                  name_th={c.name_th}
+                  name_en={c.name_en}
+                  className="font-medium text-slate-800"
+                />
+                <span className="text-slate-500 text-right whitespace-nowrap">
                   {timeRange(c.start_time, c.end_time)}
                   {c.room ? ` · ${c.room}` : ""}
                 </span>
@@ -86,9 +97,14 @@ export default function Today() {
         <ul className="space-y-2">
           {data.studyTargets.courses.map((c) => (
             <li key={c.code} className="text-sm">
-              <div className="flex justify-between">
-                <span className="font-medium text-slate-800">{c.name_th}</span>
-                <span className="text-slate-700">{t("today.perDay", { h: c.dailyHours })}</span>
+              <div className="flex justify-between gap-2">
+                <CourseTitle
+                  code={c.code}
+                  name_th={c.name_th}
+                  name_en={c.name_en}
+                  className="font-medium text-slate-800"
+                />
+                <span className="text-slate-700 whitespace-nowrap">{t("today.perDay", { h: c.dailyHours })}</span>
               </div>
               <div className="flex justify-between text-xs text-slate-400">
                 <span>{t(`diff.${c.difficulty}`)}</span>

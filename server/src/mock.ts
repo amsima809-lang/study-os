@@ -54,11 +54,11 @@ export function createMockRouter(db: DB): Router {
     const today = bangkokToday();
     const rows = db
       .prepare(
-        `SELECT e.course_code, c.name_th, MIN(e.datetime_start) AS d
+        `SELECT e.course_code, c.name_th, c.name_en, MIN(e.datetime_start) AS d
          FROM exams e JOIN courses c ON c.code = e.course_code
          WHERE e.term_id = ? GROUP BY e.course_code`,
       )
-      .all(term) as Array<{ course_code: string; name_th: string; d: string }>;
+      .all(term) as Array<{ course_code: string; name_th: string; name_en: string | null; d: string }>;
 
     const courses = rows.map((r) => {
       const daysToExam = daysBetween(today, r.d.slice(0, 10));
@@ -70,6 +70,7 @@ export function createMockRouter(db: DB): Router {
       return {
         code: r.course_code,
         name_th: r.name_th,
+        name_en: r.name_en,
         daysToExam,
         bankCount,
         available: isMockAvailable(daysToExam) && bankCount > 0,

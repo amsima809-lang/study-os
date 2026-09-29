@@ -8,6 +8,7 @@ import {
   type CourseAnalytics,
 } from "../api.ts";
 import { Card, Loading } from "../components/ui.tsx";
+import { CourseTitle } from "../components/CourseTitle.tsx";
 
 const FOCUS_MIN = 45;
 const BREAK_MIN = 10;
@@ -188,7 +189,12 @@ function CourseRow({ c }: { c: CourseAnalytics }) {
   return (
     <Card>
       <div className="flex justify-between items-start gap-2">
-        <div className="font-medium text-slate-800 text-sm flex-1">{c.name_th}</div>
+        <CourseTitle
+          code={c.code}
+          name_th={c.name_th}
+          name_en={c.name_en}
+          className="font-medium text-slate-800 text-sm flex-1"
+        />
         <span className={`text-xs font-semibold rounded-full px-2 py-0.5 whitespace-nowrap ${RISK_STYLE[c.risk]}`}>
           {t(`risk.${c.risk}`)}
         </span>

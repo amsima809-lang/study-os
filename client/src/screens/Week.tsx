@@ -3,6 +3,7 @@ import { useT } from "../i18n.tsx";
 import { getJSON, type WeekData, type ClassSession } from "../api.ts";
 import { weekdayName, timeRange } from "../format.ts";
 import { Card, ErrorBox, Loading } from "../components/ui.tsx";
+import { CourseTitle } from "../components/CourseTitle.tsx";
 
 export default function Week() {
   const { t, lang } = useT();
@@ -37,9 +38,14 @@ export default function Week() {
             <h2 className="font-semibold text-indigo-600 mb-2">{weekdayName(wd, lang)}</h2>
             <ul className="space-y-2">
               {byDay.get(wd)!.map((c) => (
-                <li key={c.course_code} className="flex justify-between text-sm">
-                  <span className="font-medium text-slate-800">{c.name_th}</span>
-                  <span className="text-slate-500 text-right">
+                <li key={c.course_code} className="flex justify-between text-sm gap-2">
+                  <CourseTitle
+                    code={c.course_code}
+                    name_th={c.name_th}
+                    name_en={c.name_en}
+                    className="font-medium text-slate-800"
+                  />
+                  <span className="text-slate-500 text-right whitespace-nowrap">
                     {timeRange(c.start_time, c.end_time)}
                     {c.room ? ` · ${c.room}` : ""}
                   </span>

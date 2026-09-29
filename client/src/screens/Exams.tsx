@@ -3,6 +3,7 @@ import { useT } from "../i18n.tsx";
 import { getJSON, type ExamsData } from "../api.ts";
 import { formatDate } from "../format.ts";
 import { Card, ErrorBox, Loading } from "../components/ui.tsx";
+import { CourseTitle } from "../components/CourseTitle.tsx";
 
 export default function Exams() {
   const { t, lang } = useT();
@@ -47,7 +48,12 @@ export default function Exams() {
             <Card key={e.course_code}>
               <div className="flex justify-between items-start">
                 <div>
-                  <div className="font-medium text-slate-800">{e.name_th}</div>
+                  <CourseTitle
+                    code={e.course_code}
+                    name_th={e.name_th}
+                    name_en={e.name_en}
+                    className="font-medium text-slate-800"
+                  />
                   <div className="text-sm text-slate-500">
                     {formatDate(e.date, lang)}
                     {e.slot ? ` · ${t("exams.slot", { slot: e.slot })}` : ""}
