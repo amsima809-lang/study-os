@@ -7,9 +7,10 @@ export type HandwritingHandle = {
   isEmpty: () => boolean;
 };
 
-// Logical drawing resolution (exported at this size). Displayed scaled by zoom.
+// Logical drawing resolution per page (exported at this size). Displayed scaled by zoom.
 const CANVAS_W = 1000;
 const CANVAS_H = 1400;
+const MAX_PAGES = 10;
 
 const COLORS = ["#1f2937", "#2563eb", "#dc2626", "#16a34a", "#ea580c"];
 const WIDTHS: Array<{ key: "thin" | "medium" | "thick"; val: number }> = [
@@ -37,6 +38,7 @@ export const HandwritingPad = forwardRef<HandwritingHandle>((_props, ref) => {
   const [width, setWidth] = useState(WIDTHS[1].val);
   const [zoom, setZoom] = useState(1);
   const [expanded, setExpanded] = useState(false);
+  const [pages, setPages] = useState(1);
 
   const drawing = useRef(false);
   const current = useRef<Stroke | null>(null);
@@ -67,28 +69,43 @@ export const HandwritingPad = forwardRef<HandwritingHandle>((_props, ref) => {
   }
 
   function redraw() {
+    const c = canvasRef.current!;
     const ctx = ctxOf();
     ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    ctx.fillRect(0, 0, c.width, c.height);
+    // dashed dividers between pages
+    ctx.strokeStyle = "#e2e8f0";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([12, 10]);
+    for (let i = 1; i < pages; i++) {
+      const y = i * CANVAS_H;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(CANVAS_W, y);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
     for (const s of strokes) paintStroke(ctx, s);
   }
 
-  // init + redraw whenever committed strokes change
+  // init + redraw whenever strokes or the page count change
   useEffect(() => {
     const c = canvasRef.current!;
-    if (c.width !== CANVAS_W) {
+    const h = CANVAS_H * pages;
+    if (c.width !== CANVAS_W || c.height !== h) {
       c.width = CANVAS_W;
-      c.height = CANVAS_H;
+      c.height = h; // resizing clears the canvas; redraw() repaints below
     }
     redraw();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [strokes]);
+  }, [strokes, pages]);
 
   function toCanvas(e: React.PointerEvent): Point {
-    const r = canvasRef.current!.getBoundingClientRect();
+    const c = canvasRef.current!;
+    const r = c.getBoundingClientRect();
     return {
-      x: ((e.clientX - r.left) / r.width) * CANVAS_W,
-      y: ((e.clientY - r.top) / r.height) * CANVAS_H,
+      x: ((e.clientX - r.left) / r.width) * c.width,
+      y: ((e.clientY - r.top) / r.height) * c.height,
     };
   }
 
@@ -244,13 +261,22 @@ export const HandwritingPad = forwardRef<HandwritingHandle>((_props, ref) => {
           </button>
 
           <button
-            className={`${toolBtn(expanded)} ml-auto`}
+            className={`${toolBtn(false)} ml-auto`}
+            onClick={() => setPages((p) => Math.min(MAX_PAGES, p + 1))}
+            disabled={pages >= MAX_PAGES}
+            title={t("draw.addPage")}
+          >
+            ＋📄
+          </button>
+          <button
+            className={toolBtn(expanded)}
             onClick={() => setExpanded((v) => !v)}
             title={t(expanded ? "draw.collapse" : "draw.expand")}
           >
             ⤢
           </button>
         </div>
+        <div className="text-xs text-slate-400 text-right">{t("draw.pages", { n: pages })}</div>
       </div>
 
       {/* scrollable canvas area */}
@@ -262,7 +288,11 @@ export const HandwritingPad = forwardRef<HandwritingHandle>((_props, ref) => {
           onPointerUp={up}
           onPointerLeave={up}
           className="bg-white touch-none block"
-          style={{ width: `${zoom * 100}%`, aspectRatio: `${CANVAS_W} / ${CANVAS_H}`, touchAction: "none" }}
+          style={{
+            width: `${zoom * 100}%`,
+            aspectRatio: `${CANVAS_W} / ${CANVAS_H * pages}`,
+            touchAction: "none",
+          }}
         />
       </div>
     </div>
