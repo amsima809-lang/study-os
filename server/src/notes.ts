@@ -73,11 +73,10 @@ export function createNotesRouter(db: DB): Router {
     });
   });
 
-  // Create a note: text and/or images -> AI summary. multipart/form-data.
+  // Create a note: text and/or images -> optionally AI summary.
+  // Notes always save to the database. AI summary runs only when the key is set.
   router.post("/notes", upload.array("images", 5), async (req, res) => {
     try {
-      if (!isAiConfigured()) throw new AiNotConfiguredError();
-
       const courseCode = (req.body.course_code as string) || null;
       const title = (req.body.title as string) || null;
       const rawText = (req.body.raw_text as string) || "";
@@ -95,13 +94,31 @@ export function createNotesRouter(db: DB): Router {
         const jpeg = await resizeToJpeg(f.buffer);
         const filename = `note_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
         await writeFile(join(env.uploadDir, filename), jpeg);
-        imagePaths.push(`/api/uploads/${filename}`); // served via the /api proxy
+        imagePaths.push(`/api/uploads/${filename}`);
         aiImages.push({ media_type: "image/jpeg", data_base64: jpeg.toString("base64") });
       }
 
-      const learning = await generateNoteLearning(
-        noteModelCall(db, { text: rawText, images: aiImages }),
-      );
+      // Try AI summary — gracefully skip if the API key is not set.
+      let learning = {
+        summary_md: "",
+        mindmap_md: "",
+        key_terms: [] as { term: string; definition: string }[],
+        topics: [] as string[],
+      };
+      let aiSkipped = false;
+      if (isAiConfigured()) {
+        try {
+          learning = await generateNoteLearning(
+            noteModelCall(db, { text: rawText, images: aiImages }),
+          );
+        } catch (err) {
+          // AI failed but note still saves — log and continue.
+          console.error("[StudyOS] AI summary failed, saving note without it:", err);
+          aiSkipped = true;
+        }
+      } else {
+        aiSkipped = true;
+      }
 
       const info = db
         .prepare(
@@ -117,8 +134,8 @@ export function createNotesRouter(db: DB): Router {
           title,
           raw_text: rawText || null,
           image_paths: JSON.stringify(imagePaths),
-          ai_summary_md: learning.summary_md,
-          ai_mindmap_md: learning.mindmap_md,
+          ai_summary_md: learning.summary_md || null,
+          ai_mindmap_md: learning.mindmap_md || null,
           ai_terms_json: JSON.stringify(learning.key_terms),
           ai_topics_json: JSON.stringify(learning.topics),
         });
@@ -131,7 +148,12 @@ export function createNotesRouter(db: DB): Router {
         for (const tag of learning.topics) insTopic.run(courseCode, tag);
       }
 
-      res.status(201).json({ id: info.lastInsertRowid, ...learning, image_paths: imagePaths });
+      res.status(201).json({
+        id: info.lastInsertRowid,
+        ...learning,
+        image_paths: imagePaths,
+        ai_skipped: aiSkipped,
+      });
     } catch (err) {
       handleAiError(res, err);
     }

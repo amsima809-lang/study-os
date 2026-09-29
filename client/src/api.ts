@@ -75,6 +75,7 @@ export type NoteLearning = {
   mindmap_md: string;
   topics: string[];
   image_paths?: string[];
+  ai_skipped?: boolean;
 };
 
 export type NoteListItem = {
