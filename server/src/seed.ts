@@ -1,10 +1,10 @@
 /**
- * Seed script — loads the RU Psychology (I/O) curriculum, 9-term plan,
- * class schedule and exams for semester 2/2569 into the database.
+ * Seed script — official RU Psychology (I/O) catalog + the student's 9-term plan.
+ * Source of truth: the course-catalog JSON provided by the student (ระเบียบการ 2569).
  *
- * Source of truth: the project's SEED DATA. We never invent facts:
- * - EN course names are unknown => name_en stays NULL (translate UI chrome only).
- * - Major-elective courses have no Thai name in the source => placeholder + TODO.
+ * - ALL courses (including ones not in the plan) go into `courses`.
+ * - `term` marks a course as part of the 9-term plan (-> plan_items).
+ * - `choose_group` records "pick N of" groups (see GROUPS + course_groups table).
  *
  * Run with `npm run seed`.
  */
@@ -16,122 +16,121 @@ type Category = "GE" | "FOUNDATION" | "MAJOR_REQ" | "MAJOR_ELEC" | "MINOR" | "FR
 type CourseSeed = {
   code: string;
   name_th: string;
+  name_en: string;
   credits?: number; // default 3
   category: Category;
-  difficulty: 1 | 2 | 3;
+  difficulty?: 1 | 2 | 3; // default 2 (only in-plan courses are rated)
+  choose_group?: string;
+  term?: string; // set => part of the 9-term plan
+  prereq?: string[];
   notes?: string;
 };
 
-// ---------- Courses ----------
-const COURSES: CourseSeed[] = [
-  // GE (30 credits)
-  { code: "RAM1301", name_th: "คุณธรรมคู่ความรู้", category: "GE", difficulty: 1, notes: "required" },
-  { code: "RAM1111", name_th: "ภาษาอังกฤษในชีวิตประจำวัน", category: "GE", difficulty: 2, notes: "required" },
-  { code: "RAM1101", name_th: "ทักษะการใช้ภาษาไทย", category: "GE", difficulty: 1 },
-  { code: "RAM1112", name_th: "ภาษาและวัฒนธรรมอังกฤษ", category: "GE", difficulty: 2 },
-  { code: "RAM1131", name_th: "ทักษะการเข้าใจดิจิทัล", category: "GE", difficulty: 1 },
-  { code: "RAM1141", name_th: "ศาสตร์แห่งบุคลิกภาพ", category: "GE", difficulty: 1 },
-  { code: "RAM1204", name_th: "คณิตศาสตร์และสถิติเพื่อการดำเนินชีวิตในโลกสมัยใหม่", category: "GE", difficulty: 2, notes: "prerequisite for PSY2008/PSY3003/PSY3004" },
-  { code: "RAM1211", name_th: "ศาสตร์แห่งการเป็นผู้ประกอบการ", category: "GE", difficulty: 1, notes: "fallback RAM1212 if not offered" },
-  { code: "RAM1302", name_th: "การเมืองและกฎหมายในชีวิตประจำวัน", category: "GE", difficulty: 1 },
-  { code: "RAM1312", name_th: "วัฒนธรรมร่วมสมัยกับการเปลี่ยนแปลงทางดิจิทัล", category: "GE", difficulty: 1 },
-
-  // Foundation (45 credits)
-  { code: "PSY1002", name_th: "จิตวิทยาเบื้องต้น", category: "FOUNDATION", difficulty: 1 },
-  { code: "PSY2001", name_th: "จิตวิทยาการเรียนรู้", category: "FOUNDATION", difficulty: 2 },
-  { code: "PSY2002", name_th: "จิตวิทยาบุคลิกภาพและการปรับตัว", category: "FOUNDATION", difficulty: 2 },
-  { code: "PSY2005", name_th: "จิตวิทยาสังคมเบื้องต้น", category: "FOUNDATION", difficulty: 2 },
-  { code: "PSY2006", name_th: "จิตวิทยาพัฒนาการ", category: "FOUNDATION", difficulty: 2 },
-  { code: "PSY2007", name_th: "สรีรจิตวิทยา", category: "FOUNDATION", difficulty: 3 },
-  { code: "PSY2008", name_th: "การวิเคราะห์เชิงปริมาณทางจิตวิทยาเบื้องต้น", category: "FOUNDATION", difficulty: 3 },
-  { code: "PSY2009", name_th: "ทฤษฎีและการฝึกพลวัตกลุ่ม", category: "FOUNDATION", difficulty: 2 },
-  { code: "PSY2010", name_th: "ภาษาอังกฤษสำหรับนักจิตวิทยา", category: "FOUNDATION", difficulty: 2 },
-  { code: "PSY3001", name_th: "จิตวิทยาการรับรู้และการรู้คิด", category: "FOUNDATION", difficulty: 2 },
-  { code: "PSY3002", name_th: "การทดสอบและวัดผลทางจิตวิทยา", category: "FOUNDATION", difficulty: 3 },
-  { code: "PSY3003", name_th: "วิธีวิจัยทางจิตวิทยา", category: "FOUNDATION", difficulty: 3 },
-  { code: "PSY3004", name_th: "จิตวิทยาการทดลองเบื้องต้น", category: "FOUNDATION", difficulty: 3 },
-  { code: "PSY3005", name_th: "จิตวิทยาความแตกต่าง", category: "FOUNDATION", difficulty: 2 },
-  { code: "PSY4001", name_th: "ระบบและทฤษฎีทางจิตวิทยา", category: "FOUNDATION", difficulty: 3 },
-
-  // Major Required (30 credits)
-  { code: "PSY2401", name_th: "จิตวิทยาอุตสาหกรรมและองค์การเบื้องต้น", category: "MAJOR_REQ", difficulty: 2 },
-  { code: "PSY2402", name_th: "จิตวิทยาการบริหารบุคลากร", category: "MAJOR_REQ", difficulty: 2 },
-  { code: "PSY2404", name_th: "พฤติกรรมผู้นำ", category: "MAJOR_REQ", difficulty: 2 },
-  { code: "PSY3401", name_th: "จิตวิทยาการให้คำปรึกษาเพื่อคุณภาพชีวิตพนักงาน", category: "MAJOR_REQ", difficulty: 2 },
-  { code: "PSY3402", name_th: "จิตวิทยาการตลาดและผู้บริโภค", category: "MAJOR_REQ", difficulty: 2 },
-  { code: "PSY3403", name_th: "แรงจูงใจและขวัญในการทำงาน", category: "MAJOR_REQ", difficulty: 2 },
-  { code: "PSY3408", name_th: "จิตวิทยาการปรับพฤติกรรมบุคคลในองค์การ", category: "MAJOR_REQ", difficulty: 2 },
-  { code: "PSY4401", name_th: "การทดสอบและการประเมินทางจิตวิทยาในอุตสาหกรรมและองค์การ", category: "MAJOR_REQ", difficulty: 3 },
-  { code: "PSY4405", name_th: "การวิจัยพัฒนาและพัฒนาเพื่อการฝึกอบรม", category: "MAJOR_REQ", difficulty: 2 },
-  { code: "PSY4499", name_th: "การฝึกงานทางจิตวิทยาอุตสาหกรรมและองค์การ", category: "MAJOR_REQ", difficulty: 1, notes: "internship; alternative PSY4497 for full-time employees. TODO: confirm difficulty" },
-
-  // Major Elective — my current picks. Source lists codes only (no Thai names).
-  { code: "PSY2403", name_th: "วิชาเอกเลือก (PSY2403)", category: "MAJOR_ELEC", difficulty: 1, notes: "TODO: เติมชื่อวิชาไทย/อังกฤษ" },
-  { code: "PSY2405", name_th: "วิชาเอกเลือก (PSY2405)", category: "MAJOR_ELEC", difficulty: 1, notes: "TODO: เติมชื่อวิชาไทย/อังกฤษ" },
-  { code: "PSY2406", name_th: "วิชาเอกเลือก (PSY2406)", category: "MAJOR_ELEC", difficulty: 1, notes: "TODO: เติมชื่อวิชาไทย/อังกฤษ" },
+// "choose N of" groups.
+const GROUPS: Array<{ id: string; choose: number; required?: boolean; note?: string }> = [
+  { id: "GE_THAI", choose: 1 },
+  { id: "GE_ENGLISH", choose: 1, required: true },
+  { id: "GE_FOREIGN", choose: 1 },
+  { id: "GE_TECH", choose: 1 },
+  { id: "GE_ADAPT", choose: 1 },
+  { id: "GE_THINK", choose: 1 },
+  { id: "GE_ENTRE", choose: 1 },
+  { id: "GE_CITIZEN_REQ", choose: 1, required: true },
+  { id: "GE_CITIZEN", choose: 1 },
+  { id: "GE_ARTS", choose: 1 },
+  { id: "INTERNSHIP", choose: 1, note: "PSY4497 only for full-time employees with proof + committee approval" },
+  { id: "MAJOR_ELEC", choose: 3 },
 ];
 
-// English course names. UNOFFICIAL working translations of the Thai titles —
-// verify against RU's official English catalogue and edit as needed.
-const NAME_EN: Record<string, string> = {
-  RAM1301: "Virtue and Knowledge",
-  RAM1111: "English in Daily Life",
-  RAM1101: "Thai Language Skills",
-  RAM1112: "English Language and Culture",
-  RAM1131: "Digital Literacy Skills",
-  RAM1141: "The Science of Personality",
-  RAM1204: "Mathematics and Statistics for Modern Life",
-  RAM1211: "The Science of Entrepreneurship",
-  RAM1302: "Politics and Law in Daily Life",
-  RAM1312: "Contemporary Culture and Digital Transformation",
-  PSY1002: "Introduction to Psychology",
-  PSY2001: "Psychology of Learning",
-  PSY2002: "Psychology of Personality and Adjustment",
-  PSY2005: "Introduction to Social Psychology",
-  PSY2006: "Developmental Psychology",
-  PSY2007: "Physiological Psychology",
-  PSY2008: "Introduction to Quantitative Analysis in Psychology",
-  PSY2009: "Theory and Practice of Group Dynamics",
-  PSY2010: "English for Psychologists",
-  PSY3001: "Psychology of Perception and Cognition",
-  PSY3002: "Psychological Testing and Measurement",
-  PSY3003: "Research Methods in Psychology",
-  PSY3004: "Introduction to Experimental Psychology",
-  PSY3005: "Psychology of Individual Differences",
-  PSY4001: "Systems and Theories in Psychology",
-  PSY2401: "Introduction to Industrial and Organizational Psychology",
-  PSY2402: "Psychology of Personnel Management",
-  PSY2404: "Leadership Behavior",
-  PSY3401: "Counseling Psychology for Employee Quality of Life",
-  PSY3402: "Marketing and Consumer Psychology",
-  PSY3403: "Work Motivation and Morale",
-  PSY3408: "Behavior Modification in Organizations",
-  PSY4401: "Psychological Testing and Assessment in I/O Settings",
-  PSY4405: "Research and Development for Training",
-  PSY4499: "Internship in Industrial and Organizational Psychology",
-  PSY2403: "Major Elective (PSY2403)",
-  PSY2405: "Major Elective (PSY2405)",
-  PSY2406: "Major Elective (PSY2406)",
-};
+const COURSES: CourseSeed[] = [
+  // ---------- GE — General Education ----------
+  { code: "RAM1101", name_th: "ทักษะการใช้ภาษาไทย", name_en: "Thai Language Skills", category: "GE", choose_group: "GE_THAI", term: "2/69", difficulty: 1 },
+  { code: "RAM1102", name_th: "ภาษาไทยเพื่อการนำเสนอ", name_en: "Thai for Presentations", category: "GE", choose_group: "GE_THAI" },
+  { code: "RAM1103", name_th: "ภาษาไทยเพื่อการสื่อสารในการทำงาน", name_en: "Thai for Communication at Work", category: "GE", choose_group: "GE_THAI" },
 
-// ---------- Prerequisites (course requires ...) ----------
-const PREREQUISITES: Array<[string, string]> = [
-  ["PSY2008", "RAM1204"],
-  ["PSY2009", "PSY1002"],
-  ["PSY2010", "PSY1002"],
-  ["PSY3001", "PSY1002"], ["PSY3001", "PSY2001"], ["PSY3001", "PSY2007"],
-  ["PSY3002", "PSY2006"], ["PSY3002", "PSY2008"],
-  ["PSY3003", "RAM1204"], ["PSY3003", "PSY2008"],
-  ["PSY3004", "RAM1204"], ["PSY3004", "PSY2008"], ["PSY3004", "PSY3003"], ["PSY3004", "PSY1002"],
-  ["PSY4001", "PSY1002"], ["PSY4001", "PSY2001"], ["PSY4001", "PSY2002"], ["PSY4001", "PSY2007"], ["PSY4001", "PSY3004"],
-  ["PSY2402", "PSY2401"],
-  ["PSY3408", "PSY1002"], ["PSY3408", "PSY2001"], ["PSY3408", "PSY2401"], ["PSY3408", "PSY2402"],
-  ["PSY4401", "PSY2008"], ["PSY4401", "PSY3002"], ["PSY4401", "PSY3003"],
-  // PSY4499 internship — big prerequisite set
-  ["PSY4499", "PSY2005"], ["PSY4499", "PSY2009"], ["PSY4499", "PSY2401"], ["PSY4499", "PSY2402"],
-  ["PSY4499", "PSY2404"], ["PSY4499", "PSY3001"], ["PSY4499", "PSY3002"], ["PSY4499", "PSY3003"],
-  ["PSY4499", "PSY3004"], ["PSY4499", "PSY3401"], ["PSY4499", "PSY3402"], ["PSY4499", "PSY3403"],
-  ["PSY4499", "PSY4401"], ["PSY4499", "PSY4405"],
+  { code: "RAM1111", name_th: "ภาษาอังกฤษในชีวิตประจำวัน", name_en: "English in Daily Life", category: "GE", choose_group: "GE_ENGLISH", term: "2/69", difficulty: 2 },
+
+  { code: "RAM1112", name_th: "ภาษาและวัฒนธรรมอังกฤษ", name_en: "English Language and Culture", category: "GE", choose_group: "GE_FOREIGN", term: "1/70", difficulty: 2 },
+  { code: "RAM1113", name_th: "ภาษาและวัฒนธรรมจีน", name_en: "Chinese Language and Culture", category: "GE", choose_group: "GE_FOREIGN" },
+  { code: "RAM1114", name_th: "ภาษาและวัฒนธรรมญี่ปุ่น", name_en: "Japanese Language and Culture", category: "GE", choose_group: "GE_FOREIGN" },
+  { code: "RAM1115", name_th: "ภาษาและวัฒนธรรมเกาหลี", name_en: "Korean Language and Culture", category: "GE", choose_group: "GE_FOREIGN" },
+  { code: "RAM1116", name_th: "ภาษาและวัฒนธรรมมลายู", name_en: "Malay Language and Culture", category: "GE", choose_group: "GE_FOREIGN" },
+  { code: "RAM1117", name_th: "ภาษาและวัฒนธรรมเมียนมา", name_en: "Myanmar Language and Culture", category: "GE", choose_group: "GE_FOREIGN" },
+  { code: "RAM1118", name_th: "ภาษาและวัฒนธรรมเขมร", name_en: "Khmer Language and Culture", category: "GE", choose_group: "GE_FOREIGN" },
+  { code: "RAM1119", name_th: "ภาษาและวัฒนธรรมเวียดนาม", name_en: "Vietnamese Language and Culture", category: "GE", choose_group: "GE_FOREIGN" },
+  { code: "RAM1121", name_th: "ภาษาและวัฒนธรรมลาว", name_en: "Laotian Language and Culture", category: "GE", choose_group: "GE_FOREIGN" },
+  { code: "RAM1122", name_th: "ภาษาและวัฒนธรรมอาหรับ", name_en: "Arabic Language and Culture", category: "GE", choose_group: "GE_FOREIGN" },
+  { code: "RAM1123", name_th: "ภาษาฮินดีและวัฒนธรรมอินเดีย", name_en: "Hindi Language and Indian Culture", category: "GE", choose_group: "GE_FOREIGN" },
+  { code: "RAM1124", name_th: "ภาษาและวัฒนธรรมฝรั่งเศส", name_en: "French Language and Culture", category: "GE", choose_group: "GE_FOREIGN" },
+  { code: "RAM1125", name_th: "ภาษาและวัฒนธรรมเยอรมัน", name_en: "German Language and Culture", category: "GE", choose_group: "GE_FOREIGN" },
+  { code: "RAM1126", name_th: "ภาษาและวัฒนธรรมสเปน", name_en: "Spanish Language and Culture", category: "GE", choose_group: "GE_FOREIGN" },
+  { code: "RAM1127", name_th: "ภาษาและวัฒนธรรมรัสเซีย", name_en: "Russian Language and Culture", category: "GE", choose_group: "GE_FOREIGN" },
+  { code: "RAM1128", name_th: "ภาษาและวัฒนธรรมกรีก", name_en: "Greek Language and Culture", category: "GE", choose_group: "GE_FOREIGN" },
+
+  { code: "RAM1131", name_th: "ทักษะการเข้าใจดิจิทัล", name_en: "Digital Literacy", category: "GE", choose_group: "GE_TECH", term: "2/69", difficulty: 1 },
+  { code: "RAM1132", name_th: "ทักษะทางสารสนเทศ", name_en: "Information Literacy", category: "GE", choose_group: "GE_TECH" },
+
+  { code: "RAM1141", name_th: "ศาสตร์แห่งบุคลิกภาพ", name_en: "Science of Personality", category: "GE", choose_group: "GE_ADAPT", term: "2/69", difficulty: 1 },
+  { code: "RAM1142", name_th: "การพัฒนาคุณภาพชีวิตและสังคม", name_en: "Quality of Life and Society Development", category: "GE", choose_group: "GE_ADAPT" },
+
+  { code: "RAM1201", name_th: "ความคิดสร้างสรรค์เพื่อการพัฒนานวัตกรรม", name_en: "Creativity for Innovation Development", category: "GE", choose_group: "GE_THINK" },
+  { code: "RAM1202", name_th: "ศิลป์สร้างสรรค์", name_en: "Creativity Arts", category: "GE", choose_group: "GE_THINK" },
+  { code: "RAM1203", name_th: "ศาสตร์การคิดเปลี่ยนโลก", name_en: "Thinking Science that Changes the World", category: "GE", choose_group: "GE_THINK" },
+  { code: "RAM1204", name_th: "คณิตศาสตร์และสถิติเพื่อการดำเนินชีวิตในโลกสมัยใหม่", name_en: "Mathematics and Statistics for Daily Life in the Modern World", category: "GE", choose_group: "GE_THINK", term: "2/69", difficulty: 2, notes: "MUST take — prerequisite for PSY2008, PSY3003, PSY3004" },
+
+  { code: "RAM1211", name_th: "ศาสตร์แห่งการเป็นผู้ประกอบการ", name_en: "Principles of Entrepreneurship", category: "GE", choose_group: "GE_ENTRE", term: "S/69", difficulty: 1, notes: "Fallback RAM1212 if not offered" },
+  { code: "RAM1212", name_th: "ผู้ประกอบการรุ่นใหม่", name_en: "Smart Entrepreneurs", category: "GE", choose_group: "GE_ENTRE" },
+  { code: "RAM1213", name_th: "ภูมิปัญญาท้องถิ่นกับการพัฒนานวัตกรรมเพื่อสังคมและเศรษฐกิจ", name_en: "Local Wisdom and Innovation Development for Society and Economy", category: "GE", choose_group: "GE_ENTRE" },
+  { code: "RAM1214", name_th: "วิถีวิทย์สู่โมเดลเศรษฐกิจ BCG", name_en: "Science, Technology, and Innovation (STI) for the BCG Economy Model", category: "GE", choose_group: "GE_ENTRE" },
+
+  { code: "RAM1301", name_th: "คุณธรรมคู่ความรู้", name_en: "Morality and Knowledge", category: "GE", choose_group: "GE_CITIZEN_REQ", term: "2/69", difficulty: 1 },
+  { code: "RAM1302", name_th: "การเมืองและกฎหมายในชีวิตประจำวัน", name_en: "Politics and Law in Daily Life", category: "GE", choose_group: "GE_CITIZEN", term: "S/69", difficulty: 1 },
+  { code: "RAM1303", name_th: "วิทยาศาสตร์เพื่อการพัฒนาที่ยั่งยืน", name_en: "Science for Sustainable Development", category: "GE", choose_group: "GE_CITIZEN" },
+
+  { code: "RAM1311", name_th: "ศิลปะและวัฒนธรรมในท้องถิ่นไทย", name_en: "Thai Local Art and Culture", category: "GE", choose_group: "GE_ARTS" },
+  { code: "RAM1312", name_th: "วัฒนธรรมร่วมสมัยกับการเปลี่ยนผันทางดิจิทัล", name_en: "Contemporary Culture and Digital Disruption", category: "GE", choose_group: "GE_ARTS", term: "S/69", difficulty: 1 },
+
+  // ---------- Foundation ----------
+  { code: "PSY1002", name_th: "จิตวิทยาเบื้องต้น", name_en: "Introduction to Psychology", category: "FOUNDATION", term: "2/69", difficulty: 1 },
+  { code: "PSY2001", name_th: "จิตวิทยาการเรียนรู้", name_en: "Psychology of Learning", category: "FOUNDATION", term: "1/70", difficulty: 2 },
+  { code: "PSY2002", name_th: "จิตวิทยาบุคลิกภาพและการปรับตัว", name_en: "Psychology of Personality and Adjustment", category: "FOUNDATION", term: "2/70", difficulty: 2 },
+  { code: "PSY2005", name_th: "จิตวิทยาสังคมเบื้องต้น", name_en: "Introduction to Social Psychology", category: "FOUNDATION", term: "1/70", difficulty: 2 },
+  { code: "PSY2006", name_th: "จิตวิทยาพัฒนาการ", name_en: "Developmental Psychology", category: "FOUNDATION", term: "1/70", difficulty: 2 },
+  { code: "PSY2007", name_th: "สรีรจิตวิทยา", name_en: "Physiological Psychology", category: "FOUNDATION", term: "1/70", difficulty: 3 },
+  { code: "PSY2008", name_th: "การวิเคราะห์เชิงปริมาณทางจิตวิทยาเบื้องต้น", name_en: "Introduction to Quantitative Analysis of Psychology", category: "FOUNDATION", term: "1/70", difficulty: 3, prereq: ["RAM1204"] },
+  { code: "PSY2009", name_th: "ทฤษฎีและการฝึกพลวัตกลุ่ม", name_en: "Theories and Practice of Group Dynamics", category: "FOUNDATION", term: "2/70", difficulty: 2, prereq: ["PSY1002"] },
+  { code: "PSY2010", name_th: "ภาษาอังกฤษสำหรับนักจิตวิทยา", name_en: "English for Psychologist", category: "FOUNDATION", term: "2/70", difficulty: 2, prereq: ["PSY1002"] },
+  { code: "PSY3001", name_th: "จิตวิทยาการรับรู้และการรู้คิด", name_en: "Psychology of Perception and Cognition", category: "FOUNDATION", term: "1/71", difficulty: 2, prereq: ["PSY1002", "PSY2001", "PSY2007"] },
+  { code: "PSY3002", name_th: "การทดสอบและวัดผลทางจิตวิทยา", name_en: "Psychological Test and Measurement", category: "FOUNDATION", term: "2/70", difficulty: 3, prereq: ["PSY2006", "PSY2008"] },
+  { code: "PSY3003", name_th: "วิธีวิจัยทางจิตวิทยา", name_en: "Methods in Psychological Research", category: "FOUNDATION", term: "2/70", difficulty: 3, prereq: ["RAM1204", "PSY2008"] },
+  { code: "PSY3004", name_th: "จิตวิทยาการทดลองเบื้องต้น", name_en: "Introduction to Experimental Psychology", category: "FOUNDATION", term: "1/71", difficulty: 3, prereq: ["RAM1204", "PSY2008", "PSY3003", "PSY1002"] },
+  { code: "PSY3005", name_th: "จิตวิทยาความแตกต่าง", name_en: "Differential Psychology", category: "FOUNDATION", term: "1/71", difficulty: 2 },
+  { code: "PSY4001", name_th: "ระบบและทฤษฎีทางจิตวิทยา", name_en: "Systems and Theories in Psychology", category: "FOUNDATION", term: "S/71", difficulty: 3, prereq: ["PSY1002", "PSY2001", "PSY2002", "PSY2007", "PSY3004"] },
+
+  // ---------- Major Required ----------
+  { code: "PSY2401", name_th: "จิตวิทยาอุตสาหกรรมและองค์การเบื้องต้น", name_en: "Introduction to Industrial and Organizational Psychology", category: "MAJOR_REQ", term: "1/70", difficulty: 2 },
+  { code: "PSY2402", name_th: "จิตวิทยาการบริหารบุคลากร", name_en: "Managerial Personnel Psychology", category: "MAJOR_REQ", term: "2/70", difficulty: 2, prereq: ["PSY2401"] },
+  { code: "PSY2404", name_th: "พฤติกรรมผู้นำ", name_en: "Leadership Behavior", category: "MAJOR_REQ", term: "2/70", difficulty: 2 },
+  { code: "PSY3401", name_th: "จิตวิทยาการให้คำปรึกษาเพื่อคุณภาพชีวิตพนักงาน", name_en: "Counseling Psychology for Quality of Work Life", category: "MAJOR_REQ", term: "1/71", difficulty: 2 },
+  { code: "PSY3402", name_th: "จิตวิทยาการตลาดและผู้บริโภค", name_en: "Psychology of Marketing and Consumer", category: "MAJOR_REQ", term: "1/71", difficulty: 2 },
+  { code: "PSY3403", name_th: "แรงจูงใจและขวัญในการทำงาน", name_en: "Motive and Work Morale", category: "MAJOR_REQ", term: "2/71", difficulty: 2 },
+  { code: "PSY3408", name_th: "จิตวิทยาการปรับพฤติกรรมบุคคลในองค์การ", name_en: "Psychology for Behavior Modification in Organization", category: "MAJOR_REQ", term: "S/71", difficulty: 2, prereq: ["PSY1002", "PSY2001", "PSY2401", "PSY2402"] },
+  { code: "PSY4401", name_th: "การทดสอบและการประเมินทางจิตวิทยาในอุตสาหกรรมและองค์การ", name_en: "Psychological Testing and Assessment in Industry and Organizations", category: "MAJOR_REQ", term: "1/71", difficulty: 3, prereq: ["PSY2008", "PSY3002", "PSY3003"], notes: "มร.30 also lists STA2003 as PR (likely old curriculum) — TODO confirm with department" },
+  { code: "PSY4405", name_th: "การวิจัยพัฒนาและพัฒนาเพื่อการฝึกอบรม", name_en: "Research and Development for Training", category: "MAJOR_REQ", term: "2/71", difficulty: 2 },
+  { code: "PSY4499", name_th: "การฝึกงานทางจิตวิทยาอุตสาหกรรมและองค์การ", name_en: "Field Work in Industrial and Organizational Psychology", category: "MAJOR_REQ", choose_group: "INTERNSHIP", term: "1/72", difficulty: 2, prereq: ["PSY2005", "PSY2009", "PSY2401", "PSY2402", "PSY2404", "PSY3001", "PSY3002", "PSY3003", "PSY3004", "PSY3401", "PSY3402", "PSY3403", "PSY4401", "PSY4405"] },
+  { code: "PSY4497", name_th: "การศึกษาและวิจัยรายบุคคลทางจิตวิทยาอุตสาหกรรมและองค์กร", name_en: "Individual Research in Industrial and Organizational Psychology", category: "MAJOR_REQ", choose_group: "INTERNSHIP", prereq: ["PSY2005", "PSY2009", "PSY2401", "PSY2402", "PSY2404", "PSY3001", "PSY3002", "PSY3003", "PSY3004", "PSY3401", "PSY3402", "PSY3403", "PSY4401", "PSY4405"] },
+
+  // ---------- Major Elective (choose 3) ----------
+  { code: "PSY2403", name_th: "พฤติกรรมการทำงานและค่านิยมทางสังคมในแรงงานไทย", name_en: "Work Behavior and Social Value in Thai Workforces", category: "MAJOR_ELEC", choose_group: "MAJOR_ELEC", term: "S/70", difficulty: 1, notes: "มร.30 lists PR PSY2005 — already passed by S/70 in plan" },
+  { code: "PSY2405", name_th: "เจตคติและความพึงพอใจในการทำงาน", name_en: "Attitudes and Job Satisfaction", category: "MAJOR_ELEC", choose_group: "MAJOR_ELEC", term: "1/71", difficulty: 1 },
+  { code: "PSY2406", name_th: "จิตวิทยาบริการและทักษะการปฏิสัมพันธ์", name_en: "Service Psychology and Interaction Skills", category: "MAJOR_ELEC", choose_group: "MAJOR_ELEC", term: "2/71", difficulty: 1 },
+  { code: "PSY3404", name_th: "จิตวิทยาการสื่อสารและการชักจูง", name_en: "Psychology of Communication and Persuasion", category: "MAJOR_ELEC", choose_group: "MAJOR_ELEC" },
+  { code: "PSY3405", name_th: "จิตวิทยาการทำงาน", name_en: "Psychology at Work", category: "MAJOR_ELEC", choose_group: "MAJOR_ELEC" },
+  { code: "PSY3406", name_th: "จิตวิทยาองค์การ", name_en: "Organizational Psychology", category: "MAJOR_ELEC", choose_group: "MAJOR_ELEC" },
+  { code: "PSY3407", name_th: "การพัฒนาอาชีพในอุตสาหกรรมและองค์การ", name_en: "Career Development in Industrial and Organization", category: "MAJOR_ELEC", choose_group: "MAJOR_ELEC" },
+  { code: "PSY4402", name_th: "การวิเคราะห์ข้อมูลด้วยโปรแกรมคอมพิวเตอร์สำหรับจิตวิทยา", name_en: "Data Analysis with Computer Program for Psychologist", category: "MAJOR_ELEC", choose_group: "MAJOR_ELEC" },
+  { code: "PSY4498", name_th: "สัมมนาและศึกษาดูงานทางจิตวิทยาอุตสาหกรรมและองค์การ", name_en: "Seminar and Field Trip in Industrial and Organizational Psychology", category: "MAJOR_ELEC", choose_group: "MAJOR_ELEC", prereq: ["PSY2005", "PSY2009", "PSY2401", "PSY2402", "PSY2404", "PSY3001", "PSY3002", "PSY3003", "PSY3004", "PSY3402", "PSY3403", "PSY3408", "PSY4401", "PSY4405"] },
+  { code: "HRM3208", name_th: "แรงงานสัมพันธ์และกฎหมายที่เกี่ยวข้อง", name_en: "Labor Relations and the Law", category: "MAJOR_ELEC", choose_group: "MAJOR_ELEC" },
 ];
 
 // ---------- Plan terms ----------
@@ -147,23 +146,19 @@ const PLAN_TERMS: Array<{ term_id: string; ord: number; max_credits: number }> =
   { term_id: "1/72", ord: 8, max_credits: 21 },
 ];
 
-// ---------- Plan items (course codes or placeholder labels) ----------
-// A string = course code; { ph } = placeholder.
-type PlanEntry = string | { ph: string };
-const PLAN: Record<string, PlanEntry[]> = {
-  "2/69": ["RAM1301", "RAM1111", "RAM1204", "RAM1131", "RAM1101", "RAM1141", "PSY1002"],
-  "S/69": ["RAM1211", "RAM1302", "RAM1312"],
-  "1/70": ["RAM1112", "PSY2001", "PSY2005", "PSY2006", "PSY2007", "PSY2008", "PSY2401"],
-  "2/70": ["PSY2002", "PSY2009", "PSY2010", "PSY2402", "PSY2404", "PSY3002", "PSY3003"],
-  "S/70": ["PSY2403", { ph: "เลือกเสรี #1" }, { ph: "เลือกเสรี #2" }],
-  "1/71": ["PSY3001", "PSY3004", "PSY4401", "PSY3005", "PSY3401", "PSY3402", "PSY2405"],
-  "2/71": ["PSY4405", "PSY3403", "PSY2406", { ph: "วิชาโท #1" }, { ph: "วิชาโท #2" }, { ph: "วิชาโท #3" }, { ph: "วิชาโท #4" }],
-  "S/71": ["PSY4001", "PSY3408", { ph: "วิชาโท #5" }],
-  "1/72": ["PSY4499", { ph: "วิชาโท #6" }],
-};
+// ---------- Plan placeholders (minor / free electives, no codes yet) ----------
+const PLACEHOLDERS: Array<{ label: string; term: string }> = [
+  { label: "เลือกเสรี #1", term: "S/70" },
+  { label: "เลือกเสรี #2", term: "S/70" },
+  { label: "วิชาโท #1", term: "2/71" },
+  { label: "วิชาโท #2", term: "2/71" },
+  { label: "วิชาโท #3", term: "2/71" },
+  { label: "วิชาโท #4", term: "2/71" },
+  { label: "วิชาโท #5", term: "S/71" },
+  { label: "วิชาโท #6", term: "1/72" },
+];
 
 // ---------- Class schedule 2/2569 ----------
-// weekday: 1=Mon .. 7=Sun. Exam slots: A = 09:30-12:00, B = 14:00-16:30.
 type ClassSeed = {
   code: string; weekday: number; start: string; end: string; room: string;
   examDate: string; slot: "A" | "B";
@@ -183,8 +178,6 @@ const SLOT_TIMES: Record<"A" | "B", { start: string; end: string }> = {
   B: { start: "14:00", end: "16:30" },
 };
 
-// Default app settings. INSERT OR IGNORE so re-seeding never overwrites the
-// student's own changes.
 const DEFAULT_SETTINGS: Array<[string, string]> = [
   ["current_term_id", "2/69"],
   ["weekly_target_hours", "36"],
@@ -193,59 +186,60 @@ const DEFAULT_SETTINGS: Array<[string, string]> = [
 /** Insert every seed row. Idempotent: clears seed tables first, then re-inserts. */
 export function seedDatabase(db: DB): void {
   const tx = db.transaction(() => {
-    const insSetting = db.prepare(
-      "INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)",
-    );
+    const insSetting = db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)");
     for (const [k, v] of DEFAULT_SETTINGS) insSetting.run(k, v);
 
-    // Clear seed-owned tables (leave user data like notes/attempts untouched).
     db.exec(`
       DELETE FROM exams;
       DELETE FROM class_sessions;
       DELETE FROM plan_items;
       DELETE FROM plan_terms;
       DELETE FROM prerequisites;
+      DELETE FROM course_groups;
       DELETE FROM courses;
     `);
 
-    const insCourse = db.prepare(
-      `INSERT INTO courses (code, name_th, name_en, credits, category, difficulty, notes)
-       VALUES (@code, @name_th, @name_en, @credits, @category, @difficulty, @notes)`,
+    const insGroup = db.prepare(
+      "INSERT INTO course_groups (id, choose, required, note) VALUES (@id, @choose, @required, @note)",
     );
+    for (const g of GROUPS) {
+      insGroup.run({ id: g.id, choose: g.choose, required: g.required ? 1 : 0, note: g.note ?? null });
+    }
+
+    const insCourse = db.prepare(
+      `INSERT INTO courses (code, name_th, name_en, credits, category, difficulty, choose_group, notes)
+       VALUES (@code, @name_th, @name_en, @credits, @category, @difficulty, @choose_group, @notes)`,
+    );
+    const insPre = db.prepare("INSERT INTO prerequisites (course_code, requires_code) VALUES (?, ?)");
     for (const c of COURSES) {
       insCourse.run({
         code: c.code,
         name_th: c.name_th,
-        name_en: NAME_EN[c.code] ?? null,
+        name_en: c.name_en,
         credits: c.credits ?? 3,
         category: c.category,
-        difficulty: c.difficulty,
+        difficulty: c.difficulty ?? 2,
+        choose_group: c.choose_group ?? null,
         notes: c.notes ?? null,
       });
+      for (const req of c.prereq ?? []) insPre.run(c.code, req);
     }
-
-    const insPre = db.prepare(
-      "INSERT INTO prerequisites (course_code, requires_code) VALUES (?, ?)",
-    );
-    for (const [course, requires] of PREREQUISITES) insPre.run(course, requires);
 
     const insTerm = db.prepare(
       "INSERT INTO plan_terms (term_id, ord, max_credits) VALUES (@term_id, @ord, @max_credits)",
     );
     for (const t of PLAN_TERMS) insTerm.run(t);
 
+    // plan_items: in-plan courses (those with a term) + placeholders
     const insItem = db.prepare(
       `INSERT INTO plan_items (term_id, course_code, placeholder_label)
        VALUES (@term_id, @course_code, @placeholder_label)`,
     );
-    for (const [term_id, entries] of Object.entries(PLAN)) {
-      for (const e of entries) {
-        if (typeof e === "string") {
-          insItem.run({ term_id, course_code: e, placeholder_label: null });
-        } else {
-          insItem.run({ term_id, course_code: null, placeholder_label: e.ph });
-        }
-      }
+    for (const c of COURSES) {
+      if (c.term) insItem.run({ term_id: c.term, course_code: c.code, placeholder_label: null });
+    }
+    for (const p of PLACEHOLDERS) {
+      insItem.run({ term_id: p.term, course_code: null, placeholder_label: p.label });
     }
 
     const insClass = db.prepare(
@@ -271,7 +265,6 @@ export function seedDatabase(db: DB): void {
   tx();
 }
 
-/** Summary counts, for the CLI output. */
 function summarize(db: DB) {
   const courses = (db.prepare("SELECT COUNT(*) n FROM courses").get() as { n: number }).n;
   const items = (db.prepare("SELECT COUNT(*) n FROM plan_items").get() as { n: number }).n;

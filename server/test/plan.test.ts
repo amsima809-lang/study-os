@@ -49,11 +49,15 @@ describe("Phase 1 — plan integrity", () => {
 
     for (const { course_code, requires_code } of prereqs) {
       const courseOrd = termOrd.get(course_code);
+      // The catalog contains courses that aren't in the plan; only planned
+      // courses need their prerequisites scheduled earlier.
+      if (courseOrd === undefined) continue;
       const reqOrd = termOrd.get(requires_code);
-      expect(courseOrd, `${course_code} must be in the plan`).toBeTypeOf("number");
-      expect(reqOrd, `prerequisite ${requires_code} must be in the plan`).toBeTypeOf("number");
+      expect(reqOrd, `prerequisite ${requires_code} of planned ${course_code} must be in the plan`).toBeTypeOf(
+        "number",
+      );
       expect(
-        reqOrd! < courseOrd!,
+        reqOrd! < courseOrd,
         `${requires_code} (ord ${reqOrd}) must come before ${course_code} (ord ${courseOrd})`,
       ).toBe(true);
     }
@@ -97,19 +101,34 @@ describe("Phase 1 — plan integrity", () => {
   });
 });
 
-describe("Phase 1 — credits by category", () => {
-  it("matches the curriculum breakdown", () => {
+describe("Phase 1 — PLANNED credits by category", () => {
+  it("matches the curriculum structure (GE30/FND45/REQ30/ELEC9/MINOR18/FREE6)", () => {
+    // Real planned courses grouped by their category.
     const rows = db
       .prepare(
-        `SELECT category, SUM(credits) AS credits FROM courses GROUP BY category`,
+        `SELECT c.category AS category, SUM(c.credits) AS credits
+         FROM plan_items pi JOIN courses c ON c.code = pi.course_code
+         GROUP BY c.category`,
       )
       .all() as Array<{ category: string; credits: number }>;
     const byCat = Object.fromEntries(rows.map((r) => [r.category, r.credits]));
-
-    // Catalog rows seeded so far (placeholders for MINOR/FREE are not courses).
     expect(byCat.GE).toBe(30);
     expect(byCat.FOUNDATION).toBe(45);
     expect(byCat.MAJOR_REQ).toBe(30);
     expect(byCat.MAJOR_ELEC).toBe(9);
+
+    // Placeholders carry the minor / free-elective credits (3 each).
+    const minor = (
+      db.prepare("SELECT COUNT(*) n FROM plan_items WHERE placeholder_label LIKE 'วิชาโท%'").get() as {
+        n: number;
+      }
+    ).n;
+    const free = (
+      db.prepare("SELECT COUNT(*) n FROM plan_items WHERE placeholder_label LIKE 'เลือกเสรี%'").get() as {
+        n: number;
+      }
+    ).n;
+    expect(minor * 3).toBe(18);
+    expect(free * 3).toBe(6);
   });
 });

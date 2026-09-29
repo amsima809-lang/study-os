@@ -33,11 +33,14 @@ Starts semester 2/2569 (Nov 2026), target graduation ~Oct 2572.
 - Deploy: Fly.io (Singapore), persistent volume at `/data`.
 - i18n: in-house, no library. Dictionary in `client/src/i18n.tsx`, `useT()` hook,
   TH (default) / EN toggle, choice saved in localStorage. Course names ARE
-  bilingual now: `<CourseTitle>` shows "(CODE) primary" + the other language
-  faint, switching with the UI language. `name_en` values in `seed.ts` NAME_EN
-  are UNOFFICIAL translations — verify against RU's catalogue.
-- Notes input: type, OR handwrite on a canvas (HandwritingPad -> exported as a
-  JPEG sent to the AI), plus separate camera / gallery photo buttons.
+  bilingual: `<CourseTitle>` shows "(CODE) primary" + the other language faint,
+  switching with the UI language. name_en values in `seed.ts` are the OFFICIAL
+  RU catalog names (provided by the student).
+- Seed = full official catalog (73 courses, including ones not in the plan) with
+  `choose_group` ("pick N of" groups in the `course_groups` table). The plan is
+  the courses that carry a `term` (+ minor/free placeholders) = 138 credits.
+- Notes input: type, OR handwrite on a canvas (HandwritingPad — undo per stroke +
+  clear; exported as a JPEG sent to the AI), plus separate camera / gallery buttons.
 
 ## Commands (run from repo root)
 | Command | What it does |

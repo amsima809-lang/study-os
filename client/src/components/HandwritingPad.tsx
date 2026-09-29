@@ -3,8 +3,11 @@ import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 export type HandwritingHandle = {
   exportBlob: () => Promise<Blob | null>;
   clear: () => void;
+  undo: () => void;
   isEmpty: () => boolean;
 };
+
+const MAX_HISTORY = 40;
 
 /**
  * A canvas you can write on with a stylus/finger during class.
@@ -16,6 +19,7 @@ export const HandwritingPad = forwardRef<HandwritingHandle>((_props, ref) => {
   const drawing = useRef(false);
   const dirty = useRef(false);
   const last = useRef<{ x: number; y: number } | null>(null);
+  const history = useRef<ImageData[]>([]); // canvas snapshot before each stroke
 
   function ctxOf() {
     return canvasRef.current!.getContext("2d")!;
@@ -49,9 +53,13 @@ export const HandwritingPad = forwardRef<HandwritingHandle>((_props, ref) => {
     return { x: e.clientX - r.left, y: e.clientY - r.top };
   }
   function down(e: React.PointerEvent) {
+    // snapshot the canvas BEFORE this stroke, so it can be undone
+    const c = canvasRef.current!;
+    history.current.push(ctxOf().getImageData(0, 0, c.width, c.height));
+    if (history.current.length > MAX_HISTORY) history.current.shift();
     drawing.current = true;
     last.current = pos(e);
-    canvasRef.current!.setPointerCapture(e.pointerId);
+    c.setPointerCapture(e.pointerId);
   }
   function move(e: React.PointerEvent) {
     if (!drawing.current) return;
@@ -77,7 +85,14 @@ export const HandwritingPad = forwardRef<HandwritingHandle>((_props, ref) => {
       }),
     clear: () => {
       paintBackground();
+      history.current = [];
       dirty.current = false;
+    },
+    undo: () => {
+      const prev = history.current.pop();
+      if (!prev) return;
+      ctxOf().putImageData(prev, 0, 0);
+      dirty.current = history.current.length > 0;
     },
     isEmpty: () => !dirty.current,
   }));
