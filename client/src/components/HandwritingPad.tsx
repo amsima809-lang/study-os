@@ -13,15 +13,19 @@ const CANVAS_H = 1400;
 const MAX_PAGES = 10;
 
 const COLORS = ["#1f2937", "#2563eb", "#dc2626", "#16a34a", "#ea580c"];
+const HL_COLORS = ["#fde047", "#86efac", "#f9a8d4", "#93c5fd", "#fdba74"];
 const WIDTHS: Array<{ key: "thin" | "medium" | "thick"; val: number }> = [
   { key: "thin", val: 4 },
   { key: "medium", val: 9 },
   { key: "thick", val: 16 },
 ];
 const ERASER_WIDTH = 34;
+const HL_WIDTH = 44;
+const HL_ALPHA = 0.35;
 
+type Tool = "pen" | "highlighter" | "eraser";
 type Point = { x: number; y: number };
-type Stroke = { tool: "pen" | "eraser"; color: string; width: number; points: Point[] };
+type Stroke = { tool: Tool; color: string; width: number; points: Point[] };
 
 /**
  * A full drawing pad: pen + eraser, colors, stroke widths, undo/redo, clear,
@@ -33,8 +37,9 @@ export const HandwritingPad = forwardRef<HandwritingHandle>((_props, ref) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [strokes, setStrokes] = useState<Stroke[]>([]);
   const [redoStack, setRedoStack] = useState<Stroke[]>([]);
-  const [tool, setTool] = useState<"pen" | "eraser">("pen");
+  const [tool, setTool] = useState<Tool>("pen");
   const [color, setColor] = useState(COLORS[0]);
+  const [hlColor, setHlColor] = useState(HL_COLORS[0]);
   const [width, setWidth] = useState(WIDTHS[1].val);
   const [zoom, setZoom] = useState(1);
   const [expanded, setExpanded] = useState(false);
@@ -50,6 +55,8 @@ export const HandwritingPad = forwardRef<HandwritingHandle>((_props, ref) => {
 
   function paintStroke(ctx: CanvasRenderingContext2D, s: Stroke) {
     const col = s.tool === "eraser" ? "#ffffff" : s.color;
+    ctx.save();
+    if (s.tool === "highlighter") ctx.globalAlpha = HL_ALPHA;
     ctx.strokeStyle = col;
     ctx.fillStyle = col;
     ctx.lineWidth = s.width;
@@ -60,12 +67,13 @@ export const HandwritingPad = forwardRef<HandwritingHandle>((_props, ref) => {
       ctx.beginPath();
       ctx.arc(pts[0].x, pts[0].y, s.width / 2, 0, Math.PI * 2);
       ctx.fill();
-      return;
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+      ctx.stroke();
     }
-    ctx.beginPath();
-    ctx.moveTo(pts[0].x, pts[0].y);
-    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-    ctx.stroke();
+    ctx.restore();
   }
 
   function redraw() {
@@ -112,8 +120,9 @@ export const HandwritingPad = forwardRef<HandwritingHandle>((_props, ref) => {
   function down(e: React.PointerEvent) {
     drawing.current = true;
     const p = toCanvas(e);
-    const w = tool === "eraser" ? ERASER_WIDTH : width;
-    current.current = { tool, color, width: w, points: [p] };
+    const w = tool === "eraser" ? ERASER_WIDTH : tool === "highlighter" ? HL_WIDTH : width;
+    const col = tool === "highlighter" ? hlColor : color;
+    current.current = { tool, color: col, width: w, points: [p] };
     last.current = p;
     canvasRef.current!.setPointerCapture(e.pointerId);
     // draw the initial dot live
@@ -125,7 +134,9 @@ export const HandwritingPad = forwardRef<HandwritingHandle>((_props, ref) => {
     current.current.points.push(p);
     // draw just the new segment live
     const ctx = ctxOf();
-    ctx.strokeStyle = tool === "eraser" ? "#ffffff" : color;
+    ctx.save();
+    if (tool === "highlighter") ctx.globalAlpha = HL_ALPHA;
+    ctx.strokeStyle = tool === "eraser" ? "#ffffff" : current.current.color;
     ctx.lineWidth = current.current.width;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
@@ -133,6 +144,7 @@ export const HandwritingPad = forwardRef<HandwritingHandle>((_props, ref) => {
     ctx.moveTo(last.current!.x, last.current!.y);
     ctx.lineTo(p.x, p.y);
     ctx.stroke();
+    ctx.restore();
     last.current = p;
   }
   function up() {
@@ -188,6 +200,13 @@ export const HandwritingPad = forwardRef<HandwritingHandle>((_props, ref) => {
             ✏️
           </button>
           <button
+            className={toolBtn(tool === "highlighter")}
+            onClick={() => setTool("highlighter")}
+            title={t("draw.highlighter")}
+          >
+            🖍️
+          </button>
+          <button
             className={toolBtn(tool === "eraser")}
             onClick={() => setTool("eraser")}
             title={t("draw.eraser")}
@@ -197,20 +216,24 @@ export const HandwritingPad = forwardRef<HandwritingHandle>((_props, ref) => {
 
           <span className="w-px h-5 bg-slate-200 mx-0.5" />
 
-          {COLORS.map((c) => (
-            <button
-              key={c}
-              onClick={() => {
-                setColor(c);
-                setTool("pen");
-              }}
-              title={t("draw.color")}
-              className={`w-6 h-6 rounded-full border-2 ${
-                color === c && tool === "pen" ? "border-slate-800" : "border-white"
-              }`}
-              style={{ backgroundColor: c }}
-            />
-          ))}
+          {(tool === "highlighter" ? HL_COLORS : COLORS).map((c) => {
+            const active = tool === "highlighter" ? hlColor === c : tool === "pen" && color === c;
+            return (
+              <button
+                key={c}
+                onClick={() => {
+                  if (tool === "highlighter") setHlColor(c);
+                  else {
+                    setColor(c);
+                    setTool("pen");
+                  }
+                }}
+                title={t("draw.color")}
+                className={`w-6 h-6 rounded-full border-2 ${active ? "border-slate-800" : "border-white"}`}
+                style={{ backgroundColor: c }}
+              />
+            );
+          })}
 
           <span className="w-px h-5 bg-slate-200 mx-0.5" />
 

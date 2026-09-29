@@ -39,9 +39,10 @@ Starts semester 2/2569 (Nov 2026), target graduation ~Oct 2572.
 - Seed = full official catalog (73 courses, including ones not in the plan) with
   `choose_group` ("pick N of" groups in the `course_groups` table). The plan is
   the courses that carry a `term` (+ minor/free placeholders) = 138 credits.
-- Notes input: type, OR a full drawing pad (HandwritingPad — pen/eraser, 5 colors,
-  3 widths, undo/redo, clear, zoom 50–400%, expand, add-page up to 10; vector
-  strokes exported as one JPEG for the AI), plus separate camera / gallery buttons.
+- Notes input: type, OR a full drawing pad (HandwritingPad — pen / translucent
+  highlighter / eraser, 5 colors, 3 widths, undo/redo, clear, zoom 50–400%,
+  expand, add-page up to 10; vector strokes exported as one JPEG for the AI),
+  plus separate camera / gallery photo buttons.
 
 ## Commands (run from repo root)
 | Command | What it does |
