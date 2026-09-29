@@ -67,7 +67,12 @@ async function callAnthropic(
   content: Content,
   maxTokens: number,
 ): Promise<{ text: string; usage: Usage }> {
-  const client = new Anthropic({ apiKey: env.anthropicApiKey });
+  const client = new Anthropic({
+    apiKey: env.anthropicApiKey,
+    ...(env.anthropicWorkspaceId && {
+      defaultHeaders: { "anthropic-workspace-id": env.anthropicWorkspaceId },
+    }),
+  });
   const res = await client.messages.create({
     model: env.anthropicModel,
     max_tokens: maxTokens,
