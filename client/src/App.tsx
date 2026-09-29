@@ -23,15 +23,23 @@ function Shell() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
-      {/* top bar */}
-      <div className="flex justify-between items-center px-5 py-3 bg-white shadow-sm sticky top-0 z-10">
-        <span className="font-bold text-indigo-600">{t("app.name")}</span>
-        <LanguageToggle />
-      </div>
+    <div className="min-h-dvh bg-slate-50 text-slate-900 flex flex-col">
+      {/* top bar (spans full width; content centered; respects the iOS notch) */}
+      <header
+        className="bg-white shadow-sm sticky top-0 z-10"
+        style={{ paddingTop: "env(safe-area-inset-top)" }}
+      >
+        <div className="max-w-lg mx-auto flex justify-between items-center px-5 py-3">
+          <span className="font-bold text-indigo-600">{t("app.name")}</span>
+          <LanguageToggle />
+        </div>
+      </header>
 
-      {/* screen content */}
-      <main className="flex-1 px-5 py-5 max-w-lg w-full mx-auto pb-24">
+      {/* screen content — clears the fixed nav + the iOS home indicator */}
+      <main
+        className="flex-1 px-5 py-5 max-w-lg w-full mx-auto"
+        style={{ paddingBottom: "calc(5.5rem + env(safe-area-inset-bottom))" }}
+      >
         {tab === "today" && <Today />}
         {tab === "notes" && <Notes />}
         {tab === "quiz" && <Quiz />}
@@ -39,13 +47,16 @@ function Shell() {
         {tab === "more" && <More />}
       </main>
 
-      {/* bottom navigation */}
-      <nav className="fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 flex justify-around max-w-lg mx-auto">
+      {/* bottom navigation — centered to content width, safe-area aware */}
+      <nav
+        className="fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 flex justify-around max-w-lg mx-auto z-10"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
         {tabs.map((tb) => (
           <button
             key={tb.id}
             onClick={() => setTab(tb.id)}
-            className={`flex-1 flex flex-col items-center py-2 text-xs gap-0.5 ${
+            className={`flex-1 flex flex-col items-center py-2 text-xs gap-0.5 min-h-12 justify-center ${
               tab === tb.id ? "text-indigo-600 font-semibold" : "text-slate-400"
             }`}
           >
@@ -67,7 +78,7 @@ function AuthGate() {
       .catch(() => setAuthed(false));
   }, []);
 
-  if (authed === null) return <div className="min-h-screen bg-slate-50" />;
+  if (authed === null) return <div className="min-h-dvh bg-slate-50" />;
   if (!authed) return <Login onAuthed={() => setAuthed(true)} />;
   return <Shell />;
 }

@@ -23,8 +23,11 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center px-6">
-      <div className="absolute top-4 right-4">
+    <div className="min-h-dvh bg-slate-50 flex flex-col items-center justify-center px-6">
+      <div
+        className="absolute right-4"
+        style={{ top: "calc(1rem + env(safe-area-inset-top))" }}
+      >
         <LanguageToggle />
       </div>
       <div className="text-center mb-6">

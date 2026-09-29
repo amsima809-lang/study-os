@@ -9,4 +9,21 @@ body {
   margin: 0;
   overflow-x: hidden;
   font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans Thai", sans-serif;
+  /* fill the visual viewport on mobile (avoids the address-bar height jump) */
+  min-height: 100dvh;
+}
+
+/*
+ * iOS Safari zooms the page in when you focus a form control whose font-size is
+ * below 16px. Keep controls at 16px so tapping an input never zooms the layout.
+ */
+input,
+textarea,
+select {
+  font-size: 16px;
+}
+
+/* Let iOS use the momentum scroll inside scrollable panels (e.g. the note pad). */
+* {
+  -webkit-overflow-scrolling: touch;
 }
