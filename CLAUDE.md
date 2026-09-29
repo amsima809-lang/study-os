@@ -41,7 +41,7 @@ Starts semester 2/2569 (Nov 2026), target graduation ~Oct 2572.
   the courses that carry a `term` (+ minor/free placeholders) = 138 credits.
 - Notes input: type, OR a full drawing pad (HandwritingPad — pen / translucent
   highlighter / eraser, 5 colors, 3 widths, undo/redo, clear, zoom 50–400%,
-  expand, add-page up to 10; vector strokes exported as one JPEG for the AI),
+  expand, add/remove page (1–10, non-destructive); vector strokes exported as one JPEG),
   plus separate camera / gallery photo buttons.
 
 ## Commands (run from repo root)

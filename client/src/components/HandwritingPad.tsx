@@ -285,6 +285,14 @@ export const HandwritingPad = forwardRef<HandwritingHandle>((_props, ref) => {
 
           <button
             className={`${toolBtn(false)} ml-auto`}
+            onClick={() => setPages((p) => Math.max(1, p - 1))}
+            disabled={pages <= 1}
+            title={t("draw.removePage")}
+          >
+            －📄
+          </button>
+          <button
+            className={toolBtn(false)}
             onClick={() => setPages((p) => Math.min(MAX_PAGES, p + 1))}
             disabled={pages >= MAX_PAGES}
             title={t("draw.addPage")}
