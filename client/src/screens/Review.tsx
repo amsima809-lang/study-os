@@ -9,12 +9,18 @@ const SWIPE_THRESHOLD = 110;
 export default function Review() {
   const { t } = useT();
   const [cards, setCards] = useState<DueCard[] | null>(null);
+  const [totalDue, setTotalDue] = useState(0);
+  const [limit, setLimit] = useState(30);
   const [idx, setIdx] = useState(0);
   const [remembered, setRemembered] = useState(0);
 
   useEffect(() => {
-    getJSON<{ cards: DueCard[] }>("/api/flashcards/due")
-      .then((d) => setCards(d.cards))
+    getJSON<{ cards: DueCard[]; totalDue: number; limit: number }>("/api/flashcards/due")
+      .then((d) => {
+        setCards(d.cards);
+        setTotalDue(d.totalDue);
+        setLimit(d.limit);
+      })
       .catch(() => setCards([]));
   }, []);
 
@@ -31,22 +37,39 @@ export default function Review() {
         )}
       </div>
 
+      {/* Daily limit + due info */}
+      {cards.length > 0 && idx < cards.length && (
+        <div className="flex items-center gap-2">
+          <div className="flex-1 bg-slate-100 rounded-full h-2">
+            <div
+              className="bg-indigo-500 rounded-full h-2 transition-all"
+              style={{ width: `${Math.min((idx / cards.length) * 100, 100)}%` }}
+            />
+          </div>
+          {totalDue > cards.length && (
+            <span className="text-xs text-slate-400">
+              {t("review.queueInfo").replace("{due}", String(totalDue)).replace("{limit}", String(limit))}
+            </span>
+          )}
+        </div>
+      )}
+
       {cards.length === 0 ? (
         <Card>
           <p className="text-center text-slate-500 py-8">{t("review.empty")}</p>
         </Card>
       ) : idx >= cards.length ? (
-        <Done reviewed={cards.length} remembered={remembered} />
+        <Done reviewed={cards.length} remembered={remembered} totalDue={totalDue} />
       ) : (
         <Flashcard
           key={cards[idx].id}
           card={cards[idx]}
-          onRate={async (correct) => {
-            if (correct) setRemembered((n) => n + 1);
+          onRate={async (confidence) => {
+            if (confidence >= 3) setRemembered((n) => n + 1);
             try {
-              await postJSON(`/api/flashcards/${cards[idx].id}/review`, { correct });
+              await postJSON(`/api/flashcards/${cards[idx].id}/review`, { confidence });
             } catch {
-              // even if the network hiccups, keep the review flowing
+              // keep the review flowing even if network hiccups
             }
             setIdx((i) => i + 1);
           }}
@@ -56,7 +79,7 @@ export default function Review() {
   );
 }
 
-function Flashcard({ card, onRate }: { card: DueCard; onRate: (correct: boolean) => void }) {
+function Flashcard({ card, onRate }: { card: DueCard; onRate: (confidence: number) => void }) {
   const { t } = useT();
   const [revealed, setRevealed] = useState(false);
   const [dragX, setDragX] = useState(0);
@@ -76,8 +99,8 @@ function Flashcard({ card, onRate }: { card: DueCard; onRate: (correct: boolean)
   function onPointerUp() {
     if (!dragging) return;
     setDragging(false);
-    if (dragX > SWIPE_THRESHOLD) onRate(true);
-    else if (dragX < -SWIPE_THRESHOLD) onRate(false);
+    if (dragX > SWIPE_THRESHOLD) onRate(4); // swipe right = remembered
+    else if (dragX < -SWIPE_THRESHOLD) onRate(1); // swipe left = forgot
     else setDragX(0);
   }
 
@@ -87,7 +110,6 @@ function Flashcard({ card, onRate }: { card: DueCard; onRate: (correct: boolean)
   return (
     <div className="space-y-4">
       <div className="relative">
-        {/* swipe hint labels */}
         <span
           className="absolute top-3 right-3 text-green-600 font-bold text-lg z-10"
           style={{ opacity: rightHint }}
@@ -122,6 +144,7 @@ function Flashcard({ card, onRate }: { card: DueCard; onRate: (correct: boolean)
                   name_en={card.course_name_en}
                 />
               ) : null}
+              {card.chapter_name ? ` · ${card.chapter_name}` : ""}
               {card.topic ? ` · ${card.topic}` : ""}
             </span>
             <span className="whitespace-nowrap">{t("review.box", { n: card.box })}</span>
@@ -142,19 +165,31 @@ function Flashcard({ card, onRate }: { card: DueCard; onRate: (correct: boolean)
 
       {revealed && (
         <>
-          <p className="text-center text-xs text-slate-400">{t("review.swipeHint")}</p>
-          <div className="flex gap-3">
+          <p className="text-center text-xs text-slate-400">{t("review.confidenceHint")}</p>
+          <div className="grid grid-cols-4 gap-2">
             <button
-              onClick={() => onRate(false)}
-              className="flex-1 bg-red-50 text-red-600 font-medium rounded-xl py-3"
+              onClick={() => onRate(1)}
+              className="bg-red-50 text-red-600 font-medium rounded-xl py-3 text-sm"
             >
-              👎 {t("review.forgot")}
+              {t("review.conf1")}
             </button>
             <button
-              onClick={() => onRate(true)}
-              className="flex-1 bg-green-50 text-green-600 font-medium rounded-xl py-3"
+              onClick={() => onRate(2)}
+              className="bg-orange-50 text-orange-600 font-medium rounded-xl py-3 text-sm"
             >
-              {t("review.remember")} 👍
+              {t("review.conf2")}
+            </button>
+            <button
+              onClick={() => onRate(3)}
+              className="bg-amber-50 text-amber-700 font-medium rounded-xl py-3 text-sm"
+            >
+              {t("review.conf3")}
+            </button>
+            <button
+              onClick={() => onRate(4)}
+              className="bg-green-50 text-green-600 font-medium rounded-xl py-3 text-sm"
+            >
+              {t("review.conf4")}
             </button>
           </div>
         </>
@@ -163,8 +198,9 @@ function Flashcard({ card, onRate }: { card: DueCard; onRate: (correct: boolean)
   );
 }
 
-function Done({ reviewed, remembered }: { reviewed: number; remembered: number }) {
+function Done({ reviewed, remembered, totalDue }: { reviewed: number; remembered: number; totalDue: number }) {
   const { t } = useT();
+  const remaining = totalDue - reviewed;
   return (
     <Card>
       <div className="text-center space-y-2 py-6">
@@ -172,6 +208,11 @@ function Done({ reviewed, remembered }: { reviewed: number; remembered: number }
         <h2 className="text-xl font-bold text-slate-800">{t("review.doneTitle")}</h2>
         <p className="text-slate-600">{t("review.reviewed", { n: reviewed })}</p>
         <p className="text-green-600 font-semibold">{t("review.remembered", { n: remembered })}</p>
+        {remaining > 0 && (
+          <p className="text-sm text-slate-400">
+            {t("review.remaining").replace("{n}", String(remaining))}
+          </p>
+        )}
       </div>
     </Card>
   );

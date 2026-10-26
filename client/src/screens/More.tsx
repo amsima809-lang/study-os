@@ -6,8 +6,9 @@ import Stats from "./Stats.tsx";
 import Planner from "./Planner.tsx";
 import Mock from "./Mock.tsx";
 import Library from "./Library.tsx";
+import Weakness from "./Weakness.tsx";
 
-type Sub = "schedule" | "stats" | "planner" | "mock" | "library";
+type Sub = "schedule" | "stats" | "planner" | "mock" | "library" | "weakness";
 
 /** Secondary-screen hub, so the bottom nav stays small as features grow. */
 export default function More() {
@@ -20,6 +21,7 @@ export default function More() {
     { id: "stats", icon: "📊" },
     { id: "planner", icon: "🎓" },
     { id: "mock", icon: "📝" },
+    { id: "weakness", icon: "🎯" },
   ];
 
   if (sub) {
@@ -33,6 +35,7 @@ export default function More() {
         {sub === "planner" && <Planner />}
         {sub === "mock" && <Mock />}
         {sub === "library" && <Library />}
+        {sub === "weakness" && <Weakness />}
       </div>
     );
   }

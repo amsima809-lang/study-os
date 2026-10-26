@@ -1,15 +1,81 @@
 /**
- * Phase 5: Leitner spaced-repetition flashcards.
- * Boxes 1..5 map to review intervals of 1, 3, 7, 14, 30 days.
- * Correct answer -> move up one box (max 5). Wrong -> back to box 1.
+ * Phase 2 (upgraded): SM-2 spaced repetition with confidence rating.
+ * Replaces old Leitner boxes with SM-2 algorithm while keeping box field
+ * for backwards-compatible display (mapped from interval).
+ *
+ * Confidence levels: 1=ลืมหมด, 2=ยากมาก, 3=ยาก, 4=จำได้
+ * SM-2 maps: 1→q=0, 2→q=2, 3→q=3, 4→q=5
  */
 import { Router } from "express";
 import type { DB } from "./db.js";
 import { bangkokToday, addDaysISO } from "./api.js";
 
+// Keep for legacy callers (quiz auto-flashcard)
 export const LEITNER_DAYS: Record<number, number> = { 1: 1, 2: 3, 3: 7, 4: 14, 5: 30 };
 
-/** Given the current box and whether the recall was correct, schedule the next review. */
+const SM2_QUALITY: Record<number, number> = { 1: 0, 2: 2, 3: 3, 4: 5 };
+
+export type SM2Result = {
+  easiness: number;
+  interval: number;
+  repetitions: number;
+  box: number;
+  next_review_date: string;
+};
+
+/** Map interval_days → display box 1-5 */
+export function intervalToBox(days: number): number {
+  if (days <= 1) return 1;
+  if (days <= 3) return 2;
+  if (days <= 7) return 3;
+  if (days <= 14) return 4;
+  return 5;
+}
+
+/** SM-2 algorithm: compute next easiness, interval and repetitions. */
+export function sm2(
+  easiness: number,
+  interval: number,
+  repetitions: number,
+  confidence: number,
+  today: string,
+): SM2Result {
+  const q = SM2_QUALITY[confidence] ?? 0;
+
+  // Update easiness factor (min 1.3)
+  let newEasiness = easiness + (0.1 - (5 - q) * (0.08 + (5 - q) * 0.02));
+  if (newEasiness < 1.3) newEasiness = 1.3;
+
+  let newInterval: number;
+  let newReps: number;
+
+  if (q < 3) {
+    // Failed: reset
+    newInterval = 1;
+    newReps = 0;
+  } else {
+    // Passed
+    if (repetitions === 0) {
+      newInterval = 1;
+    } else if (repetitions === 1) {
+      newInterval = 6;
+    } else {
+      newInterval = Math.round(interval * newEasiness);
+    }
+    newReps = repetitions + 1;
+  }
+
+  const box = intervalToBox(newInterval);
+  return {
+    easiness: Math.round(newEasiness * 100) / 100,
+    interval: newInterval,
+    repetitions: newReps,
+    box,
+    next_review_date: addDaysISO(today, newInterval),
+  };
+}
+
+/** Legacy: box-based review (for quiz auto-flashcard creation) */
 export function reviewCard(
   box: number,
   correct: boolean,
@@ -19,9 +85,14 @@ export function reviewCard(
   return { box: newBox, next_review_date: addDaysISO(today, LEITNER_DAYS[newBox]) };
 }
 
-type DueCard = {
+type DueCardRow = {
   id: number;
   box: number;
+  easiness: number;
+  interval_days: number;
+  repetitions: number;
+  total_reviews: number;
+  correct_reviews: number;
   next_review_date: string;
   question: string;
   model_answer: string;
@@ -31,32 +102,54 @@ type DueCard = {
   course_code: string | null;
   course_name: string | null;
   course_name_en: string | null;
+  chapter_name: string | null;
 };
 
 export function createFlashcardsRouter(db: DB): Router {
   const router = Router();
 
-  // Cards due for review today (or overdue), easiest boxes first.
+  function getDailyLimit(): number {
+    const row = db.prepare("SELECT value FROM settings WHERE key = 'daily_review_limit'").get() as { value: string } | undefined;
+    return row ? Number(row.value) : 30;
+  }
+
+  // Cards due for review today (or overdue), respecting daily limit.
   router.get("/flashcards/due", (_req, res) => {
     const today = bangkokToday();
+    const limit = getDailyLimit();
+
     const rows = db
       .prepare(
-        `SELECT f.id, f.box, f.next_review_date,
+        `SELECT f.id, f.box, f.easiness, f.interval_days, f.repetitions,
+                f.total_reviews, f.correct_reviews, f.next_review_date,
                 q.question, q.model_answer, q.type, q.choices_json, q.topic, q.course_code,
-                c.name_th AS course_name, c.name_en AS course_name_en
+                c.name_th AS course_name, c.name_en AS course_name_en,
+                ch.name AS chapter_name
          FROM flashcards f
          JOIN questions q ON q.id = f.question_id
          LEFT JOIN courses c ON c.code = q.course_code
+         LEFT JOIN chapters ch ON ch.id = q.chapter_id
          WHERE f.next_review_date <= ?
-         ORDER BY f.box ASC, f.id ASC`,
+         ORDER BY f.box ASC, f.easiness ASC, f.id ASC
+         LIMIT ?`,
       )
-      .all(today) as DueCard[];
+      .all(today, limit) as DueCardRow[];
+
+    const totalDue = (
+      db.prepare("SELECT COUNT(*) n FROM flashcards WHERE next_review_date <= ?").get(today) as { n: number }
+    ).n;
 
     res.json({
       today,
+      limit,
+      totalDue,
       cards: rows.map((r) => ({
         id: r.id,
         box: r.box,
+        easiness: r.easiness,
+        interval: r.interval_days,
+        totalReviews: r.total_reviews,
+        correctReviews: r.correct_reviews,
         question: r.question,
         model_answer: r.model_answer,
         type: r.type,
@@ -65,11 +158,12 @@ export function createFlashcardsRouter(db: DB): Router {
         course_code: r.course_code,
         course_name: r.course_name,
         course_name_en: r.course_name_en,
+        chapter_name: r.chapter_name,
       })),
     });
   });
 
-  // Box counts + due total, for a progress view.
+  // Stats: box distribution + due + mastery overview
   router.get("/flashcards/stats", (_req, res) => {
     const today = bangkokToday();
     const boxes = db
@@ -77,33 +171,197 @@ export function createFlashcardsRouter(db: DB): Router {
       .all() as Array<{ box: number; n: number }>;
     const total = (db.prepare("SELECT COUNT(*) n FROM flashcards").get() as { n: number }).n;
     const due = (
-      db.prepare("SELECT COUNT(*) n FROM flashcards WHERE next_review_date <= ?").get(today) as {
-        n: number;
-      }
+      db.prepare("SELECT COUNT(*) n FROM flashcards WHERE next_review_date <= ?").get(today) as { n: number }
     ).n;
     const byBox: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
     for (const b of boxes) byBox[b.box] = b.n;
-    res.json({ total, due, byBox });
+
+    const avgEasiness = (
+      db.prepare("SELECT AVG(easiness) AS avg FROM flashcards").get() as { avg: number | null }
+    ).avg ?? 2.5;
+
+    const limit = getDailyLimit();
+    res.json({ total, due, byBox, avgEasiness: Math.round(avgEasiness * 100) / 100, limit });
   });
 
-  // Record a review result and reschedule.
+  // Review with confidence (1-4) — SM-2 algorithm
   router.post("/flashcards/:id/review", (req, res) => {
     const id = Number(req.params.id);
-    const correct = req.body.correct === true || req.body.correct === "true";
+    const confidence = Number(req.body.confidence ?? 0);
 
-    const card = db.prepare("SELECT id, box FROM flashcards WHERE id = ?").get(id) as
-      | { id: number; box: number }
+    // Backwards compat: if old client sends {correct: true/false}
+    let conf = confidence;
+    if (!conf && req.body.correct !== undefined) {
+      conf = req.body.correct === true || req.body.correct === "true" ? 4 : 1;
+    }
+    if (conf < 1 || conf > 4) return res.status(400).json({ error: "confidence ต้องอยู่ระหว่าง 1-4" });
+
+    const card = db.prepare("SELECT id, box, easiness, interval_days, repetitions FROM flashcards WHERE id = ?").get(id) as
+      | { id: number; box: number; easiness: number; interval_days: number; repetitions: number }
       | undefined;
     if (!card) return res.status(404).json({ error: "ไม่พบการ์ดนี้" });
 
-    const next = reviewCard(card.box, correct, bangkokToday());
-    db.prepare("UPDATE flashcards SET box = ?, next_review_date = ? WHERE id = ?").run(
-      next.box,
-      next.next_review_date,
-      id,
-    );
-    res.json({ id, ...next });
+    const today = bangkokToday();
+    const result = sm2(card.easiness, card.interval_days, card.repetitions, conf, today);
+
+    // Record history
+    db.prepare(
+      `INSERT INTO review_history (flashcard_id, confidence, old_easiness, new_easiness, old_interval, new_interval, reviewed_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    ).run(id, conf, card.easiness, result.easiness, card.interval_days, result.interval, new Date().toISOString());
+
+    // Update card
+    const isCorrect = conf >= 3 ? 1 : 0;
+    db.prepare(
+      `UPDATE flashcards SET box = ?, easiness = ?, interval_days = ?, repetitions = ?,
+       next_review_date = ?, last_confidence = ?, last_reviewed_at = ?,
+       total_reviews = total_reviews + 1, correct_reviews = correct_reviews + ?
+       WHERE id = ?`,
+    ).run(result.box, result.easiness, result.interval, result.repetitions, result.next_review_date, conf, today, isCorrect, id);
+
+    // Update chapter mastery
+    updateMastery(db, id);
+
+    res.json({ id, ...result, confidence: conf });
+  });
+
+  // Update daily limit
+  router.put("/flashcards/settings", (req, res) => {
+    const limit = Number(req.body.daily_review_limit);
+    if (!limit || limit < 1 || limit > 200) return res.status(400).json({ error: "จำกัดต้องอยู่ระหว่าง 1-200" });
+    db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('daily_review_limit', ?)").run(String(limit));
+    res.json({ ok: true, daily_review_limit: limit });
+  });
+
+  // Review history (for graphs)
+  router.get("/flashcards/history", (req, res) => {
+    const days = Number(req.query.days) || 30;
+    const since = addDaysISO(bangkokToday(), -days);
+    const rows = db
+      .prepare(
+        `SELECT DATE(rh.reviewed_at) AS date,
+                COUNT(*) AS reviews,
+                AVG(rh.confidence) AS avg_confidence,
+                SUM(CASE WHEN rh.confidence >= 3 THEN 1 ELSE 0 END) AS correct
+         FROM review_history rh
+         WHERE rh.reviewed_at >= ?
+         GROUP BY DATE(rh.reviewed_at)
+         ORDER BY date`,
+      )
+      .all(since);
+    res.json({ history: rows });
+  });
+
+  // Chapter mastery scores
+  router.get("/mastery", (req, res) => {
+    const courseCode = req.query.course_code as string | undefined;
+    let rows;
+    if (courseCode) {
+      rows = db
+        .prepare(
+          `SELECT cm.*, ch.name AS chapter_name
+           FROM chapter_mastery cm
+           LEFT JOIN chapters ch ON ch.id = cm.chapter_id
+           WHERE cm.course_code = ?
+           ORDER BY cm.mastery_score ASC`,
+        )
+        .all(courseCode);
+    } else {
+      rows = db
+        .prepare(
+          `SELECT cm.course_code, c.name_th AS course_name, c.name_en AS course_name_en,
+                  AVG(cm.mastery_score) AS avg_mastery,
+                  SUM(cm.total_attempts) AS total_attempts,
+                  COUNT(*) AS topic_count
+           FROM chapter_mastery cm
+           JOIN courses c ON c.code = cm.course_code
+           GROUP BY cm.course_code
+           ORDER BY avg_mastery ASC`,
+        )
+        .all();
+    }
+    res.json({ mastery: rows });
+  });
+
+  // Weakness summary — weakest areas across all courses
+  router.get("/weakness", (_req, res) => {
+    const courses = db
+      .prepare(
+        `SELECT cm.course_code, c.name_th, c.name_en,
+                AVG(cm.mastery_score) AS avg_mastery,
+                MIN(cm.mastery_score) AS min_mastery,
+                COUNT(*) AS topics
+         FROM chapter_mastery cm
+         JOIN courses c ON c.code = cm.course_code
+         GROUP BY cm.course_code
+         ORDER BY avg_mastery ASC`,
+      )
+      .all();
+
+    const weakTopics = db
+      .prepare(
+        `SELECT cm.course_code, cm.topic, cm.mastery_score, cm.total_attempts, cm.correct_attempts,
+                ch.name AS chapter_name, c.name_th AS course_name
+         FROM chapter_mastery cm
+         LEFT JOIN chapters ch ON ch.id = cm.chapter_id
+         JOIN courses c ON c.code = cm.course_code
+         WHERE cm.mastery_score < 70
+         ORDER BY cm.mastery_score ASC
+         LIMIT 20`,
+      )
+      .all();
+
+    const today = bangkokToday();
+    const reviewStats = db
+      .prepare(
+        `SELECT COUNT(*) AS total_cards,
+                SUM(CASE WHEN next_review_date <= ? THEN 1 ELSE 0 END) AS due,
+                AVG(easiness) AS avg_easiness,
+                AVG(CAST(correct_reviews AS REAL) / NULLIF(total_reviews, 0)) AS avg_retention
+         FROM flashcards`,
+      )
+      .get(today);
+
+    res.json({ courses, weakTopics, reviewStats });
   });
 
   return router;
+}
+
+/** Update chapter_mastery based on flashcard review performance */
+function updateMastery(db: DB, flashcardId: number): void {
+  const card = db
+    .prepare(
+      `SELECT f.total_reviews, f.correct_reviews, f.easiness,
+              q.course_code, q.chapter_id, q.topic
+       FROM flashcards f
+       JOIN questions q ON q.id = f.question_id
+       WHERE f.id = ?`,
+    )
+    .get(flashcardId) as {
+      total_reviews: number; correct_reviews: number; easiness: number;
+      course_code: string | null; chapter_id: number | null; topic: string | null;
+    } | undefined;
+
+  if (!card || !card.course_code) return;
+
+  const topic = card.topic || "(ทั่วไป)";
+
+  // Mastery = weighted score: 60% retention rate + 40% easiness-based score
+  const retention = card.total_reviews > 0 ? card.correct_reviews / card.total_reviews : 0;
+  const easinessScore = Math.min((card.easiness - 1.3) / (2.5 - 1.3), 1); // normalized 0-1
+  const mastery = Math.round((retention * 60 + easinessScore * 40) * 100) / 100;
+
+  const now = new Date().toISOString();
+  db.prepare(
+    `INSERT INTO chapter_mastery (course_code, chapter_id, topic, mastery_score, total_attempts, correct_attempts, last_activity_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(course_code, chapter_id, topic)
+     DO UPDATE SET
+       mastery_score = excluded.mastery_score,
+       total_attempts = excluded.total_attempts,
+       correct_attempts = excluded.correct_attempts,
+       last_activity_at = excluded.last_activity_at,
+       updated_at = excluded.updated_at`,
+  ).run(card.course_code, card.chapter_id, topic, mastery, card.total_reviews, card.correct_reviews, now, now);
 }

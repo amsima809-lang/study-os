@@ -264,10 +264,14 @@ export type AnalyticsData = {
   courses: CourseAnalytics[];
 };
 
-// ---------- Phase 5: flashcards ----------
+// ---------- Phase 5/Phase 2: flashcards (SM-2) ----------
 export type DueCard = {
   id: number;
   box: number;
+  easiness: number;
+  interval: number;
+  totalReviews: number;
+  correctReviews: number;
   question: string;
   model_answer: string;
   type: "short" | "mcq";
@@ -276,4 +280,46 @@ export type DueCard = {
   course_code: string | null;
   course_name: string | null;
   course_name_en: string | null;
+  chapter_name: string | null;
+};
+
+export type FlashcardStats = {
+  total: number;
+  due: number;
+  byBox: Record<number, number>;
+  avgEasiness: number;
+  limit: number;
+};
+
+export type ReviewHistoryDay = {
+  date: string;
+  reviews: number;
+  avg_confidence: number;
+  correct: number;
+};
+
+export type WeaknessData = {
+  courses: Array<{
+    course_code: string;
+    name_th: string;
+    name_en: string | null;
+    avg_mastery: number;
+    min_mastery: number;
+    topics: number;
+  }>;
+  weakTopics: Array<{
+    course_code: string;
+    topic: string;
+    mastery_score: number;
+    total_attempts: number;
+    correct_attempts: number;
+    chapter_name: string | null;
+    course_name: string | null;
+  }>;
+  reviewStats: {
+    total_cards: number;
+    due: number;
+    avg_easiness: number | null;
+    avg_retention: number | null;
+  };
 };
