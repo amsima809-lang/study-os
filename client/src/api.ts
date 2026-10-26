@@ -87,6 +87,19 @@ export type NoteListItem = {
   created_at: string;
 };
 
+export type NoteDetail = {
+  id: number;
+  course_code: string | null;
+  created_at: string;
+  title: string | null;
+  raw_text: string | null;
+  image_paths: string[];
+  ai_summary_md: string | null;
+  ai_mindmap_md: string | null;
+  key_terms: KeyTerm[];
+  topics: string[];
+};
+
 export type ApiError = { error: string; code?: string };
 
 /** POST multipart form; returns parsed JSON or throws an ApiError-shaped error. */
@@ -109,6 +122,59 @@ export async function postJSON<T>(url: string, body: unknown): Promise<T> {
   return data as T;
 }
 
+/** PUT JSON; returns parsed JSON or throws. */
+export async function putJSON<T>(url: string, body: unknown): Promise<T> {
+  const r = await fetch(url, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await r.json().catch(() => ({ error: "unknown" }));
+  if (!r.ok) throw data as ApiError;
+  return data as T;
+}
+
+/** DELETE request; returns parsed JSON or throws. */
+export async function deleteJSON<T>(url: string): Promise<T> {
+  const r = await fetch(url, { method: "DELETE" });
+  const data = await r.json().catch(() => ({ error: "unknown" }));
+  if (!r.ok) throw data as ApiError;
+  return data as T;
+}
+
+// ---------- Phase 1 (materials / chapters) ----------
+export type Material = {
+  id: number;
+  course_code: string;
+  course_name?: string;
+  filename: string;
+  file_type: "pdf" | "image" | "text";
+  material_kind: "textbook" | "past_exam" | "notes" | "other";
+  file_size: number;
+  total_pages: number | null;
+  pages_done: number;
+  upload_status: "pending" | "processing" | "done" | "error";
+  error_message?: string;
+  created_at: string;
+};
+
+export type MaterialPage = {
+  page_num: number;
+  extracted_text: string | null;
+  extraction_method: "pdf_text" | "ai_ocr" | "manual" | null;
+  confidence: number | null;
+  image_path: string | null;
+};
+
+export type Chapter = {
+  id: number;
+  course_code: string;
+  name: string;
+  sort_order: number;
+  ai_suggested: number;
+  created_at: string;
+};
+
 // ---------- Phase 4: quiz ----------
 export type QuizQuestion = {
   id: number;
@@ -123,6 +189,8 @@ export type AnswerResult = {
   feedback: string;
   modelAnswer: string;
   flashcardCreated: boolean;
+  explanation?: string | null;
+  sourceRef?: { chapter_id?: number; chapter_name?: string; material_ids?: number[]; source_page?: number | null } | null;
 };
 
 // ---------- Phase 8: mock exam ----------

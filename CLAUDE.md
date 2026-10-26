@@ -86,4 +86,5 @@ study-os/
 - [x] Phase 6 — Tracker & Analytics
 - [x] Phase 7 — Degree Planner
 - [x] Phase 8 — Mock Exam Mode
-- [x] Phase 9 — PWA + Deploy — 🎉 all phases complete
+- [x] Phase 9 — PWA + Deploy
+- [x] Phase 10 — Document Upload + Quiz from Real Content (materials, chapters, OCR, past exam parsing, enhanced quiz)

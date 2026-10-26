@@ -5,8 +5,9 @@ import Schedule from "./Schedule.tsx";
 import Stats from "./Stats.tsx";
 import Planner from "./Planner.tsx";
 import Mock from "./Mock.tsx";
+import Library from "./Library.tsx";
 
-type Sub = "schedule" | "stats" | "planner" | "mock";
+type Sub = "schedule" | "stats" | "planner" | "mock" | "library";
 
 /** Secondary-screen hub, so the bottom nav stays small as features grow. */
 export default function More() {
@@ -14,6 +15,7 @@ export default function More() {
   const [sub, setSub] = useState<Sub | null>(null);
 
   const items: Array<{ id: Sub; icon: string }> = [
+    { id: "library", icon: "📚" },
     { id: "schedule", icon: "🗓️" },
     { id: "stats", icon: "📊" },
     { id: "planner", icon: "🎓" },
@@ -30,6 +32,7 @@ export default function More() {
         {sub === "stats" && <Stats />}
         {sub === "planner" && <Planner />}
         {sub === "mock" && <Mock />}
+        {sub === "library" && <Library />}
       </div>
     );
   }
