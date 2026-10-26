@@ -48,7 +48,7 @@ export default function Review() {
           </div>
           {totalDue > cards.length && (
             <span className="text-xs text-slate-400">
-              {t("review.queueInfo").replace("{due}", String(totalDue)).replace("{limit}", String(limit))}
+              {t("review.queueInfo", { due: totalDue, limit })}
             </span>
           )}
         </div>
@@ -64,14 +64,11 @@ export default function Review() {
         <Flashcard
           key={cards[idx].id}
           card={cards[idx]}
-          onRate={async (confidence) => {
+          onRate={(confidence) => {
+            const cardId = cards[idx].id;
             if (confidence >= 3) setRemembered((n) => n + 1);
-            try {
-              await postJSON(`/api/flashcards/${cards[idx].id}/review`, { confidence });
-            } catch {
-              // keep the review flowing even if network hiccups
-            }
             setIdx((i) => i + 1);
+            postJSON(`/api/flashcards/${cardId}/review`, { confidence }).catch(() => {});
           }}
         />
       )}
@@ -210,7 +207,7 @@ function Done({ reviewed, remembered, totalDue }: { reviewed: number; remembered
         <p className="text-green-600 font-semibold">{t("review.remembered", { n: remembered })}</p>
         {remaining > 0 && (
           <p className="text-sm text-slate-400">
-            {t("review.remaining").replace("{n}", String(remaining))}
+            {t("review.remaining", { n: remaining })}
           </p>
         )}
       </div>

@@ -204,23 +204,23 @@ export function createFlashcardsRouter(db: DB): Router {
     const today = bangkokToday();
     const result = sm2(card.easiness, card.interval_days, card.repetitions, conf, today);
 
-    // Record history
-    db.prepare(
-      `INSERT INTO review_history (flashcard_id, confidence, old_easiness, new_easiness, old_interval, new_interval, reviewed_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    ).run(id, conf, card.easiness, result.easiness, card.interval_days, result.interval, new Date().toISOString());
+    const applyReview = db.transaction(() => {
+      db.prepare(
+        `INSERT INTO review_history (flashcard_id, confidence, old_easiness, new_easiness, old_interval, new_interval, reviewed_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      ).run(id, conf, card.easiness, result.easiness, card.interval_days, result.interval, new Date().toISOString());
 
-    // Update card
-    const isCorrect = conf >= 3 ? 1 : 0;
-    db.prepare(
-      `UPDATE flashcards SET box = ?, easiness = ?, interval_days = ?, repetitions = ?,
-       next_review_date = ?, last_confidence = ?, last_reviewed_at = ?,
-       total_reviews = total_reviews + 1, correct_reviews = correct_reviews + ?
-       WHERE id = ?`,
-    ).run(result.box, result.easiness, result.interval, result.repetitions, result.next_review_date, conf, today, isCorrect, id);
+      const isCorrect = conf >= 3 ? 1 : 0;
+      db.prepare(
+        `UPDATE flashcards SET box = ?, easiness = ?, interval_days = ?, repetitions = ?,
+         next_review_date = ?, last_confidence = ?, last_reviewed_at = ?,
+         total_reviews = total_reviews + 1, correct_reviews = correct_reviews + ?
+         WHERE id = ?`,
+      ).run(result.box, result.easiness, result.interval, result.repetitions, result.next_review_date, conf, today, isCorrect, id);
 
-    // Update chapter mastery
-    updateMastery(db, id);
+      updateMastery(db, id);
+    });
+    applyReview();
 
     res.json({ id, ...result, confidence: conf });
   });

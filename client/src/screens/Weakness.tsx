@@ -62,18 +62,7 @@ export default function Weakness() {
       {history.length > 0 && (
         <Card>
           <h3 className="font-medium text-slate-700 mb-2">{t("weak.historyTitle")}</h3>
-          <div className="flex items-end gap-1 h-24">
-            {history.map((d) => {
-              const maxR = Math.max(...history.map((h) => h.reviews), 1);
-              const pct = (d.reviews / maxR) * 100;
-              const color = d.avg_confidence >= 3 ? "bg-green-400" : d.avg_confidence >= 2 ? "bg-amber-400" : "bg-red-400";
-              return (
-                <div key={d.date} className="flex-1 flex flex-col items-center gap-0.5" title={`${d.date}: ${d.reviews} reviews`}>
-                  <div className={`w-full rounded-t ${color}`} style={{ height: `${Math.max(pct, 4)}%` }} />
-                </div>
-              );
-            })}
-          </div>
+          <HistoryBars history={history} />
           <div className="flex justify-between text-[10px] text-slate-300 mt-1">
             <span>{history[0]?.date.slice(5)}</span>
             <span>{history[history.length - 1]?.date.slice(5)}</span>
@@ -90,13 +79,13 @@ export default function Weakness() {
               <div key={c.course_code}>
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-600 truncate">{c.course_code} {c.name_th}</span>
-                  <span className={`font-medium ${masteryColor(c.avg_mastery)}`}>
+                  <span className={`font-medium ${masteryStyle(c.avg_mastery).text}`}>
                     {Math.round(c.avg_mastery)}%
                   </span>
                 </div>
                 <div className="bg-slate-100 rounded-full h-2 mt-1">
                   <div
-                    className={`rounded-full h-2 transition-all ${masteryBarColor(c.avg_mastery)}`}
+                    className={`rounded-full h-2 transition-all ${masteryStyle(c.avg_mastery).bar}`}
                     style={{ width: `${Math.min(c.avg_mastery, 100)}%` }}
                   />
                 </div>
@@ -120,7 +109,7 @@ export default function Weakness() {
                   <p className="text-xs text-slate-400">{wt.course_name}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`font-medium ${masteryColor(wt.mastery_score)}`}>
+                  <span className={`font-medium ${masteryStyle(wt.mastery_score).text}`}>
                     {Math.round(wt.mastery_score)}%
                   </span>
                   <span className="text-xs text-slate-300">
@@ -140,14 +129,25 @@ export default function Weakness() {
   );
 }
 
-function masteryColor(score: number): string {
-  if (score >= 70) return "text-green-600";
-  if (score >= 40) return "text-amber-600";
-  return "text-red-600";
+function HistoryBars({ history }: { history: ReviewHistoryDay[] }) {
+  const maxR = Math.max(...history.map((h) => h.reviews), 1);
+  return (
+    <div className="flex items-end gap-1 h-24">
+      {history.map((d) => {
+        const pct = (d.reviews / maxR) * 100;
+        const color = d.avg_confidence >= 3 ? "bg-green-400" : d.avg_confidence >= 2 ? "bg-amber-400" : "bg-red-400";
+        return (
+          <div key={d.date} className="flex-1 flex flex-col items-center gap-0.5" title={`${d.date}: ${d.reviews} reviews`}>
+            <div className={`w-full rounded-t ${color}`} style={{ height: `${Math.max(pct, 4)}%` }} />
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
-function masteryBarColor(score: number): string {
-  if (score >= 70) return "bg-green-400";
-  if (score >= 40) return "bg-amber-400";
-  return "bg-red-400";
+function masteryStyle(score: number): { text: string; bar: string } {
+  if (score >= 70) return { text: "text-green-600", bar: "bg-green-400" };
+  if (score >= 40) return { text: "text-amber-600", bar: "bg-amber-400" };
+  return { text: "text-red-600", bar: "bg-red-400" };
 }
