@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isMockAvailable, selectMockQuestions, MOCK_TARGET } from "../src/mock.js";
+import { isMockAvailable, selectMockQuestions, MOCK_DEFAULT_COUNT } from "../src/mock.js";
 
 describe("Phase 8 — mock availability window", () => {
   it("opens within 21 days before the exam", () => {
@@ -17,10 +17,10 @@ describe("Phase 8 — mock availability window", () => {
 
 describe("Phase 8 — weighted question selection", () => {
   const pool = [
-    { id: 1, topic: "A", question: "", type: "short", choices_json: null },
-    { id: 2, topic: "B", question: "", type: "short", choices_json: null },
-    { id: 3, topic: "A", question: "", type: "short", choices_json: null },
-    { id: 4, topic: "C", question: "", type: "short", choices_json: null },
+    { id: 1, topic: "A", chapter_id: null, question: "", type: "short", choices_json: null },
+    { id: 2, topic: "B", chapter_id: null, question: "", type: "short", choices_json: null },
+    { id: 3, topic: "A", chapter_id: null, question: "", type: "short", choices_json: null },
+    { id: 4, topic: "C", chapter_id: null, question: "", type: "short", choices_json: null },
   ];
 
   it("prioritises low-box flashcards, then weak topics", () => {
@@ -39,12 +39,13 @@ describe("Phase 8 — weighted question selection", () => {
     const big = Array.from({ length: 60 }, (_, i) => ({
       id: i + 1,
       topic: null,
+      chapter_id: null,
       question: "",
       type: "short",
       choices_json: null,
     }));
-    expect(selectMockQuestions(big, { weakTopics: new Set(), lowBoxIds: new Set(), target: MOCK_TARGET })).toHaveLength(
-      MOCK_TARGET,
+    expect(selectMockQuestions(big, { weakTopics: new Set(), lowBoxIds: new Set(), target: MOCK_DEFAULT_COUNT })).toHaveLength(
+      MOCK_DEFAULT_COUNT,
     );
   });
 

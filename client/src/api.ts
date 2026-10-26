@@ -210,6 +210,17 @@ export type MockResult = {
   weakTopics: { name: string; mastery: number }[];
 };
 
+export type MockChapterScore = {
+  chapter_id: number;
+  name: string;
+  score: number;
+  max: number;
+  pct: number;
+  count: number;
+};
+
+export type GradeCutoff = { label: string; min_pct: number };
+
 // ---------- Phase 7: degree planner ----------
 export type PlanItem = {
   course_code: string | null;

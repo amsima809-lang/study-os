@@ -1,40 +1,152 @@
-import { useEffect, useRef, useState } from "react";
+/**
+ * Phase 4 (upgraded): Full-screen mock exam with question grid, flagging,
+ * auto-save, per-question timing, custom grade cutoffs, chapter-wise scores,
+ * and exam history with trend graph.
+ */
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useT } from "../i18n.tsx";
 import {
   getJSON,
   postJSON,
+  putJSON,
   type MockCourse,
-  type MockResult,
   type QuizQuestion,
   type ApiError,
 } from "../api.ts";
 import { Card, ErrorBox, Loading } from "../components/ui.tsx";
 import { CourseTitle } from "../components/CourseTitle.tsx";
 
-type Phase = "list" | "loading" | "exam" | "result";
+type MockQuestion = QuizQuestion & { chapter_id?: number | null };
+type GradeCutoff = { label: string; min_pct: number };
+type ChapterScore = { chapter_id: number; name: string; score: number; max: number; pct: number; count: number };
+
+type MockResultData = {
+  score: number;
+  maxScore: number;
+  pct: number;
+  grade: string;
+  cutoffs: GradeCutoff[];
+  questionCount: number;
+  weakTopics: { name: string; mastery: number }[];
+  chapterScores: ChapterScore[];
+  totalSeconds: number;
+  timePerQ: Record<string, number>;
+};
+
+type HistoryItem = {
+  id: number;
+  course_code: string;
+  name_th: string;
+  name_en: string | null;
+  finished_at: string;
+  score: number;
+  maxScore: number;
+  pct: number;
+  grade: string;
+  questionCount: number;
+  totalSeconds: number;
+  chapterScores: ChapterScore[];
+};
+
+type InProgressExam = {
+  id: number;
+  course_code: string;
+  name_th: string;
+  name_en: string | null;
+  seconds_left: number;
+  current_idx: number;
+  question_count: number | null;
+};
+
+type Tab = "exam" | "history" | "settings";
 
 export default function Mock() {
   const { t } = useT();
-  const [phase, setPhase] = useState<Phase>("list");
-  const [mockId, setMockId] = useState<number | null>(null);
-  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
-  const [durationMin, setDurationMin] = useState(90);
-  const [result, setResult] = useState<MockResult | null>(null);
+  const [tab, setTab] = useState<Tab>("exam");
 
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold text-slate-800">{t("mock.title")}</h1>
-      <p className="text-sm text-slate-500">{t("mock.intro")}</p>
 
+      {/* Tabs */}
+      <div className="flex gap-1 bg-slate-100 rounded-lg p-1">
+        {(["exam", "history", "settings"] as Tab[]).map((tb) => (
+          <button
+            key={tb}
+            onClick={() => setTab(tb)}
+            className={`flex-1 text-sm py-1.5 rounded-md font-medium transition-colors ${
+              tab === tb ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"
+            }`}
+          >
+            {t(`mock.tab.${tb}`)}
+          </button>
+        ))}
+      </div>
+
+      {tab === "exam" && <ExamTab />}
+      {tab === "history" && <HistoryTab />}
+      {tab === "settings" && <SettingsTab />}
+    </div>
+  );
+}
+
+// ─── EXAM TAB ───────────────────────────────────────────────────────
+
+function ExamTab() {
+  const { t } = useT();
+  const [phase, setPhase] = useState<"list" | "loading" | "exam" | "result">("list");
+  const [mockId, setMockId] = useState<number | null>(null);
+  const [questions, setQuestions] = useState<MockQuestion[]>([]);
+  const [durationMin, setDurationMin] = useState(90);
+  const [result, setResult] = useState<MockResultData | null>(null);
+  // Restored session state
+  const [restoredAnswers, setRestoredAnswers] = useState<Record<string, string>>({});
+  const [restoredFlags, setRestoredFlags] = useState<number[]>([]);
+  const [restoredIdx, setRestoredIdx] = useState(0);
+  const [restoredSeconds, setRestoredSeconds] = useState<number | null>(null);
+  const [restoredTimePerQ, setRestoredTimePerQ] = useState<Record<string, number>>({});
+
+  function handleStart(id: number, qs: MockQuestion[], dur: number) {
+    setMockId(id);
+    setQuestions(qs);
+    setDurationMin(dur);
+    setResult(null);
+    setRestoredAnswers({});
+    setRestoredFlags([]);
+    setRestoredIdx(0);
+    setRestoredSeconds(null);
+    setRestoredTimePerQ({});
+    setPhase("exam");
+  }
+
+  function handleResume(data: {
+    mockId: number;
+    questions: MockQuestion[];
+    durationMin: number;
+    answers: Record<string, string>;
+    flags: number[];
+    currentIdx: number;
+    secondsLeft: number;
+    timePerQ: Record<string, number>;
+  }) {
+    setMockId(data.mockId);
+    setQuestions(data.questions);
+    setDurationMin(data.durationMin);
+    setResult(null);
+    setRestoredAnswers(data.answers);
+    setRestoredFlags(data.flags);
+    setRestoredIdx(data.currentIdx);
+    setRestoredSeconds(data.secondsLeft);
+    setRestoredTimePerQ(data.timePerQ);
+    setPhase("exam");
+  }
+
+  return (
+    <>
       {phase === "list" && (
         <CourseList
-          onStart={(id, qs, dur) => {
-            setMockId(id);
-            setQuestions(qs);
-            setDurationMin(dur);
-            setResult(null);
-            setPhase("exam");
-          }}
+          onStart={handleStart}
+          onResume={handleResume}
           onLoading={() => setPhase("loading")}
           onError={() => setPhase("list")}
         />
@@ -45,47 +157,83 @@ export default function Mock() {
           mockId={mockId}
           questions={questions}
           durationMin={durationMin}
+          initialAnswers={restoredAnswers}
+          initialFlags={restoredFlags}
+          initialIdx={restoredIdx}
+          initialSeconds={restoredSeconds}
+          initialTimePerQ={restoredTimePerQ}
           onFinish={(r) => {
             setResult(r);
             setPhase("result");
           }}
         />
       )}
-      {phase === "result" && result && <ResultView result={result} onDone={() => setPhase("list")} />}
-    </div>
+      {phase === "result" && result && (
+        <ResultView result={result} onDone={() => setPhase("list")} />
+      )}
+    </>
   );
 }
 
+// ─── COURSE LIST + SETTINGS ─────────────────────────────────────────
+
+type CourseChapter = { id: number; name: string };
+type AvailableCourse = MockCourse & { chapters: CourseChapter[] };
+
 function CourseList({
   onStart,
+  onResume,
   onLoading,
   onError,
 }: {
-  onStart: (mockId: number, qs: QuizQuestion[], dur: number) => void;
+  onStart: (mockId: number, qs: MockQuestion[], dur: number) => void;
+  onResume: (data: {
+    mockId: number; questions: MockQuestion[]; durationMin: number;
+    answers: Record<string, string>; flags: number[]; currentIdx: number;
+    secondsLeft: number; timePerQ: Record<string, number>;
+  }) => void;
   onLoading: () => void;
   onError: () => void;
 }) {
   const { t } = useT();
-  const [courses, setCourses] = useState<MockCourse[] | null>(null);
+  const [courses, setCourses] = useState<AvailableCourse[] | null>(null);
+  const [inProgress, setInProgress] = useState<InProgressExam[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  // Per-course settings
+  const [questionCount, setQuestionCount] = useState(40);
+  const [duration, setDuration] = useState(90);
+  const [selectedChapters, setSelectedChapters] = useState<number[]>([]);
 
   useEffect(() => {
-    getJSON<{ courses: MockCourse[] }>("/api/mock/available")
-      .then((d) => setCourses(d.courses))
+    Promise.all([
+      getJSON<{ courses: AvailableCourse[] }>("/api/mock/available"),
+      getJSON<{ exams: InProgressExam[] }>("/api/mock/in-progress"),
+    ])
+      .then(([c, ip]) => {
+        setCourses(c.courses);
+        setInProgress(ip.exams);
+      })
       .catch(() => setCourses([]));
   }, []);
 
   if (!courses) return <Loading>{t("status.connecting")}</Loading>;
   if (courses.length === 0) return <p className="text-slate-400 text-sm">{t("mock.empty")}</p>;
 
-  async function start(code: string) {
+  async function startExam(code: string) {
     setError(null);
     onLoading();
     try {
-      const r = await postJSON<{ mockId: number; durationMin: number; questions: QuizQuestion[] }>(
-        "/api/mock/generate",
-        { course_code: code },
-      );
+      const r = await postJSON<{
+        mockId: number;
+        durationMin: number;
+        questions: MockQuestion[];
+      }>("/api/mock/generate", {
+        course_code: code,
+        question_count: questionCount,
+        duration_min: duration,
+        chapter_ids: selectedChapters.length > 0 ? selectedChapters : undefined,
+      });
       onStart(r.mockId, r.questions, r.durationMin);
     } catch (e) {
       setError((e as ApiError).error);
@@ -93,9 +241,65 @@ function CourseList({
     }
   }
 
+  async function resumeExam(mockId: number) {
+    onLoading();
+    try {
+      const data = await getJSON<{
+        mockId: number;
+        courseCode: string;
+        durationMin: number;
+        questions: MockQuestion[];
+        answers: Record<string, string>;
+        flags: number[];
+        currentIdx: number;
+        secondsLeft: number;
+        timePerQ: Record<string, number>;
+      }>(`/api/mock/${mockId}/session`);
+      onResume(data);
+    } catch {
+      onError();
+    }
+  }
+
+  function toggleChapter(id: number) {
+    setSelectedChapters((prev) =>
+      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id],
+    );
+  }
+
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {error && <ErrorBox>{error}</ErrorBox>}
+
+      {/* In-progress exams */}
+      {inProgress.map((ip) => (
+        <Card key={ip.id}>
+          <div className="flex items-center justify-between">
+            <div>
+              <CourseTitle
+                code={ip.course_code}
+                name_th={ip.name_th}
+                name_en={ip.name_en}
+                className="font-medium text-slate-800 text-sm"
+              />
+              <p className="text-xs text-amber-600 mt-0.5">
+                {t("mock.resumeInfo", {
+                  n: ip.question_count ?? "?",
+                  min: Math.ceil(ip.seconds_left / 60),
+                })}
+              </p>
+            </div>
+            <button
+              onClick={() => resumeExam(ip.id)}
+              className="bg-amber-500 text-white text-sm font-medium rounded-lg px-4 py-2"
+            >
+              {t("mock.resume")}
+            </button>
+          </div>
+        </Card>
+      ))}
+
+      {/* Available courses */}
       {courses.map((c) => (
         <Card key={c.code}>
           <CourseTitle
@@ -105,12 +309,84 @@ function CourseList({
             className="font-medium text-slate-800 text-sm"
           />
           {c.available ? (
-            <button
-              onClick={() => start(c.code)}
-              className="mt-2 w-full bg-indigo-600 text-white text-sm font-medium rounded-lg py-2"
-            >
-              {t("mock.start")}
-            </button>
+            <div className="mt-2 space-y-2">
+              <button
+                onClick={() => {
+                  setExpanded(expanded === c.code ? null : c.code);
+                  setSelectedChapters([]);
+                }}
+                className="text-xs text-indigo-500 underline"
+              >
+                {t("mock.settings")}
+              </button>
+
+              {expanded === c.code && (
+                <div className="bg-slate-50 rounded-lg p-3 space-y-3 text-sm">
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className="block">
+                      <span className="text-slate-500 text-xs">{t("mock.questionCount")}</span>
+                      <input
+                        type="number"
+                        min={5}
+                        max={Math.min(c.bankCount, 200)}
+                        value={questionCount}
+                        onChange={(e) => setQuestionCount(Number(e.target.value) || 40)}
+                        className="w-full mt-0.5 rounded border border-slate-200 px-2 py-1 text-sm"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-slate-500 text-xs">{t("mock.duration")}</span>
+                      <input
+                        type="number"
+                        min={5}
+                        max={300}
+                        value={duration}
+                        onChange={(e) => setDuration(Number(e.target.value) || 90)}
+                        className="w-full mt-0.5 rounded border border-slate-200 px-2 py-1 text-sm"
+                      />
+                    </label>
+                  </div>
+
+                  {c.chapters.length > 0 && (
+                    <div>
+                      <span className="text-slate-500 text-xs">{t("mock.chapters")}</span>
+                      <div className="flex flex-wrap gap-1.5 mt-1">
+                        <button
+                          onClick={() => setSelectedChapters([])}
+                          className={`text-xs rounded-full px-2 py-0.5 ${
+                            selectedChapters.length === 0
+                              ? "bg-indigo-100 text-indigo-700"
+                              : "bg-slate-100 text-slate-500"
+                          }`}
+                        >
+                          {t("mock.allChapters")}
+                        </button>
+                        {c.chapters.map((ch) => (
+                          <button
+                            key={ch.id}
+                            onClick={() => toggleChapter(ch.id)}
+                            className={`text-xs rounded-full px-2 py-0.5 ${
+                              selectedChapters.includes(ch.id)
+                                ? "bg-indigo-100 text-indigo-700"
+                                : "bg-slate-100 text-slate-500"
+                            }`}
+                          >
+                            {ch.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <button
+                onClick={() => startExam(c.code)}
+                className="w-full bg-indigo-600 text-white text-sm font-medium rounded-lg py-2"
+              >
+                {t("mock.startExam")}
+              </button>
+            </div>
           ) : (
             <div className="text-xs text-slate-400 mt-1">
               {c.bankCount === 0 && c.daysToExam <= 21
@@ -124,47 +400,67 @@ function CourseList({
   );
 }
 
+// ─── EXAM RUNNER ────────────────────────────────────────────────────
+
+const AUTOSAVE_INTERVAL = 15_000;
+const LS_KEY = "studyos_mock_session";
+
 function Runner({
   mockId,
   questions,
   durationMin,
+  initialAnswers,
+  initialFlags,
+  initialIdx,
+  initialSeconds,
+  initialTimePerQ,
   onFinish,
 }: {
   mockId: number;
-  questions: QuizQuestion[];
+  questions: MockQuestion[];
   durationMin: number;
-  onFinish: (r: MockResult) => void;
+  initialAnswers: Record<string, string>;
+  initialFlags: number[];
+  initialIdx: number;
+  initialSeconds: number | null;
+  initialTimePerQ: Record<string, number>;
+  onFinish: (r: MockResultData) => void;
 }) {
   const { t } = useT();
-  const [idx, setIdx] = useState(0);
-  const [answer, setAnswer] = useState("");
-  const [secondsLeft, setSecondsLeft] = useState(durationMin * 60);
+  const [idx, setIdx] = useState(initialIdx);
+  const [answers, setAnswers] = useState<Record<string, string>>(initialAnswers);
+  const [flags, setFlags] = useState<Set<number>>(new Set(initialFlags));
+  const [secondsLeft, setSecondsLeft] = useState(initialSeconds ?? durationMin * 60);
+  const [timePerQ, setTimePerQ] = useState<Record<string, number>>(initialTimePerQ);
+  const [showGrid, setShowGrid] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [autoSaveMsg, setAutoSaveMsg] = useState(false);
   const finished = useRef(false);
+  const qStartTime = useRef(Date.now());
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const q = questions[idx];
 
-  async function finish(minutesUsed: number) {
-    if (finished.current) return;
-    finished.current = true;
-    setSubmitting(true);
-    try {
-      // grade the currently-shown answer if any
-      if (answer.trim()) await gradeSilently(q.id, answer);
-      const r = await postJSON<MockResult>(`/api/mock/${mockId}/finish`, { minutes: minutesUsed });
-      onFinish(r);
-    } catch {
-      onFinish({ score: 0, maxScore: questions.length * 2, questionCount: questions.length, weakTopics: [] });
+  // Track time on current question
+  const recordTimeOnQuestion = useCallback(() => {
+    const elapsed = Math.round((Date.now() - qStartTime.current) / 1000);
+    if (elapsed > 0 && q) {
+      setTimePerQ((prev) => ({
+        ...prev,
+        [String(q.id)]: (prev[String(q.id)] || 0) + elapsed,
+      }));
     }
-  }
+    qStartTime.current = Date.now();
+  }, [q]);
 
-  // countdown; auto-submit at 0
+  // Countdown
   useEffect(() => {
     const timer = setInterval(() => {
       setSecondsLeft((s) => {
         if (s <= 1) {
           clearInterval(timer);
-          void finish(durationMin);
+          void doFinish();
           return 0;
         }
         return s - 1;
@@ -174,13 +470,89 @@ function Runner({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function next() {
-    if (answer.trim()) await gradeSilently(q.id, answer);
-    if (idx + 1 >= questions.length) {
-      void finish(durationMin - Math.round(secondsLeft / 60));
+  // Auto-save to server + localStorage
+  useEffect(() => {
+    const save = () => {
+      const state = {
+        mockId,
+        answers,
+        flags: [...flags],
+        current_idx: idx,
+        seconds_left: secondsLeft,
+        time_per_q: timePerQ,
+      };
+      try {
+        localStorage.setItem(LS_KEY, JSON.stringify(state));
+      } catch { /* quota */ }
+      postJSON(`/api/mock/${mockId}/save`, state).catch(() => {});
+      setAutoSaveMsg(true);
+      setTimeout(() => setAutoSaveMsg(false), 2000);
+    };
+    const interval = setInterval(save, AUTOSAVE_INTERVAL);
+    const onBeforeUnload = () => save();
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("beforeunload", onBeforeUnload);
+    };
+  }, [mockId, answers, flags, idx, secondsLeft, timePerQ]);
+
+  function setAnswer(val: string) {
+    setAnswers((prev) => ({ ...prev, [String(q.id)]: val }));
+  }
+
+  function goToQuestion(i: number) {
+    recordTimeOnQuestion();
+    setIdx(i);
+    setShowGrid(false);
+  }
+
+  function toggleFlag() {
+    setFlags((prev) => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      return next;
+    });
+  }
+
+  async function doFinish() {
+    if (finished.current) return;
+    finished.current = true;
+    recordTimeOnQuestion();
+    setSubmitting(true);
+
+    // Grade all answered questions
+    const gradePromises = Object.entries(answers).map(([qid, ans]) => {
+      if (!ans.trim()) return Promise.resolve();
+      return postJSON("/api/quiz/answer", {
+        question_id: Number(qid),
+        my_answer: ans,
+      }).catch(() => {});
+    });
+    await Promise.all(gradePromises);
+
+    try {
+      const r = await postJSON<MockResultData>(`/api/mock/${mockId}/finish`, {
+        time_per_q: timePerQ,
+      });
+      try { localStorage.removeItem(LS_KEY); } catch { /* ok */ }
+      onFinish(r);
+    } catch {
+      onFinish({
+        score: 0, maxScore: questions.length * 2, pct: 0, grade: "?",
+        cutoffs: [], questionCount: questions.length, weakTopics: [],
+        chapterScores: [], totalSeconds: 0, timePerQ: {},
+      });
+    }
+  }
+
+  function handleSubmitClick() {
+    const unanswered = questions.filter((q2) => !answers[String(q2.id)]?.trim()).length;
+    if (unanswered > 0) {
+      setShowConfirm(true);
     } else {
-      setIdx(idx + 1);
-      setAnswer("");
+      setShowConfirm(true);
     }
   }
 
@@ -189,94 +561,482 @@ function Runner({
   const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
   const ss = String(secondsLeft % 60).padStart(2, "0");
   const low = secondsLeft < 300;
+  const answeredCount = questions.filter((q2) => answers[String(q2.id)]?.trim()).length;
+  const currentAnswer = answers[String(q.id)] || "";
 
   return (
-    <Card>
-      <div className="flex justify-between items-center mb-3">
+    <div ref={containerRef} className="space-y-3">
+      {/* Top bar */}
+      <div className="flex items-center justify-between bg-white rounded-xl shadow px-3 py-2 sticky top-0 z-20">
+        <button
+          onClick={() => setShowGrid(!showGrid)}
+          className="text-xs text-indigo-600 font-medium px-2 py-1 bg-indigo-50 rounded-lg"
+        >
+          {t("mock.grid")} {answeredCount}/{questions.length}
+        </button>
         <span className="text-xs text-slate-400">
           {t("mock.question", { n: idx + 1, total: questions.length })}
         </span>
-        <span className={`text-sm font-bold tabular-nums ${low ? "text-red-600" : "text-slate-700"}`}>
-          ⏱ {t("mock.timeLeft")} {mm}:{ss}
+        <span className={`text-sm font-bold tabular-nums ${low ? "text-red-600 animate-pulse" : "text-slate-700"}`}>
+          {mm}:{ss}
         </span>
       </div>
 
-      <p className="font-medium text-slate-800 mb-3">{q.question}</p>
-
-      {q.type === "mcq" ? (
-        <div className="space-y-2">
-          {q.choices.map((c, i) => (
-            <label
-              key={i}
-              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer ${
-                answer === c ? "border-indigo-400 bg-indigo-50" : "border-slate-200"
-              }`}
-            >
-              <input
-                type="radio"
-                name={`mq${q.id}`}
-                checked={answer === c}
-                onChange={() => setAnswer(c)}
-              />
-              {c}
-            </label>
-          ))}
+      {/* Auto-save indicator */}
+      {autoSaveMsg && (
+        <div className="text-center text-xs text-green-600 animate-pulse">
+          {t("mock.autoSaved")}
         </div>
-      ) : (
-        <textarea
-          value={answer}
-          onChange={(e) => setAnswer(e.target.value)}
-          rows={3}
-          placeholder={t("mock.answerPlaceholder")}
-          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-        />
       )}
 
-      <button onClick={next} className="mt-3 w-full bg-indigo-600 text-white font-medium rounded-lg py-2">
-        {idx + 1 >= questions.length ? t("mock.submit") : t("mock.next")}
-      </button>
-    </Card>
+      {/* Question grid overlay */}
+      {showGrid && (
+        <div className="bg-white rounded-xl shadow-lg p-3 space-y-2">
+          <div className="flex items-center justify-between text-xs text-slate-400">
+            <span>{t("mock.grid")}</span>
+            <div className="flex gap-3">
+              <span className="flex items-center gap-1">
+                <span className="w-3 h-3 rounded bg-indigo-500" /> {t("mock.answered")}
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-3 h-3 rounded bg-amber-400" /> {t("mock.flagged")}
+              </span>
+            </div>
+          </div>
+          <div className="grid grid-cols-10 gap-1">
+            {questions.map((_, i) => {
+              const isAnswered = !!answers[String(questions[i].id)]?.trim();
+              const isFlagged = flags.has(i);
+              const isCurrent = i === idx;
+              let bg = "bg-slate-100 text-slate-500";
+              if (isCurrent) bg = "bg-indigo-600 text-white";
+              else if (isFlagged && isAnswered) bg = "bg-amber-400 text-white";
+              else if (isFlagged) bg = "bg-amber-200 text-amber-800";
+              else if (isAnswered) bg = "bg-indigo-100 text-indigo-700";
+              return (
+                <button
+                  key={i}
+                  onClick={() => goToQuestion(i)}
+                  className={`w-full aspect-square rounded text-xs font-medium ${bg}`}
+                >
+                  {i + 1}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Question card */}
+      <Card>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs text-slate-400">
+            {q.topic && <span className="text-indigo-400">{q.topic}</span>}
+          </span>
+          <button
+            onClick={toggleFlag}
+            className={`text-xs px-2 py-0.5 rounded-full ${
+              flags.has(idx) ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-400"
+            }`}
+          >
+            {flags.has(idx) ? `🚩 ${t("mock.unflag")}` : `🏳️ ${t("mock.flag")}`}
+          </button>
+        </div>
+
+        <p className="font-medium text-slate-800 mb-3">{q.question}</p>
+
+        {q.type === "mcq" ? (
+          <div className="space-y-2">
+            {q.choices.map((c, i) => (
+              <label
+                key={i}
+                className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer ${
+                  currentAnswer === c ? "border-indigo-400 bg-indigo-50" : "border-slate-200"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name={`mq${q.id}`}
+                  checked={currentAnswer === c}
+                  onChange={() => setAnswer(c)}
+                />
+                {c}
+              </label>
+            ))}
+          </div>
+        ) : (
+          <textarea
+            value={currentAnswer}
+            onChange={(e) => setAnswer(e.target.value)}
+            rows={3}
+            placeholder={t("mock.answerPlaceholder")}
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+          />
+        )}
+      </Card>
+
+      {/* Navigation */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => goToQuestion(Math.max(0, idx - 1))}
+          disabled={idx === 0}
+          className="flex-1 bg-slate-100 text-slate-600 font-medium rounded-lg py-2 text-sm disabled:opacity-30"
+        >
+          ←
+        </button>
+        {idx + 1 < questions.length ? (
+          <button
+            onClick={() => goToQuestion(idx + 1)}
+            className="flex-1 bg-indigo-600 text-white font-medium rounded-lg py-2 text-sm"
+          >
+            {t("mock.next")}
+          </button>
+        ) : (
+          <button
+            onClick={handleSubmitClick}
+            className="flex-1 bg-green-600 text-white font-medium rounded-lg py-2 text-sm"
+          >
+            {t("mock.submit")}
+          </button>
+        )}
+      </div>
+
+      {/* Submit button (always visible) */}
+      {idx + 1 < questions.length && (
+        <button
+          onClick={handleSubmitClick}
+          className="w-full text-slate-400 text-xs py-1 underline"
+        >
+          {t("mock.submit")}
+        </button>
+      )}
+
+      {/* Confirm dialog */}
+      {showConfirm && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-5 max-w-sm w-full space-y-3">
+            <p className="text-slate-800 font-medium text-center">
+              {(() => {
+                const unanswered = questions.filter(
+                  (q2) => !answers[String(q2.id)]?.trim(),
+                ).length;
+                return unanswered > 0
+                  ? t("mock.confirmSubmit", { n: unanswered })
+                  : t("mock.confirmSubmitAll");
+              })()}
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowConfirm(false)}
+                className="flex-1 bg-slate-100 text-slate-600 font-medium rounded-lg py-2 text-sm"
+              >
+                {t("mock.cancel")}
+              </button>
+              <button
+                onClick={() => {
+                  setShowConfirm(false);
+                  void doFinish();
+                }}
+                className="flex-1 bg-green-600 text-white font-medium rounded-lg py-2 text-sm"
+              >
+                {t("mock.confirm")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
-/** Grade one answer via the shared quiz endpoint (misses auto-create cards). */
-async function gradeSilently(questionId: number, myAnswer: string) {
-  try {
-    await postJSON("/api/quiz/answer", { question_id: questionId, my_answer: myAnswer });
-  } catch {
-    /* keep the exam flowing even if one grade fails */
-  }
+// ─── RESULT VIEW ────────────────────────────────────────────────────
+
+function ResultView({ result, onDone }: { result: MockResultData; onDone: () => void }) {
+  const { t } = useT();
+  const totalMin = Math.floor(result.totalSeconds / 60);
+  const totalSec = result.totalSeconds % 60;
+  const avgSec = result.questionCount > 0 ? Math.round(result.totalSeconds / result.questionCount) : 0;
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <div className="text-center space-y-2 py-4">
+          <div className="text-4xl">🎯</div>
+          <h2 className="text-xl font-bold text-slate-800">{t("mock.resultTitle")}</h2>
+          <p className="text-indigo-600 font-semibold text-2xl">
+            {t("mock.pct", { pct: result.pct })}
+          </p>
+          <p className="text-slate-600">
+            {t("mock.resultScore", { score: result.score, max: result.maxScore })}
+          </p>
+          <p className="text-lg font-bold text-amber-600">
+            {t("mock.grade", { grade: result.grade })}
+          </p>
+          {result.totalSeconds > 0 && (
+            <div className="text-xs text-slate-400 space-y-0.5">
+              <p>{t("mock.timeSpent", { min: totalMin, sec: totalSec })}</p>
+              <p>{t("mock.avgTimePerQ", { sec: avgSec })}</p>
+            </div>
+          )}
+        </div>
+      </Card>
+
+      {/* Chapter breakdown */}
+      {result.chapterScores.length > 0 && (
+        <Card>
+          <h3 className="font-medium text-slate-700 mb-2">{t("mock.chapterBreakdown")}</h3>
+          <div className="space-y-2">
+            {result.chapterScores.map((cs) => (
+              <div key={cs.chapter_id}>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-600 truncate">{cs.name}</span>
+                  <span className={`font-medium ${cs.pct >= 70 ? "text-green-600" : cs.pct >= 50 ? "text-amber-600" : "text-red-600"}`}>
+                    {cs.pct}%
+                  </span>
+                </div>
+                <div className="bg-slate-100 rounded-full h-2 mt-0.5">
+                  <div
+                    className={`rounded-full h-2 transition-all ${
+                      cs.pct >= 70 ? "bg-green-400" : cs.pct >= 50 ? "bg-amber-400" : "bg-red-400"
+                    }`}
+                    style={{ width: `${Math.min(cs.pct, 100)}%` }}
+                  />
+                </div>
+                <p className="text-[10px] text-slate-300 mt-0.5">
+                  {cs.score}/{cs.max} · {cs.count} ข้อ
+                </p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Weak topics */}
+      {result.weakTopics.length > 0 && (
+        <Card>
+          <p className="text-sm text-slate-500 mb-1">{t("mock.weak")}</p>
+          <div className="flex flex-wrap gap-1">
+            {result.weakTopics.map((w, i) => (
+              <span key={i} className="bg-red-50 text-red-600 text-xs rounded-full px-2 py-0.5">
+                {w.name} {w.mastery}%
+              </span>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      <p className="text-xs text-amber-600 text-center">{t("mock.madeCards")}</p>
+      <button
+        onClick={onDone}
+        className="w-full bg-indigo-600 text-white font-medium rounded-lg py-2"
+      >
+        {t("mock.done")}
+      </button>
+    </div>
+  );
 }
 
-function ResultView({ result, onDone }: { result: MockResult; onDone: () => void }) {
+// ─── HISTORY TAB ────────────────────────────────────────────────────
+
+function HistoryTab() {
   const { t } = useT();
+  const [history, setHistory] = useState<HistoryItem[] | null>(null);
+
+  useEffect(() => {
+    getJSON<{ history: HistoryItem[] }>("/api/mock/history")
+      .then((d) => setHistory(d.history))
+      .catch(() => setHistory([]));
+  }, []);
+
+  if (!history) return <Loading>{t("status.connecting")}</Loading>;
+  if (history.length === 0) {
+    return <p className="text-slate-400 text-sm text-center py-8">{t("mock.historyEmpty")}</p>;
+  }
+
+  // Trend chart (simple SVG)
+  const trendData = [...history].reverse();
+
+  return (
+    <div className="space-y-4">
+      {/* Trend chart */}
+      {trendData.length >= 2 && (
+        <Card>
+          <h3 className="font-medium text-slate-700 mb-2">{t("mock.trend")}</h3>
+          <TrendChart data={trendData} />
+        </Card>
+      )}
+
+      {/* History list */}
+      <div className="space-y-2">
+        {history.map((h) => (
+          <Card key={h.id}>
+            <div className="flex items-center justify-between">
+              <div>
+                <CourseTitle
+                  inline
+                  code={h.course_code}
+                  name_th={h.name_th}
+                  name_en={h.name_en}
+                  className="font-medium text-slate-800 text-sm"
+                />
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  {new Date(h.finished_at).toLocaleDateString("th-TH", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-lg font-bold text-indigo-600">{h.pct}%</p>
+                <p className="text-xs text-slate-400">
+                  {h.grade} · {h.score}/{h.maxScore}
+                </p>
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TrendChart({ data }: { data: HistoryItem[] }) {
+  const W = 300;
+  const H = 120;
+  const PAD = 20;
+
+  if (data.length < 2) return null;
+
+  const maxPct = 100;
+  const xStep = (W - PAD * 2) / (data.length - 1);
+
+  const points = data.map((d, i) => ({
+    x: PAD + i * xStep,
+    y: H - PAD - ((d.pct / maxPct) * (H - PAD * 2)),
+    label: d.pct,
+  }));
+
+  const line = points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: 140 }}>
+      {/* Grid lines */}
+      {[0, 25, 50, 75, 100].map((pct) => {
+        const y = H - PAD - ((pct / maxPct) * (H - PAD * 2));
+        return (
+          <g key={pct}>
+            <line x1={PAD} y1={y} x2={W - PAD} y2={y} stroke="#e2e8f0" strokeWidth={0.5} />
+            <text x={PAD - 4} y={y + 3} textAnchor="end" fontSize={8} fill="#94a3b8">
+              {pct}
+            </text>
+          </g>
+        );
+      })}
+      {/* Line */}
+      <path d={line} fill="none" stroke="#6366f1" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      {/* Dots */}
+      {points.map((p, i) => (
+        <g key={i}>
+          <circle cx={p.x} cy={p.y} r={3} fill="#6366f1" />
+          <text x={p.x} y={p.y - 7} textAnchor="middle" fontSize={8} fill="#6366f1" fontWeight="bold">
+            {p.label}%
+          </text>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+// ─── SETTINGS TAB (grade cutoffs) ───────────────────────────────────
+
+function SettingsTab() {
+  const { t } = useT();
+  const [cutoffs, setCutoffs] = useState<GradeCutoff[] | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<GradeCutoff[]>([]);
+
+  useEffect(() => {
+    getJSON<{ cutoffs: GradeCutoff[] }>("/api/mock/cutoffs")
+      .then((d) => setCutoffs(d.cutoffs))
+      .catch(() => setCutoffs([]));
+  }, []);
+
+  if (!cutoffs) return <Loading>{t("status.connecting")}</Loading>;
+
+  function startEdit() {
+    setDraft([...cutoffs!]);
+    setEditing(true);
+  }
+
+  async function save() {
+    const sorted = [...draft].sort((a, b) => b.min_pct - a.min_pct);
+    try {
+      await putJSON("/api/mock/cutoffs", { cutoffs: sorted });
+      setCutoffs(sorted);
+      setEditing(false);
+    } catch { /* ignore */ }
+  }
+
   return (
     <Card>
-      <div className="text-center space-y-2 py-4">
-        <div className="text-4xl">🎯</div>
-        <h2 className="text-xl font-bold text-slate-800">{t("mock.resultTitle")}</h2>
-        <p className="text-indigo-600 font-semibold text-lg">
-          {t("mock.resultScore", { score: result.score, max: result.maxScore })}
-        </p>
-
-        {result.weakTopics.length > 0 && (
-          <div className="pt-2">
-            <p className="text-sm text-slate-500 mb-1">{t("mock.weak")}</p>
-            <div className="flex flex-wrap gap-1 justify-center">
-              {result.weakTopics.map((w, i) => (
-                <span key={i} className="bg-red-50 text-red-600 text-xs rounded-full px-2 py-0.5">
-                  {w.name} {w.mastery}%
-                </span>
-              ))}
-            </div>
-          </div>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-medium text-slate-700">{t("mock.cutoffs")}</h3>
+        {!editing && (
+          <button onClick={startEdit} className="text-xs text-indigo-500 underline">
+            {t("mock.editCutoffs")}
+          </button>
         )}
-
-        <p className="text-xs text-amber-600 pt-1">{t("mock.madeCards")}</p>
-        <button onClick={onDone} className="mt-3 bg-indigo-600 text-white font-medium rounded-lg py-2 px-6">
-          {t("mock.done")}
-        </button>
       </div>
+
+      {editing ? (
+        <div className="space-y-2">
+          {draft.map((c, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <input
+                type="text"
+                value={c.label}
+                onChange={(e) => {
+                  const next = [...draft];
+                  next[i] = { ...c, label: e.target.value };
+                  setDraft(next);
+                }}
+                className="w-16 rounded border border-slate-200 px-2 py-1 text-sm text-center"
+              />
+              <span className="text-xs text-slate-400">{t("mock.minPct")}</span>
+              <input
+                type="number"
+                min={0}
+                max={100}
+                value={c.min_pct}
+                onChange={(e) => {
+                  const next = [...draft];
+                  next[i] = { ...c, min_pct: Number(e.target.value) || 0 };
+                  setDraft(next);
+                }}
+                className="w-16 rounded border border-slate-200 px-2 py-1 text-sm text-center"
+              />
+            </div>
+          ))}
+          <button
+            onClick={save}
+            className="w-full bg-indigo-600 text-white text-sm font-medium rounded-lg py-2 mt-2"
+          >
+            {t("mock.saveCutoffs")}
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-1">
+          {cutoffs.map((c, i) => (
+            <div key={i} className="flex justify-between text-sm">
+              <span className="font-medium text-slate-700">{c.label}</span>
+              <span className="text-slate-400">{c.min_pct}%+</span>
+            </div>
+          ))}
+        </div>
+      )}
     </Card>
   );
 }

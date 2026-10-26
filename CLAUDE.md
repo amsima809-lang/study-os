@@ -90,3 +90,4 @@ study-os/
 - [x] Phase 10 — Document Upload + Quiz from Real Content (materials, chapters, OCR, past exam parsing, enhanced quiz)
 - [x] Phase 11 — SM-2 Spaced Repetition + Confidence Tracking + Weakness Summary
 - [x] Phase 12 — Study Planner (backward scheduling from exam dates, daily tasks, auto-reschedule, ICS export)
+- [x] Phase 13 — Mock Exam Upgrade (full-screen, question grid, flags, auto-save, per-question timing, custom grade cutoffs, chapter scores, history + trend graph)
