@@ -20,6 +20,7 @@ import { createAnalyticsRouter } from "./analytics.js";
 import { createPlannerRouter } from "./planner.js";
 import { createMockRouter } from "./mock.js";
 import { createMaterialsRouter } from "./materials.js";
+import { createStudyPlanRouter } from "./studyplan.js";
 
 const app = express();
 const db = openDb(env.dbPath);
@@ -67,6 +68,7 @@ app.use("/api", createAnalyticsRouter(db)); // tracking + analytics
 app.use("/api", createPlannerRouter(db)); // degree planner
 app.use("/api", createMockRouter(db)); // mock exam
 app.use("/api", createMaterialsRouter(db)); // Phase 1: materials + chapters
+app.use("/api", createStudyPlanRouter(db)); // Phase 3: study planner
 
 app.get("/api/ai/usage", (_req, res) => {
   const row = db

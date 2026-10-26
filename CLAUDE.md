@@ -89,3 +89,4 @@ study-os/
 - [x] Phase 9 — PWA + Deploy
 - [x] Phase 10 — Document Upload + Quiz from Real Content (materials, chapters, OCR, past exam parsing, enhanced quiz)
 - [x] Phase 11 — SM-2 Spaced Repetition + Confidence Tracking + Weakness Summary
+- [x] Phase 12 — Study Planner (backward scheduling from exam dates, daily tasks, auto-reschedule, ICS export)

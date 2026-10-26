@@ -323,3 +323,73 @@ export type WeaknessData = {
     avg_retention: number | null;
   };
 };
+
+// ---------- Phase 3: study planner ----------
+export type PlanSettings = {
+  weekday_hours: number;
+  weekend_hours: number;
+  reading_speed: number;
+  blocked_dates: string[];
+};
+
+export type PlanChapter = {
+  id: number;
+  course_code: string;
+  name: string;
+  sort_order: number;
+  page_count: number;
+  mastery: number;
+};
+
+export type PlanCourse = {
+  course_code: string;
+  name_th: string;
+  name_en: string | null;
+  exam_date: string;
+  chapters: PlanChapter[];
+  total_pages: number;
+};
+
+export type StudyTask = {
+  id: number;
+  plan_id: number;
+  course_code: string;
+  course_name: string;
+  date: string;
+  task_type: "read" | "quiz" | "review" | "mock";
+  chapter_id: number | null;
+  chapter_name: string | null;
+  description: string;
+  page_start: number | null;
+  page_end: number | null;
+  minutes: number;
+  sort_order: number;
+  done: number;
+  done_at: string | null;
+};
+
+export type CourseStatus = {
+  course_code: string;
+  name_th: string;
+  exam_date: string;
+  days_left: number;
+  total_tasks: number;
+  done_tasks: number;
+  total_minutes: number;
+  done_minutes: number;
+  overdue_tasks: number;
+  status: "on_track" | "behind" | "critical";
+  extra_hours_needed: number;
+};
+
+export type StudyPlanData = {
+  plan: {
+    id: number;
+    generated_at: string;
+    feasibility: "ok" | "tight" | "impossible";
+    warnings: string[];
+  } | null;
+  tasks: StudyTask[];
+  statuses: CourseStatus[];
+  today: string;
+};
