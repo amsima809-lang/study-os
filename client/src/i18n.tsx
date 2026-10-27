@@ -857,16 +857,27 @@ export function useT(): I18nValue {
 /** The TH / EN toggle button. */
 export function LanguageToggle() {
   const { lang, setLang, t } = useT();
-  const base =
-    "px-3 py-1 text-sm font-medium rounded-full transition-colors";
-  const active = "bg-indigo-600 text-white";
-  const idle = "bg-white text-slate-500 border border-slate-200";
+
+  function btnStyle(active: boolean): React.CSSProperties {
+    return active
+      ? { backgroundColor: "var(--bg-surface-hover)", color: "var(--text-primary)", border: "1px solid var(--border)" }
+      : { backgroundColor: "transparent", color: "var(--text-tertiary)", border: "1px solid var(--border-light)" };
+  }
+
   return (
     <div className="inline-flex gap-1" role="group" aria-label="language">
-      <button className={`${base} ${lang === "th" ? active : idle}`} onClick={() => setLang("th")}>
+      <button
+        className="px-3 py-1 text-sm font-medium rounded-full transition-colors"
+        style={btnStyle(lang === "th")}
+        onClick={() => setLang("th")}
+      >
         {t("lang.th")}
       </button>
-      <button className={`${base} ${lang === "en" ? active : idle}`} onClick={() => setLang("en")}>
+      <button
+        className="px-3 py-1 text-sm font-medium rounded-full transition-colors"
+        style={btnStyle(lang === "en")}
+        onClick={() => setLang("en")}
+      >
         {t("lang.en")}
       </button>
     </div>
