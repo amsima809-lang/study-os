@@ -1,7 +1,6 @@
 /**
- * Phase 7: Degree planner — 9-term plan, credit progress by category, mark
- * courses PASSED/FAILED, blocked-course detection, and the PSY4499 internship
- * readiness checklist.
+ * Phase 7 + Phase 14: Degree planner with GPA tracking, graduation pace,
+ * and "what if" GPA calculator.
  */
 import { Router } from "express";
 import type { DB } from "./db.js";
@@ -15,24 +14,64 @@ export const CATEGORY_REQUIRED: Record<string, number> = {
   FREE: 6,
 };
 
+const TOTAL_REQUIRED = 138;
+
 const REQUIRED_FOUNDATION = ["PSY2005", "PSY2009", "PSY3001", "PSY3002", "PSY3003", "PSY3004"];
 const REQUIRED_MAJOR = ["PSY2401", "PSY2402", "PSY2404", "PSY3401", "PSY3402", "PSY3403", "PSY4401", "PSY4405"];
 
-type EnrollRow = { course_code: string; status: string; category: string; credits: number };
+type EnrollRow = { course_code: string; status: string; category: string; credits: number; grade: string | null };
+type GradeScale = { grade: string; points: number };
 
-/** All enrollments joined to their course category + credits. */
 function enrollments(db: DB): EnrollRow[] {
   return db
     .prepare(
-      `SELECT e.course_code, e.status, c.category, c.credits
+      `SELECT e.course_code, e.status, c.category, c.credits, e.grade
        FROM enrollments e JOIN courses c ON c.code = e.course_code`,
     )
     .all() as EnrollRow[];
 }
 
+function getGradeScale(db: DB): GradeScale[] {
+  const row = db.prepare("SELECT value FROM settings WHERE key = 'grade_scale'").get() as
+    | { value: string }
+    | undefined;
+  if (!row) return [];
+  try {
+    return JSON.parse(row.value) as GradeScale[];
+  } catch {
+    return [];
+  }
+}
+
+function gradeToPoints(scale: GradeScale[], grade: string): number | null {
+  const entry = scale.find((s) => s.grade === grade);
+  return entry ? entry.points : null;
+}
+
+type GpaResult = { gpa: number | null; totalCredits: number; totalPoints: number; courseCount: number };
+
+function calculateGpa(courses: Array<{ credits: number; grade: string | null }>, scale: GradeScale[]): GpaResult {
+  let totalCredits = 0;
+  let totalPoints = 0;
+  let courseCount = 0;
+  for (const c of courses) {
+    if (!c.grade) continue;
+    const pts = gradeToPoints(scale, c.grade);
+    if (pts == null) continue;
+    totalCredits += c.credits;
+    totalPoints += c.credits * pts;
+    courseCount++;
+  }
+  return {
+    gpa: totalCredits > 0 ? Math.round((totalPoints / totalCredits) * 100) / 100 : null,
+    totalCredits,
+    totalPoints,
+    courseCount,
+  };
+}
+
 export type Rule = { id: string; ok: boolean; detail: string };
 
-/** Evaluate the 6 internship (PSY4499) readiness rules. */
 export function computeInternship(db: DB): { eligible: boolean; rules: Rule[] } {
   const rows = enrollments(db);
   const passed = rows.filter((r) => r.status === "PASSED");
@@ -51,11 +90,7 @@ export function computeInternship(db: DB): { eligible: boolean; rules: Rule[] } 
 
   const rules: Rule[] = [
     { id: "credits", ok: totalPassed >= 108, detail: `${totalPassed}/108` },
-    {
-      id: "foundation",
-      ok: foundationCredits >= 39 && foundationCoreOk,
-      detail: `${foundationCredits}/39`,
-    },
+    { id: "foundation", ok: foundationCredits >= 39 && foundationCoreOk, detail: `${foundationCredits}/39` },
     { id: "major", ok: majorCount === REQUIRED_MAJOR.length, detail: `${majorCount}/${REQUIRED_MAJOR.length}` },
     { id: "elective", ok: majorElecCount >= 3, detail: `${majorElecCount}/3` },
     { id: "minor", ok: minorCredits >= 9, detail: `${minorCredits}/9` },
@@ -65,7 +100,6 @@ export function computeInternship(db: DB): { eligible: boolean; rules: Rule[] } 
   return { eligible: rules.every((r) => r.ok), rules };
 }
 
-/** The earliest plan term after the course's planned term (for a retake). */
 function earliestRetakeTerm(db: DB, courseCode: string): string | null {
   const planned = db
     .prepare(
@@ -85,14 +119,16 @@ export function createPlannerRouter(db: DB): Router {
 
   router.get("/plan", (_req, res) => {
     const statusByCourse = new Map<string, string>();
-    for (const e of db.prepare("SELECT course_code, status FROM enrollments").all() as Array<{
+    const gradeByCourse = new Map<string, string | null>();
+    for (const e of db.prepare("SELECT course_code, status, grade FROM enrollments").all() as Array<{
       course_code: string;
       status: string;
+      grade: string | null;
     }>) {
       statusByCourse.set(e.course_code, e.status);
+      gradeByCourse.set(e.course_code, e.grade);
     }
 
-    // Build the terms with per-term + running credit totals.
     const termRows = db
       .prepare("SELECT term_id, ord, max_credits FROM plan_terms ORDER BY ord")
       .all() as Array<{ term_id: string; ord: number; max_credits: number }>;
@@ -101,6 +137,8 @@ export function createPlannerRouter(db: DB): Router {
        FROM plan_items pi LEFT JOIN courses c ON c.code = pi.course_code
        WHERE pi.term_id = ? ORDER BY pi.id`,
     );
+
+    const scale = getGradeScale(db);
 
     let running = 0;
     const terms = termRows.map((t) => {
@@ -121,15 +159,30 @@ export function createPlannerRouter(db: DB): Router {
         category: it.category,
         difficulty: it.difficulty,
         status: it.course_code ? statusByCourse.get(it.course_code) ?? "PLANNED" : null,
+        grade: it.course_code ? gradeByCourse.get(it.course_code) ?? null : null,
       }));
       const credits = items.reduce((s, it) => s + it.credits, 0);
       running += credits;
-      return { term_id: t.term_id, ord: t.ord, max_credits: t.max_credits, credits, runningTotal: running, items };
+
+      const termGpa = calculateGpa(
+        items.filter((it) => it.status === "PASSED").map((it) => ({ credits: it.credits, grade: it.grade })),
+        scale,
+      );
+
+      return {
+        term_id: t.term_id,
+        ord: t.ord,
+        max_credits: t.max_credits,
+        credits,
+        runningTotal: running,
+        items,
+        gpa: termGpa.gpa,
+      };
     });
 
-    // Category progress (passed credits vs required).
+    const allEnrollments = enrollments(db);
     const passedByCat = new Map<string, number>();
-    for (const e of enrollments(db)) {
+    for (const e of allEnrollments) {
       if (e.status === "PASSED") passedByCat.set(e.category, (passedByCat.get(e.category) ?? 0) + e.credits);
     }
     const categoryProgress = Object.entries(CATEGORY_REQUIRED).map(([category, required]) => ({
@@ -139,7 +192,23 @@ export function createPlannerRouter(db: DB): Router {
     }));
     const totalPassedCredits = [...passedByCat.values()].reduce((s, n) => s + n, 0);
 
-    // Failed courses -> retake suggestion + which later courses they block.
+    const passedWithGrades = allEnrollments
+      .filter((e) => e.status === "PASSED")
+      .map((e) => ({ credits: e.credits, grade: e.grade }));
+    const overallGpa = calculateGpa(passedWithGrades, scale);
+
+    const remainingCredits = Math.max(0, TOTAL_REQUIRED - totalPassedCredits);
+    const futureTerms = termRows.filter((t) => {
+      const termItems = itemStmt.all(t.term_id) as Array<{ course_code: string | null }>;
+      return termItems.some(
+        (it) => it.course_code && (statusByCourse.get(it.course_code) ?? "PLANNED") === "PLANNED",
+      );
+    });
+    const futureTermCount = Math.max(futureTerms.length, 1);
+    const creditsPerTerm = Math.ceil(remainingCredits / futureTermCount);
+    const paceStatus: "on_track" | "heavy" | "behind" =
+      remainingCredits === 0 ? "on_track" : creditsPerTerm <= 21 ? "on_track" : creditsPerTerm <= 24 ? "heavy" : "behind";
+
     const prereqs = db.prepare("SELECT course_code, requires_code FROM prerequisites").all() as Array<{
       course_code: string;
       requires_code: string;
@@ -155,7 +224,6 @@ export function createPlannerRouter(db: DB): Router {
         failed.push({ course_code: code, name_th: nameOf(code), retakeTerm: earliestRetakeTerm(db, code) });
       }
     }
-    // A course is blocked if any of its prerequisites is FAILED.
     const blockedMap = new Map<string, string[]>();
     for (const p of prereqs) {
       if (statusByCourse.get(p.requires_code) === "FAILED") {
@@ -167,18 +235,26 @@ export function createPlannerRouter(db: DB): Router {
     res.json({
       terms,
       totalPassedCredits,
-      totalPlannedCredits: 138,
+      totalPlannedCredits: TOTAL_REQUIRED,
       categoryProgress,
       failed,
       blocked,
       internship: computeInternship(db),
+      gpa: overallGpa,
+      gradeScale: scale,
+      pace: {
+        remainingCredits,
+        futureTerms: futureTermCount,
+        creditsPerTerm,
+        status: paceStatus,
+      },
     });
   });
 
-  // Mark a course PASSED / FAILED / PLANNED (clears). Uses its planned term.
   router.post("/enrollments", (req, res) => {
     const courseCode = String(req.body.course_code || "");
     const status = String(req.body.status || "");
+    const grade: string | null = req.body.grade ?? null;
     if (!["PASSED", "FAILED", "PLANNED", "ENROLLED", "WITHDRAWN"].includes(status)) {
       return res.status(400).json({ error: "สถานะไม่ถูกต้อง" });
     }
@@ -197,12 +273,56 @@ export function createPlannerRouter(db: DB): Router {
       );
     } else {
       db.prepare(
-        `INSERT INTO enrollments (course_code, term_id, status)
-         VALUES (@c, @t, @s)
-         ON CONFLICT(course_code, term_id) DO UPDATE SET status = @s`,
-      ).run({ c: courseCode, t: planned.term_id, s: status });
+        `INSERT INTO enrollments (course_code, term_id, status, grade)
+         VALUES (@c, @t, @s, @g)
+         ON CONFLICT(course_code, term_id) DO UPDATE SET status = @s, grade = @g`,
+      ).run({ c: courseCode, t: planned.term_id, s: status, g: grade });
     }
     res.json({ ok: true });
+  });
+
+  router.post("/plan/what-if", (req, res) => {
+    const hypothetical = req.body.courses as Array<{ course_code: string; grade: string }>;
+    if (!Array.isArray(hypothetical)) return res.status(400).json({ error: "courses must be an array" });
+
+    const scale = getGradeScale(db);
+    const allEnrollments = enrollments(db);
+
+    const current = allEnrollments
+      .filter((e) => e.status === "PASSED")
+      .map((e) => ({ credits: e.credits, grade: e.grade }));
+
+    const currentGpa = calculateGpa(current, scale);
+
+    const withHypo = [...current];
+    for (const h of hypothetical) {
+      const course = db.prepare("SELECT credits FROM courses WHERE code = ?").get(h.course_code) as { credits: number } | undefined;
+      if (course) {
+        withHypo.push({ credits: course.credits, grade: h.grade });
+      }
+    }
+    const whatIfGpa = calculateGpa(withHypo, scale);
+
+    res.json({
+      currentGpa: currentGpa.gpa,
+      whatIfGpa: whatIfGpa.gpa,
+      currentCredits: currentGpa.totalCredits,
+      whatIfCredits: whatIfGpa.totalCredits,
+      change: whatIfGpa.gpa != null && currentGpa.gpa != null
+        ? Math.round((whatIfGpa.gpa - currentGpa.gpa) * 100) / 100
+        : null,
+    });
+  });
+
+  router.get("/plan/grade-scale", (_req, res) => {
+    res.json({ scale: getGradeScale(db) });
+  });
+
+  router.put("/plan/grade-scale", (req, res) => {
+    const scale = req.body.scale as GradeScale[];
+    if (!Array.isArray(scale)) return res.status(400).json({ error: "scale must be an array" });
+    db.prepare("UPDATE settings SET value = ? WHERE key = 'grade_scale'").run(JSON.stringify(scale));
+    res.json({ ok: true, scale });
   });
 
   return router;

@@ -231,6 +231,7 @@ export type PlanItem = {
   category: string | null;
   difficulty: number | null;
   status: "PLANNED" | "PASSED" | "FAILED" | "ENROLLED" | "WITHDRAWN" | null;
+  grade: string | null;
 };
 
 export type PlanTerm = {
@@ -240,6 +241,31 @@ export type PlanTerm = {
   credits: number;
   runningTotal: number;
   items: PlanItem[];
+  gpa: number | null;
+};
+
+export type GpaResult = {
+  gpa: number | null;
+  totalCredits: number;
+  totalPoints: number;
+  courseCount: number;
+};
+
+export type PlanPace = {
+  remainingCredits: number;
+  futureTerms: number;
+  creditsPerTerm: number;
+  status: "on_track" | "heavy" | "behind";
+};
+
+export type PlanGradeScale = { grade: string; points: number };
+
+export type WhatIfResult = {
+  currentGpa: number | null;
+  whatIfGpa: number | null;
+  currentCredits: number;
+  whatIfCredits: number;
+  change: number | null;
 };
 
 export type PlanData = {
@@ -250,6 +276,9 @@ export type PlanData = {
   failed: { course_code: string; name_th: string; retakeTerm: string | null }[];
   blocked: { course_code: string; name_th: string; dueTo: string[] }[];
   internship: { eligible: boolean; rules: { id: string; ok: boolean; detail: string }[] };
+  gpa: GpaResult;
+  gradeScale: PlanGradeScale[];
+  pace: PlanPace;
 };
 
 // ---------- Phase 6: analytics ----------
