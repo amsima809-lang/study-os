@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import Icon from "./Icon.tsx";
 
 /* ── Theme context ── */
 
@@ -42,15 +43,16 @@ export function useTheme() {
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
   const next: Theme = theme === "light" ? "dark" : theme === "dark" ? "system" : "light";
-  const icon = theme === "light" ? "☀️" : theme === "dark" ? "🌙" : "💻";
+  const iconName = theme === "light" ? "sun" : theme === "dark" ? "moon" : "monitor";
 
   return (
     <button
       onClick={() => setTheme(next)}
-      className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--bg-surface-hover)] transition-colors text-sm"
+      className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--bg-surface-hover)] transition-colors"
       title={`Theme: ${theme}`}
+      style={{ color: "var(--text-secondary)" }}
     >
-      {icon}
+      <Icon name={iconName} size={18} />
     </button>
   );
 }

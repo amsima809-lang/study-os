@@ -13,6 +13,7 @@ import {
 import { formatDate } from "../format.ts";
 import { Card, ErrorBox, Loading } from "../components/ui.tsx";
 import { Markdown } from "../components/Markdown.tsx";
+import Icon from "../components/Icon.tsx";
 import { CourseTitle } from "../components/CourseTitle.tsx";
 import { HandwritingPad, type HandwritingHandle } from "../components/HandwritingPad.tsx";
 
@@ -145,7 +146,7 @@ function CourseList({ onSelectGroup }: { onSelectGroup: (g: CourseGroup) => void
             className="w-full flex items-center gap-3 rounded-xl px-4 py-3 text-left"
             style={{ backgroundColor: "var(--bg-surface)", boxShadow: "var(--shadow-sm)" }}
           >
-            <span className="text-2xl">📓</span>
+            <Icon name="notebook" size={26} style={{ color: "var(--accent-text)" }} />
             <div className="flex-1 min-w-0">
               <div className="font-medium truncate" style={{ color: "var(--text-primary)" }}>
                 {g.code ? (
@@ -215,7 +216,7 @@ function CourseNotes({
         <h2 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>{t("notes.courseSummary")}</h2>
 
         <div className="rounded-lg text-xs px-3 py-2" style={{ backgroundColor: "var(--warning-bg)", color: "var(--warning)" }}>
-          ⚠️ {t("notes.disclaimer")}
+          <Icon name="alertTriangle" size={14} className="inline -mt-0.5" /> {t("notes.disclaimer")}
         </div>
 
         <Card>
@@ -358,7 +359,7 @@ function NoteView({ noteId, onBack, onDeleted }: { noteId: number; onBack: () =>
       </div>
 
       <Card>
-        <h3 className="font-semibold mb-2" style={{ color: "var(--text-primary)" }}>📝 {t("notes.text")}</h3>
+        <h3 className="font-semibold mb-2 flex items-center gap-1.5" style={{ color: "var(--text-primary)" }}><Icon name="edit" size={16} /> {t("notes.text")}</h3>
         {note.raw_text ? (
           <p className="text-sm whitespace-pre-wrap" style={{ color: "var(--text-secondary)" }}>{note.raw_text}</p>
         ) : (
@@ -368,7 +369,7 @@ function NoteView({ noteId, onBack, onDeleted }: { noteId: number; onBack: () =>
 
       {note.image_paths.length > 0 && (
         <Card>
-          <h3 className="font-semibold mb-2" style={{ color: "var(--text-primary)" }}>🖼️ {t("notes.images")}</h3>
+          <h3 className="font-semibold mb-2 flex items-center gap-1.5" style={{ color: "var(--text-primary)" }}><Icon name="image" size={16} /> {t("notes.images")}</h3>
           <div className="grid grid-cols-2 gap-2">
             {note.image_paths.map((src, i) => (
               <img
@@ -385,8 +386,8 @@ function NoteView({ noteId, onBack, onDeleted }: { noteId: number; onBack: () =>
 
       {hasAi ? (
         <>
-          <div className="rounded-lg text-xs px-3 py-2" style={{ backgroundColor: "var(--warning-bg)", color: "var(--warning)" }}>
-            ⚠️ {t("notes.disclaimer")}
+          <div className="rounded-lg text-xs px-3 py-2 flex items-center gap-1" style={{ backgroundColor: "var(--warning-bg)", color: "var(--warning)" }}>
+            <Icon name="alertTriangle" size={14} /> {t("notes.disclaimer")}
           </div>
 
           {note.ai_summary_md && (
@@ -680,11 +681,11 @@ function ResultView({ result, onDone }: { result: NoteLearning; onDone: () => vo
   if (result.ai_skipped) {
     return (
       <div className="space-y-4">
-        <div className="rounded-lg text-sm px-3 py-2" style={{ backgroundColor: "var(--success-bg)", color: "var(--success)" }}>
-          ✅ {t("notes.saved")}
+        <div className="rounded-lg text-sm px-3 py-2 flex items-center gap-1" style={{ backgroundColor: "var(--success-bg)", color: "var(--success)" }}>
+          <Icon name="checkCircle" size={16} /> {t("notes.saved")}
         </div>
-        <div className="rounded-lg text-xs px-3 py-2" style={{ backgroundColor: "var(--warning-bg)", color: "var(--warning)" }}>
-          💡 {t("notes.aiNotConfigured")}
+        <div className="rounded-lg text-xs px-3 py-2 flex items-center gap-1" style={{ backgroundColor: "var(--warning-bg)", color: "var(--warning)" }}>
+          <Icon name="lightbulb" size={14} /> {t("notes.aiNotConfigured")}
         </div>
         <button
           onClick={onDone}
@@ -699,11 +700,11 @@ function ResultView({ result, onDone }: { result: NoteLearning; onDone: () => vo
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg text-sm px-3 py-2" style={{ backgroundColor: "var(--success-bg)", color: "var(--success)" }}>
-        ✅ {t("notes.saved")}
+      <div className="rounded-lg text-sm px-3 py-2 flex items-center gap-1" style={{ backgroundColor: "var(--success-bg)", color: "var(--success)" }}>
+        <Icon name="checkCircle" size={16} /> {t("notes.saved")}
       </div>
-      <div className="rounded-lg text-xs px-3 py-2" style={{ backgroundColor: "var(--warning-bg)", color: "var(--warning)" }}>
-        ⚠️ {t("notes.disclaimer")}
+      <div className="rounded-lg text-xs px-3 py-2 flex items-center gap-1" style={{ backgroundColor: "var(--warning-bg)", color: "var(--warning)" }}>
+        <Icon name="alertTriangle" size={14} /> {t("notes.disclaimer")}
       </div>
 
       {result.summary_md && (

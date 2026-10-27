@@ -1,5 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { useT } from "../i18n.tsx";
+import Icon from "./Icon.tsx";
 
 export type HandwritingHandle = {
   exportBlob: () => Promise<Blob | null>;
@@ -118,6 +119,7 @@ export const HandwritingPad = forwardRef<HandwritingHandle>((_props, ref) => {
   }
 
   function down(e: React.PointerEvent) {
+    if (e.pointerType === "touch") return;
     drawing.current = true;
     const p = toCanvas(e);
     const w = tool === "eraser" ? ERASER_WIDTH : tool === "highlighter" ? HL_WIDTH : width;
@@ -197,14 +199,14 @@ export const HandwritingPad = forwardRef<HandwritingHandle>((_props, ref) => {
       <div className="bg-slate-50 border-b border-slate-200 p-2 space-y-2">
         <div className="flex flex-wrap items-center gap-1.5">
           <button className={toolBtn(tool === "pen")} onClick={() => setTool("pen")} title={t("draw.pen")}>
-            ✏️
+            <Icon name="pen" size={16} />
           </button>
           <button
             className={toolBtn(tool === "highlighter")}
             onClick={() => setTool("highlighter")}
             title={t("draw.highlighter")}
           >
-            🖍️
+            <Icon name="highlighter" size={16} />
           </button>
           <button
             className={toolBtn(tool === "eraser")}
@@ -262,7 +264,7 @@ export const HandwritingPad = forwardRef<HandwritingHandle>((_props, ref) => {
             ↪︎
           </button>
           <button className={toolBtn(false)} onClick={clearAll} title={t("draw.clear")}>
-            🗑️
+            <Icon name="trash" size={16} />
           </button>
 
           <span className="w-px h-5 bg-slate-200 mx-0.5" />
@@ -289,7 +291,7 @@ export const HandwritingPad = forwardRef<HandwritingHandle>((_props, ref) => {
             disabled={pages <= 1}
             title={t("draw.removePage")}
           >
-            －📄
+            <Icon name="fileMinus" size={16} />
           </button>
           <button
             className={toolBtn(false)}
@@ -297,7 +299,7 @@ export const HandwritingPad = forwardRef<HandwritingHandle>((_props, ref) => {
             disabled={pages >= MAX_PAGES}
             title={t("draw.addPage")}
           >
-            ＋📄
+            <Icon name="filePlus" size={16} />
           </button>
           <button
             className={toolBtn(expanded)}

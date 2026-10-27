@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useT } from "../i18n.tsx";
+import Icon from "../components/Icon.tsx";
 import {
   getJSON,
   postJSON,
@@ -170,7 +171,7 @@ function PlanTabContent({
           {data.internship.rules.map((r) => (
             <li key={r.id} className="flex justify-between">
               <span style={{ color: r.ok ? "var(--text-primary)" : "var(--text-tertiary)" }}>
-                {r.ok ? "✅" : "⬜"} {t(`rule.${r.id}`)}
+                <span className="inline-flex items-center gap-1">{r.ok ? <Icon name="checkCircle" size={16} style={{ color: "var(--success)" }} /> : <Icon name="square" size={16} />} {t(`rule.${r.id}`)}</span>
               </span>
               <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>{r.detail}</span>
             </li>

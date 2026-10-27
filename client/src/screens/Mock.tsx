@@ -15,6 +15,7 @@ import {
 } from "../api.ts";
 import { Card, ErrorBox, Loading } from "../components/ui.tsx";
 import { CourseTitle } from "../components/CourseTitle.tsx";
+import Icon from "../components/Icon.tsx";
 
 type MockQuestion = QuizQuestion & { chapter_id?: number | null };
 type GradeCutoff = { label: string; min_pct: number };
@@ -616,7 +617,7 @@ function Runner({
               color: flags.has(idx) ? "var(--warning)" : "var(--text-tertiary)",
             }}
           >
-            {flags.has(idx) ? `🚩 ${t("mock.unflag")}` : `🏳️ ${t("mock.flag")}`}
+            <span className="inline-flex items-center gap-1"><Icon name="flag" size={14} /> {flags.has(idx) ? t("mock.unflag") : t("mock.flag")}</span>
           </button>
         </div>
 
@@ -748,7 +749,7 @@ function ResultView({ result, onDone }: { result: MockResultData; onDone: () => 
     <div className="space-y-4">
       <Card>
         <div className="text-center space-y-2 py-4">
-          <div className="text-4xl">🎯</div>
+          <div style={{ color: "var(--accent-text)" }}><Icon name="trophy" size={40} /></div>
           <h2 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>{t("mock.resultTitle")}</h2>
           <p className="font-semibold text-2xl" style={{ color: "var(--accent-text)" }}>
             {t("mock.pct", { pct: result.pct })}

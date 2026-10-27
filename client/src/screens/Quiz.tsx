@@ -11,6 +11,7 @@ import {
   type Chapter,
 } from "../api.ts";
 import { Card, ErrorBox, Loading } from "../components/ui.tsx";
+import Icon from "../components/Icon.tsx";
 
 type Phase = "setup" | "loading" | "quiz" | "done";
 
@@ -450,7 +451,7 @@ function Summary({
   return (
     <Card>
       <div className="text-center space-y-2 py-4">
-        <div className="text-4xl">🎯</div>
+        <div style={{ color: "var(--accent-text)" }}><Icon name="trophy" size={40} /></div>
         <h2 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>{t("quiz.doneTitle")}</h2>
         <p className="font-semibold text-lg" style={{ color: "var(--accent-text)" }}>
           {t("quiz.totalScore", { score: total, max })}

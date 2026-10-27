@@ -3,6 +3,7 @@ import { useT } from "../i18n.tsx";
 import { getJSON, postJSON, type DueCard } from "../api.ts";
 import { Card, Loading } from "../components/ui.tsx";
 import { CourseTitle } from "../components/CourseTitle.tsx";
+import Icon from "../components/Icon.tsx";
 
 const SWIPE_THRESHOLD = 110;
 
@@ -110,13 +111,13 @@ function Flashcard({ card, onRate }: { card: DueCard; onRate: (confidence: numbe
           className="absolute top-3 right-3 font-bold text-lg z-10"
           style={{ opacity: rightHint, color: "var(--success)" }}
         >
-          {t("review.remember")} 👍
+          {t("review.remember")} <Icon name="thumbsUp" size={18} />
         </span>
         <span
           className="absolute top-3 left-3 font-bold text-lg z-10"
           style={{ opacity: leftHint, color: "var(--danger)" }}
         >
-          👎 {t("review.forgot")}
+          <Icon name="thumbsDown" size={18} /> {t("review.forgot")}
         </span>
 
         <div
@@ -151,7 +152,7 @@ function Flashcard({ card, onRate }: { card: DueCard; onRate: (confidence: numbe
           <p className="text-lg font-medium flex-1" style={{ color: "var(--text-primary)" }}>{card.question}</p>
 
           {!revealed ? (
-            <p className="text-center text-sm mt-4" style={{ color: "var(--accent-text)" }}>👆 {t("review.tapReveal")}</p>
+            <p className="text-center text-sm mt-4 flex items-center justify-center gap-1" style={{ color: "var(--accent-text)" }}><Icon name="tapUp" size={18} /> {t("review.tapReveal")}</p>
           ) : (
             <div className="mt-4 pt-3" style={{ borderTop: "1px solid var(--border-light)" }}>
               <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>{t("review.answer")}</span>
@@ -206,7 +207,7 @@ function Done({ reviewed, remembered, totalDue }: { reviewed: number; remembered
   return (
     <Card>
       <div className="text-center space-y-2 py-6">
-        <div className="text-4xl">🎉</div>
+        <div style={{ color: "var(--accent-text)" }}><Icon name="sparkles" size={40} /></div>
         <h2 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>{t("review.doneTitle")}</h2>
         <p style={{ color: "var(--text-secondary)" }}>{t("review.reviewed", { n: reviewed })}</p>
         <p className="font-semibold" style={{ color: "var(--success)" }}>{t("review.remembered", { n: remembered })}</p>

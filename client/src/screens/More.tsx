@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useT } from "../i18n.tsx";
 import { postJSON } from "../api.ts";
+import Icon from "../components/Icon.tsx";
 import Schedule from "./Schedule.tsx";
 import Stats from "./Stats.tsx";
 import Planner from "./Planner.tsx";
@@ -16,13 +17,13 @@ export default function More() {
   const [sub, setSub] = useState<Sub | null>(null);
 
   const items: Array<{ id: Sub; icon: string }> = [
-    { id: "studyplan", icon: "📅" },
-    { id: "library", icon: "📚" },
-    { id: "schedule", icon: "🗓️" },
-    { id: "stats", icon: "📊" },
-    { id: "planner", icon: "🎓" },
-    { id: "mock", icon: "📝" },
-    { id: "weakness", icon: "🎯" },
+    { id: "studyplan", icon: "calendarCheck" },
+    { id: "library", icon: "library" },
+    { id: "schedule", icon: "calendarRange" },
+    { id: "stats", icon: "chartBar" },
+    { id: "planner", icon: "graduationCap" },
+    { id: "mock", icon: "fileEdit" },
+    { id: "weakness", icon: "crosshair" },
   ];
 
   if (sub) {
@@ -63,7 +64,7 @@ export default function More() {
                 boxShadow: "var(--shadow-sm)",
               }}
             >
-              <span className="text-xl">{it.icon}</span>
+              <Icon name={it.icon} size={22} style={{ color: "var(--accent-text)" }} />
               <span className="font-medium" style={{ color: "var(--text-primary)" }}>
                 {t(`more.${it.id}`)}
               </span>

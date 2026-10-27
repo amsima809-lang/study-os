@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useT } from "../i18n.tsx";
+import Icon from "../components/Icon.tsx";
 import {
   getJSON, postJSON, putJSON,
   type PlanSettings, type PlanCourse, type StudyPlanData, type StudyTask, type CourseStatus,
@@ -369,7 +370,7 @@ function PlanView({ data, onRefresh }: { data: StudyPlanData; onRefresh: () => v
   );
 }
 
-const TYPE_ICONS: Record<string, string> = { read: "📖", quiz: "📝", review: "🔄", mock: "📋" };
+const TYPE_ICONS: Record<string, string> = { read: "bookOpen", quiz: "penTool", review: "rotateCcw", mock: "clipboard" };
 
 function TaskRow({ task, onToggle }: { task: StudyTask; onToggle: (id: number) => void }) {
   return (
@@ -383,14 +384,14 @@ function TaskRow({ task, onToggle }: { task: StudyTask; onToggle: (id: number) =
             : { borderColor: "var(--border)" }
           }
         >
-          {task.done ? "✓" : ""}
+          {task.done ? <Icon name="check" size={14} /> : ""}
         </button>
         <div className="flex-1 min-w-0">
           <p
             className={`text-sm ${task.done ? "line-through" : ""}`}
             style={{ color: task.done ? "var(--text-tertiary)" : "var(--text-primary)" }}
           >
-            {TYPE_ICONS[task.task_type] || ""} {task.description}
+            <span className="inline-flex items-center gap-1">{TYPE_ICONS[task.task_type] ? <Icon name={TYPE_ICONS[task.task_type]} size={14} className="inline" /> : null} {task.description}</span>
           </p>
           <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>
             {task.course_name} · {task.minutes} min

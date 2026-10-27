@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { LanguageProvider, LanguageToggle, useT } from "./i18n.tsx";
 import { getJSON } from "./api.ts";
 import { ThemeProvider, ThemeToggle } from "./components/ui.tsx";
+import Icon from "./components/Icon.tsx";
 import Login from "./screens/Login.tsx";
 import Today from "./screens/Today.tsx";
 import Notes from "./screens/Notes.tsx";
@@ -12,11 +13,11 @@ import More from "./screens/More.tsx";
 type Tab = "today" | "notes" | "quiz" | "review" | "more";
 
 const TAB_ICONS: Record<Tab, string> = {
-  today: "📅",
-  notes: "📓",
-  quiz: "🎯",
-  review: "🔁",
-  more: "⋯",
+  today: "calendar",
+  notes: "notebook",
+  quiz: "target",
+  review: "refresh",
+  more: "moreHorizontal",
 };
 
 function Shell() {
@@ -37,7 +38,7 @@ function Shell() {
         }}
       >
         <div className="px-5 py-4 flex items-center gap-2">
-          <span className="text-xl">📚</span>
+          <Icon name="book" size={22} style={{ color: "var(--accent-text)" }} />
           <span className="font-bold text-lg" style={{ color: "var(--accent-text)" }}>
             {t("app.name")}
           </span>
@@ -53,7 +54,7 @@ function Shell() {
                 color: tab === id ? "var(--accent-text)" : "var(--text-secondary)",
               }}
             >
-              <span className="text-lg">{TAB_ICONS[id]}</span>
+              <Icon name={TAB_ICONS[id]} size={20} />
               {t(`nav.${id}`)}
             </button>
           ))}
@@ -77,7 +78,7 @@ function Shell() {
         >
           <div className="max-w-3xl mx-auto flex justify-between items-center px-5 py-3">
             <div className="flex items-center gap-2">
-              <span className="text-lg">📚</span>
+              <Icon name="book" size={20} style={{ color: "var(--accent-text)" }} />
               <span className="font-bold" style={{ color: "var(--accent-text)" }}>{t("app.name")}</span>
             </div>
             <div className="flex items-center gap-1">
@@ -116,7 +117,7 @@ function Shell() {
                 color: tab === id ? "var(--accent-text)" : "var(--text-tertiary)",
               }}
             >
-              <span className="text-lg">{TAB_ICONS[id]}</span>
+              <Icon name={TAB_ICONS[id]} size={20} />
               {t(`nav.${id}`)}
               {tab === id && (
                 <span

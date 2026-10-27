@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useT } from "../i18n.tsx";
+import Icon from "../components/Icon.tsx";
 import {
   getJSON,
   postJSON,
@@ -118,7 +119,7 @@ function MaterialList({
               <button onClick={() => onSelect(m)} className="w-full text-left">
                 <Card>
                   <div className="flex items-center gap-3">
-                    <span className="text-xl">{m.file_type === "pdf" ? "📄" : m.file_type === "image" ? "🖼️" : "📝"}</span>
+                    <Icon name={m.file_type === "pdf" ? "fileText" : m.file_type === "image" ? "image" : "edit"} size={22} style={{ color: "var(--accent-text)" }} />
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate" style={{ color: "var(--text-primary)" }}>{m.filename}</p>
                       <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
