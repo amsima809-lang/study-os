@@ -4,6 +4,7 @@ import { getJSON, type TodayData } from "../api.ts";
 import { formatDate, timeRange } from "../format.ts";
 import { Card, ErrorBox, Loading } from "../components/ui.tsx";
 import { CourseTitle } from "../components/CourseTitle.tsx";
+import Calendar from "../components/Calendar.tsx";
 
 export default function Today() {
   const { t, lang } = useT();
@@ -25,6 +26,8 @@ export default function Today() {
           {formatDate(data.today, lang)} · {t("today.term", { term: data.term })}
         </p>
       </header>
+
+      <Calendar />
 
       <Card>
         <h2 className="font-semibold mb-1" style={{ color: "var(--text-primary)" }}>{t("today.nextExam")}</h2>

@@ -57,6 +57,29 @@ export type ExamsData = {
   clashes: Array<{ date: string; courses: string[] }>;
 };
 
+// ---------- Calendar ----------
+export type CalEvent = {
+  type: "class" | "exam" | "task";
+  course_code: string;
+  name_th: string;
+  name_en: string | null;
+  start_time?: string;
+  end_time?: string;
+  room?: string | null;
+  slot?: string | null;
+  location?: string | null;
+  task_type?: string;
+  description?: string;
+  done?: boolean;
+};
+
+export type CalendarData = {
+  month: string;
+  term: string;
+  today: string;
+  events: Record<string, CalEvent[]>;
+};
+
 export async function getJSON<T>(url: string): Promise<T> {
   const r = await fetch(url);
   if (!r.ok) throw new Error(`${r.status} ${url}`);

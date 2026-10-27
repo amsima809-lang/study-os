@@ -218,6 +218,114 @@ export function createApiRouter(db: DB): Router {
     res.json({ term, classes: weekClasses(db, term) });
   });
 
+  router.get("/calendar", (req, res) => {
+    const month = (req.query.month as string) || bangkokToday().slice(0, 7);
+    const term = currentTermId(db);
+
+    const year = Number(month.slice(0, 4));
+    const mon = Number(month.slice(5, 7));
+    const firstDay = `${month}-01`;
+    const lastDay = new Date(Date.UTC(year, mon, 0)).toISOString().slice(0, 10);
+
+    const classes = weekClasses(db, term);
+    const exams = termExams(db, term);
+
+    type CalEvent = {
+      type: "class" | "exam" | "task";
+      course_code: string;
+      name_th: string;
+      name_en: string | null;
+      start_time?: string;
+      end_time?: string;
+      room?: string | null;
+      slot?: string | null;
+      location?: string | null;
+      task_type?: string;
+      description?: string;
+      done?: boolean;
+    };
+
+    const events: Record<string, CalEvent[]> = {};
+    function push(date: string, ev: CalEvent) {
+      (events[date] ??= []).push(ev);
+    }
+
+    // map weekday-based classes to actual dates in the month
+    const d = new Date(`${firstDay}T00:00:00Z`);
+    while (d.toISOString().slice(0, 10) <= lastDay) {
+      const iso = d.toISOString().slice(0, 10);
+      const wd = d.getUTCDay() === 0 ? 7 : d.getUTCDay(); // 1=Mon..7=Sun
+      for (const c of classes) {
+        if (c.weekday === wd) {
+          push(iso, {
+            type: "class",
+            course_code: c.course_code,
+            name_th: c.name_th,
+            name_en: c.name_en,
+            start_time: c.start_time,
+            end_time: c.end_time,
+            room: c.room,
+          });
+        }
+      }
+      d.setUTCDate(d.getUTCDate() + 1);
+    }
+
+    // exams in this month
+    for (const e of exams) {
+      const eDate = e.datetime_start.slice(0, 10);
+      if (eDate >= firstDay && eDate <= lastDay) {
+        push(eDate, {
+          type: "exam",
+          course_code: e.course_code,
+          name_th: e.name_th,
+          name_en: e.name_en,
+          start_time: e.datetime_start.slice(11, 16),
+          end_time: e.datetime_end.slice(11, 16),
+          slot: e.slot,
+          location: e.location,
+        });
+      }
+    }
+
+    // study tasks in this month (from active plan)
+    const plan = db
+      .prepare("SELECT id FROM study_plans WHERE status = 'active' ORDER BY id DESC LIMIT 1")
+      .get() as { id: number } | undefined;
+    if (plan) {
+      const tasks = db
+        .prepare(
+          `SELECT st.course_code, c.name_th, c.name_en, st.date, st.task_type, st.description, st.done
+           FROM study_tasks st
+           JOIN courses c ON c.code = st.course_code
+           WHERE st.plan_id = ? AND st.date >= ? AND st.date <= ?
+           ORDER BY st.sort_order`,
+        )
+        .all(plan.id, firstDay, lastDay) as Array<{
+        course_code: string;
+        name_th: string;
+        name_en: string | null;
+        date: string;
+        task_type: string;
+        description: string;
+        done: number;
+      }>;
+      for (const t of tasks) {
+        push(t.date, {
+          type: "task",
+          course_code: t.course_code,
+          name_th: t.name_th,
+          name_en: t.name_en,
+          task_type: t.task_type,
+          description: t.description,
+          done: t.done === 1,
+        });
+      }
+    }
+
+    res.json({ month, term, today: bangkokToday(), events });
+  });
+
   router.get("/exams", (_req, res) => {
     const term = currentTermId(db);
     const today = bangkokToday();
