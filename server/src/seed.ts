@@ -134,16 +134,16 @@ const COURSES: CourseSeed[] = [
 ];
 
 // ---------- Plan terms ----------
-const PLAN_TERMS: Array<{ term_id: string; ord: number; max_credits: number }> = [
-  { term_id: "2/69", ord: 0, max_credits: 21 },
-  { term_id: "S/69", ord: 1, max_credits: 9 },
-  { term_id: "1/70", ord: 2, max_credits: 21 },
-  { term_id: "2/70", ord: 3, max_credits: 21 },
-  { term_id: "S/70", ord: 4, max_credits: 9 },
-  { term_id: "1/71", ord: 5, max_credits: 21 },
-  { term_id: "2/71", ord: 6, max_credits: 21 },
-  { term_id: "S/71", ord: 7, max_credits: 9 },
-  { term_id: "1/72", ord: 8, max_credits: 21 },
+const PLAN_TERMS: Array<{ term_id: string; ord: number; max_credits: number; start_date: string | null }> = [
+  { term_id: "2/69", ord: 0, max_credits: 21, start_date: "2026-11-16" },
+  { term_id: "S/69", ord: 1, max_credits: 9, start_date: null },
+  { term_id: "1/70", ord: 2, max_credits: 21, start_date: null },
+  { term_id: "2/70", ord: 3, max_credits: 21, start_date: null },
+  { term_id: "S/70", ord: 4, max_credits: 9, start_date: null },
+  { term_id: "1/71", ord: 5, max_credits: 21, start_date: null },
+  { term_id: "2/71", ord: 6, max_credits: 21, start_date: null },
+  { term_id: "S/71", ord: 7, max_credits: 9, start_date: null },
+  { term_id: "1/72", ord: 8, max_credits: 21, start_date: null },
 ];
 
 // ---------- Plan placeholders (minor / free electives, no codes yet) ----------
@@ -226,7 +226,7 @@ export function seedDatabase(db: DB): void {
     }
 
     const insTerm = db.prepare(
-      "INSERT INTO plan_terms (term_id, ord, max_credits) VALUES (@term_id, @ord, @max_credits)",
+      "INSERT INTO plan_terms (term_id, ord, max_credits, start_date) VALUES (@term_id, @ord, @max_credits, @start_date)",
     );
     for (const t of PLAN_TERMS) insTerm.run(t);
 

@@ -230,6 +230,13 @@ export function createApiRouter(db: DB): Router {
     const classes = weekClasses(db, term);
     const exams = termExams(db, term);
 
+    // term date boundaries: classes run from start_date to day before first exam
+    const termRow = db
+      .prepare("SELECT start_date FROM plan_terms WHERE term_id = ?")
+      .get(term) as { start_date: string | null } | undefined;
+    const termStart = termRow?.start_date ?? null;
+    const firstExamDate = exams.length > 0 ? exams[0].datetime_start.slice(0, 10) : null;
+
     type CalEvent = {
       type: "class" | "exam" | "task";
       course_code: string;
@@ -250,10 +257,12 @@ export function createApiRouter(db: DB): Router {
       (events[date] ??= []).push(ev);
     }
 
-    // map weekday-based classes to actual dates in the month
+    // map weekday-based classes to actual dates in the month (only within term)
     const d = new Date(`${firstDay}T00:00:00Z`);
     while (d.toISOString().slice(0, 10) <= lastDay) {
       const iso = d.toISOString().slice(0, 10);
+      if (termStart && iso < termStart) { d.setUTCDate(d.getUTCDate() + 1); continue; }
+      if (firstExamDate && iso >= firstExamDate) { d.setUTCDate(d.getUTCDate() + 1); continue; }
       const wd = d.getUTCDay() === 0 ? 7 : d.getUTCDay(); // 1=Mon..7=Sun
       for (const c of classes) {
         if (c.weekday === wd) {
