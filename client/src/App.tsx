@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { LanguageProvider, LanguageToggle, useT } from "./i18n.tsx";
 import { getJSON } from "./api.ts";
+import { ThemeProvider, ThemeToggle } from "./components/ui.tsx";
 import Login from "./screens/Login.tsx";
 import Today from "./screens/Today.tsx";
 import Notes from "./screens/Notes.tsx";
@@ -10,86 +11,119 @@ import More from "./screens/More.tsx";
 
 type Tab = "today" | "notes" | "quiz" | "review" | "more";
 
+const TAB_ICONS: Record<Tab, string> = {
+  today: "📅",
+  notes: "📓",
+  quiz: "🎯",
+  review: "🔁",
+  more: "⋯",
+};
+
 function Shell() {
   const { t } = useT();
   const [tab, setTab] = useState<Tab>("today");
 
-  const tabs: Array<{ id: Tab; icon: string }> = [
-    { id: "today", icon: "📅" },
-    { id: "notes", icon: "📓" },
-    { id: "quiz", icon: "🎯" },
-    { id: "review", icon: "🔁" },
-    { id: "more", icon: "⋯" },
-  ];
+  const tabIds: Tab[] = ["today", "notes", "quiz", "review", "more"];
 
   return (
-    <div className="min-h-dvh bg-slate-50 text-slate-900 flex flex-col md:flex-row">
-      {/* ===== SIDEBAR NAV — visible on md+ (iPad landscape / MacBook) ===== */}
+    <div className="min-h-dvh flex flex-col md:flex-row" style={{ backgroundColor: "var(--bg-base)" }}>
+      {/* Sidebar — md+ */}
       <aside
-        className="hidden md:flex flex-col w-56 bg-white border-r border-slate-200 fixed inset-y-0 left-0 z-20"
-        style={{ paddingTop: "env(safe-area-inset-top)" }}
+        className="hidden md:flex flex-col w-56 fixed inset-y-0 left-0 z-20 border-r"
+        style={{
+          backgroundColor: "var(--bg-surface)",
+          borderColor: "var(--border-light)",
+          paddingTop: "env(safe-area-inset-top)",
+        }}
       >
         <div className="px-5 py-4 flex items-center gap-2">
-          <span className="font-bold text-indigo-600 text-lg">{t("app.name")}</span>
+          <span className="text-xl">📚</span>
+          <span className="font-bold text-lg" style={{ color: "var(--accent-text)" }}>
+            {t("app.name")}
+          </span>
         </div>
         <nav className="flex-1 px-3 space-y-1">
-          {tabs.map((tb) => (
+          {tabIds.map((id) => (
             <button
-              key={tb.id}
-              onClick={() => setTab(tb.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                tab === tb.id
-                  ? "bg-indigo-50 text-indigo-600"
-                  : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
-              }`}
+              key={id}
+              onClick={() => setTab(id)}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
+              style={{
+                backgroundColor: tab === id ? "var(--accent-light)" : "transparent",
+                color: tab === id ? "var(--accent-text)" : "var(--text-secondary)",
+              }}
             >
-              <span className="text-lg">{tb.icon}</span>
-              {t(`nav.${tb.id}`)}
+              <span className="text-lg">{TAB_ICONS[id]}</span>
+              {t(`nav.${id}`)}
             </button>
           ))}
         </nav>
-        <div className="px-5 py-3 border-t border-slate-100">
+        <div className="px-5 py-3 border-t flex items-center justify-between" style={{ borderColor: "var(--border-light)" }}>
           <LanguageToggle />
+          <ThemeToggle />
         </div>
       </aside>
 
-      {/* ===== MAIN AREA ===== */}
+      {/* Main area */}
       <div className="flex-1 flex flex-col md:ml-56">
-        {/* top bar — mobile only (md+ uses the sidebar) */}
+        {/* Top bar — mobile */}
         <header
-          className="bg-white shadow-sm sticky top-0 z-10 md:hidden"
-          style={{ paddingTop: "env(safe-area-inset-top)" }}
+          className="sticky top-0 z-10 md:hidden backdrop-blur-md border-b"
+          style={{
+            backgroundColor: "color-mix(in srgb, var(--bg-surface) 85%, transparent)",
+            borderColor: "var(--border-light)",
+            paddingTop: "env(safe-area-inset-top)",
+          }}
         >
           <div className="max-w-3xl mx-auto flex justify-between items-center px-5 py-3">
-            <span className="font-bold text-indigo-600">{t("app.name")}</span>
-            <LanguageToggle />
+            <div className="flex items-center gap-2">
+              <span className="text-lg">📚</span>
+              <span className="font-bold" style={{ color: "var(--accent-text)" }}>{t("app.name")}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <ThemeToggle />
+              <LanguageToggle />
+            </div>
           </div>
         </header>
 
-        {/* screen content — on mobile, clear the fixed bottom nav + iOS home indicator */}
+        {/* Screen content */}
         <main className="flex-1 px-5 py-5 max-w-3xl w-full mx-auto pb-24 md:pb-5">
-          {tab === "today" && <Today />}
-          {tab === "notes" && <Notes />}
-          {tab === "quiz" && <Quiz />}
-          {tab === "review" && <Review />}
-          {tab === "more" && <More />}
+          <div className="animate-fade-in">
+            {tab === "today" && <Today />}
+            {tab === "notes" && <Notes />}
+            {tab === "quiz" && <Quiz />}
+            {tab === "review" && <Review />}
+            {tab === "more" && <More />}
+          </div>
         </main>
 
-        {/* bottom navigation — mobile only */}
+        {/* Bottom nav — mobile */}
         <nav
-          className="fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 flex justify-around max-w-3xl mx-auto z-10 md:hidden"
-          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+          className="fixed bottom-0 inset-x-0 border-t flex justify-around max-w-3xl mx-auto z-10 md:hidden backdrop-blur-md"
+          style={{
+            backgroundColor: "color-mix(in srgb, var(--bg-surface) 90%, transparent)",
+            borderColor: "var(--border-light)",
+            paddingBottom: "env(safe-area-inset-bottom)",
+          }}
         >
-          {tabs.map((tb) => (
+          {tabIds.map((id) => (
             <button
-              key={tb.id}
-              onClick={() => setTab(tb.id)}
-              className={`flex-1 flex flex-col items-center py-2 text-xs gap-0.5 min-h-12 justify-center ${
-                tab === tb.id ? "text-indigo-600 font-semibold" : "text-slate-400"
-              }`}
+              key={id}
+              onClick={() => setTab(id)}
+              className="flex-1 flex flex-col items-center py-2 text-xs gap-0.5 min-h-12 justify-center font-medium transition-colors"
+              style={{
+                color: tab === id ? "var(--accent-text)" : "var(--text-tertiary)",
+              }}
             >
-              <span className="text-lg">{tb.icon}</span>
-              {t(`nav.${tb.id}`)}
+              <span className="text-lg">{TAB_ICONS[id]}</span>
+              {t(`nav.${id}`)}
+              {tab === id && (
+                <span
+                  className="absolute top-0 w-8 h-0.5 rounded-full"
+                  style={{ backgroundColor: "var(--accent)" }}
+                />
+              )}
             </button>
           ))}
         </nav>
@@ -107,15 +141,17 @@ function AuthGate() {
       .catch(() => setAuthed(false));
   }, []);
 
-  if (authed === null) return <div className="min-h-dvh bg-slate-50" />;
+  if (authed === null) return <div className="min-h-dvh" style={{ backgroundColor: "var(--bg-base)" }} />;
   if (!authed) return <Login onAuthed={() => setAuthed(true)} />;
   return <Shell />;
 }
 
 export default function App() {
   return (
-    <LanguageProvider>
-      <AuthGate />
-    </LanguageProvider>
+    <ThemeProvider>
+      <LanguageProvider>
+        <AuthGate />
+      </LanguageProvider>
+    </ThemeProvider>
   );
 }

@@ -19,15 +19,14 @@ export default function Exams() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold text-slate-800">{t("exams.title")}</h1>
+      <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{t("exams.title")}</h1>
 
-      {/* clash banner */}
       {data.clashes.length === 0 ? (
-        <div className="rounded-xl bg-green-50 text-green-700 text-sm px-4 py-2">
+        <div className="rounded-xl text-sm px-4 py-2" style={{ backgroundColor: "var(--success-bg)", color: "var(--success)" }}>
           {t("exams.noClash")}
         </div>
       ) : (
-        <div className="rounded-xl bg-red-50 text-red-700 text-sm px-4 py-2 space-y-1">
+        <div className="rounded-xl text-sm px-4 py-2 space-y-1" style={{ backgroundColor: "var(--danger-bg)", color: "var(--danger)" }}>
           <div className="font-semibold">{t("exams.clash")}</div>
           {data.clashes.map((c, i) => (
             <div key={i}>
@@ -41,7 +40,7 @@ export default function Exams() {
       )}
 
       {data.exams.length === 0 ? (
-        <p className="text-slate-400 text-sm">{t("exams.empty")}</p>
+        <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t("exams.empty")}</p>
       ) : (
         <ul className="space-y-2">
           {data.exams.map((e) => (
@@ -52,14 +51,14 @@ export default function Exams() {
                     code={e.course_code}
                     name_th={e.name_th}
                     name_en={e.name_en}
-                    className="font-medium text-slate-800"
+                    className="font-medium"
                   />
-                  <div className="text-sm text-slate-500">
+                  <div className="text-sm" style={{ color: "var(--text-tertiary)" }}>
                     {formatDate(e.date, lang)}
                     {e.slot ? ` · ${t("exams.slot", { slot: e.slot })}` : ""}
                   </div>
                 </div>
-                <span className="text-indigo-600 text-sm font-semibold whitespace-nowrap">
+                <span className="text-sm font-semibold whitespace-nowrap" style={{ color: "var(--accent-text)" }}>
                   {e.daysLeft === 0 ? t("today.examToday") : t("today.daysLeft", { n: e.daysLeft })}
                 </span>
               </div>

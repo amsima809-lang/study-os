@@ -1,6 +1,92 @@
 @import "tailwindcss";
 
-/* Mobile-first base: comfortable tap targets, no accidental horizontal scroll. */
+/* ── Design tokens ── */
+:root {
+  --font-sans: "Sarabun", system-ui, -apple-system, "Segoe UI", "Noto Sans Thai", sans-serif;
+  --bg-base: #faf8f5;
+  --bg-surface: #ffffff;
+  --bg-surface-hover: #f5f3f0;
+  --bg-accent: #eef2ff;
+  --border: #e8e4df;
+  --border-light: #f0ece7;
+  --text-primary: #2d2a26;
+  --text-secondary: #6b6560;
+  --text-tertiary: #9b9590;
+  --text-inverse: #ffffff;
+  --accent: #5b4fc7;
+  --accent-hover: #4a3fb5;
+  --accent-light: #eef2ff;
+  --accent-text: #5b4fc7;
+  --success: #2d8a56;
+  --success-bg: #ecfdf5;
+  --warning: #b45309;
+  --warning-bg: #fffbeb;
+  --danger: #dc2626;
+  --danger-bg: #fef2f2;
+  --shadow-sm: 0 1px 2px rgba(45, 42, 38, 0.04), 0 1px 3px rgba(45, 42, 38, 0.06);
+  --shadow-md: 0 2px 4px rgba(45, 42, 38, 0.04), 0 4px 12px rgba(45, 42, 38, 0.08);
+  --shadow-lg: 0 4px 6px rgba(45, 42, 38, 0.04), 0 8px 24px rgba(45, 42, 38, 0.10);
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --transition: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg-base: #141318;
+    --bg-surface: #1e1d24;
+    --bg-surface-hover: #28272f;
+    --bg-accent: #252340;
+    --border: #2e2d36;
+    --border-light: #252430;
+    --text-primary: #e8e6f0;
+    --text-secondary: #a09bac;
+    --text-tertiary: #706b7d;
+    --text-inverse: #141318;
+    --accent: #8b7ff0;
+    --accent-hover: #a096f5;
+    --accent-light: #252340;
+    --accent-text: #a096f5;
+    --success: #4ade80;
+    --success-bg: #0d2818;
+    --warning: #fbbf24;
+    --warning-bg: #271d08;
+    --danger: #f87171;
+    --danger-bg: #2a1010;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.2), 0 4px 12px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.2), 0 8px 24px rgba(0, 0, 0, 0.4);
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg-base: #141318;
+  --bg-surface: #1e1d24;
+  --bg-surface-hover: #28272f;
+  --bg-accent: #252340;
+  --border: #2e2d36;
+  --border-light: #252430;
+  --text-primary: #e8e6f0;
+  --text-secondary: #a09bac;
+  --text-tertiary: #706b7d;
+  --text-inverse: #141318;
+  --accent: #8b7ff0;
+  --accent-hover: #a096f5;
+  --accent-light: #252340;
+  --accent-text: #a096f5;
+  --success: #4ade80;
+  --success-bg: #0d2818;
+  --warning: #fbbf24;
+  --warning-bg: #271d08;
+  --danger: #f87171;
+  --danger-bg: #2a1010;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.2), 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.2), 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+/* ── Base styles ── */
 html {
   -webkit-text-size-adjust: 100%;
 }
@@ -8,22 +94,69 @@ html {
 body {
   margin: 0;
   overflow-x: hidden;
-  font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans Thai", sans-serif;
-  /* fill the visual viewport on mobile (avoids the address-bar height jump) */
+  font-family: var(--font-sans);
+  background-color: var(--bg-base);
+  color: var(--text-primary);
   min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color var(--transition), color var(--transition);
 }
 
-/*
- * iOS Safari zooms the page in when you focus a form control whose font-size is
- * below 16px. Keep controls at 16px so tapping an input never zooms the layout.
- */
+/* iOS zoom fix */
 input,
 textarea,
 select {
   font-size: 16px;
+  font-family: var(--font-sans);
 }
 
-/* Let iOS use the momentum scroll inside scrollable panels (e.g. the note pad). */
 * {
   -webkit-overflow-scrolling: touch;
+}
+
+/* ── Focus accessibility (WCAG AA) ── */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── Interactive element transitions ── */
+button,
+a,
+select,
+input {
+  transition: all var(--transition);
+}
+
+/* ── Scrollbar styling (subtle) ── */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+/* ── Utility animation classes ── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 300ms ease-out both;
+}
+
+.animate-slide-up {
+  animation: slideUp 400ms ease-out both;
 }

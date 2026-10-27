@@ -48,7 +48,11 @@ export default function Library() {
   return (
     <div className="space-y-3">
       {view !== "list" && (
-        <button onClick={() => { setView("list"); setSelected(null); }} className="text-sm text-indigo-600">
+        <button
+          onClick={() => { setView("list"); setSelected(null); }}
+          className="text-sm"
+          style={{ color: "var(--accent-text)" }}
+        >
           ← {t("lib.title")}
         </button>
       )}
@@ -77,7 +81,6 @@ export default function Library() {
   );
 }
 
-// ---- Material List ----
 function MaterialList({
   materials, courses, error, onSelect, onReload,
 }: {
@@ -93,10 +96,11 @@ function MaterialList({
   return (
     <>
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-800">{t("lib.title")}</h1>
+        <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{t("lib.title")}</h1>
         <button
           onClick={() => setShowUpload(!showUpload)}
-          className="w-10 h-10 rounded-full bg-indigo-600 text-white text-xl flex items-center justify-center"
+          className="w-10 h-10 rounded-full text-xl flex items-center justify-center"
+          style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
         >
           +
         </button>
@@ -106,7 +110,7 @@ function MaterialList({
       {showUpload && <UploadForm courses={courses} onDone={() => { setShowUpload(false); onReload(); }} />}
 
       {materials.length === 0 ? (
-        <p className="text-slate-400 text-sm text-center py-8">{t("lib.empty")}</p>
+        <p className="text-sm text-center py-8" style={{ color: "var(--text-tertiary)" }}>{t("lib.empty")}</p>
       ) : (
         <ul className="space-y-2">
           {materials.map((m) => (
@@ -116,8 +120,8 @@ function MaterialList({
                   <div className="flex items-center gap-3">
                     <span className="text-xl">{m.file_type === "pdf" ? "📄" : m.file_type === "image" ? "🖼️" : "📝"}</span>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-slate-700 truncate">{m.filename}</p>
-                      <p className="text-xs text-slate-400">
+                      <p className="font-medium truncate" style={{ color: "var(--text-primary)" }}>{m.filename}</p>
+                      <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
                         {m.course_name ?? m.course_code} · {t(`lib.kind.${m.material_kind}`)}
                       </p>
                     </div>
@@ -135,14 +139,20 @@ function MaterialList({
 
 function StatusBadge({ status, pagesDone, totalPages }: { status: string; pagesDone: number; totalPages: number | null }) {
   const { t } = useT();
-  const colors: Record<string, string> = {
-    pending: "bg-slate-100 text-slate-500",
-    processing: "bg-yellow-100 text-yellow-700",
-    done: "bg-green-100 text-green-700",
-    error: "bg-red-100 text-red-600",
+
+  const styles: Record<string, { bg: string; text: string }> = {
+    pending: { bg: "var(--bg-surface-hover)", text: "var(--text-tertiary)" },
+    processing: { bg: "var(--warning-bg)", text: "var(--warning)" },
+    done: { bg: "var(--success-bg)", text: "var(--success)" },
+    error: { bg: "var(--danger-bg)", text: "var(--danger)" },
   };
+  const s = styles[status] ?? styles.pending;
+
   return (
-    <span className={`text-xs px-2 py-0.5 rounded-full ${colors[status] ?? colors.pending}`}>
+    <span
+      className="text-xs px-2 py-0.5 rounded-full"
+      style={{ backgroundColor: s.bg, color: s.text }}
+    >
       {status === "processing" && totalPages
         ? t("lib.pages").replace("{done}", String(pagesDone)).replace("{total}", String(totalPages))
         : t(`lib.status.${status}`)}
@@ -150,7 +160,6 @@ function StatusBadge({ status, pagesDone, totalPages }: { status: string; pagesD
   );
 }
 
-// ---- Upload Form ----
 function UploadForm({ courses, onDone }: { courses: Course[]; onDone: () => void }) {
   const { t } = useT();
   const [courseCode, setCourseCode] = useState("");
@@ -178,15 +187,18 @@ function UploadForm({ courses, onDone }: { courses: Course[]; onDone: () => void
     }
   }
 
+  const selectStyle = { backgroundColor: "var(--bg-surface)", borderColor: "var(--border)", color: "var(--text-primary)" };
+
   return (
     <Card>
       <div className="space-y-3">
-        <h3 className="font-medium text-slate-700">{t("lib.upload")}</h3>
+        <h3 className="font-medium" style={{ color: "var(--text-primary)" }}>{t("lib.upload")}</h3>
         {err && <ErrorBox>{err}</ErrorBox>}
         <select
           value={courseCode}
           onChange={(e) => setCourseCode(e.target.value)}
           className="w-full rounded-lg border p-2 text-sm"
+          style={selectStyle}
         >
           <option value="">{t("lib.selectCourse")}</option>
           {courses.map((c) => (
@@ -199,6 +211,7 @@ function UploadForm({ courses, onDone }: { courses: Course[]; onDone: () => void
           value={kind}
           onChange={(e) => setKind(e.target.value)}
           className="w-full rounded-lg border p-2 text-sm"
+          style={selectStyle}
         >
           {(["textbook", "past_exam", "notes", "other"] as const).map((k) => (
             <option key={k} value={k}>{t(`lib.kind.${k}`)}</option>
@@ -209,11 +222,13 @@ function UploadForm({ courses, onDone }: { courses: Course[]; onDone: () => void
           type="file"
           accept=".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp,.txt"
           className="w-full text-sm"
+          style={{ color: "var(--text-secondary)" }}
         />
         <button
           onClick={handleUpload}
           disabled={!courseCode || uploading}
-          className="w-full rounded-lg bg-indigo-600 text-white py-2 text-sm font-medium disabled:opacity-50"
+          className="w-full rounded-lg py-2 text-sm font-medium disabled:opacity-50"
+          style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
         >
           {uploading ? "กำลังอัปโหลด…" : t("lib.upload")}
         </button>
@@ -222,7 +237,6 @@ function UploadForm({ courses, onDone }: { courses: Course[]; onDone: () => void
   );
 }
 
-// ---- Material Detail ----
 function MaterialDetail({
   material, onViewPages, onReload, onBack,
 }: {
@@ -236,7 +250,6 @@ function MaterialDetail({
   const [err, setErr] = useState("");
   const [parsed, setParsed] = useState<number | null>(null);
 
-  // Poll for progress when processing
   useEffect(() => {
     if (material.upload_status !== "processing") return;
     const iv = setInterval(async () => {
@@ -293,8 +306,8 @@ function MaterialDetail({
   return (
     <div className="space-y-3">
       <Card>
-        <h2 className="font-bold text-slate-800 text-lg truncate">{material.filename}</h2>
-        <div className="flex flex-wrap gap-2 text-xs text-slate-500 mt-1">
+        <h2 className="font-bold text-lg truncate" style={{ color: "var(--text-primary)" }}>{material.filename}</h2>
+        <div className="flex flex-wrap gap-2 text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>
           <span>{material.course_code}</span>
           <span>·</span>
           <span>{t(`lib.kind.${material.material_kind}`)}</span>
@@ -314,7 +327,10 @@ function MaterialDetail({
 
       {err && <ErrorBox>{err}</ErrorBox>}
       {parsed !== null && (
-        <div className="rounded-xl bg-green-50 text-green-700 text-sm px-4 py-3 text-center">
+        <div
+          className="rounded-xl text-sm px-4 py-3 text-center"
+          style={{ backgroundColor: "var(--success-bg)", color: "var(--success)" }}
+        >
           {t("lib.parsedN").replace("{n}", String(parsed))}
         </div>
       )}
@@ -324,7 +340,8 @@ function MaterialDetail({
           <button
             onClick={handleExtract}
             disabled={!!busy}
-            className="rounded-lg bg-indigo-600 text-white py-2 text-sm font-medium disabled:opacity-50"
+            className="rounded-lg py-2 text-sm font-medium disabled:opacity-50"
+            style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
           >
             {busy === "extract" ? t("lib.extracting") : t("lib.extract")}
           </button>
@@ -332,7 +349,8 @@ function MaterialDetail({
         {material.upload_status === "done" && (
           <button
             onClick={onViewPages}
-            className="rounded-lg bg-slate-100 text-slate-700 py-2 text-sm font-medium"
+            className="rounded-lg py-2 text-sm font-medium"
+            style={{ backgroundColor: "var(--bg-surface-hover)", color: "var(--text-primary)" }}
           >
             {t("lib.viewPages")}
           </button>
@@ -341,14 +359,16 @@ function MaterialDetail({
           <button
             onClick={handleParseExam}
             disabled={!!busy}
-            className="rounded-lg bg-amber-500 text-white py-2 text-sm font-medium disabled:opacity-50"
+            className="rounded-lg py-2 text-sm font-medium disabled:opacity-50"
+            style={{ backgroundColor: "var(--warning)", color: "var(--text-inverse)" }}
           >
             {busy === "parse" ? t("lib.parsing") : t("lib.parseExam")}
           </button>
         )}
         <button
           onClick={handleDelete}
-          className="rounded-lg bg-red-50 text-red-600 py-2 text-sm font-medium"
+          className="rounded-lg py-2 text-sm font-medium"
+          style={{ backgroundColor: "var(--danger-bg)", color: "var(--danger)" }}
         >
           {t("lib.delete")}
         </button>
@@ -361,7 +381,6 @@ function MaterialDetail({
   );
 }
 
-// ---- Page Viewer ----
 function PageViewer({ materialId, filename }: { materialId: number; filename: string }) {
   const { t } = useT();
   const [pages, setPages] = useState<MaterialPage[]>([]);
@@ -391,16 +410,18 @@ function PageViewer({ materialId, filename }: { materialId: number; filename: st
 
   if (loading) return <Loading>{t("status.connecting")}</Loading>;
 
+  const inputStyle = { borderColor: "var(--border)", backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" };
+
   return (
     <div className="space-y-3">
-      <h2 className="font-bold text-slate-800">{filename}</h2>
+      <h2 className="font-bold" style={{ color: "var(--text-primary)" }}>{filename}</h2>
       {pages.map((p) => (
         <Card key={p.page_num}>
           <div className="flex items-center justify-between mb-1">
-            <span className="text-sm font-medium text-slate-600">
+            <span className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
               {t("lib.page").replace("{n}", String(p.page_num))}
             </span>
-            <span className="text-xs text-slate-400">
+            <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
               {p.extraction_method ? t(`lib.method.${p.extraction_method}`) : ""}
               {p.confidence ? ` (${Math.round(p.confidence * 100)}%)` : ""}
             </span>
@@ -412,27 +433,30 @@ function PageViewer({ materialId, filename }: { materialId: number; filename: st
                 onChange={(e) => setEditText(e.target.value)}
                 rows={6}
                 className="w-full border rounded-lg p-2 text-sm"
+                style={inputStyle}
               />
               <div className="flex gap-2">
                 <button
                   onClick={() => saveEdit(p.page_num)}
-                  className="text-sm bg-indigo-600 text-white px-3 py-1 rounded-lg"
+                  className="text-sm px-3 py-1 rounded-lg"
+                  style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
                 >
                   {t("lib.saveText")}
                 </button>
-                <button onClick={() => setEditing(null)} className="text-sm text-slate-500">
+                <button onClick={() => setEditing(null)} className="text-sm" style={{ color: "var(--text-tertiary)" }}>
                   ยกเลิก
                 </button>
               </div>
             </div>
           ) : (
             <>
-              <p className="text-sm text-slate-600 whitespace-pre-wrap line-clamp-6">
+              <p className="text-sm whitespace-pre-wrap line-clamp-6" style={{ color: "var(--text-secondary)" }}>
                 {p.extracted_text || "(ไม่มีข้อความ)"}
               </p>
               <button
                 onClick={() => { setEditing(p.page_num); setEditText(p.extracted_text ?? ""); }}
-                className="text-xs text-indigo-600 mt-1"
+                className="text-xs mt-1"
+                style={{ color: "var(--accent-text)" }}
               >
                 {t("lib.editText")}
               </button>
@@ -444,7 +468,6 @@ function PageViewer({ materialId, filename }: { materialId: number; filename: st
   );
 }
 
-// ---- Chapter Manager ----
 function ChapterManager({ courseCode, materialId }: { courseCode: string; materialId: number }) {
   const { t } = useT();
   const [chapters, setChapters] = useState<Chapter[]>([]);
@@ -503,25 +526,27 @@ function ChapterManager({ courseCode, materialId }: { courseCode: string; materi
     <Card>
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="font-medium text-slate-700">{t("chap.title")}</h3>
+          <h3 className="font-medium" style={{ color: "var(--text-primary)" }}>{t("chap.title")}</h3>
           <button
             onClick={suggestChapters}
             disabled={!!busy}
-            className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-lg disabled:opacity-50"
+            className="text-xs px-2 py-1 rounded-lg disabled:opacity-50"
+            style={{ backgroundColor: "var(--accent-light)", color: "var(--accent-text)" }}
           >
             {busy === "suggest" ? t("chap.suggesting") : t("chap.suggest")}
           </button>
         </div>
 
         {suggested && (
-          <div className="space-y-1 bg-indigo-50 rounded-lg p-2">
+          <div className="space-y-1 rounded-lg p-2" style={{ backgroundColor: "var(--accent-light)" }}>
             {suggested.map((s, i) => (
-              <p key={i} className="text-sm text-indigo-700">{s.name}</p>
+              <p key={i} className="text-sm" style={{ color: "var(--accent-text)" }}>{s.name}</p>
             ))}
             <button
               onClick={addSuggested}
               disabled={busy === "add"}
-              className="text-sm bg-indigo-600 text-white px-3 py-1 rounded-lg mt-1"
+              className="text-sm px-3 py-1 rounded-lg mt-1"
+              style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
             >
               {t("chap.addAll")}
             </button>
@@ -529,14 +554,14 @@ function ChapterManager({ courseCode, materialId }: { courseCode: string; materi
         )}
 
         {chapters.length === 0 && !suggested && (
-          <p className="text-sm text-slate-400">{t("chap.empty")}</p>
+          <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t("chap.empty")}</p>
         )}
 
         <ul className="space-y-1">
           {chapters.map((ch) => (
             <li key={ch.id} className="flex items-center justify-between text-sm">
-              <span className="text-slate-700">{ch.name}</span>
-              <button onClick={() => deleteChapter(ch.id)} className="text-xs text-red-400">
+              <span style={{ color: "var(--text-primary)" }}>{ch.name}</span>
+              <button onClick={() => deleteChapter(ch.id)} className="text-xs" style={{ color: "var(--danger)" }}>
                 ×
               </button>
             </li>
@@ -549,12 +574,14 @@ function ChapterManager({ courseCode, materialId }: { courseCode: string; materi
             onChange={(e) => setNewName(e.target.value)}
             placeholder={t("chap.name")}
             className="flex-1 border rounded-lg px-2 py-1 text-sm"
+            style={{ borderColor: "var(--border)", backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}
             onKeyDown={(e) => e.key === "Enter" && addManual()}
           />
           <button
             onClick={addManual}
             disabled={!newName.trim()}
-            className="text-sm bg-slate-100 text-slate-700 px-3 py-1 rounded-lg disabled:opacity-50"
+            className="text-sm px-3 py-1 rounded-lg disabled:opacity-50"
+            style={{ backgroundColor: "var(--bg-surface-hover)", color: "var(--text-primary)" }}
           >
             +
           </button>

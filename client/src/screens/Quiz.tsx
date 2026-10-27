@@ -28,7 +28,7 @@ export default function Quiz() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold text-slate-800">{t("quiz.title")}</h1>
+      <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{t("quiz.title")}</h1>
 
       {phase === "setup" && (
         <Setup
@@ -73,11 +73,10 @@ function Setup({
   const [courseCode, setCourseCode] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  // Material mode state
   const [matCourseCode, setMatCourseCode] = useState("");
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [chapterId, setChapterId] = useState("");
-  const [difficulty, setDifficulty] = useState("0"); // 0 = any
+  const [difficulty, setDifficulty] = useState("0");
   const [qType, setQType] = useState("mixed");
   const [count, setCount] = useState("10");
 
@@ -143,19 +142,27 @@ function Setup({
     { id: "material" as const, label: t("quiz.fromMaterial") },
   ];
 
+  const selectStyle = {
+    backgroundColor: "var(--bg-surface)",
+    borderColor: "var(--border)",
+    color: "var(--text-primary)",
+  };
+
   return (
     <Card>
       <div className="space-y-3">
-        <h2 className="font-semibold text-slate-700">{t("quiz.pickSource")}</h2>
+        <h2 className="font-semibold" style={{ color: "var(--text-primary)" }}>{t("quiz.pickSource")}</h2>
 
         <div className="flex gap-2">
           {modes.map((m) => (
             <button
               key={m.id}
               onClick={() => setMode(m.id)}
-              className={`flex-1 rounded-lg py-2 text-sm font-medium ${
-                mode === m.id ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-500"
-              }`}
+              className="flex-1 rounded-lg py-2 text-sm font-medium transition-colors"
+              style={{
+                backgroundColor: mode === m.id ? "var(--accent)" : "var(--bg-surface-hover)",
+                color: mode === m.id ? "var(--text-inverse)" : "var(--text-tertiary)",
+              }}
             >
               {m.label}
             </button>
@@ -166,7 +173,8 @@ function Setup({
           <select
             value={noteId}
             onChange={(e) => setNoteId(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 bg-white text-sm"
+            className="w-full rounded-lg border px-3 py-2 text-sm"
+            style={selectStyle}
           >
             <option value="">{t("quiz.selectNote")}</option>
             {(notes ?? []).map((n) => (
@@ -181,7 +189,8 @@ function Setup({
           <select
             value={courseCode}
             onChange={(e) => setCourseCode(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 bg-white text-sm"
+            className="w-full rounded-lg border px-3 py-2 text-sm"
+            style={selectStyle}
           >
             <option value="">{t("quiz.selectCourse")}</option>
             {courses.map(([code, name]) => (
@@ -197,7 +206,8 @@ function Setup({
             <select
               value={matCourseCode}
               onChange={(e) => { setMatCourseCode(e.target.value); setChapterId(""); }}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 bg-white text-sm"
+              className="w-full rounded-lg border px-3 py-2 text-sm"
+              style={selectStyle}
             >
               <option value="">{t("quiz.selectCourse")}</option>
               {allCourses.map((c) => (
@@ -208,7 +218,8 @@ function Setup({
               <select
                 value={chapterId}
                 onChange={(e) => setChapterId(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 bg-white text-sm"
+                className="w-full rounded-lg border px-3 py-2 text-sm"
+                style={selectStyle}
               >
                 <option value="">{t("quiz.selectChapter")}</option>
                 {chapters.map((ch) => (
@@ -218,8 +229,8 @@ function Setup({
             )}
             <div className="grid grid-cols-3 gap-2">
               <div>
-                <label className="text-xs text-slate-500">{t("quiz.difficulty")}</label>
-                <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)} className="w-full rounded-lg border px-2 py-1 text-sm">
+                <label className="text-xs" style={{ color: "var(--text-tertiary)" }}>{t("quiz.difficulty")}</label>
+                <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)} className="w-full rounded-lg border px-2 py-1 text-sm" style={selectStyle}>
                   <option value="0">ทุกระดับ</option>
                   <option value="1">{t("quiz.diff.1")}</option>
                   <option value="2">{t("quiz.diff.2")}</option>
@@ -227,16 +238,16 @@ function Setup({
                 </select>
               </div>
               <div>
-                <label className="text-xs text-slate-500">{t("quiz.format")}</label>
-                <select value={qType} onChange={(e) => setQType(e.target.value)} className="w-full rounded-lg border px-2 py-1 text-sm">
+                <label className="text-xs" style={{ color: "var(--text-tertiary)" }}>{t("quiz.format")}</label>
+                <select value={qType} onChange={(e) => setQType(e.target.value)} className="w-full rounded-lg border px-2 py-1 text-sm" style={selectStyle}>
                   <option value="mixed">{t("quiz.format.mixed")}</option>
                   <option value="mcq">{t("quiz.format.mcq")}</option>
                   <option value="short">{t("quiz.format.short")}</option>
                 </select>
               </div>
               <div>
-                <label className="text-xs text-slate-500">{t("quiz.count")}</label>
-                <select value={count} onChange={(e) => setCount(e.target.value)} className="w-full rounded-lg border px-2 py-1 text-sm">
+                <label className="text-xs" style={{ color: "var(--text-tertiary)" }}>{t("quiz.count")}</label>
+                <select value={count} onChange={(e) => setCount(e.target.value)} className="w-full rounded-lg border px-2 py-1 text-sm" style={selectStyle}>
                   {[5, 10, 15, 20].map((n) => (
                     <option key={n} value={n}>{n}</option>
                   ))}
@@ -248,11 +259,15 @@ function Setup({
 
         {error && <ErrorBox>{error}</ErrorBox>}
 
-        <button onClick={start} className="w-full bg-indigo-600 text-white font-medium rounded-lg py-2">
+        <button
+          onClick={start}
+          className="w-full font-medium rounded-lg py-2"
+          style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
+        >
           {t("quiz.start")}
         </button>
 
-        <p className="text-xs text-center text-amber-600">{t("quiz.disclaimer")}</p>
+        <p className="text-xs text-center" style={{ color: "var(--warning)" }}>{t("quiz.disclaimer")}</p>
       </div>
     </Card>
   );
@@ -310,21 +325,22 @@ function Runner({
   return (
     <Card>
       <div className="space-y-3">
-        <div className="text-xs text-slate-400">
+        <div className="text-xs" style={{ color: "var(--text-tertiary)" }}>
           {t("quiz.question", { n: idx + 1, total: questions.length })}
           {q.topic ? ` · ${q.topic}` : ""}
         </div>
-        <p className="font-medium text-slate-800">{q.question}</p>
+        <p className="font-medium" style={{ color: "var(--text-primary)" }}>{q.question}</p>
 
-        {/* answer input */}
         {q.type === "mcq" ? (
           <div className="space-y-2">
             {q.choices.map((c, i) => (
               <label
                 key={i}
-                className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer ${
-                  answer === c ? "border-indigo-400 bg-indigo-50" : "border-slate-200"
-                } ${answered ? "opacity-70" : ""}`}
+                className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer ${answered ? "opacity-70" : ""}`}
+                style={{
+                  borderColor: answer === c ? "var(--accent)" : "var(--border)",
+                  backgroundColor: answer === c ? "var(--accent-light)" : "transparent",
+                }}
               >
                 <input
                   type="radio"
@@ -340,61 +356,65 @@ function Runner({
           </div>
         ) : (
           <div>
-            <span className="text-slate-500 text-sm">{t("quiz.yourAnswer")}</span>
+            <span className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t("quiz.yourAnswer")}</span>
             <textarea
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
               disabled={answered}
               rows={3}
               placeholder={t("quiz.answerPlaceholder")}
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm disabled:bg-slate-50"
+              className="mt-1 w-full rounded-lg border px-3 py-2 text-sm disabled:opacity-60"
+              style={{ borderColor: "var(--border)", backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}
             />
           </div>
         )}
 
         {error && <ErrorBox>{error}</ErrorBox>}
 
-        {/* result (revealed only after submitting) */}
         {answered && result && (
           <div className="space-y-2 pt-1">
             <div className="flex items-center gap-2">
               <ScoreBadge score={result.score} />
-              <span className="text-sm text-slate-600">{result.feedback}</span>
+              <span className="text-sm" style={{ color: "var(--text-secondary)" }}>{result.feedback}</span>
             </div>
-            <div className="text-sm bg-slate-50 rounded-lg px-3 py-2">
-              <span className="text-slate-400">{t("quiz.modelAnswer")}: </span>
-              <span className="text-slate-700">{result.modelAnswer}</span>
+            <div className="text-sm rounded-lg px-3 py-2" style={{ backgroundColor: "var(--bg-surface-hover)" }}>
+              <span style={{ color: "var(--text-tertiary)" }}>{t("quiz.modelAnswer")}: </span>
+              <span style={{ color: "var(--text-primary)" }}>{result.modelAnswer}</span>
             </div>
             {result.explanation && (
-              <div className="text-sm bg-blue-50 rounded-lg px-3 py-2">
-                <span className="text-blue-500 text-xs font-medium">{t("quiz.explanation")}: </span>
-                <span className="text-slate-700">{result.explanation}</span>
+              <div className="text-sm rounded-lg px-3 py-2" style={{ backgroundColor: "var(--accent-light)" }}>
+                <span className="text-xs font-medium" style={{ color: "var(--accent-text)" }}>{t("quiz.explanation")}: </span>
+                <span style={{ color: "var(--text-primary)" }}>{result.explanation}</span>
               </div>
             )}
             {result.sourceRef && (
-              <div className="text-xs text-slate-400">
+              <div className="text-xs" style={{ color: "var(--text-tertiary)" }}>
                 {t("quiz.source")}:
                 {result.sourceRef.chapter_name && ` ${t("quiz.sourceChapter").replace("{name}", result.sourceRef.chapter_name)}`}
                 {result.sourceRef.source_page && ` ${t("quiz.sourcePage").replace("{page}", String(result.sourceRef.source_page))}`}
               </div>
             )}
             {result.flashcardCreated && (
-              <div className="text-xs text-amber-600">{t("quiz.flashcardMade")}</div>
+              <div className="text-xs" style={{ color: "var(--warning)" }}>{t("quiz.flashcardMade")}</div>
             )}
           </div>
         )}
 
-        {/* actions */}
         {!answered ? (
           <button
             onClick={submit}
             disabled={!canSubmit}
-            className="w-full bg-indigo-600 text-white font-medium rounded-lg py-2 disabled:opacity-40"
+            className="w-full font-medium rounded-lg py-2 disabled:opacity-40"
+            style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
           >
             {t("quiz.submit")}
           </button>
         ) : (
-          <button onClick={next} className="w-full bg-slate-800 text-white font-medium rounded-lg py-2">
+          <button
+            onClick={next}
+            className="w-full font-medium rounded-lg py-2"
+            style={{ backgroundColor: "var(--text-primary)", color: "var(--text-inverse)" }}
+          >
             {idx + 1 >= questions.length ? t("quiz.finish") : t("quiz.next")}
           </button>
         )}
@@ -404,8 +424,13 @@ function Runner({
 }
 
 function ScoreBadge({ score }: { score: number }) {
-  const color = score === 2 ? "bg-green-100 text-green-700" : score === 1 ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700";
-  return <span className={`text-sm font-bold rounded-full px-2 py-0.5 ${color}`}>{score}/2</span>;
+  const bg = score === 2 ? "var(--success-bg)" : score === 1 ? "var(--warning-bg)" : "var(--danger-bg)";
+  const fg = score === 2 ? "var(--success)" : score === 1 ? "var(--warning)" : "var(--danger)";
+  return (
+    <span className="text-sm font-bold rounded-full px-2 py-0.5" style={{ backgroundColor: bg, color: fg }}>
+      {score}/2
+    </span>
+  );
 }
 
 function Summary({
@@ -426,14 +451,15 @@ function Summary({
     <Card>
       <div className="text-center space-y-2 py-4">
         <div className="text-4xl">🎯</div>
-        <h2 className="text-xl font-bold text-slate-800">{t("quiz.doneTitle")}</h2>
-        <p className="text-indigo-600 font-semibold text-lg">
+        <h2 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>{t("quiz.doneTitle")}</h2>
+        <p className="font-semibold text-lg" style={{ color: "var(--accent-text)" }}>
           {t("quiz.totalScore", { score: total, max })}
         </p>
-        <p className="text-sm text-slate-500">{t("quiz.cardsMade", { n: cards })}</p>
+        <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t("quiz.cardsMade", { n: cards })}</p>
         <button
           onClick={onAgain}
-          className="mt-3 bg-indigo-600 text-white font-medium rounded-lg py-2 px-6"
+          className="mt-3 font-medium rounded-lg py-2 px-6"
+          style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
         >
           {t("quiz.again")}
         </button>

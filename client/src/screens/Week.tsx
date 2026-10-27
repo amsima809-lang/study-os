@@ -17,7 +17,6 @@ export default function Week() {
   if (error) return <ErrorBox>{t("status.error")}</ErrorBox>;
   if (!data) return <Loading>{t("status.connecting")}</Loading>;
 
-  // group classes by weekday (1..7)
   const byDay = new Map<number, ClassSession[]>();
   for (const c of data.classes) {
     const list = byDay.get(c.weekday) ?? [];
@@ -28,14 +27,14 @@ export default function Week() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold text-slate-800">{t("week.title")}</h1>
+      <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{t("week.title")}</h1>
 
       {days.length === 0 ? (
-        <p className="text-slate-400 text-sm">{t("week.empty")}</p>
+        <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t("week.empty")}</p>
       ) : (
         days.map((wd) => (
           <Card key={wd}>
-            <h2 className="font-semibold text-indigo-600 mb-2">{weekdayName(wd, lang)}</h2>
+            <h2 className="font-semibold mb-2" style={{ color: "var(--accent-text)" }}>{weekdayName(wd, lang)}</h2>
             <ul className="space-y-2">
               {byDay.get(wd)!.map((c) => (
                 <li key={c.course_code} className="flex justify-between text-sm gap-2">
@@ -43,9 +42,9 @@ export default function Week() {
                     code={c.course_code}
                     name_th={c.name_th}
                     name_en={c.name_en}
-                    className="font-medium text-slate-800"
+                    className="font-medium"
                   />
-                  <span className="text-slate-500 text-right whitespace-nowrap">
+                  <span className="text-right whitespace-nowrap" style={{ color: "var(--text-tertiary)" }}>
                     {timeRange(c.start_time, c.end_time)}
                     {c.room ? ` · ${c.room}` : ""}
                   </span>

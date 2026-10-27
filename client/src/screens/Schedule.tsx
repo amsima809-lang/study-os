@@ -15,9 +15,11 @@ export default function Schedule() {
           <button
             key={v}
             onClick={() => setView(v)}
-            className={`flex-1 rounded-lg py-2 text-sm font-medium ${
-              view === v ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-500"
-            }`}
+            className="flex-1 rounded-lg py-2 text-sm font-medium transition-colors"
+            style={{
+              backgroundColor: view === v ? "var(--accent)" : "var(--bg-surface-hover)",
+              color: view === v ? "var(--text-inverse)" : "var(--text-tertiary)",
+            }}
           >
             {t(v === "week" ? "sched.week" : "sched.exams")}
           </button>

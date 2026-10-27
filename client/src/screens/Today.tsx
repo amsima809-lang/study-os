@@ -20,15 +20,14 @@ export default function Today() {
   return (
     <div className="space-y-4">
       <header>
-        <h1 className="text-2xl font-bold text-slate-800">{t("today.title")}</h1>
-        <p className="text-slate-500 text-sm">
+        <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{t("today.title")}</h1>
+        <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>
           {formatDate(data.today, lang)} · {t("today.term", { term: data.term })}
         </p>
       </header>
 
-      {/* next exam countdown */}
       <Card>
-        <h2 className="font-semibold text-slate-700 mb-1">{t("today.nextExam")}</h2>
+        <h2 className="font-semibold mb-1" style={{ color: "var(--text-primary)" }}>{t("today.nextExam")}</h2>
         {data.nextExam ? (
           <div className="flex items-center justify-between">
             <div>
@@ -36,26 +35,25 @@ export default function Today() {
                 code={data.nextExam.course_code}
                 name_th={data.nextExam.name_th}
                 name_en={data.nextExam.name_en}
-                className="font-medium text-slate-800"
+                className="font-medium"
               />
-              <div className="text-sm text-slate-500">{formatDate(data.nextExam.date, lang)}</div>
+              <div className="text-sm" style={{ color: "var(--text-tertiary)" }}>{formatDate(data.nextExam.date, lang)}</div>
             </div>
-            <span className="text-indigo-600 font-semibold">
+            <span className="font-semibold" style={{ color: "var(--accent-text)" }}>
               {data.nextExam.daysLeft === 0
                 ? t("today.examToday")
                 : t("today.daysLeft", { n: data.nextExam.daysLeft })}
             </span>
           </div>
         ) : (
-          <p className="text-slate-400 text-sm">{t("today.noExam")}</p>
+          <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t("today.noExam")}</p>
         )}
       </Card>
 
-      {/* today's classes */}
       <Card>
-        <h2 className="font-semibold text-slate-700 mb-2">{t("today.classes")}</h2>
+        <h2 className="font-semibold mb-2" style={{ color: "var(--text-primary)" }}>{t("today.classes")}</h2>
         {data.classes.length === 0 ? (
-          <p className="text-slate-400 text-sm">{t("today.noClasses")}</p>
+          <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t("today.noClasses")}</p>
         ) : (
           <ul className="space-y-2">
             {data.classes.map((c) => (
@@ -64,9 +62,9 @@ export default function Today() {
                   code={c.course_code}
                   name_th={c.name_th}
                   name_en={c.name_en}
-                  className="font-medium text-slate-800"
+                  className="font-medium"
                 />
-                <span className="text-slate-500 text-right whitespace-nowrap">
+                <span className="text-right whitespace-nowrap" style={{ color: "var(--text-tertiary)" }}>
                   {timeRange(c.start_time, c.end_time)}
                   {c.room ? ` · ${c.room}` : ""}
                 </span>
@@ -76,21 +74,19 @@ export default function Today() {
         )}
       </Card>
 
-      {/* flashcards due */}
       <Card>
         <div className="flex justify-between items-center">
-          <h2 className="font-semibold text-slate-700">{t("today.review")}</h2>
-          <span className="text-indigo-600 font-semibold">
+          <h2 className="font-semibold" style={{ color: "var(--text-primary)" }}>{t("today.review")}</h2>
+          <span className="font-semibold" style={{ color: "var(--accent-text)" }}>
             {t("today.cards", { n: data.dueFlashcards })}
           </span>
         </div>
       </Card>
 
-      {/* study targets */}
       <Card>
         <div className="flex justify-between items-baseline mb-2">
-          <h2 className="font-semibold text-slate-700">{t("today.targets")}</h2>
-          <span className="text-xs text-slate-400">
+          <h2 className="font-semibold" style={{ color: "var(--text-primary)" }}>{t("today.targets")}</h2>
+          <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
             {t("today.weekTarget", { h: data.studyTargets.weeklyTarget })}
           </span>
         </div>
@@ -102,11 +98,11 @@ export default function Today() {
                   code={c.code}
                   name_th={c.name_th}
                   name_en={c.name_en}
-                  className="font-medium text-slate-800"
+                  className="font-medium"
                 />
-                <span className="text-slate-700 whitespace-nowrap">{t("today.perDay", { h: c.dailyHours })}</span>
+                <span className="whitespace-nowrap" style={{ color: "var(--text-primary)" }}>{t("today.perDay", { h: c.dailyHours })}</span>
               </div>
-              <div className="flex justify-between text-xs text-slate-400">
+              <div className="flex justify-between text-xs" style={{ color: "var(--text-tertiary)" }}>
                 <span>{t(`diff.${c.difficulty}`)}</span>
                 <span>{t("today.perWeek", { h: c.weeklyHours })}</span>
               </div>

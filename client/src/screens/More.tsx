@@ -11,7 +11,6 @@ import StudyPlan from "./StudyPlan.tsx";
 
 type Sub = "schedule" | "stats" | "planner" | "mock" | "library" | "weakness" | "studyplan";
 
-/** Secondary-screen hub, so the bottom nav stays small as features grow. */
 export default function More() {
   const { t } = useT();
   const [sub, setSub] = useState<Sub | null>(null);
@@ -29,8 +28,12 @@ export default function More() {
   if (sub) {
     return (
       <div className="space-y-3">
-        <button onClick={() => setSub(null)} className="text-sm text-indigo-600">
-          {t("more.back")}
+        <button
+          onClick={() => setSub(null)}
+          className="text-sm font-medium transition-colors"
+          style={{ color: "var(--accent-text)" }}
+        >
+          ← {t("more.back")}
         </button>
         {sub === "schedule" && <Schedule />}
         {sub === "stats" && <Stats />}
@@ -44,18 +47,27 @@ export default function More() {
   }
 
   return (
-    <div className="space-y-3">
-      <h1 className="text-2xl font-bold text-slate-800">{t("more.title")}</h1>
+    <div className="space-y-4">
+      <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>
+        {t("more.title")}
+      </h1>
       <ul className="space-y-2">
-        {items.map((it) => (
-          <li key={it.id}>
+        {items.map((it, i) => (
+          <li key={it.id} className="animate-fade-in" style={{ animationDelay: `${i * 40}ms` }}>
             <button
               onClick={() => setSub(it.id)}
-              className="w-full flex items-center gap-3 rounded-xl bg-white shadow px-4 py-3 text-left"
+              className="w-full flex items-center gap-3 rounded-2xl border px-4 py-3.5 text-left transition-all active:scale-[0.99]"
+              style={{
+                backgroundColor: "var(--bg-surface)",
+                borderColor: "var(--border-light)",
+                boxShadow: "var(--shadow-sm)",
+              }}
             >
               <span className="text-xl">{it.icon}</span>
-              <span className="font-medium text-slate-700">{t(`more.${it.id}`)}</span>
-              <span className="ml-auto text-slate-300">›</span>
+              <span className="font-medium" style={{ color: "var(--text-primary)" }}>
+                {t(`more.${it.id}`)}
+              </span>
+              <span className="ml-auto" style={{ color: "var(--text-tertiary)" }}>›</span>
             </button>
           </li>
         ))}
@@ -70,7 +82,8 @@ export default function More() {
           }
           window.location.reload();
         }}
-        className="w-full text-slate-400 text-sm py-3 mt-2"
+        className="w-full text-sm py-3 mt-2 transition-colors"
+        style={{ color: "var(--text-tertiary)" }}
       >
         {t("auth.logout")}
       </button>

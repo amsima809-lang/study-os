@@ -38,7 +38,7 @@ export function CourseTitle({ code, name_th, name_en, className, secondaryClassN
         {primary}
       </span>
       {secondary && secondary !== primary && (
-        <span className={secondaryClassName ?? "block text-xs text-slate-400 font-normal mt-0.5"}>
+        <span className={secondaryClassName ?? "block text-xs font-normal mt-0.5"} style={{ color: "var(--text-tertiary)" }}>
           {secondary}
         </span>
       )}
