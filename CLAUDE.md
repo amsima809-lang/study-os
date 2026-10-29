@@ -1,8 +1,8 @@
 # CLAUDE.md — StudyOS project rules
 
-Personal, single-user, mobile-first study system for a Bachelor of Science in
-Psychology (Industrial & Organizational major) at Ramkhamhaeng University.
-Starts semester 2/2569 (Nov 2026), target graduation ~Oct 2572.
+Personal, single-user, mobile-first study system for a Bachelor of Business
+Administration in Marketing at Ramkhamhaeng University.
+Starts semester 2/2569 (Nov 2026), target graduation ~Oct 2573.
 
 ## Working rules (do not break these)
 1. Work in **phases**. At the end of each phase: run build + typecheck + tests,
@@ -36,9 +36,9 @@ Starts semester 2/2569 (Nov 2026), target graduation ~Oct 2572.
   bilingual: `<CourseTitle>` shows "(CODE) primary" + the other language faint,
   switching with the UI language. name_en values in `seed.ts` are the OFFICIAL
   RU catalog names (provided by the student).
-- Seed = full official catalog (73 courses, including ones not in the plan) with
+- Seed = full official catalog (87 courses, including ones not in the plan) with
   `choose_group` ("pick N of" groups in the `course_groups` table). The plan is
-  the courses that carry a `term` (+ minor/free placeholders) = 138 credits.
+  the courses that carry a `term` (+ elective/free placeholders) = 132 credits.
 - Notes input: type, OR a full drawing pad (HandwritingPad — pen / translucent
   highlighter / eraser, 5 colors, 3 widths, undo/redo, clear, zoom 50–400%,
   expand, add/remove page (1–10, non-destructive); vector strokes exported as one JPEG),

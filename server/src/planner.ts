@@ -7,17 +7,13 @@ import type { DB } from "./db.js";
 
 export const CATEGORY_REQUIRED: Record<string, number> = {
   GE: 30,
-  FOUNDATION: 45,
-  MAJOR_REQ: 30,
-  MAJOR_ELEC: 9,
-  MINOR: 18,
+  CORE: 42,
+  MAJOR_REQ: 33,
+  MAJOR_ELEC: 21,
   FREE: 6,
 };
 
-const TOTAL_REQUIRED = 138;
-
-const REQUIRED_FOUNDATION = ["PSY2005", "PSY2009", "PSY3001", "PSY3002", "PSY3003", "PSY3004"];
-const REQUIRED_MAJOR = ["PSY2401", "PSY2402", "PSY2404", "PSY3401", "PSY3402", "PSY3403", "PSY4401", "PSY4405"];
+const TOTAL_REQUIRED = 132;
 
 type EnrollRow = { course_code: string; status: string; category: string; credits: number; grade: string | null };
 type GradeScale = { grade: string; points: number };
@@ -75,26 +71,18 @@ export type Rule = { id: string; ok: boolean; detail: string };
 export function computeInternship(db: DB): { eligible: boolean; rules: Rule[] } {
   const rows = enrollments(db);
   const passed = rows.filter((r) => r.status === "PASSED");
-  const passedCodes = new Set(passed.map((r) => r.course_code));
   const creditsIn = (cat: string) =>
     passed.filter((r) => r.category === cat).reduce((s, r) => s + r.credits, 0);
 
   const totalPassed = passed.reduce((s, r) => s + r.credits, 0);
-  const foundationCredits = creditsIn("FOUNDATION");
-  const majorElecCount = passed.filter((r) => r.category === "MAJOR_ELEC").length;
-  const minorCredits = creditsIn("MINOR");
-  const freeCredits = creditsIn("FREE");
-
-  const foundationCoreOk = REQUIRED_FOUNDATION.every((c) => passedCodes.has(c));
-  const majorCount = REQUIRED_MAJOR.filter((c) => passedCodes.has(c)).length;
 
   const rules: Rule[] = [
-    { id: "credits", ok: totalPassed >= 108, detail: `${totalPassed}/108` },
-    { id: "foundation", ok: foundationCredits >= 39 && foundationCoreOk, detail: `${foundationCredits}/39` },
-    { id: "major", ok: majorCount === REQUIRED_MAJOR.length, detail: `${majorCount}/${REQUIRED_MAJOR.length}` },
-    { id: "elective", ok: majorElecCount >= 3, detail: `${majorElecCount}/3` },
-    { id: "minor", ok: minorCredits >= 9, detail: `${minorCredits}/9` },
-    { id: "free", ok: freeCredits >= 6, detail: `${freeCredits}/6` },
+    { id: "credits", ok: totalPassed >= 132, detail: `${totalPassed}/132` },
+    { id: "ge", ok: creditsIn("GE") >= 30, detail: `${creditsIn("GE")}/30` },
+    { id: "core", ok: creditsIn("CORE") >= 42, detail: `${creditsIn("CORE")}/42` },
+    { id: "major_req", ok: creditsIn("MAJOR_REQ") >= 33, detail: `${creditsIn("MAJOR_REQ")}/33` },
+    { id: "major_elec", ok: creditsIn("MAJOR_ELEC") >= 21, detail: `${creditsIn("MAJOR_ELEC")}/21` },
+    { id: "free", ok: creditsIn("FREE") >= 6, detail: `${creditsIn("FREE")}/6` },
   ];
 
   return { eligible: rules.every((r) => r.ok), rules };

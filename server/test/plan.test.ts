@@ -31,9 +31,9 @@ beforeAll(() => {
 });
 
 describe("Phase 1 — plan integrity", () => {
-  it("total planned credits = 138", () => {
+  it("total planned credits = 132", () => {
     const total = planItemsWithCredits(db).reduce((sum, r) => sum + r.credits, 0);
-    expect(total).toBe(138);
+    expect(total).toBe(132);
   });
 
   it("every prerequisite is scheduled in an earlier term than the course that needs it", () => {
@@ -102,8 +102,7 @@ describe("Phase 1 — plan integrity", () => {
 });
 
 describe("Phase 1 — PLANNED credits by category", () => {
-  it("matches the curriculum structure (GE30/FND45/REQ30/ELEC9/MINOR18/FREE6)", () => {
-    // Real planned courses grouped by their category.
+  it("matches the marketing curriculum structure (GE30/CORE42/REQ33/ELEC21/FREE6)", () => {
     const rows = db
       .prepare(
         `SELECT c.category AS category, SUM(c.credits) AS credits
@@ -113,13 +112,12 @@ describe("Phase 1 — PLANNED credits by category", () => {
       .all() as Array<{ category: string; credits: number }>;
     const byCat = Object.fromEntries(rows.map((r) => [r.category, r.credits]));
     expect(byCat.GE).toBe(30);
-    expect(byCat.FOUNDATION).toBe(45);
-    expect(byCat.MAJOR_REQ).toBe(30);
-    expect(byCat.MAJOR_ELEC).toBe(9);
+    expect(byCat.CORE).toBe(42);
+    expect(byCat.MAJOR_REQ).toBe(33);
 
-    // Placeholders carry the minor / free-elective credits (3 each).
-    const minor = (
-      db.prepare("SELECT COUNT(*) n FROM plan_items WHERE placeholder_label LIKE 'วิชาโท%'").get() as {
+    // Placeholders carry the elective / free-elective credits (3 each).
+    const elec = (
+      db.prepare("SELECT COUNT(*) n FROM plan_items WHERE placeholder_label LIKE 'เอกเลือก%'").get() as {
         n: number;
       }
     ).n;
@@ -128,7 +126,7 @@ describe("Phase 1 — PLANNED credits by category", () => {
         n: number;
       }
     ).n;
-    expect(minor * 3).toBe(18);
+    expect(elec * 3).toBe(21);
     expect(free * 3).toBe(6);
   });
 });

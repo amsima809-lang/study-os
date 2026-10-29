@@ -41,9 +41,11 @@ function runMigrations(db: DB): void {
     .sort();
 
   const record = db.prepare("INSERT INTO _migrations (name, applied_at) VALUES (?, ?)");
+  const pending = files.filter((f) => !applied.has(f));
+  if (pending.length === 0) return;
 
-  for (const file of files) {
-    if (applied.has(file)) continue;
+  db.pragma("foreign_keys = OFF");
+  for (const file of pending) {
     const sql = readFileSync(`${MIGRATIONS_DIR}/${file}`, "utf8");
     const tx = db.transaction(() => {
       db.exec(sql);
@@ -52,4 +54,5 @@ function runMigrations(db: DB): void {
     tx();
     console.log(`[StudyOS] migration applied: ${file}`);
   }
+  db.pragma("foreign_keys = ON");
 }

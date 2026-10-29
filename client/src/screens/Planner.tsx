@@ -319,7 +319,7 @@ function WhatIfTab({ gradeScale, currentGpa }: { gradeScale: PlanGradeScale[]; c
                 type="text"
                 value={entry.course_code}
                 onChange={(e) => updateEntry(i, "course_code", e.target.value.toUpperCase())}
-                placeholder="PSY2005"
+                placeholder="MKT2101"
                 className="flex-1 text-sm border rounded px-2 py-1.5"
                 style={inputStyle}
               />
