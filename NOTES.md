@@ -1,6 +1,6 @@
 # StudyOS — สรุปสถานะโปรเจกต์
 
-อัปเดตล่าสุด: 2026-10-26
+อัปเดตล่าสุด: 2026-11-02
 
 ---
 
@@ -24,14 +24,10 @@
 - คะแนนความชำนาญรายบท (chapter mastery)
 - หน้าจุดอ่อน (Weakness summary) พร้อมกราฟ
 
----
-
-## ทำค้างไว้ (In Progress)
-
-### Phase 3 — วางแผนอ่านย้อนจากวันสอบ (Study Planner)
-- **เสร็จแล้ว**: migration 007 + studyplan.ts (backend algorithm + router)
-- **ยังไม่ได้ทำ**: mount router ใน index.ts, frontend (StudyPlan screen), i18n, wiring เข้า More hub, ทดสอบ
-- **ส่งต่อไปทำใน session แยก**
+### Phase 12 — Study Planner (เสร็จแล้ว)
+- วางแผนอ่านย้อนจากวันสอบ (backward scheduling)
+- daily tasks + auto-reschedule + ICS export
+- backend + frontend + wired into More hub
 
 ### Phase 13 — สอบจำลองอัปเกรด (เสร็จแล้ว)
 - ตั้งค่าจำนวนข้อ/เวลา/เลือกบท ก่อนเริ่มสอบ
@@ -45,35 +41,34 @@
 ### Phase 14 — ติดตาม GPA / หน่วยกิต / แผนจบ (เสร็จแล้ว)
 - เกรดเฉลี่ยสะสม (GPA) + เกรดเฉลี่ยรายเทอม
 - เลือกเกรดรายวิชา (dropdown) เมื่อสถานะ = ผ่าน
-- ความเร็วจบ: กำลังดี / ค่อนข้างหนัก / ต้องเร่ง (คำนวณจากหน่วยกิตที่เหลือ / เทอมที่เหลือ)
+- ความเร็วจบ: กำลังดี / ค่อนข้างหนัก / ต้องเร่ง
 - ลองคำนวณ "ถ้าได้เกรด..." (what-if calculator)
-- เกณฑ์ให้เกรด (grade scale) แก้ไขได้ (user-editable, ไม่ hardcode เป็นกฎม.ราม)
-- 3 แท็บ: แผนการเรียน / ลองคำนวณ / เกณฑ์ให้เกรด
+- เกณฑ์ให้เกรด (grade scale) แก้ไขได้
 
-### รอคิว (Planned)
+---
+
+## สิ่งที่เปลี่ยนรอบนี้ (2026-11-02)
+
+### เปลี่ยนสาขาจากจิตวิทยามาเป็นการตลาด (B.B.A.)
+- ลบวิชา PSY ทั้งหมด เปลี่ยนเป็นหลักสูตรการตลาด ม.รามคำแหง (87 วิชา, 132 หน่วยกิต)
+- แผน 8 เทอม: GE 30 + แกนธุรกิจ 42 + เอกบังคับ 33 + เอกเลือก 21 + เสรี 6
+- ข้อมูลเทอม 2/69 จาก มร.30 (ประกาศ 26 ส.ค. 2569):
+  - 8 วิชา 24 หน่วยกิต: RAM1111, RAM1131, RAM1212, RAM1301, ACC1103, ECO1121, MKT2101, MGT2101
+  - ตารางเรียน: วัน/เวลา/ห้อง/อาจารย์ครบทุกวิชา
+  - ตารางสอบ: 9–21 มี.ค. 2570 ครบทุกวิชา
+- แก้ DB path bug: env.ts resolve relative DB_PATH ให้ถูกที่ (ก่อนหน้านี้ seed เขียนไป server/data/ แทน data/)
+- migration 012: เพิ่ม instructor column ใน class_sessions
+- AI system prompt เปลี่ยนเป็น Marketing student
+
+---
+
+## รอคิว (Planned)
+
 - Phase 5 — ถอดเสียงบรรยาย → สรุป + ควิซ (ต้องเลือก speech-to-text API ก่อน)
 
 ---
 
 ## บั๊กที่รู้อยู่ (Known Bugs)
 
-1. **ยังไม่มีบั๊กที่พบ** — Phase 11 ผ่านการทดสอบในเบราว์เซอร์ API ทุก endpoint ตอบ 200 OK
+1. **ยังไม่มีบั๊กที่พบ** — ทดสอบในเบราว์เซอร์ ข้อมูลแสดงถูกต้องทุกหน้า
 2. **ข้อจำกัด**: หน้า Weakness ยังไม่มีข้อมูลจริงให้ทดสอบกราฟ (ต้องทำควิซและทบทวนการ์ดก่อน)
-3. **Pre-existing**: มีไฟล์ที่ยังไม่ได้ commit จาก phase ก่อนหน้า (HandwritingPad.tsx, Notes.tsx, fly.toml, ai.ts, notes.ts)
-
----
-
-## Code Cleanup ที่ทำแล้ว (Phase 11)
-
-1. ✅ Weakness.tsx: ย้าย `Math.max()` ออกนอก render loop → แก้ O(n²)
-2. ✅ Review.tsx: capture card id ก่อน POST → กัน race condition
-3. ✅ flashcards.ts: wrap review ใน transaction → ข้อมูลครบหรือไม่เขียนเลย
-4. ✅ Weakness.tsx: รวม masteryColor + masteryBarColor → ฟังก์ชันเดียว
-5. ✅ Review.tsx: ใช้ t() interpolation แทน .replace() → pattern สม่ำเสมอ
-
----
-
-## ขั้นตอนถัดไป (Next Steps)
-
-1. Phase 7 — ออกแบบหน้าตาใหม่ (UI redesign — ทำหลังสุด)
-2. Phase 5 — ถอดเสียงบรรยาย (ต้องเลือก API + confirm ค่าใช้จ่าย)

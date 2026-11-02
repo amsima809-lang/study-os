@@ -43,7 +43,7 @@ const GROUPS: Array<{ id: string; choose: number; required?: boolean; note?: str
 
 const COURSES: CourseSeed[] = [
   // ========== GE — General Education (30 credits, 10 courses) ==========
-  { code: "RAM1101", name_th: "ทักษะการใช้ภาษาไทย", name_en: "Thai Language Skills", category: "GE", choose_group: "GE_THAI", term: "2/69", difficulty: 1 },
+  { code: "RAM1101", name_th: "ทักษะภาษาไทย", name_en: "Thai Language Skills", category: "GE", choose_group: "GE_THAI", term: "2/70", difficulty: 1 },
   { code: "RAM1102", name_th: "ภาษาไทยเพื่อการนำเสนอ", name_en: "Thai for Presentations", category: "GE", choose_group: "GE_THAI" },
   { code: "RAM1103", name_th: "ภาษาไทยเพื่อการสื่อสารในการทำงาน", name_en: "Thai for Communication at Work", category: "GE", choose_group: "GE_THAI" },
 
@@ -66,43 +66,43 @@ const COURSES: CourseSeed[] = [
   { code: "RAM1127", name_th: "ภาษาและวัฒนธรรมรัสเซีย", name_en: "Russian Language and Culture", category: "GE", choose_group: "GE_FOREIGN" },
   { code: "RAM1128", name_th: "ภาษาและวัฒนธรรมกรีก", name_en: "Greek Language and Culture", category: "GE", choose_group: "GE_FOREIGN" },
 
-  { code: "RAM1131", name_th: "ทักษะการเข้าใจดิจิทัล", name_en: "Digital Literacy", category: "GE", choose_group: "GE_TECH", term: "2/69", difficulty: 1 },
-  { code: "RAM1132", name_th: "ทักษะทางสารสนเทศ", name_en: "Information Literacy", category: "GE", choose_group: "GE_TECH" },
+  { code: "RAM1131", name_th: "ทักษะดิจิทัล", name_en: "Digital Literacy", category: "GE", choose_group: "GE_TECH", term: "2/69", difficulty: 1 },
+  { code: "RAM1132", name_th: "ทักษะสารสนเทศ", name_en: "Information Literacy", category: "GE", choose_group: "GE_TECH" },
 
-  { code: "RAM1141", name_th: "ศาสตร์แห่งบุคลิกภาพ", name_en: "Science of Personality", category: "GE", choose_group: "GE_ADAPT", term: "2/69", difficulty: 1 },
-  { code: "RAM1142", name_th: "การพัฒนาคุณภาพชีวิตและสังคม", name_en: "Quality of Life and Society Development", category: "GE", choose_group: "GE_ADAPT" },
+  { code: "RAM1141", name_th: "ศาสตร์แห่งบุคลิกภาพ", name_en: "Science of Personality", category: "GE", choose_group: "GE_ADAPT", term: "2/70", difficulty: 1 },
+  { code: "RAM1142", name_th: "คุณภาพชีวิตและการพัฒนาสังคม", name_en: "Quality of Life and Society Development", category: "GE", choose_group: "GE_ADAPT" },
 
   { code: "RAM1201", name_th: "ความคิดสร้างสรรค์เพื่อการพัฒนานวัตกรรม", name_en: "Creativity for Innovation Development", category: "GE", choose_group: "GE_THINK" },
-  { code: "RAM1202", name_th: "ศิลป์สร้างสรรค์", name_en: "Creativity Arts", category: "GE", choose_group: "GE_THINK" },
-  { code: "RAM1203", name_th: "ศาสตร์การคิดเปลี่ยนโลก", name_en: "Thinking Science that Changes the World", category: "GE", choose_group: "GE_THINK" },
-  { code: "RAM1204", name_th: "คณิตศาสตร์และสถิติเพื่อการดำเนินชีวิตในโลกสมัยใหม่", name_en: "Mathematics and Statistics for Daily Life in the Modern World", category: "GE", choose_group: "GE_THINK", term: "1/70", difficulty: 2 },
+  { code: "RAM1202", name_th: "ศิลปะสร้างสรรค์", name_en: "Creativity Arts", category: "GE", choose_group: "GE_THINK" },
+  { code: "RAM1203", name_th: "วิทยาศาสตร์การคิดที่เปลี่ยนโลก", name_en: "Thinking Science that Changes the World", category: "GE", choose_group: "GE_THINK" },
+  { code: "RAM1204", name_th: "คณิตศาสตร์และสถิติในชีวิตประจำวัน", name_en: "Mathematics and Statistics for Daily Life in the Modern World", category: "GE", choose_group: "GE_THINK", term: "1/70", difficulty: 2 },
 
-  { code: "RAM1211", name_th: "ศาสตร์แห่งการเป็นผู้ประกอบการ", name_en: "Principles of Entrepreneurship", category: "GE", choose_group: "GE_ENTRE", term: "1/70", difficulty: 1, notes: "Fallback RAM1212 if not offered" },
-  { code: "RAM1212", name_th: "ผู้ประกอบการรุ่นใหม่", name_en: "Smart Entrepreneurs", category: "GE", choose_group: "GE_ENTRE" },
-  { code: "RAM1213", name_th: "ภูมิปัญญาท้องถิ่นกับการพัฒนานวัตกรรมเพื่อสังคมและเศรษฐกิจ", name_en: "Local Wisdom and Innovation Development for Society and Economy", category: "GE", choose_group: "GE_ENTRE" },
-  { code: "RAM1214", name_th: "วิถีวิทย์สู่โมเดลเศรษฐกิจ BCG", name_en: "Science, Technology, and Innovation (STI) for the BCG Economy Model", category: "GE", choose_group: "GE_ENTRE" },
+  { code: "RAM1211", name_th: "ศาสตร์แห่งการเป็นผู้ประกอบการ", name_en: "Principles of Entrepreneurship", category: "GE", choose_group: "GE_ENTRE" },
+  { code: "RAM1212", name_th: "ผู้ประกอบการรุ่นใหม่", name_en: "Smart Entrepreneurs", category: "GE", choose_group: "GE_ENTRE", term: "2/69", difficulty: 1 },
+  { code: "RAM1213", name_th: "ภูมิปัญญาท้องถิ่นกับการพัฒนานวัตกรรม", name_en: "Local Wisdom and Innovation Development for Society and Economy", category: "GE", choose_group: "GE_ENTRE" },
+  { code: "RAM1214", name_th: "วิทยาศาสตร์ เทคโนโลยี และนวัตกรรม", name_en: "Science, Technology, and Innovation (STI) for the BCG Economy Model", category: "GE", choose_group: "GE_ENTRE" },
 
   { code: "RAM1301", name_th: "คุณธรรมคู่ความรู้", name_en: "Morality and Knowledge", category: "GE", choose_group: "GE_CITIZEN_REQ", term: "2/69", difficulty: 1 },
   { code: "RAM1302", name_th: "การเมืองและกฎหมายในชีวิตประจำวัน", name_en: "Politics and Law in Daily Life", category: "GE", choose_group: "GE_CITIZEN", term: "1/70", difficulty: 1 },
   { code: "RAM1303", name_th: "วิทยาศาสตร์เพื่อการพัฒนาที่ยั่งยืน", name_en: "Science for Sustainable Development", category: "GE", choose_group: "GE_CITIZEN" },
 
-  { code: "RAM1311", name_th: "ศิลปะและวัฒนธรรมในท้องถิ่นไทย", name_en: "Thai Local Art and Culture", category: "GE", choose_group: "GE_ARTS" },
-  { code: "RAM1312", name_th: "วัฒนธรรมร่วมสมัยกับการเปลี่ยนผันทางดิจิทัล", name_en: "Contemporary Culture and Digital Disruption", category: "GE", choose_group: "GE_ARTS", term: "1/70", difficulty: 1 },
+  { code: "RAM1311", name_th: "ศิลปวัฒนธรรมท้องถิ่นไทย", name_en: "Thai Local Art and Culture", category: "GE", choose_group: "GE_ARTS" },
+  { code: "RAM1312", name_th: "วัฒนธรรมร่วมสมัยกับดิจิทัล", name_en: "Contemporary Culture and Digital Disruption", category: "GE", choose_group: "GE_ARTS", term: "1/70", difficulty: 1 },
 
   // ========== Core Business — แกนธุรกิจ (42 credits, 14 courses) ==========
   { code: "ACC1103", name_th: "การบัญชีการเงิน", name_en: "Financial Accounting", category: "CORE", term: "2/69", difficulty: 3 },
   { code: "ACC1104", name_th: "การบัญชีบริหาร", name_en: "Management Accounting", category: "CORE", term: "1/70", difficulty: 3 },
-  { code: "DBC2101", name_th: "ทักษะทางภาษาเพื่อการสื่อสารทางธุรกิจระดับโลก", name_en: "Language Skills for Global Business Communication", category: "CORE", term: "2/70", difficulty: 2 },
+  { code: "DBC2101", name_th: "ทักษะภาษาเพื่อการสื่อสารธุรกิจระดับโลก", name_en: "Language Skills for Global Business Communications", category: "CORE", term: "2/70", difficulty: 2 },
   { code: "ECO1121", name_th: "หลักเศรษฐศาสตร์จุลภาค", name_en: "Principles of Microeconomics", category: "CORE", term: "2/69", difficulty: 2 },
   { code: "ECO1122", name_th: "หลักเศรษฐศาสตร์มหภาค", name_en: "Principles of Macroeconomics", category: "CORE", term: "1/70", difficulty: 2 },
   { code: "FIN2101", name_th: "การเงินธุรกิจ", name_en: "Business Finance", category: "CORE", term: "2/70", difficulty: 2 },
   { code: "HRM2101", name_th: "การจัดการทรัพยากรมนุษย์", name_en: "Human Resources Management", category: "CORE", term: "1/71", difficulty: 2 },
   { code: "LAW2116", name_th: "กฎหมายธุรกิจ", name_en: "Business Law", category: "CORE", term: "1/71", difficulty: 2 },
-  { code: "MGT2101", name_th: "หลักการจัดการธุรกิจ", name_en: "Principles of Management", category: "CORE", term: "2/70", difficulty: 2 },
+  { code: "MGT2101", name_th: "หลักการจัดการ", name_en: "Principles of Management", category: "CORE", term: "2/69", difficulty: 2 },
   { code: "MGT2102", name_th: "การจัดการการดำเนินงานและโซ่อุปทาน", name_en: "Operations and Supply Chain Management", category: "CORE", term: "1/71", difficulty: 2 },
   { code: "MGT3101", name_th: "การจัดการเชิงกลยุทธ์", name_en: "Strategic Management", category: "CORE", term: "2/71", difficulty: 3 },
   { code: "MGT3102", name_th: "การภาษีอากร", name_en: "Taxation", category: "CORE", term: "2/71", difficulty: 2 },
-  { code: "MKT2101", name_th: "หลักการตลาด", name_en: "Principles of Marketing", category: "CORE", term: "2/70", difficulty: 2 },
+  { code: "MKT2101", name_th: "หลักการตลาด", name_en: "Principles of Marketing", category: "CORE", term: "2/69", difficulty: 2 },
   { code: "STA2016", name_th: "สถิติธุรกิจและการวิเคราะห์เชิงปริมาณ", name_en: "Business Statistics and Quantitative Analysis", category: "CORE", term: "1/71", difficulty: 3 },
 
   // ========== Major Required — เอกบังคับ (33 credits, 11 courses) ==========
@@ -143,13 +143,16 @@ const COURSES: CourseSeed[] = [
   { code: "MKT4329", name_th: "นวัตกรรมทางการตลาด", name_en: "Marketing Innovation", category: "MAJOR_ELEC", choose_group: "MAJOR_ELEC" },
   { code: "MKT4330", name_th: "การวิเคราะห์ตลาด", name_en: "Marketing Analytics", category: "MAJOR_ELEC", choose_group: "MAJOR_ELEC" },
   { code: "DBC3111", name_th: "กิจกรรมและการจัดแสดงสินค้ายุคดิจิทัล", name_en: "Event and Digital Merchandise Display", category: "MAJOR_ELEC", choose_group: "MAJOR_ELEC" },
-  { code: "DBC3112", name_th: "สื่อใหม่เพื่อการสื่อสารธุรกิจยุคดิจิทัล", name_en: "New Media for Digital Business Communication", category: "MAJOR_ELEC", choose_group: "MAJOR_ELEC" },
+  { code: "DBC3112", name_th: "สื่อใหม่เพื่อธุรกิจยุคดิจิทัล", name_en: "New Media for Digital Business Communication", category: "MAJOR_ELEC", choose_group: "MAJOR_ELEC" },
+
+  // ========== Free Elective — เลือกเสรี (6 credits) ==========
+  { code: "FIN4319", name_th: "การจัดการการเงินส่วนบุคคล", name_en: "Personal Financial Management", category: "FREE" },
 ];
 
 // ---------- Plan terms (8 regular semesters, no summer) ----------
 const PLAN_TERMS: Array<{ term_id: string; ord: number; max_credits: number; start_date: string | null }> = [
-  { term_id: "2/69", ord: 0, max_credits: 21, start_date: "2026-11-16" },
-  { term_id: "1/70", ord: 1, max_credits: 21, start_date: null },
+  { term_id: "2/69", ord: 0, max_credits: 24, start_date: "2026-11-16" },
+  { term_id: "1/70", ord: 1, max_credits: 18, start_date: null },
   { term_id: "2/70", ord: 2, max_credits: 15, start_date: null },
   { term_id: "1/71", ord: 3, max_credits: 15, start_date: null },
   { term_id: "2/71", ord: 4, max_credits: 18, start_date: null },
@@ -172,18 +175,20 @@ const PLACEHOLDERS: Array<{ label: string; term: string }> = [
 ];
 
 // ---------- Class schedule 2/2569 ----------
-// NOTE: ACC1103 and ECO1121 are in the plan but have no schedule data yet.
-// The student needs to add their registered section schedule for those courses.
+// Source: มร.30 (26 ส.ค. 2569) + ตารางสอบไล่ ภาค 2/2569
 type ClassSeed = {
   code: string; weekday: number; start: string; end: string; room: string;
-  examDate: string; slot: "A" | "B";
+  instructor: string; examDate: string; slot: "A" | "B";
 };
 const SCHEDULE_2_69: ClassSeed[] = [
-  { code: "RAM1111", weekday: 1, start: "08:30", end: "11:00", room: "KTB 301", examDate: "2027-03-14", slot: "B" },
-  { code: "RAM1101", weekday: 2, start: "11:10", end: "13:40", room: "KTB 401", examDate: "2027-03-22", slot: "A" },
-  { code: "RAM1141", weekday: 4, start: "13:50", end: "16:20", room: "KTB 501", examDate: "2027-03-16", slot: "A" },
-  { code: "RAM1301", weekday: 5, start: "09:30", end: "11:20", room: "KLB 201", examDate: "2027-03-10", slot: "B" },
-  { code: "RAM1131", weekday: 5, start: "11:10", end: "13:40", room: "KTB 301", examDate: "2027-03-09", slot: "A" },
+  { code: "RAM1111", weekday: 1, start: "08:30", end: "11:00", room: "KTB 301", instructor: "ASST.PROF.TIPPA-U-SA", examDate: "2027-03-14", slot: "B" },
+  { code: "ACC1103", weekday: 1, start: "11:10", end: "13:40", room: "KTB 301", instructor: "DR.NATCHAREE", examDate: "2027-03-12", slot: "A" },
+  { code: "ECO1121", weekday: 2, start: "13:50", end: "16:20", room: "KTB 201", instructor: "ASSOC.PROF.BOONTHAM", examDate: "2027-03-21", slot: "A" },
+  { code: "MGT2101", weekday: 3, start: "09:30", end: "11:20", room: "VPB 501", instructor: "ASST.PROF.DR.MUNLIKAR", examDate: "2027-03-18", slot: "B" },
+  { code: "RAM1212", weekday: 3, start: "13:50", end: "16:20", room: "KTB 401", instructor: "ASST.PROF.DR.NANTHAWAN", examDate: "2027-03-16", slot: "B" },
+  { code: "MKT2101", weekday: 4, start: "09:30", end: "11:20", room: "KLB 201", instructor: "DR.USA, THITIKUL", examDate: "2027-03-13", slot: "B" },
+  { code: "RAM1301", weekday: 5, start: "09:30", end: "11:20", room: "KLB 201", instructor: "ASSOC.PROF.DR.KRISDA", examDate: "2027-03-10", slot: "B" },
+  { code: "RAM1131", weekday: 5, start: "11:10", end: "13:40", room: "KTB 301", instructor: "ASST.PROF.DR.SATHIT", examDate: "2027-03-09", slot: "A" },
 ];
 
 const SLOT_TIMES: Record<"A" | "B", { start: string; end: string }> = {
@@ -257,15 +262,15 @@ export function seedDatabase(db: DB): void {
     }
 
     const insClass = db.prepare(
-      `INSERT INTO class_sessions (course_code, term_id, weekday, start_time, end_time, room)
-       VALUES (@code, '2/69', @weekday, @start, @end, @room)`,
+      `INSERT INTO class_sessions (course_code, term_id, weekday, start_time, end_time, room, instructor)
+       VALUES (@code, '2/69', @weekday, @start, @end, @room, @instructor)`,
     );
     const insExam = db.prepare(
       `INSERT INTO exams (course_code, term_id, datetime_start, datetime_end, slot, location)
        VALUES (@code, '2/69', @start, @end, @slot, @room)`,
     );
     for (const s of SCHEDULE_2_69) {
-      insClass.run({ code: s.code, weekday: s.weekday, start: s.start, end: s.end, room: s.room });
+      insClass.run({ code: s.code, weekday: s.weekday, start: s.start, end: s.end, room: s.room, instructor: s.instructor });
       const times = SLOT_TIMES[s.slot];
       insExam.run({
         code: s.code,

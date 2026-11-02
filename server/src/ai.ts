@@ -10,7 +10,7 @@ import type { DB } from "./db.js";
 
 /** The strict coaching rules sent with every AI request. */
 export const SYSTEM_PROMPT = [
-  "You are a study coach for a Thai university psychology student.",
+  "You are a study coach for a Thai university Marketing (B.B.A.) student at Ramkhamhaeng University.",
   "Use simple Thai.",
   "Use ONLY the provided note content.",
   "If you add anything not in the note, label it [นอกโน้ต — ตรวจกับตำราก่อน].",
@@ -168,6 +168,41 @@ export function noteModelCall(db: DB, input: { text?: string; images?: ImageInpu
       text: `${NOTE_JSON_INSTRUCTION}\n\n${noteText}${extra ? `\n\n${extra}` : ""}`,
     });
     return callAnthropic(db, "note_learning", content, 2000);
+  };
+}
+
+// ============================================================
+// Course-wide summary (all notes in one course)
+// ============================================================
+export const CourseSummarySchema = z.object({
+  summary_md: z.string().min(1),
+  key_terms: z.array(z.object({ term: z.string(), definition: z.string() })).default([]),
+  topics_covered: z.array(z.string()).default([]),
+});
+export type CourseSummary = z.infer<typeof CourseSummarySchema>;
+
+export function generateCourseSummary(call: ModelCall): Promise<CourseSummary> {
+  return generateValidated(call, CourseSummarySchema);
+}
+
+const COURSE_SUMMARY_INSTRUCTION = `จากโน้ตทั้งหมดของวิชานี้ ให้สรุปเนื้อหารวมเป็นภาพรวมภาษาไทยง่าย ๆ (อธิบายเหมือนอายุ 12 ปี)
+ตอบกลับเป็น JSON เท่านั้น ตาม schema นี้:
+{
+  "summary_md": "สรุปรวมเนื้อหาทั้งหมดของวิชา (markdown ได้ ไม่เกิน 600 คำ) แบ่งหัวข้อชัดเจน",
+  "key_terms": [{"term": "คำศัพท์สำคัญ", "definition": "นิยามสั้น"}],
+  "topics_covered": ["หัวข้อที่ครอบคลุม"]
+}
+ใช้เฉพาะเนื้อหาในโน้ต ถ้ามีข้อมูลนอกโน้ตให้ใส่ป้าย [นอกโน้ต — ตรวจกับตำราก่อน]`;
+
+export function courseSummaryModelCall(db: DB, notesText: string): ModelCall {
+  return async (extra?: string) => {
+    const content: Content = [
+      {
+        type: "text",
+        text: `${COURSE_SUMMARY_INSTRUCTION}\n\n${notesText}${extra ? `\n\n${extra}` : ""}`,
+      },
+    ];
+    return callAnthropic(db, "course_summary", content, 4000);
   };
 }
 

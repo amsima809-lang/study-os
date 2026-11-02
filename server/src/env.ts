@@ -4,7 +4,7 @@
  */
 import { config } from "dotenv";
 import { fileURLToPath } from "node:url";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 // Resolve default data paths to the repo root, so they don't depend on which
 // directory `npm run ...` was launched from (workspace scripts run in server/).
@@ -27,8 +27,8 @@ export const env = {
   tz: process.env.TZ ?? "Asia/Bangkok",
   appPassword: required("APP_PASSWORD", "change-me"),
   sessionSecret: required("SESSION_SECRET", "dev-secret"),
-  dbPath: process.env.DB_PATH ?? `${repoRoot}data/studyos.db`,
-  uploadDir: process.env.UPLOAD_DIR ?? `${repoRoot}data/uploads`,
+  dbPath: resolve(repoRoot, process.env.DB_PATH ?? "data/studyos.db"),
+  uploadDir: resolve(repoRoot, process.env.UPLOAD_DIR ?? "data/uploads"),
   clientDist: process.env.CLIENT_DIST ?? `${repoRoot}client/dist`,
   anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? "",
   anthropicModel: process.env.ANTHROPIC_MODEL ?? "claude-sonnet-5",

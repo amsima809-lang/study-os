@@ -38,7 +38,7 @@ const STRINGS: Record<Lang, Dict> = {
     "more.title": "เพิ่มเติม",
     "more.schedule": "ตารางเรียน/สอบ",
     "more.stats": "สถิติและติดตาม",
-    "more.planner": "แผนการเรียน (จบ 138 หน่วยกิต)",
+    "more.planner": "แผนการเรียน (จบ 132 หน่วยกิต)",
     "more.mock": "ข้อสอบจำลอง (ก่อนสอบจริง)",
     "more.back": "← เพิ่มเติม",
     // mock exam
@@ -450,7 +450,7 @@ const STRINGS: Record<Lang, Dict> = {
     "more.title": "More",
     "more.schedule": "Class & exam schedule",
     "more.stats": "Stats & tracker",
-    "more.planner": "Degree planner (138 credits)",
+    "more.planner": "Degree planner (132 credits)",
     "more.mock": "Mock exam (before the real one)",
     "more.back": "← More",
     "mock.title": "Mock exam",
