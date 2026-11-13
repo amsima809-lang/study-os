@@ -1,16 +1,18 @@
 /**
  * StudyOS backend entry point.
- * Public: /api/health, /api/login, /api/me, /api/logout.
- * Everything else under /api requires a valid session cookie.
+ * Public: /api/health, /api/auth/*.
+ * Everything else under /api requires a valid session (Google OAuth or dev login).
  * In production the built client (client/dist) is served from here too.
  */
 import express from "express";
 import cookieParser from "cookie-parser";
+import session from "express-session";
+import passport from "passport";
 import { join } from "node:path";
 import { env, isProd } from "./env.js";
 import { openDb } from "./db.js";
 import { seedDatabase } from "./seed.js";
-import { createAuthRouter, requireAuth } from "./auth.js";
+import { setupAuth, requireAuth } from "./auth.js";
 import { scheduleDailyBackups } from "./backup.js";
 import { createApiRouter } from "./api.js";
 import { createNotesRouter } from "./notes.js";
@@ -25,7 +27,6 @@ import { createStudyPlanRouter } from "./studyplan.js";
 const app = express();
 const db = openDb(env.dbPath);
 
-// Seed the curriculum on first boot (e.g. a fresh deploy on an empty volume).
 if ((db.prepare("SELECT COUNT(*) n FROM courses").get() as { n: number }).n === 0) {
   seedDatabase(db);
   console.log("[StudyOS] empty database — seeded curriculum data.");
@@ -33,51 +34,68 @@ if ((db.prepare("SELECT COUNT(*) n FROM courses").get() as { n: number }).n === 
 
 app.use(express.json({ limit: "50mb" }));
 app.use(cookieParser(env.sessionSecret));
+app.use(
+  session({
+    secret: env.sessionSecret,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: isProd,
+      httpOnly: true,
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+      sameSite: "lax",
+    },
+  }),
+);
+app.use(passport.initialize());
+app.use(passport.session());
 
 // --- public routes ---
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, app: "StudyOS", phase: 9, tz: env.tz, time: new Date().toISOString() });
+  res.json({ ok: true, app: "StudyOS", phase: 15, tz: env.tz, time: new Date().toISOString() });
 });
-app.use("/api", createAuthRouter()); // /api/login, /api/me, /api/logout
+app.use("/api", setupAuth(db));
 
 // --- everything else under /api needs auth ---
 app.use("/api", requireAuth);
 
-// Uploaded note images (private to the logged-in user).
 app.use("/api/uploads", express.static(env.uploadDir));
 
-app.get("/api/stats", (_req, res) => {
+app.get("/api/stats", (req, res) => {
+  const userId = req.user!.id;
   const courses = (db.prepare("SELECT COUNT(*) n FROM courses").get() as { n: number }).n;
   const terms = (db.prepare("SELECT COUNT(*) n FROM plan_terms").get() as { n: number }).n;
   const plannedCredits = (
     db
       .prepare(
         `SELECT COALESCE(SUM(COALESCE(c.credits, 3)), 0) AS credits
-         FROM plan_items pi LEFT JOIN courses c ON c.code = pi.course_code`,
+         FROM plan_items pi LEFT JOIN courses c ON c.code = pi.course_code
+         WHERE pi.user_id = ?`,
       )
-      .get() as { credits: number }
+      .get(userId) as { credits: number }
   ).credits;
   res.json({ courses, terms, plannedCredits });
 });
 
-app.use("/api", createApiRouter(db)); // today / schedule / exams
-app.use("/api", createNotesRouter(db)); // notes + AI summary
-app.use("/api", createQuizRouter(db)); // quiz + grading
-app.use("/api", createFlashcardsRouter(db)); // flashcards
-app.use("/api", createAnalyticsRouter(db)); // tracking + analytics
-app.use("/api", createPlannerRouter(db)); // degree planner
-app.use("/api", createMockRouter(db)); // mock exam
-app.use("/api", createMaterialsRouter(db)); // Phase 1: materials + chapters
-app.use("/api", createStudyPlanRouter(db)); // Phase 3: study planner
+app.use("/api", createApiRouter(db));
+app.use("/api", createNotesRouter(db));
+app.use("/api", createQuizRouter(db));
+app.use("/api", createFlashcardsRouter(db));
+app.use("/api", createAnalyticsRouter(db));
+app.use("/api", createPlannerRouter(db));
+app.use("/api", createMockRouter(db));
+app.use("/api", createMaterialsRouter(db));
+app.use("/api", createStudyPlanRouter(db));
 
-app.get("/api/ai/usage", (_req, res) => {
+app.get("/api/ai/usage", (req, res) => {
+  const userId = req.user!.id;
   const row = db
     .prepare(
       `SELECT COALESCE(SUM(input_tokens),0) AS input_tokens,
               COALESCE(SUM(output_tokens),0) AS output_tokens,
-              COUNT(*) AS calls FROM ai_usage`,
+              COUNT(*) AS calls FROM ai_usage WHERE user_id = ?`,
     )
-    .get();
+    .get(userId);
   res.json(row);
 });
 
@@ -97,5 +115,4 @@ app.listen(env.port, () => {
   console.log(`[StudyOS] server listening on http://localhost:${env.port} (${env.nodeEnv})`);
 });
 
-// Daily SQLite backups in production (kept in <data>/backups, last 14).
 if (isProd) scheduleDailyBackups(db, env.dbPath);

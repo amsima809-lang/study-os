@@ -198,7 +198,16 @@ AI ช่วยเรา "ฝึก" ไม่ใช่ "ทำแทน" — �
   ⤢ ขยายพื้นที่เขียน · ＋📄 เพิ่มหน้า / －📄 ลบหน้า (1–10 หน้า, ลบแบบไม่ทำลายเส้น)
   — เก็บลายเส้นเป็น vector (เบา + ซูมคม + redo ได้) ตอนส่งรวมทุกหน้าเป็นรูปเดียวให้ AI
 
+## Phase 15 — Multi-User (หลายคนใช้ได้)
+เดิม StudyOS ใช้คนเดียว ตอนนี้เพิ่มระบบผู้ใช้:
+- **ตาราง `users`**: เก็บ id, email, ชื่อ, avatar, plan (free/premium)
+- **login**: Google OAuth (passport) หรือ dev-login (ตอนพัฒนา ไม่ต้อง Google)
+- **แยกข้อมูลรายคน**: ทุกตารางที่เป็นของผู้ใช้ (notes, questions, flashcards, materials, chapters, study_plans ฯลฯ) เพิ่มคอลัมน์ `user_id` — query ทุกอันกรอง `AND user_id = ?`
+- **settings 2 ชั้น**: `settings` (ค่ากลาง ทุกคนเห็นเหมือนกัน) + `user_settings` (ค่าส่วนตัว ผู้ใช้แต่ละคนตั้งเอง)
+- **legacy user**: ข้อมูลเดิมทั้งหมดย้ายไปอยู่กับ user `legacy-user-0001`
+- **session**: express-session + better-sqlite3-session-store เก็บ session ใน SQLite
+
 ## 🎉 ครบทุกเฟสแล้ว!
 ตอนนี้ StudyOS ทำได้ครบ 5 งาน: รู้จักหลักสูตร · รู้ตารางสัปดาห์ · โน้ต→AI ·
 ควิซ+แฟลชการ์ด · สถิติ+ความเสี่ยง — ติดตั้งลงมือถือและ deploy ขึ้นเน็ตได้
-ดูวิธีเอาขึ้นเซิร์ฟเวอร์ที่ `docs/DEPLOY.md`
+รองรับหลายผู้ใช้ login ด้วย Google ดูวิธีเอาขึ้นเซิร์ฟเวอร์ที่ `docs/DEPLOY.md`

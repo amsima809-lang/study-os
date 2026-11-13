@@ -6,7 +6,7 @@
  */
 import { Router } from "express";
 import type { DB } from "./db.js";
-import { bangkokToday, bangkokWeekday, daysBetween, addDaysISO } from "./api.js";
+import { bangkokToday, bangkokWeekday, daysBetween, addDaysISO, getSetting, setSetting } from "./api.js";
 
 // ---- types ----
 
@@ -49,25 +49,20 @@ type TaskInsert = {
 
 // ---- helpers ----
 
-function getSettings(db: DB): PlanSettings {
-  const get = (k: string, def: string) => {
-    const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(k) as { value: string } | undefined;
-    return row?.value ?? def;
-  };
+function getSettings(db: DB, userId: string): PlanSettings {
   return {
-    weekday_hours: Number(get("sp_weekday_hours", "2")),
-    weekend_hours: Number(get("sp_weekend_hours", "5")),
-    reading_speed: Number(get("sp_reading_speed", "10")),
-    blocked_dates: JSON.parse(get("sp_blocked_dates", "[]")) as string[],
+    weekday_hours: Number(getSetting(db, "sp_weekday_hours", "2", userId)),
+    weekend_hours: Number(getSetting(db, "sp_weekend_hours", "5", userId)),
+    reading_speed: Number(getSetting(db, "sp_reading_speed", "10", userId)),
+    blocked_dates: JSON.parse(getSetting(db, "sp_blocked_dates", "[]", userId)) as string[],
   };
 }
 
-function saveSettings(db: DB, s: Partial<PlanSettings>): void {
-  const upsert = db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)");
-  if (s.weekday_hours != null) upsert.run("sp_weekday_hours", String(s.weekday_hours));
-  if (s.weekend_hours != null) upsert.run("sp_weekend_hours", String(s.weekend_hours));
-  if (s.reading_speed != null) upsert.run("sp_reading_speed", String(s.reading_speed));
-  if (s.blocked_dates != null) upsert.run("sp_blocked_dates", JSON.stringify(s.blocked_dates));
+function saveSettings(db: DB, s: Partial<PlanSettings>, userId: string): void {
+  if (s.weekday_hours != null) setSetting(db, "sp_weekday_hours", String(s.weekday_hours), userId);
+  if (s.weekend_hours != null) setSetting(db, "sp_weekend_hours", String(s.weekend_hours), userId);
+  if (s.reading_speed != null) setSetting(db, "sp_reading_speed", String(s.reading_speed), userId);
+  if (s.blocked_dates != null) setSetting(db, "sp_blocked_dates", JSON.stringify(s.blocked_dates), userId);
 }
 
 /** Is the date a weekend (Sat=6, Sun=7)? */
@@ -85,7 +80,7 @@ function availableMinutes(dateStr: string, settings: PlanSettings): number {
 }
 
 /** Get courses with upcoming exams and their chapters. */
-function getCoursesForPlanning(db: DB, today: string): CourseExam[] {
+function getCoursesForPlanning(db: DB, today: string, userId: string): CourseExam[] {
   const exams = db.prepare(
     `SELECT e.course_code, c.name_th, c.name_en,
             DATE(e.datetime_start) AS exam_date
@@ -112,10 +107,10 @@ function getCoursesForPlanning(db: DB, today: string): CourseExam[] {
                  FROM material_chunks mc WHERE mc.chapter_id = ch.id), 20) AS page_count,
               COALESCE(cm.mastery_score, 0) AS mastery
        FROM chapters ch
-       LEFT JOIN chapter_mastery cm ON cm.chapter_id = ch.id AND cm.course_code = ch.course_code
-       WHERE ch.course_code = ?
+       LEFT JOIN chapter_mastery cm ON cm.chapter_id = ch.id AND cm.course_code = ch.course_code AND cm.user_id = ?
+       WHERE ch.course_code = ? AND ch.user_id = ?
        ORDER BY ch.sort_order ASC`,
-    ).all(e.course_code) as ChapterInfo[];
+    ).all(userId, e.course_code, userId) as ChapterInfo[];
 
     const total_pages = chapters.reduce((sum, ch) => sum + ch.page_count, 0);
     return { ...e, chapters, total_pages };
@@ -124,14 +119,14 @@ function getCoursesForPlanning(db: DB, today: string): CourseExam[] {
 
 // ---- scheduling algorithm ----
 
-function generatePlan(db: DB): {
+function generatePlan(db: DB, userId: string): {
   tasks: TaskInsert[];
   feasibility: "ok" | "tight" | "impossible";
   warnings: string[];
 } {
   const today = bangkokToday();
-  const settings = getSettings(db);
-  const courses = getCoursesForPlanning(db, today);
+  const settings = getSettings(db, userId);
+  const courses = getCoursesForPlanning(db, today, userId);
   const warnings: string[] = [];
 
   if (courses.length === 0) {
@@ -487,52 +482,57 @@ export function createStudyPlanRouter(db: DB): Router {
   const router = Router();
 
   // Get planner settings
-  router.get("/studyplan/settings", (_req, res) => {
-    res.json(getSettings(db));
+  router.get("/studyplan/settings", (req, res) => {
+    const userId = req.user!.id;
+    res.json(getSettings(db, userId));
   });
 
   // Update planner settings
   router.put("/studyplan/settings", (req, res) => {
+    const userId = req.user!.id;
     const { weekday_hours, weekend_hours, reading_speed, blocked_dates } = req.body;
     const update: Partial<PlanSettings> = {};
     if (weekday_hours != null && weekday_hours >= 0.5 && weekday_hours <= 12) update.weekday_hours = weekday_hours;
     if (weekend_hours != null && weekend_hours >= 0.5 && weekend_hours <= 16) update.weekend_hours = weekend_hours;
     if (reading_speed != null && reading_speed >= 1 && reading_speed <= 100) update.reading_speed = reading_speed;
     if (Array.isArray(blocked_dates)) update.blocked_dates = blocked_dates;
-    saveSettings(db, update);
-    res.json({ ok: true, ...getSettings(db) });
+    saveSettings(db, update, userId);
+    res.json({ ok: true, ...getSettings(db, userId) });
   });
 
   // List courses available for planning (with exam + chapters)
-  router.get("/studyplan/courses", (_req, res) => {
+  router.get("/studyplan/courses", (req, res) => {
+    const userId = req.user!.id;
     const today = bangkokToday();
-    const courses = getCoursesForPlanning(db, today);
+    const courses = getCoursesForPlanning(db, today, userId);
     res.json({ courses, today });
   });
 
   // Update a chapter's page count
   router.put("/studyplan/chapters/:id", (req, res) => {
+    const userId = req.user!.id;
     const id = Number(req.params.id);
     const pageCount = Number(req.body.page_count);
     if (!pageCount || pageCount < 1) return res.status(400).json({ error: "page_count ต้อง >= 1" });
-    db.prepare("UPDATE chapters SET page_count = ? WHERE id = ?").run(pageCount, id);
+    db.prepare("UPDATE chapters SET page_count = ? WHERE id = ? AND user_id = ?").run(pageCount, id, userId);
     res.json({ ok: true });
   });
 
   // Generate a new study plan
-  router.post("/studyplan/generate", (_req, res) => {
+  router.post("/studyplan/generate", (req, res) => {
+    const userId = req.user!.id;
     const today = bangkokToday();
 
     // Archive any existing active plan
-    db.prepare("UPDATE study_plans SET status = 'archived' WHERE status = 'active'").run();
+    db.prepare("UPDATE study_plans SET status = 'archived' WHERE status = 'active' AND user_id = ?").run(userId);
 
-    const { tasks, feasibility, warnings } = generatePlan(db);
-    const settings = getSettings(db);
+    const { tasks, feasibility, warnings } = generatePlan(db, userId);
+    const settings = getSettings(db, userId);
 
     const result = db.prepare(
-      `INSERT INTO study_plans (status, generated_at, settings_json, feasibility, warnings_json)
-       VALUES ('active', ?, ?, ?, ?)`,
-    ).run(today, JSON.stringify(settings), feasibility, JSON.stringify(warnings));
+      `INSERT INTO study_plans (user_id, status, generated_at, settings_json, feasibility, warnings_json)
+       VALUES (?, 'active', ?, ?, ?, ?)`,
+    ).run(userId, today, JSON.stringify(settings), feasibility, JSON.stringify(warnings));
 
     const planId = result.lastInsertRowid as number;
 
@@ -552,8 +552,9 @@ export function createStudyPlanRouter(db: DB): Router {
   });
 
   // Get active plan
-  router.get("/studyplan", (_req, res) => {
-    const plan = db.prepare("SELECT * FROM study_plans WHERE status = 'active' ORDER BY id DESC LIMIT 1").get() as
+  router.get("/studyplan", (req, res) => {
+    const userId = req.user!.id;
+    const plan = db.prepare("SELECT * FROM study_plans WHERE status = 'active' AND user_id = ? ORDER BY id DESC LIMIT 1").get(userId) as
       | { id: number; status: string; generated_at: string; feasibility: string; warnings_json: string }
       | undefined;
 
@@ -586,8 +587,13 @@ export function createStudyPlanRouter(db: DB): Router {
 
   // Toggle task done/undone
   router.post("/studyplan/tasks/:id/toggle", (req, res) => {
+    const userId = req.user!.id;
     const id = Number(req.params.id);
-    const task = db.prepare("SELECT id, done FROM study_tasks WHERE id = ?").get(id) as { id: number; done: number } | undefined;
+    const task = db.prepare(
+      `SELECT st.id, st.done FROM study_tasks st
+       JOIN study_plans sp ON sp.id = st.plan_id
+       WHERE st.id = ? AND sp.user_id = ?`,
+    ).get(id, userId) as { id: number; done: number } | undefined;
     if (!task) return res.status(404).json({ error: "ไม่พบงานนี้" });
 
     const newDone = task.done ? 0 : 1;
@@ -597,12 +603,13 @@ export function createStudyPlanRouter(db: DB): Router {
   });
 
   // Reschedule: move overdue undone tasks to future dates
-  router.post("/studyplan/reschedule", (_req, res) => {
-    const plan = db.prepare("SELECT id FROM study_plans WHERE status = 'active' ORDER BY id DESC LIMIT 1").get() as { id: number } | undefined;
+  router.post("/studyplan/reschedule", (req, res) => {
+    const userId = req.user!.id;
+    const plan = db.prepare("SELECT id FROM study_plans WHERE status = 'active' AND user_id = ? ORDER BY id DESC LIMIT 1").get(userId) as { id: number } | undefined;
     if (!plan) return res.status(404).json({ error: "ไม่มีแผนที่ใช้งานอยู่" });
 
     const today = bangkokToday();
-    const settings = getSettings(db);
+    const settings = getSettings(db, userId);
 
     // Get overdue undone tasks
     const overdue = db.prepare(
@@ -654,8 +661,9 @@ export function createStudyPlanRouter(db: DB): Router {
   });
 
   // ICS export
-  router.get("/studyplan/ics", (_req, res) => {
-    const plan = db.prepare("SELECT id FROM study_plans WHERE status = 'active' ORDER BY id DESC LIMIT 1").get() as { id: number } | undefined;
+  router.get("/studyplan/ics", (req, res) => {
+    const userId = req.user!.id;
+    const plan = db.prepare("SELECT id FROM study_plans WHERE status = 'active' AND user_id = ? ORDER BY id DESC LIMIT 1").get(userId) as { id: number } | undefined;
     if (!plan) return res.status(404).send("ไม่มีแผน");
 
     const tasks = db.prepare(

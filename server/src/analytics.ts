@@ -45,6 +45,7 @@ export function createAnalyticsRouter(db: DB): Router {
 
   // Log a study session (from the Pomodoro timer or a manual entry).
   router.post("/study-sessions", (req, res) => {
+    const userId = req.user!.id;
     const courseCode = (req.body.course_code as string) || null;
     const minutes = Math.max(0, Math.round(Number(req.body.minutes) || 0));
     const kind = (req.body.kind as string) || "read";
@@ -54,31 +55,32 @@ export function createAnalyticsRouter(db: DB): Router {
     }
     const info = db
       .prepare(
-        "INSERT INTO study_sessions (course_code, started_at, minutes, kind) VALUES (?, ?, ?, ?)",
+        "INSERT INTO study_sessions (user_id, course_code, started_at, minutes, kind) VALUES (?, ?, ?, ?, ?)",
       )
-      .run(courseCode, new Date().toISOString(), minutes, kind);
+      .run(userId, courseCode, new Date().toISOString(), minutes, kind);
     res.status(201).json({ id: Number(info.lastInsertRowid) });
   });
 
-  router.get("/analytics", (_req, res) => {
+  router.get("/analytics", (req, res) => {
+    const userId = req.user!.id;
     const term = currentTermId(db);
     const today = bangkokToday();
     const weekStart = weekStartISO();
     const weekStartTs = `${weekStart}T00:00:00.000Z`;
-    const targets = studyTargets(db, term);
+    const targets = studyTargets(db, term, userId);
 
     const hoursStmt = db.prepare(
-      "SELECT COALESCE(SUM(minutes),0) AS m FROM study_sessions WHERE course_code = ? AND started_at >= ?",
+      "SELECT COALESCE(SUM(minutes),0) AS m FROM study_sessions WHERE course_code = ? AND started_at >= ? AND user_id = ?",
     );
     const quizStmt = db.prepare(
       `SELECT AVG(a.ai_score) AS avg, COUNT(*) AS n
        FROM attempts a JOIN questions q ON q.id = a.question_id
-       WHERE q.course_code = ?`,
+       WHERE q.course_code = ? AND a.user_id = ?`,
     );
     const topicStmt = db.prepare(
       `SELECT q.topic AS topic, AVG(a.ai_score) AS avg, COUNT(*) AS n
        FROM attempts a JOIN questions q ON q.id = a.question_id
-       WHERE q.course_code = ? AND q.topic IS NOT NULL
+       WHERE q.course_code = ? AND a.user_id = ? AND q.topic IS NOT NULL
        GROUP BY q.topic`,
     );
     const examStmt = db.prepare(
@@ -86,14 +88,14 @@ export function createAnalyticsRouter(db: DB): Router {
     );
 
     const courses = targets.courses.map((c) => {
-      const minutes = (hoursStmt.get(c.code, weekStartTs) as { m: number }).m;
+      const minutes = (hoursStmt.get(c.code, weekStartTs, userId) as { m: number }).m;
       const actualWeeklyHours = Math.round((minutes / 60) * 10) / 10;
       const hoursRatio = c.weeklyHours > 0 ? actualWeeklyHours / c.weeklyHours : 1;
 
-      const quizRow = quizStmt.get(c.code) as { avg: number | null; n: number };
+      const quizRow = quizStmt.get(c.code, userId) as { avg: number | null; n: number };
       const quizAverage = quizRow.n > 0 && quizRow.avg != null ? Math.round((quizRow.avg / 2) * 100) : null;
 
-      const topics = (topicStmt.all(c.code) as Array<{ topic: string; avg: number; n: number }>)
+      const topics = (topicStmt.all(c.code, userId) as Array<{ topic: string; avg: number; n: number }>)
         .map((t) => ({ name: t.topic, mastery: Math.round((t.avg / 2) * 100) }))
         .sort((a, b) => a.mastery - b.mastery);
 

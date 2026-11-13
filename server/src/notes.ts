@@ -12,6 +12,8 @@ import { env } from "./env.js";
 import {
   generateNoteLearning,
   noteModelCall,
+  generateCourseSummary,
+  courseSummaryModelCall,
   isAiConfigured,
   AiNotConfiguredError,
   AiError,
@@ -47,21 +49,24 @@ export function createNotesRouter(db: DB): Router {
   });
 
   // List saved notes (newest first).
-  router.get("/notes", (_req, res) => {
+  router.get("/notes", (req, res) => {
+    const userId = req.user!.id;
     const rows = db
       .prepare(
         `SELECT n.id, n.course_code, c.name_th AS course_name, c.name_en AS course_name_en,
               n.title, n.created_at
          FROM notes n LEFT JOIN courses c ON c.code = n.course_code
+         WHERE n.user_id = ?
          ORDER BY n.created_at DESC`,
       )
-      .all();
+      .all(userId);
     res.json({ notes: rows });
   });
 
   // Read one note with all AI fields.
   router.get("/notes/:id", (req, res) => {
-    const row = db.prepare("SELECT * FROM notes WHERE id = ?").get(req.params.id) as
+    const userId = req.user!.id;
+    const row = db.prepare("SELECT * FROM notes WHERE id = ? AND user_id = ?").get(req.params.id, userId) as
       | Record<string, unknown>
       | undefined;
     if (!row) return res.status(404).json({ error: "ไม่พบโน้ตนี้" });
@@ -71,6 +76,51 @@ export function createNotesRouter(db: DB): Router {
       topics: safeParse(row.ai_topics_json as string | null, []),
       image_paths: safeParse(row.image_paths as string | null, []),
     });
+  });
+
+  // Summarize all notes for a course with AI.
+  router.post("/notes/summarize-course", async (req, res) => {
+    try {
+      const courseCode = req.body.course_code as string | undefined;
+      if (!courseCode) return res.status(400).json({ error: "ต้องระบุรหัสวิชา" });
+
+      if (!isAiConfigured()) {
+        return res.status(503).json({ error: "AI ยังไม่ได้ตั้งค่า", code: "AI_NOT_CONFIGURED" });
+      }
+
+      const userId = req.user!.id;
+      const rows = db
+        .prepare(
+          `SELECT raw_text, ai_summary_md, title FROM notes
+           WHERE course_code = ? AND user_id = ? ORDER BY created_at ASC`,
+        )
+        .all(courseCode, userId) as Array<{ raw_text: string | null; ai_summary_md: string | null; title: string | null }>;
+
+      if (rows.length === 0) return res.status(404).json({ error: "ไม่พบโน้ตในวิชานี้" });
+
+      const parts: string[] = [];
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i];
+        const label = r.title || `โน้ต #${i + 1}`;
+        const text = r.raw_text || r.ai_summary_md || "(ไม่มีข้อความ)";
+        parts.push(`=== ${label} ===\n${text}`);
+      }
+      const combined = parts.join("\n\n");
+
+      const result = await generateCourseSummary(courseSummaryModelCall(db, combined));
+      res.json(result);
+    } catch (err) {
+      handleAiError(res, err);
+    }
+  });
+
+  // Delete a note.
+  router.delete("/notes/:id", (req, res) => {
+    const userId = req.user!.id;
+    const row = db.prepare("SELECT id FROM notes WHERE id = ? AND user_id = ?").get(req.params.id, userId);
+    if (!row) return res.status(404).json({ error: "ไม่พบโน้ตนี้" });
+    db.prepare("DELETE FROM notes WHERE id = ? AND user_id = ?").run(req.params.id, userId);
+    res.json({ ok: true });
   });
 
   // Create a note: text and/or images -> optionally AI summary.
@@ -120,15 +170,17 @@ export function createNotesRouter(db: DB): Router {
         aiSkipped = true;
       }
 
+      const userId = req.user!.id;
       const info = db
         .prepare(
           `INSERT INTO notes
-             (course_code, created_at, title, raw_text, image_paths,
+             (user_id, course_code, created_at, title, raw_text, image_paths,
               ai_summary_md, ai_mindmap_md, ai_terms_json, ai_topics_json)
-           VALUES (@course_code, @created_at, @title, @raw_text, @image_paths,
+           VALUES (@user_id, @course_code, @created_at, @title, @raw_text, @image_paths,
                    @ai_summary_md, @ai_mindmap_md, @ai_terms_json, @ai_topics_json)`,
         )
         .run({
+          user_id: userId,
           course_code: courseCode,
           created_at: new Date().toISOString(),
           title,
@@ -140,12 +192,11 @@ export function createNotesRouter(db: DB): Router {
           ai_topics_json: JSON.stringify(learning.topics),
         });
 
-      // Accumulate suggested topic tags for later mastery tracking (Phase 6).
       if (courseCode) {
         const insTopic = db.prepare(
-          "INSERT OR IGNORE INTO topics (course_code, name, mastery) VALUES (?, ?, 0)",
+          "INSERT OR IGNORE INTO topics (course_code, name, mastery, user_id) VALUES (?, ?, 0, ?)",
         );
-        for (const tag of learning.topics) insTopic.run(courseCode, tag);
+        for (const tag of learning.topics) insTopic.run(courseCode, tag, userId);
       }
 
       res.status(201).json({

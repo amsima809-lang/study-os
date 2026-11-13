@@ -133,17 +133,19 @@ function Shell() {
   );
 }
 
+type User = { id: string; email: string; name: string; avatar_url: string; plan: string };
+
 function AuthGate() {
-  const [authed, setAuthed] = useState<boolean | null>(null);
+  const [user, setUser] = useState<User | null | undefined>(undefined);
 
   useEffect(() => {
-    getJSON<{ authed: boolean }>("/api/me")
-      .then((d) => setAuthed(d.authed))
-      .catch(() => setAuthed(false));
+    getJSON<User | null>("/api/auth/me")
+      .then((u) => setUser(u ?? null))
+      .catch(() => setUser(null));
   }, []);
 
-  if (authed === null) return <div className="min-h-dvh" style={{ backgroundColor: "var(--bg-base)" }} />;
-  if (!authed) return <Login onAuthed={() => setAuthed(true)} />;
+  if (user === undefined) return <div className="min-h-dvh" style={{ backgroundColor: "var(--bg-base)" }} />;
+  if (!user) return <Login onAuthed={() => { getJSON<User | null>("/api/auth/me").then((u) => setUser(u ?? null)); }} />;
   return <Shell />;
 }
 

@@ -5,7 +5,7 @@
  */
 import { Router } from "express";
 import type { DB } from "./db.js";
-import { bangkokToday, daysBetween } from "./api.js";
+import { bangkokToday, daysBetween, getSetting, setSetting } from "./api.js";
 
 export const MOCK_DEFAULT_COUNT = 40;
 export const MOCK_DEFAULT_DURATION_MIN = 90;
@@ -40,13 +40,10 @@ export function selectMockQuestions(
 
 type GradeCutoff = { label: string; min_pct: number };
 
-function getGradeCutoffs(db: DB): GradeCutoff[] {
-  const row = db.prepare("SELECT value FROM settings WHERE key = 'grade_cutoffs'").get() as
-    | { value: string }
-    | undefined;
-  if (!row) return [];
+function getGradeCutoffs(db: DB, userId: string): GradeCutoff[] {
+  const raw = getSetting(db, "grade_cutoffs", "[]", userId);
   try {
-    return JSON.parse(row.value) as GradeCutoff[];
+    return JSON.parse(raw) as GradeCutoff[];
   } catch {
     return [];
   }
@@ -71,7 +68,8 @@ export function createMockRouter(db: DB): Router {
   const router = Router();
 
   // Which courses can run a mock right now
-  router.get("/mock/available", (_req, res) => {
+  router.get("/mock/available", (req, res) => {
+    const userId = req.user!.id;
     const term = currentTermId(db);
     const today = bangkokToday();
     const rows = db
@@ -85,7 +83,7 @@ export function createMockRouter(db: DB): Router {
     const courses = rows.map((r) => {
       const daysToExam = daysBetween(today, r.d.slice(0, 10));
       const bankCount = (
-        db.prepare("SELECT COUNT(*) n FROM questions WHERE course_code = ?").get(r.course_code) as { n: number }
+        db.prepare("SELECT COUNT(*) n FROM questions WHERE course_code = ? AND user_id = ?").get(r.course_code, userId) as { n: number }
       ).n;
       const chapters = db
         .prepare("SELECT id, name FROM chapters WHERE course_code = ? ORDER BY sort_order")
@@ -105,6 +103,7 @@ export function createMockRouter(db: DB): Router {
 
   // Generate a new mock exam with configurable settings
   router.post("/mock/generate", (req, res) => {
+    const userId = req.user!.id;
     const term = currentTermId(db);
     const courseCode = String(req.body.course_code || "");
     const questionCount = Math.min(Math.max(Number(req.body.question_count) || MOCK_DEFAULT_COUNT, 5), 200);
@@ -128,13 +127,13 @@ export function createMockRouter(db: DB): Router {
       pool = db
         .prepare(
           `SELECT id, topic, chapter_id, question, type, choices_json FROM questions
-           WHERE course_code = ? AND chapter_id IN (${placeholders})`,
+           WHERE course_code = ? AND user_id = ? AND chapter_id IN (${placeholders})`,
         )
-        .all(courseCode, ...chapterIds) as BankQuestion[];
+        .all(courseCode, userId, ...chapterIds) as BankQuestion[];
     } else {
       pool = db
-        .prepare("SELECT id, topic, chapter_id, question, type, choices_json FROM questions WHERE course_code = ?")
-        .all(courseCode) as BankQuestion[];
+        .prepare("SELECT id, topic, chapter_id, question, type, choices_json FROM questions WHERE course_code = ? AND user_id = ?")
+        .all(courseCode, userId) as BankQuestion[];
     }
 
     if (pool.length === 0) {
@@ -147,10 +146,10 @@ export function createMockRouter(db: DB): Router {
           .prepare(
             `SELECT q.topic AS topic, AVG(a.ai_score) AS avg
              FROM attempts a JOIN questions q ON q.id = a.question_id
-             WHERE q.course_code = ? AND q.topic IS NOT NULL
+             WHERE q.course_code = ? AND a.user_id = ? AND q.topic IS NOT NULL
              GROUP BY q.topic HAVING AVG(a.ai_score) < 1.0`,
           )
-          .all(courseCode) as Array<{ topic: string }>
+          .all(courseCode, userId) as Array<{ topic: string }>
       ).map((r) => r.topic),
     );
     const lowBoxIds = new Set(
@@ -159,9 +158,9 @@ export function createMockRouter(db: DB): Router {
           .prepare(
             `SELECT f.question_id AS id FROM flashcards f
              JOIN questions q ON q.id = f.question_id
-             WHERE q.course_code = ? AND f.box <= 2`,
+             WHERE q.course_code = ? AND f.user_id = ? AND f.box <= 2`,
           )
-          .all(courseCode) as Array<{ id: number }>
+          .all(courseCode, userId) as Array<{ id: number }>
       ).map((r) => r.id),
     );
 
@@ -170,10 +169,10 @@ export function createMockRouter(db: DB): Router {
 
     const info = db
       .prepare(
-        `INSERT INTO mock_exams (course_code, created_at, question_ids_json, duration_min, question_count)
-         VALUES (?, ?, ?, ?, ?)`,
+        `INSERT INTO mock_exams (user_id, course_code, created_at, question_ids_json, duration_min, question_count)
+         VALUES (?, ?, ?, ?, ?, ?)`,
       )
-      .run(courseCode, new Date().toISOString(), JSON.stringify(ids), durationMin, ids.length);
+      .run(userId, courseCode, new Date().toISOString(), JSON.stringify(ids), durationMin, ids.length);
 
     const mockId = Number(info.lastInsertRowid);
 
@@ -201,9 +200,10 @@ export function createMockRouter(db: DB): Router {
 
   // Auto-save session state
   router.post("/mock/:id/save", (req, res) => {
+    const userId = req.user!.id;
     const id = Number(req.params.id);
     const { answers, flags, current_idx, seconds_left, time_per_q } = req.body;
-    const exists = db.prepare("SELECT 1 FROM mock_sessions WHERE mock_id = ?").get(id);
+    const exists = db.prepare("SELECT 1 FROM mock_sessions ms JOIN mock_exams me ON me.id = ms.mock_id WHERE ms.mock_id = ? AND me.user_id = ?").get(id, userId);
     if (!exists) return res.status(404).json({ error: "ไม่พบ session" });
 
     db.prepare(
@@ -223,8 +223,9 @@ export function createMockRouter(db: DB): Router {
 
   // Restore session (for auto-resume after browser close)
   router.get("/mock/:id/session", (req, res) => {
+    const userId = req.user!.id;
     const id = Number(req.params.id);
-    const session = db.prepare("SELECT * FROM mock_sessions WHERE mock_id = ?").get(id) as
+    const session = db.prepare("SELECT ms.* FROM mock_sessions ms JOIN mock_exams me ON me.id = ms.mock_id WHERE ms.mock_id = ? AND me.user_id = ?").get(id, userId) as
       | { mock_id: number; answers_json: string; flags_json: string; current_idx: number; seconds_left: number; time_per_q_json: string }
       | undefined;
     if (!session) return res.status(404).json({ error: "ไม่พบ session" });
@@ -262,7 +263,8 @@ export function createMockRouter(db: DB): Router {
   });
 
   // Check for in-progress (unfinished) mock exams
-  router.get("/mock/in-progress", (_req, res) => {
+  router.get("/mock/in-progress", (req, res) => {
+    const userId = req.user!.id;
     const rows = db
       .prepare(
         `SELECT me.id, me.course_code, c.name_th, c.name_en, me.created_at, me.duration_min,
@@ -270,10 +272,10 @@ export function createMockRouter(db: DB): Router {
          FROM mock_exams me
          JOIN mock_sessions ms ON ms.mock_id = me.id
          JOIN courses c ON c.code = me.course_code
-         WHERE me.finished_at IS NULL AND me.score IS NULL
+         WHERE me.finished_at IS NULL AND me.score IS NULL AND me.user_id = ?
          ORDER BY me.created_at DESC`,
       )
-      .all() as Array<{
+      .all(userId) as Array<{
         id: number; course_code: string; name_th: string; name_en: string | null;
         created_at: string; duration_min: number; seconds_left: number;
         current_idx: number; question_count: number | null;
@@ -283,10 +285,11 @@ export function createMockRouter(db: DB): Router {
 
   // Finish a mock: compute score + chapter breakdown + grade estimation
   router.post("/mock/:id/finish", (req, res) => {
+    const userId = req.user!.id;
     const id = Number(req.params.id);
     const timePerQ: Record<string, number> = req.body.time_per_q ?? {};
 
-    const mock = db.prepare("SELECT question_ids_json, course_code FROM mock_exams WHERE id = ?").get(id) as
+    const mock = db.prepare("SELECT question_ids_json, course_code FROM mock_exams WHERE id = ? AND user_id = ?").get(id, userId) as
       | { question_ids_json: string; course_code: string }
       | undefined;
     if (!mock) return res.status(404).json({ error: "ไม่พบข้อสอบจำลองนี้" });
@@ -295,7 +298,7 @@ export function createMockRouter(db: DB): Router {
     const maxScore = ids.length * 2;
 
     const scoreStmt = db.prepare(
-      "SELECT ai_score FROM attempts WHERE question_id = ? ORDER BY created_at DESC, id DESC LIMIT 1",
+      "SELECT ai_score FROM attempts WHERE question_id = ? AND user_id = ? ORDER BY created_at DESC, id DESC LIMIT 1",
     );
     const qStmt = db.prepare("SELECT topic, chapter_id FROM questions WHERE id = ?");
     const chapterStmt = db.prepare("SELECT name FROM chapters WHERE id = ?");
@@ -305,7 +308,7 @@ export function createMockRouter(db: DB): Router {
     const chapterAgg = new Map<number, { name: string; sum: number; n: number; max: number }>();
 
     for (const qid of ids) {
-      const row = scoreStmt.get(qid) as { ai_score: number | null } | undefined;
+      const row = scoreStmt.get(qid, userId) as { ai_score: number | null } | undefined;
       const s = row?.ai_score ?? 0;
       score += s;
       const qInfo = qStmt.get(qid) as { topic: string | null; chapter_id: number | null } | undefined;
@@ -350,7 +353,7 @@ export function createMockRouter(db: DB): Router {
       .sort((a, b) => a.pct - b.pct);
 
     const pct = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
-    const cutoffs = getGradeCutoffs(db);
+    const cutoffs = getGradeCutoffs(db, userId);
     const grade = estimateGrade(cutoffs, pct);
 
     const totalSeconds = Object.values(timePerQ).reduce((a, b) => a + b, 0);
@@ -386,19 +389,22 @@ export function createMockRouter(db: DB): Router {
   });
 
   // Grade cutoffs CRUD
-  router.get("/mock/cutoffs", (_req, res) => {
-    res.json({ cutoffs: getGradeCutoffs(db) });
+  router.get("/mock/cutoffs", (req, res) => {
+    const userId = req.user!.id;
+    res.json({ cutoffs: getGradeCutoffs(db, userId) });
   });
 
   router.put("/mock/cutoffs", (req, res) => {
+    const userId = req.user!.id;
     const cutoffs = req.body.cutoffs as GradeCutoff[];
     if (!Array.isArray(cutoffs)) return res.status(400).json({ error: "cutoffs must be an array" });
-    db.prepare("UPDATE settings SET value = ? WHERE key = 'grade_cutoffs'").run(JSON.stringify(cutoffs));
+    setSetting(db, "grade_cutoffs", JSON.stringify(cutoffs), userId);
     res.json({ ok: true, cutoffs });
   });
 
   // Exam history with trend data
   router.get("/mock/history", (req, res) => {
+    const userId = req.user!.id;
     const courseCode = req.query.course_code as string | undefined;
     const limit = Math.min(Number(req.query.limit) || 20, 100);
 
@@ -412,10 +418,10 @@ export function createMockRouter(db: DB): Router {
                   (SELECT json_group_array(q.id) FROM json_each(me.question_ids_json) je
                    JOIN questions q ON q.id = je.value) AS q_count_check
            FROM mock_exams me JOIN courses c ON c.code = me.course_code
-           WHERE me.finished_at IS NOT NULL AND me.course_code = ?
+           WHERE me.finished_at IS NOT NULL AND me.course_code = ? AND me.user_id = ?
            ORDER BY me.finished_at DESC LIMIT ?`,
         )
-        .all(courseCode, limit);
+        .all(courseCode, userId, limit);
     } else {
       rows = db
         .prepare(
@@ -423,13 +429,13 @@ export function createMockRouter(db: DB): Router {
                   me.score, me.duration_min, me.question_count, me.total_seconds,
                   me.chapter_scores_json
            FROM mock_exams me JOIN courses c ON c.code = me.course_code
-           WHERE me.finished_at IS NOT NULL
+           WHERE me.finished_at IS NOT NULL AND me.user_id = ?
            ORDER BY me.finished_at DESC LIMIT ?`,
         )
-        .all(limit);
+        .all(userId, limit);
     }
 
-    const cutoffs = getGradeCutoffs(db);
+    const cutoffs = getGradeCutoffs(db, userId);
     const history = (rows as Array<Record<string, unknown>>).map((r) => {
       const qCount = (r.question_count as number) || 0;
       const maxScore = qCount * 2;

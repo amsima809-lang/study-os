@@ -9,11 +9,14 @@ beforeEach(() => {
   seedDatabase(db);
 });
 
+const TEST_USER = "legacy-user-0001";
+
 function pass(code: string) {
   const term = db
     .prepare("SELECT term_id FROM plan_items WHERE course_code = ? LIMIT 1")
     .get(code) as { term_id: string } | undefined;
-  db.prepare("INSERT OR REPLACE INTO enrollments (course_code, term_id, status) VALUES (?, ?, 'PASSED')").run(
+  db.prepare("INSERT OR REPLACE INTO enrollments (user_id, course_code, term_id, status) VALUES (?, ?, ?, 'PASSED')").run(
+    TEST_USER,
     code,
     term?.term_id ?? "2/69",
   );
@@ -21,7 +24,7 @@ function pass(code: string) {
 
 describe("Phase 7 — graduation readiness", () => {
   it("is not eligible with nothing passed", () => {
-    const r = computeInternship(db);
+    const r = computeInternship(db, TEST_USER);
     expect(r.eligible).toBe(false);
     expect(r.rules.find((x) => x.id === "credits")!.detail).toBe("0/132");
   });
@@ -30,9 +33,9 @@ describe("Phase 7 — graduation readiness", () => {
     ["ACC1103", "ACC1104", "DBC2101", "ECO1121", "ECO1122", "FIN2101",
      "HRM2101", "LAW2116", "MGT2101", "MGT2102", "MGT3101", "MGT3102",
      "MKT2101"].forEach(pass); // 13 of 14 = 39 credits
-    expect(computeInternship(db).rules.find((r) => r.id === "core")!.ok).toBe(false);
+    expect(computeInternship(db, TEST_USER).rules.find((r) => r.id === "core")!.ok).toBe(false);
     pass("STA2016"); // 14th = 42 credits
-    expect(computeInternship(db).rules.find((r) => r.id === "core")!.ok).toBe(true);
+    expect(computeInternship(db, TEST_USER).rules.find((r) => r.id === "core")!.ok).toBe(true);
   });
 });
 

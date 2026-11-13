@@ -40,11 +40,30 @@ export function addDaysISO(dateISO: string, n: number): string {
 }
 
 // ---------- settings ----------
-function getSetting(db: DB, key: string, fallback: string): string {
+export function getSetting(db: DB, key: string, fallback: string, userId?: string): string {
+  if (userId) {
+    const userRow = db.prepare("SELECT value FROM user_settings WHERE key = ? AND user_id = ?").get(key, userId) as
+      | { value: string }
+      | undefined;
+    if (userRow) return userRow.value;
+  }
   const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(key) as
     | { value: string }
     | undefined;
   return row?.value ?? fallback;
+}
+
+export function setSetting(db: DB, key: string, value: string, userId?: string): void {
+  if (userId) {
+    db.prepare(
+      `INSERT INTO user_settings (user_id, key, value) VALUES (?, ?, ?)
+       ON CONFLICT(user_id, key) DO UPDATE SET value = excluded.value`,
+    ).run(userId, key, value);
+  } else {
+    db.prepare(
+      "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+    ).run(key, value);
+  }
 }
 
 function currentTermId(db: DB): string {
@@ -54,17 +73,17 @@ function currentTermId(db: DB): string {
 // ---------- shared queries ----------
 type CourseRow = { code: string; name_th: string; name_en: string | null; difficulty: number };
 
-/** Real courses (not placeholders) planned in the current term. */
-function currentTermCourses(db: DB, termId: string): CourseRow[] {
+/** Real courses (not placeholders) planned in the current term for a user. */
+function currentTermCourses(db: DB, termId: string, userId: string): CourseRow[] {
   return db
     .prepare(
       `SELECT c.code, c.name_th, c.name_en, c.difficulty
        FROM plan_items pi
        JOIN courses c ON c.code = pi.course_code
-       WHERE pi.term_id = ?
+       WHERE pi.term_id = ? AND pi.user_id = ?
        ORDER BY c.code`,
     )
-    .all(termId) as CourseRow[];
+    .all(termId, userId) as CourseRow[];
 }
 
 /**
@@ -72,9 +91,9 @@ function currentTermCourses(db: DB, termId: string): CourseRow[] {
  * difficulty 3=3pts, 2=2pts, 1=1pt. weekly_target_hours / total points =
  * hours per point; a course's weekly hours = its points × hours-per-point.
  */
-export function studyTargets(db: DB, termId: string) {
-  const courses = currentTermCourses(db, termId);
-  const weeklyTarget = Number(getSetting(db, "weekly_target_hours", "36"));
+export function studyTargets(db: DB, termId: string, userId: string) {
+  const courses = currentTermCourses(db, termId, userId);
+  const weeklyTarget = Number(getSetting(db, "weekly_target_hours", "36", userId));
   const totalPoints = courses.reduce((s, c) => s + c.difficulty, 0);
   const hoursPerPoint = totalPoints > 0 ? weeklyTarget / totalPoints : 0;
 
@@ -167,9 +186,9 @@ export function findExamClashes(exams: ExamRow[]): Array<{ date: string; courses
   return clashes;
 }
 
-function dueFlashcardCount(db: DB, today: string): number {
+function dueFlashcardCount(db: DB, today: string, userId: string): number {
   return (
-    db.prepare("SELECT COUNT(*) n FROM flashcards WHERE next_review_date <= ?").get(today) as {
+    db.prepare("SELECT COUNT(*) n FROM flashcards WHERE next_review_date <= ? AND user_id = ?").get(today, userId) as {
       n: number;
     }
   ).n;
@@ -179,7 +198,8 @@ function dueFlashcardCount(db: DB, today: string): number {
 export function createApiRouter(db: DB): Router {
   const router = Router();
 
-  router.get("/today", (_req, res) => {
+  router.get("/today", (req, res) => {
+    const userId = req.user!.id;
     const term = currentTermId(db);
     const today = bangkokToday();
     const weekday = bangkokWeekday();
@@ -208,8 +228,8 @@ export function createApiRouter(db: DB): Router {
             daysLeft: nextExam.daysLeft,
           }
         : null,
-      dueFlashcards: dueFlashcardCount(db, today),
-      studyTargets: studyTargets(db, term),
+      dueFlashcards: dueFlashcardCount(db, today, userId),
+      studyTargets: studyTargets(db, term, userId),
     });
   });
 
@@ -219,6 +239,7 @@ export function createApiRouter(db: DB): Router {
   });
 
   router.get("/calendar", (req, res) => {
+    const userId = req.user!.id;
     const month = (req.query.month as string) || bangkokToday().slice(0, 7);
     const term = currentTermId(db);
 
@@ -299,8 +320,8 @@ export function createApiRouter(db: DB): Router {
 
     // study tasks in this month (from active plan)
     const plan = db
-      .prepare("SELECT id FROM study_plans WHERE status = 'active' ORDER BY id DESC LIMIT 1")
-      .get() as { id: number } | undefined;
+      .prepare("SELECT id FROM study_plans WHERE status = 'active' AND user_id = ? ORDER BY id DESC LIMIT 1")
+      .get(userId) as { id: number } | undefined;
     if (plan) {
       const tasks = db
         .prepare(

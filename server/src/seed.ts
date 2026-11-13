@@ -250,15 +250,22 @@ export function seedDatabase(db: DB): void {
     for (const t of PLAN_TERMS) insTerm.run(t);
 
     // plan_items: in-plan courses (those with a term) + placeholders
-    const insItem = db.prepare(
-      `INSERT INTO plan_items (term_id, course_code, placeholder_label)
-       VALUES (@term_id, @course_code, @placeholder_label)`,
-    );
+    const hasUserCol = db.prepare("SELECT COUNT(*) AS n FROM pragma_table_info('plan_items') WHERE name = 'user_id'").get() as { n: number };
+    const insItem = hasUserCol.n > 0
+      ? db.prepare(
+          `INSERT INTO plan_items (user_id, term_id, course_code, placeholder_label)
+           VALUES (@user_id, @term_id, @course_code, @placeholder_label)`,
+        )
+      : db.prepare(
+          `INSERT INTO plan_items (term_id, course_code, placeholder_label)
+           VALUES (@term_id, @course_code, @placeholder_label)`,
+        );
+    const legacyId = hasUserCol.n > 0 ? "legacy-user-0001" : undefined;
     for (const c of COURSES) {
-      if (c.term) insItem.run({ term_id: c.term, course_code: c.code, placeholder_label: null });
+      if (c.term) insItem.run({ user_id: legacyId, term_id: c.term, course_code: c.code, placeholder_label: null });
     }
     for (const p of PLACEHOLDERS) {
-      insItem.run({ term_id: p.term, course_code: null, placeholder_label: p.label });
+      insItem.run({ user_id: legacyId, term_id: p.term, course_code: null, placeholder_label: p.label });
     }
 
     const insClass = db.prepare(

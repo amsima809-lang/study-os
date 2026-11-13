@@ -78,7 +78,7 @@ describe("Phase 4 — date + flashcard helpers", () => {
   });
 
   it("creates a box-1 flashcard, then resets an existing one", () => {
-    upsertFlashcardToBox1(db, 1, "2026-09-28");
+    upsertFlashcardToBox1(db, 1, "2026-09-28", "legacy-user-0001");
     let cards = db.prepare("SELECT * FROM flashcards WHERE question_id = 1").all() as Array<{
       box: number;
       next_review_date: string;
@@ -89,7 +89,7 @@ describe("Phase 4 — date + flashcard helpers", () => {
 
     // Move it up, then a wrong answer should reset it to box 1 (no duplicate).
     db.prepare("UPDATE flashcards SET box = 3 WHERE question_id = 1").run();
-    upsertFlashcardToBox1(db, 1, "2026-10-01");
+    upsertFlashcardToBox1(db, 1, "2026-10-01", "legacy-user-0001");
     cards = db.prepare("SELECT * FROM flashcards WHERE question_id = 1").all() as Array<{
       box: number;
       next_review_date: string;

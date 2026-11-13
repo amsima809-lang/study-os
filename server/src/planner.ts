@@ -4,6 +4,7 @@
  */
 import { Router } from "express";
 import type { DB } from "./db.js";
+import { getSetting, setSetting } from "./api.js";
 
 export const CATEGORY_REQUIRED: Record<string, number> = {
   GE: 30,
@@ -18,22 +19,20 @@ const TOTAL_REQUIRED = 132;
 type EnrollRow = { course_code: string; status: string; category: string; credits: number; grade: string | null };
 type GradeScale = { grade: string; points: number };
 
-function enrollments(db: DB): EnrollRow[] {
+function enrollments(db: DB, userId: string): EnrollRow[] {
   return db
     .prepare(
       `SELECT e.course_code, e.status, c.category, c.credits, e.grade
-       FROM enrollments e JOIN courses c ON c.code = e.course_code`,
+       FROM enrollments e JOIN courses c ON c.code = e.course_code
+       WHERE e.user_id = ?`,
     )
-    .all() as EnrollRow[];
+    .all(userId) as EnrollRow[];
 }
 
-function getGradeScale(db: DB): GradeScale[] {
-  const row = db.prepare("SELECT value FROM settings WHERE key = 'grade_scale'").get() as
-    | { value: string }
-    | undefined;
-  if (!row) return [];
+function getGradeScale(db: DB, userId: string): GradeScale[] {
+  const raw = getSetting(db, "grade_scale", "[]", userId);
   try {
-    return JSON.parse(row.value) as GradeScale[];
+    return JSON.parse(raw) as GradeScale[];
   } catch {
     return [];
   }
@@ -68,8 +67,8 @@ function calculateGpa(courses: Array<{ credits: number; grade: string | null }>,
 
 export type Rule = { id: string; ok: boolean; detail: string };
 
-export function computeInternship(db: DB): { eligible: boolean; rules: Rule[] } {
-  const rows = enrollments(db);
+export function computeInternship(db: DB, userId: string): { eligible: boolean; rules: Rule[] } {
+  const rows = enrollments(db, userId);
   const passed = rows.filter((r) => r.status === "PASSED");
   const creditsIn = (cat: string) =>
     passed.filter((r) => r.category === cat).reduce((s, r) => s + r.credits, 0);
@@ -88,13 +87,13 @@ export function computeInternship(db: DB): { eligible: boolean; rules: Rule[] } 
   return { eligible: rules.every((r) => r.ok), rules };
 }
 
-function earliestRetakeTerm(db: DB, courseCode: string): string | null {
+function earliestRetakeTerm(db: DB, courseCode: string, userId: string): string | null {
   const planned = db
     .prepare(
       `SELECT MIN(t.ord) AS o FROM plan_items pi JOIN plan_terms t ON t.term_id = pi.term_id
-       WHERE pi.course_code = ?`,
+       WHERE pi.course_code = ? AND pi.user_id = ?`,
     )
-    .get(courseCode) as { o: number | null };
+    .get(courseCode, userId) as { o: number | null };
   if (planned.o == null) return null;
   const next = db
     .prepare("SELECT term_id FROM plan_terms WHERE ord > ? ORDER BY ord LIMIT 1")
@@ -105,10 +104,11 @@ function earliestRetakeTerm(db: DB, courseCode: string): string | null {
 export function createPlannerRouter(db: DB): Router {
   const router = Router();
 
-  router.get("/plan", (_req, res) => {
+  router.get("/plan", (req, res) => {
+    const userId = req.user!.id;
     const statusByCourse = new Map<string, string>();
     const gradeByCourse = new Map<string, string | null>();
-    for (const e of db.prepare("SELECT course_code, status, grade FROM enrollments").all() as Array<{
+    for (const e of db.prepare("SELECT course_code, status, grade FROM enrollments WHERE user_id = ?").all(userId) as Array<{
       course_code: string;
       status: string;
       grade: string | null;
@@ -123,14 +123,14 @@ export function createPlannerRouter(db: DB): Router {
     const itemStmt = db.prepare(
       `SELECT pi.course_code, pi.placeholder_label, c.name_th, c.name_en, c.credits, c.category, c.difficulty
        FROM plan_items pi LEFT JOIN courses c ON c.code = pi.course_code
-       WHERE pi.term_id = ? ORDER BY pi.id`,
+       WHERE pi.term_id = ? AND pi.user_id = ? ORDER BY pi.id`,
     );
 
-    const scale = getGradeScale(db);
+    const scale = getGradeScale(db, userId);
 
     let running = 0;
     const terms = termRows.map((t) => {
-      const items = (itemStmt.all(t.term_id) as Array<{
+      const items = (itemStmt.all(t.term_id, userId) as Array<{
         course_code: string | null;
         placeholder_label: string | null;
         name_th: string | null;
@@ -168,7 +168,7 @@ export function createPlannerRouter(db: DB): Router {
       };
     });
 
-    const allEnrollments = enrollments(db);
+    const allEnrollments = enrollments(db, userId);
     const passedByCat = new Map<string, number>();
     for (const e of allEnrollments) {
       if (e.status === "PASSED") passedByCat.set(e.category, (passedByCat.get(e.category) ?? 0) + e.credits);
@@ -187,7 +187,7 @@ export function createPlannerRouter(db: DB): Router {
 
     const remainingCredits = Math.max(0, TOTAL_REQUIRED - totalPassedCredits);
     const futureTerms = termRows.filter((t) => {
-      const termItems = itemStmt.all(t.term_id) as Array<{ course_code: string | null }>;
+      const termItems = itemStmt.all(t.term_id, userId) as Array<{ course_code: string | null }>;
       return termItems.some(
         (it) => it.course_code && (statusByCourse.get(it.course_code) ?? "PLANNED") === "PLANNED",
       );
@@ -209,7 +209,7 @@ export function createPlannerRouter(db: DB): Router {
     const blocked: Array<{ course_code: string; name_th: string; dueTo: string[] }> = [];
     for (const [code, status] of statusByCourse) {
       if (status === "FAILED") {
-        failed.push({ course_code: code, name_th: nameOf(code), retakeTerm: earliestRetakeTerm(db, code) });
+        failed.push({ course_code: code, name_th: nameOf(code), retakeTerm: earliestRetakeTerm(db, code, userId) });
       }
     }
     const blockedMap = new Map<string, string[]>();
@@ -227,7 +227,7 @@ export function createPlannerRouter(db: DB): Router {
       categoryProgress,
       failed,
       blocked,
-      internship: computeInternship(db),
+      internship: computeInternship(db, userId),
       gpa: overallGpa,
       gradeScale: scale,
       pace: {
@@ -240,6 +240,7 @@ export function createPlannerRouter(db: DB): Router {
   });
 
   router.post("/enrollments", (req, res) => {
+    const userId = req.user!.id;
     const courseCode = String(req.body.course_code || "");
     const status = String(req.body.status || "");
     const grade: string | null = req.body.grade ?? null;
@@ -249,32 +250,34 @@ export function createPlannerRouter(db: DB): Router {
     const planned = db
       .prepare(
         `SELECT pi.term_id FROM plan_items pi JOIN plan_terms t ON t.term_id = pi.term_id
-         WHERE pi.course_code = ? ORDER BY t.ord LIMIT 1`,
+         WHERE pi.course_code = ? AND pi.user_id = ? ORDER BY t.ord LIMIT 1`,
       )
-      .get(courseCode) as { term_id: string } | undefined;
+      .get(courseCode, userId) as { term_id: string } | undefined;
     if (!planned) return res.status(404).json({ error: "ไม่พบวิชานี้ในแผน" });
 
     if (status === "PLANNED") {
-      db.prepare("DELETE FROM enrollments WHERE course_code = ? AND term_id = ?").run(
+      db.prepare("DELETE FROM enrollments WHERE course_code = ? AND term_id = ? AND user_id = ?").run(
         courseCode,
         planned.term_id,
+        userId,
       );
     } else {
       db.prepare(
-        `INSERT INTO enrollments (course_code, term_id, status, grade)
-         VALUES (@c, @t, @s, @g)
+        `INSERT INTO enrollments (user_id, course_code, term_id, status, grade)
+         VALUES (@u, @c, @t, @s, @g)
          ON CONFLICT(course_code, term_id) DO UPDATE SET status = @s, grade = @g`,
-      ).run({ c: courseCode, t: planned.term_id, s: status, g: grade });
+      ).run({ u: userId, c: courseCode, t: planned.term_id, s: status, g: grade });
     }
     res.json({ ok: true });
   });
 
   router.post("/plan/what-if", (req, res) => {
+    const userId = req.user!.id;
     const hypothetical = req.body.courses as Array<{ course_code: string; grade: string }>;
     if (!Array.isArray(hypothetical)) return res.status(400).json({ error: "courses must be an array" });
 
-    const scale = getGradeScale(db);
-    const allEnrollments = enrollments(db);
+    const scale = getGradeScale(db, userId);
+    const allEnrollments = enrollments(db, userId);
 
     const current = allEnrollments
       .filter((e) => e.status === "PASSED")
@@ -302,14 +305,16 @@ export function createPlannerRouter(db: DB): Router {
     });
   });
 
-  router.get("/plan/grade-scale", (_req, res) => {
-    res.json({ scale: getGradeScale(db) });
+  router.get("/plan/grade-scale", (req, res) => {
+    const userId = req.user!.id;
+    res.json({ scale: getGradeScale(db, userId) });
   });
 
   router.put("/plan/grade-scale", (req, res) => {
+    const userId = req.user!.id;
     const scale = req.body.scale as GradeScale[];
     if (!Array.isArray(scale)) return res.status(400).json({ error: "scale must be an array" });
-    db.prepare("UPDATE settings SET value = ? WHERE key = 'grade_scale'").run(JSON.stringify(scale));
+    setSetting(db, "grade_scale", JSON.stringify(scale), userId);
     res.json({ ok: true, scale });
   });
 

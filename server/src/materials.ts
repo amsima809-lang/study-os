@@ -49,6 +49,7 @@ export function createMaterialsRouter(db: DB): Router {
 
   // --- List materials for a course ---
   router.get("/materials", (req, res) => {
+    const userId = req.user!.id;
     const courseCode = req.query.course_code as string | undefined;
     let rows;
     if (courseCode) {
@@ -56,9 +57,9 @@ export function createMaterialsRouter(db: DB): Router {
         .prepare(
           `SELECT id, course_code, filename, file_type, material_kind, file_size,
                   total_pages, pages_done, upload_status, error_message, created_at
-           FROM materials WHERE course_code = ? ORDER BY created_at DESC`,
+           FROM materials WHERE course_code = ? AND user_id = ? ORDER BY created_at DESC`,
         )
-        .all(courseCode);
+        .all(courseCode, userId);
     } else {
       rows = db
         .prepare(
@@ -66,9 +67,10 @@ export function createMaterialsRouter(db: DB): Router {
                   m.material_kind, m.file_size, m.total_pages, m.pages_done,
                   m.upload_status, m.created_at
            FROM materials m JOIN courses c ON c.code = m.course_code
+           WHERE m.user_id = ?
            ORDER BY m.created_at DESC`,
         )
-        .all();
+        .all(userId);
     }
     res.json({ materials: rows });
   });
@@ -77,6 +79,7 @@ export function createMaterialsRouter(db: DB): Router {
   router.post("/materials/upload", upload.single("file"), async (req, res) => {
     try {
       await mkdir(env.uploadDir, { recursive: true });
+      const userId = req.user!.id;
       const courseCode = req.body.course_code as string;
       const materialKind = (req.body.material_kind as string) || "textbook";
       const file = req.file;
@@ -117,10 +120,11 @@ export function createMaterialsRouter(db: DB): Router {
 
       const info = db
         .prepare(
-          `INSERT INTO materials (course_code, filename, file_type, material_kind, file_path, file_size, total_pages, upload_status, created_at)
-           VALUES (@course_code, @filename, @file_type, @material_kind, @file_path, @file_size, @total_pages, @upload_status, @created_at)`,
+          `INSERT INTO materials (user_id, course_code, filename, file_type, material_kind, file_path, file_size, total_pages, upload_status, created_at)
+           VALUES (@user_id, @course_code, @filename, @file_type, @material_kind, @file_path, @file_size, @total_pages, @upload_status, @created_at)`,
         )
         .run({
+          user_id: userId,
           course_code: courseCode,
           filename: file.originalname,
           file_type: fileType,
@@ -148,8 +152,9 @@ export function createMaterialsRouter(db: DB): Router {
   // --- Process a material (extract text per page) ---
   router.post("/materials/:id/process", async (req, res) => {
     try {
+      const userId = req.user!.id;
       const id = Number(req.params.id);
-      const mat = db.prepare("SELECT * FROM materials WHERE id = ?").get(id) as any;
+      const mat = db.prepare("SELECT * FROM materials WHERE id = ? AND user_id = ?").get(id, userId) as any;
       if (!mat) return res.status(404).json({ error: "ไม่พบเอกสารนี้" });
       if (mat.upload_status === "processing") {
         return res.status(409).json({ error: "กำลังดำเนินการอยู่" });
@@ -175,18 +180,20 @@ export function createMaterialsRouter(db: DB): Router {
 
   // --- Get processing status ---
   router.get("/materials/:id/status", (req, res) => {
+    const userId = req.user!.id;
     const id = Number(req.params.id);
     const mat = db
-      .prepare("SELECT id, upload_status, total_pages, pages_done, error_message FROM materials WHERE id = ?")
-      .get(id) as any;
+      .prepare("SELECT id, upload_status, total_pages, pages_done, error_message FROM materials WHERE id = ? AND user_id = ?")
+      .get(id, userId) as any;
     if (!mat) return res.status(404).json({ error: "ไม่พบเอกสาร" });
     res.json(mat);
   });
 
   // --- Get pages of a material (with extracted text) ---
   router.get("/materials/:id/pages", (req, res) => {
+    const userId = req.user!.id;
     const id = Number(req.params.id);
-    const mat = db.prepare("SELECT id, filename, total_pages, upload_status FROM materials WHERE id = ?").get(id) as any;
+    const mat = db.prepare("SELECT id, filename, total_pages, upload_status FROM materials WHERE id = ? AND user_id = ?").get(id, userId) as any;
     if (!mat) return res.status(404).json({ error: "ไม่พบเอกสาร" });
 
     const pages = db
@@ -200,10 +207,13 @@ export function createMaterialsRouter(db: DB): Router {
 
   // --- Update extracted text for a page (manual correction) ---
   router.put("/materials/:materialId/pages/:pageNum", (req, res) => {
+    const userId = req.user!.id;
     const materialId = Number(req.params.materialId);
     const pageNum = Number(req.params.pageNum);
     const text = String(req.body.text ?? "");
 
+    const mat = db.prepare("SELECT id FROM materials WHERE id = ? AND user_id = ?").get(materialId, userId);
+    if (!mat) return res.status(404).json({ error: "ไม่พบเอกสาร" });
     const existing = db
       .prepare("SELECT id FROM material_pages WHERE material_id = ? AND page_num = ?")
       .get(materialId, pageNum);
@@ -217,8 +227,9 @@ export function createMaterialsRouter(db: DB): Router {
 
   // --- Delete a material ---
   router.delete("/materials/:id", (req, res) => {
+    const userId = req.user!.id;
     const id = Number(req.params.id);
-    const mat = db.prepare("SELECT id FROM materials WHERE id = ?").get(id);
+    const mat = db.prepare("SELECT id FROM materials WHERE id = ? AND user_id = ?").get(id, userId);
     if (!mat) return res.status(404).json({ error: "ไม่พบเอกสาร" });
     db.prepare("DELETE FROM material_pages WHERE material_id = ?").run(id);
     db.prepare("DELETE FROM material_chunks WHERE material_id = ?").run(id);
@@ -228,11 +239,12 @@ export function createMaterialsRouter(db: DB): Router {
 
   // --- Chapters for a course ---
   router.get("/chapters", (req, res) => {
+    const userId = req.user!.id;
     const courseCode = req.query.course_code as string;
     if (!courseCode) return res.status(400).json({ error: "ต้องระบุรหัสวิชา" });
     const rows = db
-      .prepare("SELECT * FROM chapters WHERE course_code = ? ORDER BY sort_order, id")
-      .all(courseCode);
+      .prepare("SELECT * FROM chapters WHERE course_code = ? AND user_id = ? ORDER BY sort_order, id")
+      .all(courseCode, userId);
     res.json({ chapters: rows });
   });
 
@@ -240,8 +252,9 @@ export function createMaterialsRouter(db: DB): Router {
   router.post("/chapters/suggest", async (req, res) => {
     try {
       if (!isAiConfigured()) throw new AiNotConfiguredError();
+      const userId = req.user!.id;
       const materialId = Number(req.body.material_id);
-      const mat = db.prepare("SELECT * FROM materials WHERE id = ?").get(materialId) as any;
+      const mat = db.prepare("SELECT * FROM materials WHERE id = ? AND user_id = ?").get(materialId, userId) as any;
       if (!mat) return res.status(404).json({ error: "ไม่พบเอกสาร" });
 
       // Get first few pages (likely TOC) + a sample of content
@@ -312,6 +325,7 @@ ${textSample}`,
 
   // --- Create chapters (batch) ---
   router.post("/chapters", (req, res) => {
+    const userId = req.user!.id;
     const courseCode = req.body.course_code as string;
     const chapters = req.body.chapters as Array<{ name: string; start_page?: number }>;
     if (!courseCode || !Array.isArray(chapters) || chapters.length === 0) {
@@ -319,12 +333,12 @@ ${textSample}`,
     }
 
     const insert = db.prepare(
-      "INSERT INTO chapters (course_code, name, sort_order, ai_suggested, created_at) VALUES (?, ?, ?, ?, ?)",
+      "INSERT INTO chapters (user_id, course_code, name, sort_order, ai_suggested, created_at) VALUES (?, ?, ?, ?, ?, ?)",
     );
     const now = new Date().toISOString();
     const ids: number[] = [];
     for (let i = 0; i < chapters.length; i++) {
-      const info = insert.run(courseCode, chapters[i].name, i, 1, now);
+      const info = insert.run(userId, courseCode, chapters[i].name, i, 1, now);
       ids.push(Number(info.lastInsertRowid));
     }
     res.status(201).json({ ids });
@@ -332,23 +346,26 @@ ${textSample}`,
 
   // --- Update a chapter ---
   router.put("/chapters/:id", (req, res) => {
+    const userId = req.user!.id;
     const id = Number(req.params.id);
     const name = req.body.name as string;
     if (!name) return res.status(400).json({ error: "ต้องระบุชื่อบท" });
-    db.prepare("UPDATE chapters SET name = ?, ai_suggested = 0 WHERE id = ?").run(name, id);
+    db.prepare("UPDATE chapters SET name = ?, ai_suggested = 0 WHERE id = ? AND user_id = ?").run(name, id, userId);
     res.json({ ok: true });
   });
 
   // --- Delete a chapter ---
   router.delete("/chapters/:id", (req, res) => {
+    const userId = req.user!.id;
     const id = Number(req.params.id);
     db.prepare("DELETE FROM material_chunks WHERE chapter_id = ?").run(id);
-    db.prepare("DELETE FROM chapters WHERE id = ?").run(id);
+    db.prepare("DELETE FROM chapters WHERE id = ? AND user_id = ?").run(id, userId);
     res.json({ ok: true });
   });
 
   // --- Auto-assign pages to chapters ---
   router.post("/chapters/assign-pages", (req, res) => {
+    const userId = req.user!.id;
     const materialId = Number(req.body.material_id);
     const assignments = req.body.assignments as Array<{
       chapter_id: number;
@@ -360,7 +377,9 @@ ${textSample}`,
       return res.status(400).json({ error: "ต้องระบุเอกสารและการแบ่งหน้า" });
     }
 
-    // Clear existing chunks for this material
+    const mat = db.prepare("SELECT id FROM materials WHERE id = ? AND user_id = ?").get(materialId, userId);
+    if (!mat) return res.status(404).json({ error: "ไม่พบเอกสาร" });
+
     db.prepare("DELETE FROM material_chunks WHERE material_id = ?").run(materialId);
 
     const insertChunk = db.prepare(
@@ -389,8 +408,9 @@ ${textSample}`,
   router.post("/materials/:id/parse-exam", async (req, res) => {
     try {
       if (!isAiConfigured()) throw new AiNotConfiguredError();
+      const userId = req.user!.id;
       const id = Number(req.params.id);
-      const mat = db.prepare("SELECT * FROM materials WHERE id = ?").get(id) as any;
+      const mat = db.prepare("SELECT * FROM materials WHERE id = ? AND user_id = ?").get(id, userId) as any;
       if (!mat) return res.status(404).json({ error: "ไม่พบเอกสาร" });
 
       // Gather all extracted text
@@ -461,13 +481,14 @@ ${fullText.slice(0, 15000)}`,
 
       // Save to questions table
       const insert = db.prepare(
-        `INSERT INTO questions (course_code, topic, question, model_answer, type, choices_json, source, difficulty, explanation_th, source_ref)
-         VALUES (@course_code, @topic, @question, @model_answer, @type, @choices_json, 'past_exam', 2, NULL, @source_ref)`,
+        `INSERT INTO questions (user_id, course_code, topic, question, model_answer, type, choices_json, source, difficulty, explanation_th, source_ref)
+         VALUES (@user_id, @course_code, @topic, @question, @model_answer, @type, @choices_json, 'past_exam', 2, NULL, @source_ref)`,
       );
 
       const saved: Array<{ id: number; question: string; type: string }> = [];
       for (const q of questions) {
         const info = insert.run({
+          user_id: userId,
           course_code: mat.course_code,
           topic: q.topic || null,
           question: q.question,
@@ -487,15 +508,16 @@ ${fullText.slice(0, 15000)}`,
 
   // --- Get past exam questions for a course ---
   router.get("/past-exams", (req, res) => {
+    const userId = req.user!.id;
     const courseCode = req.query.course_code as string;
     if (!courseCode) return res.status(400).json({ error: "ต้องระบุรหัสวิชา" });
     const rows = db
       .prepare(
         `SELECT id, topic, question, type, choices_json, source_ref
-         FROM questions WHERE course_code = ? AND source = 'past_exam'
+         FROM questions WHERE course_code = ? AND user_id = ? AND source = 'past_exam'
          ORDER BY id`,
       )
-      .all(courseCode);
+      .all(courseCode, userId);
     res.json({
       questions: (rows as any[]).map((r) => ({
         id: r.id,
