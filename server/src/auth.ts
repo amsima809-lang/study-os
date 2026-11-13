@@ -15,6 +15,7 @@ export interface AuthUser {
   name: string;
   avatar_url: string | null;
   plan: string;
+  onboarded: number;
 }
 
 declare global {
@@ -78,7 +79,12 @@ export function setupAuth(db: DB): Router {
   passport.serializeUser((user: any, done) => done(null, user.id));
   passport.deserializeUser((id: string, done) => {
     const user = db
-      .prepare("SELECT id, email, name, avatar_url, plan FROM users WHERE id = ?")
+      .prepare(
+        `SELECT u.id, u.email, u.name, u.avatar_url, u.plan,
+                COALESCE(up.onboarded, 0) AS onboarded
+         FROM users u LEFT JOIN user_profiles up ON up.user_id = u.id
+         WHERE u.id = ?`,
+      )
       .get(id) as AuthUser | undefined;
     done(null, user ?? null);
   });

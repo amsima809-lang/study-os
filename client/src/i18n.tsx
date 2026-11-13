@@ -431,6 +431,15 @@ const STRINGS: Record<Lang, Dict> = {
     "diff.1": "ง่าย",
     "diff.2": "ปานกลาง",
     "diff.3": "ยาก",
+    // onboarding
+    "onboard.title": "เลือกสาขาของคุณ",
+    "onboard.subtitle": "เพื่อปรับเนื้อหาให้ตรงกับหลักสูตร",
+    "onboard.faculty": "คณะ",
+    "onboard.program": "สาขาวิชา",
+    "onboard.entry_year": "ปีที่เข้า (พ.ศ.)",
+    "onboard.start": "เริ่มใช้งาน",
+    "onboard.select_faculty": "เลือกคณะ",
+    "onboard.select_program": "เลือกสาขา",
   },
   en: {
     "app.name": "StudyOS",
@@ -832,6 +841,15 @@ const STRINGS: Record<Lang, Dict> = {
     "diff.1": "Easy",
     "diff.2": "Medium",
     "diff.3": "Hard",
+    // onboarding
+    "onboard.title": "Choose your program",
+    "onboard.subtitle": "We'll tailor the content to your curriculum",
+    "onboard.faculty": "Faculty",
+    "onboard.program": "Program",
+    "onboard.entry_year": "Entry year (B.E.)",
+    "onboard.start": "Get started",
+    "onboard.select_faculty": "Select faculty",
+    "onboard.select_program": "Select program",
   },
 };
 

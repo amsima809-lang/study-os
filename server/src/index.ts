@@ -77,6 +77,54 @@ app.get("/api/stats", (req, res) => {
   res.json({ courses, terms, plannedCredits });
 });
 
+// --- catalog (read-only) ---
+app.get("/api/catalog/faculties", (_req, res) => {
+  const rows = db.prepare("SELECT id, code, name_th, name_en FROM faculties ORDER BY name_th").all();
+  res.json(rows);
+});
+
+app.get("/api/catalog/programs", (req, res) => {
+  const facultyId = req.query.faculty_id as string | undefined;
+  const rows = facultyId
+    ? db.prepare("SELECT id, faculty_id, code, name_th, name_en, degree, total_credits FROM programs WHERE faculty_id = ? ORDER BY name_th").all(facultyId)
+    : db.prepare("SELECT id, faculty_id, code, name_th, name_en, degree, total_credits FROM programs ORDER BY name_th").all();
+  res.json(rows);
+});
+
+// --- user profile ---
+app.get("/api/profile", (req, res) => {
+  const userId = req.user!.id;
+  const profile = db.prepare(
+    `SELECT up.*, p.name_th AS program_name, p.name_en AS program_name_en, p.degree,
+            f.name_th AS faculty_name, f.name_en AS faculty_name_en
+     FROM user_profiles up
+     LEFT JOIN programs p ON p.id = up.program_id
+     LEFT JOIN faculties f ON f.id = up.faculty_id
+     WHERE up.user_id = ?`,
+  ).get(userId);
+  res.json(profile ?? { user_id: userId });
+});
+
+app.put("/api/profile", (req, res) => {
+  const userId = req.user!.id;
+  const { faculty_id, program_id, entry_year, target_years } = req.body as {
+    faculty_id?: string;
+    program_id?: string;
+    entry_year?: string;
+    target_years?: number;
+  };
+  db.prepare(
+    `UPDATE user_profiles SET
+       faculty_id = COALESCE(?, faculty_id),
+       program_id = COALESCE(?, program_id),
+       entry_year = COALESCE(?, entry_year),
+       target_years = COALESCE(?, target_years),
+       onboarded = 1
+     WHERE user_id = ?`,
+  ).run(faculty_id ?? null, program_id ?? null, entry_year ?? null, target_years ?? null, userId);
+  res.json({ ok: true });
+});
+
 app.use("/api", createApiRouter(db));
 app.use("/api", createNotesRouter(db));
 app.use("/api", createQuizRouter(db));

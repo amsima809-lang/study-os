@@ -4,6 +4,7 @@ import { getJSON } from "./api.ts";
 import { ThemeProvider, ThemeToggle } from "./components/ui.tsx";
 import Icon from "./components/Icon.tsx";
 import Login from "./screens/Login.tsx";
+import Onboarding from "./screens/Onboarding.tsx";
 import Today from "./screens/Today.tsx";
 import Notes from "./screens/Notes.tsx";
 import Quiz from "./screens/Quiz.tsx";
@@ -133,19 +134,21 @@ function Shell() {
   );
 }
 
-type User = { id: string; email: string; name: string; avatar_url: string; plan: string };
+type User = { id: string; email: string; name: string; avatar_url: string; plan: string; onboarded: number };
 
 function AuthGate() {
   const [user, setUser] = useState<User | null | undefined>(undefined);
 
+  const refreshUser = () =>
+    getJSON<User | null>("/api/auth/me").then((u) => setUser(u ?? null));
+
   useEffect(() => {
-    getJSON<User | null>("/api/auth/me")
-      .then((u) => setUser(u ?? null))
-      .catch(() => setUser(null));
+    refreshUser().catch(() => setUser(null));
   }, []);
 
   if (user === undefined) return <div className="min-h-dvh" style={{ backgroundColor: "var(--bg-base)" }} />;
-  if (!user) return <Login onAuthed={() => { getJSON<User | null>("/api/auth/me").then((u) => setUser(u ?? null)); }} />;
+  if (!user) return <Login onAuthed={refreshUser} />;
+  if (!user.onboarded) return <Onboarding onDone={refreshUser} />;
   return <Shell />;
 }
 
