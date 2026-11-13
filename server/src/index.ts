@@ -107,10 +107,11 @@ app.get("/api/profile", (req, res) => {
 
 app.put("/api/profile", (req, res) => {
   const userId = req.user!.id;
-  const { faculty_id, program_id, entry_year, target_years } = req.body as {
+  const { faculty_id, program_id, entry_year, entry_term, target_years } = req.body as {
     faculty_id?: string;
     program_id?: string;
     entry_year?: string;
+    entry_term?: string;
     target_years?: number;
   };
   db.prepare(
@@ -118,10 +119,11 @@ app.put("/api/profile", (req, res) => {
        faculty_id = COALESCE(?, faculty_id),
        program_id = COALESCE(?, program_id),
        entry_year = COALESCE(?, entry_year),
+       entry_term = COALESCE(?, entry_term),
        target_years = COALESCE(?, target_years),
        onboarded = 1
      WHERE user_id = ?`,
-  ).run(faculty_id ?? null, program_id ?? null, entry_year ?? null, target_years ?? null, userId);
+  ).run(faculty_id ?? null, program_id ?? null, entry_year ?? null, entry_term ?? null, target_years ?? null, userId);
   res.json({ ok: true });
 });
 

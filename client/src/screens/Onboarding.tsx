@@ -21,6 +21,7 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
   const [facultyId, setFacultyId] = useState("");
   const [programId, setProgramId] = useState("");
   const [entryYear, setEntryYear] = useState("");
+  const [entryTerm, setEntryTerm] = useState("1");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -47,6 +48,7 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
       faculty_id: facultyId,
       program_id: programId,
       entry_year: entryYear || undefined,
+      entry_term: entryTerm,
     });
     onDone();
   }
@@ -118,25 +120,46 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
             </select>
           </div>
 
-          {/* Entry year */}
-          <div>
-            <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>
-              {t("onboard.entry_year")}
-            </label>
-            <input
-              type="text"
-              value={entryYear}
-              onChange={(e) => setEntryYear(e.target.value)}
-              placeholder={lang === "th" ? "เช่น 2569" : "e.g. 2569"}
-              inputMode="numeric"
-              maxLength={4}
-              className="w-full rounded-xl border px-4 py-3 text-sm"
-              style={{
-                backgroundColor: "var(--bg-surface)",
-                borderColor: "var(--border-light)",
-                color: "var(--text-primary)",
-              }}
-            />
+          {/* Entry year + term */}
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>
+                {t("onboard.entry_year")}
+              </label>
+              <input
+                type="text"
+                value={entryYear}
+                onChange={(e) => setEntryYear(e.target.value)}
+                placeholder={lang === "th" ? "เช่น 2569" : "e.g. 2569"}
+                inputMode="numeric"
+                maxLength={4}
+                className="w-full rounded-xl border px-4 py-3 text-sm"
+                style={{
+                  backgroundColor: "var(--bg-surface)",
+                  borderColor: "var(--border-light)",
+                  color: "var(--text-primary)",
+                }}
+              />
+            </div>
+            <div className="w-28">
+              <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>
+                {t("onboard.entry_term")}
+              </label>
+              <select
+                value={entryTerm}
+                onChange={(e) => setEntryTerm(e.target.value)}
+                className="w-full rounded-xl border px-4 py-3 text-sm appearance-none"
+                style={{
+                  backgroundColor: "var(--bg-surface)",
+                  borderColor: "var(--border-light)",
+                  color: "var(--text-primary)",
+                }}
+              >
+                <option value="1">{lang === "th" ? "เทอม 1" : "Sem 1"}</option>
+                <option value="2">{lang === "th" ? "เทอม 2" : "Sem 2"}</option>
+                <option value="S">{lang === "th" ? "ซัมเมอร์" : "Summer"}</option>
+              </select>
+            </div>
           </div>
 
           <button
