@@ -52,7 +52,7 @@ app.use(passport.session());
 
 // --- public routes ---
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, app: "StudyOS", phase: 15, tz: env.tz, time: new Date().toISOString() });
+  res.json({ ok: true, app: "StudyOS", phase: 16, tz: env.tz, time: new Date().toISOString() });
 });
 app.use("/api", setupAuth(db));
 
@@ -88,6 +88,20 @@ app.get("/api/catalog/programs", (req, res) => {
   const rows = facultyId
     ? db.prepare("SELECT id, faculty_id, code, name_th, name_en, degree, total_credits FROM programs WHERE faculty_id = ? ORDER BY name_th").all(facultyId)
     : db.prepare("SELECT id, faculty_id, code, name_th, name_en, degree, total_credits FROM programs ORDER BY name_th").all();
+  res.json(rows);
+});
+
+app.get("/api/catalog/courses", (req, res) => {
+  const userId = req.user!.id;
+  const programId = (req.query.program_id as string | undefined) ??
+    (db.prepare("SELECT program_id FROM user_profiles WHERE user_id = ?").get(userId) as
+      { program_id: string | null } | undefined)?.program_id;
+  if (!programId) return res.json([]);
+  const rows = db.prepare(
+    `SELECT c.code, c.name_th, c.name_en, c.credits, pc.category, c.choose_group
+     FROM program_courses pc JOIN courses c ON c.code = pc.course_code
+     WHERE pc.program_id = ? ORDER BY pc.category, c.code`,
+  ).all(programId);
   res.json(rows);
 });
 

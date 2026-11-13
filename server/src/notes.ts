@@ -40,11 +40,21 @@ async function resizeToJpeg(buffer: Buffer): Promise<Buffer> {
 export function createNotesRouter(db: DB): Router {
   const router = Router();
 
-  // Course list for the dropdown.
-  router.get("/courses", (_req, res) => {
-    const rows = db
-      .prepare("SELECT code, name_th, name_en, category FROM courses ORDER BY code")
-      .all();
+  // Course list for the dropdown — filtered by user's program if set.
+  router.get("/courses", (req, res) => {
+    const userId = req.user!.id;
+    const profile = db.prepare("SELECT program_id FROM user_profiles WHERE user_id = ?").get(userId) as
+      { program_id: string | null } | undefined;
+    const programId = profile?.program_id;
+
+    const rows = programId
+      ? db.prepare(
+          `SELECT c.code, c.name_th, c.name_en, pc.category
+           FROM program_courses pc JOIN courses c ON c.code = pc.course_code
+           WHERE pc.program_id = ? ORDER BY c.code`,
+        ).all(programId)
+      : db.prepare("SELECT code, name_th, name_en, category FROM courses ORDER BY code").all();
+
     res.json({ courses: rows });
   });
 

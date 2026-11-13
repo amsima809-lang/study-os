@@ -93,3 +93,4 @@ study-os/
 - [x] Phase 13 — Mock Exam Upgrade (full-screen, question grid, flags, auto-save, per-question timing, custom grade cutoffs, chapter scores, history + trend graph)
 - [x] Phase 14 — GPA/Credit Tracking (cumulative + per-term GPA, grade picker per course, graduation pace warning, "what if" GPA calculator, editable grade scale)
 - [x] Phase 15 — Multi-User (users table, Google OAuth + dev login, per-user data isolation via user_id on all user-owned tables, per-user settings via user_settings table, legacy user migration)
+- [x] Phase 16 — Multi-Program Catalog + Onboarding (faculties, programs, program_credit_requirements, program_courses tables; onboarding flow with faculty/program/year/term; per-user program-based course filtering; dynamic credit requirements from DB)
