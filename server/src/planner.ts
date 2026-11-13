@@ -6,7 +6,7 @@ import { Router } from "express";
 import type { DB } from "./db.js";
 import { getSetting, setSetting } from "./api.js";
 
-export const CATEGORY_REQUIRED: Record<string, number> = {
+const DEFAULT_CATEGORY_REQUIRED: Record<string, number> = {
   GE: 30,
   CORE: 42,
   MAJOR_REQ: 33,
@@ -14,7 +14,39 @@ export const CATEGORY_REQUIRED: Record<string, number> = {
   FREE: 6,
 };
 
-const TOTAL_REQUIRED = 132;
+const DEFAULT_TOTAL = 132;
+
+type CreditReqRow = { category: string; required_credits: number };
+
+function getCategoryRequired(db: DB, userId: string): Record<string, number> {
+  const programId = (
+    db.prepare("SELECT program_id FROM user_profiles WHERE user_id = ?").get(userId) as
+      { program_id: string | null } | undefined
+  )?.program_id;
+  if (!programId) return DEFAULT_CATEGORY_REQUIRED;
+
+  const rows = db
+    .prepare("SELECT category, required_credits FROM program_credit_requirements WHERE program_id = ?")
+    .all(programId) as CreditReqRow[];
+  if (rows.length === 0) return DEFAULT_CATEGORY_REQUIRED;
+
+  const map: Record<string, number> = {};
+  for (const r of rows) map[r.category] = r.required_credits;
+  return map;
+}
+
+function getTotalRequired(db: DB, userId: string): number {
+  const row = db
+    .prepare(
+      `SELECT p.total_credits FROM programs p
+       JOIN user_profiles up ON up.program_id = p.id
+       WHERE up.user_id = ?`,
+    )
+    .get(userId) as { total_credits: number } | undefined;
+  return row?.total_credits ?? DEFAULT_TOTAL;
+}
+
+export { DEFAULT_CATEGORY_REQUIRED as CATEGORY_REQUIRED };
 
 type EnrollRow = { course_code: string; status: string; category: string; credits: number; grade: string | null };
 type GradeScale = { grade: string; points: number };
@@ -74,14 +106,16 @@ export function computeInternship(db: DB, userId: string): { eligible: boolean; 
     passed.filter((r) => r.category === cat).reduce((s, r) => s + r.credits, 0);
 
   const totalPassed = passed.reduce((s, r) => s + r.credits, 0);
+  const catReq = getCategoryRequired(db, userId);
+  const totalReq = getTotalRequired(db, userId);
 
   const rules: Rule[] = [
-    { id: "credits", ok: totalPassed >= 132, detail: `${totalPassed}/132` },
-    { id: "ge", ok: creditsIn("GE") >= 30, detail: `${creditsIn("GE")}/30` },
-    { id: "core", ok: creditsIn("CORE") >= 42, detail: `${creditsIn("CORE")}/42` },
-    { id: "major_req", ok: creditsIn("MAJOR_REQ") >= 33, detail: `${creditsIn("MAJOR_REQ")}/33` },
-    { id: "major_elec", ok: creditsIn("MAJOR_ELEC") >= 21, detail: `${creditsIn("MAJOR_ELEC")}/21` },
-    { id: "free", ok: creditsIn("FREE") >= 6, detail: `${creditsIn("FREE")}/6` },
+    { id: "credits", ok: totalPassed >= totalReq, detail: `${totalPassed}/${totalReq}` },
+    ...Object.entries(catReq).map(([cat, req]) => ({
+      id: cat.toLowerCase(),
+      ok: creditsIn(cat) >= req,
+      detail: `${creditsIn(cat)}/${req}`,
+    })),
   ];
 
   return { eligible: rules.every((r) => r.ok), rules };
@@ -173,7 +207,9 @@ export function createPlannerRouter(db: DB): Router {
     for (const e of allEnrollments) {
       if (e.status === "PASSED") passedByCat.set(e.category, (passedByCat.get(e.category) ?? 0) + e.credits);
     }
-    const categoryProgress = Object.entries(CATEGORY_REQUIRED).map(([category, required]) => ({
+    const catReq = getCategoryRequired(db, userId);
+    const totalReq = getTotalRequired(db, userId);
+    const categoryProgress = Object.entries(catReq).map(([category, required]) => ({
       category,
       required,
       passed: passedByCat.get(category) ?? 0,
@@ -185,7 +221,7 @@ export function createPlannerRouter(db: DB): Router {
       .map((e) => ({ credits: e.credits, grade: e.grade }));
     const overallGpa = calculateGpa(passedWithGrades, scale);
 
-    const remainingCredits = Math.max(0, TOTAL_REQUIRED - totalPassedCredits);
+    const remainingCredits = Math.max(0, totalReq - totalPassedCredits);
     const futureTerms = termRows.filter((t) => {
       const termItems = itemStmt.all(t.term_id, userId) as Array<{ course_code: string | null }>;
       return termItems.some(
@@ -223,7 +259,7 @@ export function createPlannerRouter(db: DB): Router {
     res.json({
       terms,
       totalPassedCredits,
-      totalPlannedCredits: TOTAL_REQUIRED,
+      totalPlannedCredits: totalReq,
       categoryProgress,
       failed,
       blocked,
