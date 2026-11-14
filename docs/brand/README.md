@@ -18,6 +18,10 @@ That updates everything a student sees: the header, every sentence that mentions
 
 Before a name goes public: search the Thai trademark office (DIP) and register the domain. The research below is not a trademark clearance.
 
+## Logo with the name
+
+`lockups/` holds the mark with the name beside it for each shortlisted name and for the current placeholder: `<name>-light.svg`, `<name>-dark.svg`, and `<name>-th-light.svg` / `<name>-th-dark.svg` for the Thai form. The lettering is converted to outlines, so the files need no font. How they are made: `tools/README.md`.
+
 ## Changing the logo
 
 The other two marks are here as `mark-loop.svg` and `mark-cards.svg`, with app icons. To switch: replace the two paths in `Logo.tsx`, copy the matching icon over `client/public/favicon.svg`, put the new paths in `scripts/make-icons.mjs` and run it.
@@ -37,5 +41,5 @@ Limits: Facebook, Instagram and TikTok were only seen through Google results; th
 ## Still to do once the name is chosen
 
 - Run the rename command.
-- Convert the wordmark's letters to outlines and save the logo with the name beside it (needs the font files, which are not in the repo).
-- Trademark search and domain.
+- Use that name's files from `lockups/` wherever the logo appears with the name (they are ready for all five shortlisted names).
+- A proper trademark clearance, and the domain.
