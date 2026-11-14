@@ -499,7 +499,7 @@ function UploadForm({ courses, onDone }: { courses: Course[]; onDone: () => void
       <div className="space-y-3">
         <h3 className="font-medium" style={{ color: "var(--text-primary)" }}>{t("lib.upload")}</h3>
         {err && <ErrorBox>{err}</ErrorBox>}
-        <select
+        <select aria-label={t("field.course")}
           value={courseCode}
           onChange={(e) => setCourseCode(e.target.value)}
           className="w-full rounded-lg border p-2 text-sm min-h-11"
@@ -512,7 +512,7 @@ function UploadForm({ courses, onDone }: { courses: Course[]; onDone: () => void
             </option>
           ))}
         </select>
-        <select
+        <select aria-label={t("lib.pickKind")}
           value={kind}
           onChange={(e) => setKind(e.target.value)}
           className="w-full rounded-lg border p-2 text-sm min-h-11"
@@ -749,7 +749,7 @@ function PageViewer({ materialId, filename }: { materialId: number; filename: st
           </div>
           {editing === p.page_num ? (
             <div className="space-y-2">
-              <textarea
+              <textarea aria-label={t("lib.pageText")}
                 value={editText}
                 onChange={(e) => setEditText(e.target.value)}
                 rows={6}

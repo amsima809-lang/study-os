@@ -71,16 +71,31 @@ export async function loadNoteDraft(): Promise<NoteDraft | null> {
   }
 }
 
-export async function saveNoteDraft(d: Omit<NoteDraft, "savedAt">): Promise<void> {
-  if (isEmptyDraft(d)) return clearNoteDraft();
+/**
+ * Store the draft. Says how it went, so the form can warn when the work is NOT
+ * safe: "saved" (all of it), "partial" (everything but the photos), "failed"
+ * (nothing could be stored — private browsing, or storage blocked or full).
+ */
+export async function saveNoteDraft(d: Omit<NoteDraft, "savedAt">): Promise<"saved" | "partial" | "failed"> {
+  if (isEmptyDraft(d)) {
+    await clearNoteDraft();
+    return "saved";
+  }
   const draft: NoteDraft = { ...d, savedAt: Date.now() };
+  let outcome: "saved" | "partial" | "failed" = "saved";
   try {
     await run("readwrite", (s) => s.put(draft, key()));
   } catch {
     // Photos are the usual reason a save fails (storage full): keep the rest.
-    try { await run("readwrite", (s) => s.put({ ...draft, files: [] }, key())); } catch { /* no storage */ }
+    try {
+      await run("readwrite", (s) => s.put({ ...draft, files: [] }, key()));
+      outcome = draft.files.length > 0 ? "partial" : "saved";
+    } catch {
+      outcome = "failed";
+    }
   }
   window.dispatchEvent(new Event(DRAFT_CHANGED));
+  return outcome;
 }
 
 export async function clearNoteDraft(): Promise<void> {

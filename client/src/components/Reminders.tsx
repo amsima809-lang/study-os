@@ -3,11 +3,12 @@
  * the add/edit form, and the sheet that shows that form over any screen.
  * Used by the Reminders screen, the Today card and the calendar.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useT } from "../i18n.tsx";
 import { getJSON, postJSON, putJSON, deleteJSON, type ApiError, type ReminderRule } from "../api.ts";
 import { ConfirmDialog } from "./ui.tsx";
+import { draftOwner } from "../noteDraft.ts";
 import { formatDate, formatTime, timeRange } from "../format.ts";
 import { CourseChip } from "./CourseTitle.tsx";
 import Icon from "./Icon.tsx";
@@ -65,8 +66,49 @@ type RowProps = {
 export function ReminderRow({ item, on, done, overdue, today, hideDate, onToggle, onOpen, badge }: RowProps) {
   const { t, lang } = useT();
   const showDate = !hideDate && on;
+
+  // Swipe right to tick it off (or to un-tick it). The row follows the finger
+  // and shows what letting go will do; a swipe has to be mostly sideways, so
+  // scrolling the list never ticks anything. The tick box does the same job.
+  const canSwipe = !!onToggle && on !== null && item.kind !== "event";
+  const [dx, setDx] = useState(0);
+  const drag = useRef<{ x: number; y: number; dir: "side" | "scroll" | null } | null>(null);
+  const SWIPE_AT = 72;
+  const swipe = canSwipe
+    ? {
+        onTouchStart: (e: React.TouchEvent) => {
+          drag.current = e.touches.length === 1 ? { x: e.touches[0].clientX, y: e.touches[0].clientY, dir: null } : null;
+        },
+        onTouchMove: (e: React.TouchEvent) => {
+          const d = drag.current;
+          if (!d) return;
+          const mx = e.touches[0].clientX - d.x;
+          const my = e.touches[0].clientY - d.y;
+          if (!d.dir && (Math.abs(mx) > 10 || Math.abs(my) > 10)) d.dir = mx > 0 && Math.abs(mx) > 1.5 * Math.abs(my) ? "side" : "scroll";
+          if (d.dir === "side") setDx(Math.min(120, Math.max(0, mx)));
+        },
+        onTouchEnd: () => {
+          if (drag.current?.dir === "side" && dx >= SWIPE_AT) onToggle!();
+          drag.current = null;
+          setDx(0);
+        },
+        onTouchCancel: () => { drag.current = null; setDx(0); },
+      }
+    : {};
+
   return (
-    <li className="flex items-start gap-1">
+    <li {...swipe} className="relative overflow-hidden rounded-xl" style={{ touchAction: "pan-y" }}>
+      {dx > 0 && (
+        <div
+          aria-hidden="true"
+          className="absolute inset-y-0 left-0 flex items-center gap-1.5 pl-3 overflow-hidden whitespace-nowrap text-sm font-semibold"
+          style={{ width: dx, backgroundColor: dx >= SWIPE_AT ? "#047857" /* white text needs the darker green */ : "var(--bg-surface-hover)", color: dx >= SWIPE_AT ? "#fff" : "var(--text-secondary)" }}
+        >
+          <Icon name={done ? "refresh" : "check"} size={16} />
+          {t(done ? "rem.swipeUndo" : "rem.swipeDone")}
+        </div>
+      )}
+      <div className="flex items-start gap-1" style={{ transform: dx ? `translateX(${dx}px)` : undefined, transition: dx ? "none" : "transform 150ms ease-out" }}>
       {item.kind === "event" ? (
         // An event has nothing to tick: show what it is instead.
         <span className="shrink-0 w-11 h-11 flex items-center justify-center" style={{ color: "var(--accent-2, var(--accent-text))" }}>
@@ -126,6 +168,7 @@ export function ReminderRow({ item, on, done, overdue, today, hideDate, onToggle
           {badge}
         </span>
       )}
+      </div>
     </li>
   );
 }
@@ -148,17 +191,66 @@ type FormProps = {
   onCancel: () => void;
 };
 
+/**
+ * The new item being written, kept in this browser so a sheet closed by a stray
+ * tap, a tab switch or a refresh does not lose it. Only for NEW items (an edit
+ * starts from what is saved), one per student, dropped on save or Cancel.
+ */
+type FormDraft = {
+  kind: ReminderRule["kind"]; title: string; date: string; time: string; endTime: string;
+  repeat: ReminderRule["repeat"]; until: string; course: string; note: string;
+};
+const formDraftKey = () => `studyos.reminderDraft:${draftOwner()}`;
+function loadFormDraft(): FormDraft | null {
+  try {
+    const d = JSON.parse(localStorage.getItem(formDraftKey()) ?? "null") as FormDraft | null;
+    return d && (d.title?.trim() || d.note?.trim()) ? d : null;
+  } catch {
+    return null;
+  }
+}
+function clearFormDraft() {
+  try { localStorage.removeItem(formDraftKey()); } catch { /* nothing to remove */ }
+}
+
 export function ReminderForm({ item, today, preset, onSaved, onCancel }: FormProps) {
   const { t, lang } = useT();
-  const [kind, setKind] = useState<ReminderRule["kind"]>(item?.kind ?? preset?.kind ?? "todo");
-  const [title, setTitle] = useState(item?.title ?? preset?.title ?? "");
-  const [date, setDate] = useState(item ? item.date ?? "" : preset?.date ?? today);
-  const [time, setTime] = useState(item?.time ?? preset?.time ?? "");
-  const [endTime, setEndTime] = useState(item?.end_time ?? preset?.end_time ?? "");
-  const [repeat, setRepeat] = useState<ReminderRule["repeat"]>(item?.repeat ?? "none");
-  const [until, setUntil] = useState(item?.repeat_until ?? "");
-  const [course, setCourse] = useState(item?.course_code ?? preset?.course_code ?? "");
-  const [note, setNote] = useState(item?.note ?? "");
+  // What was being written last time. A slot the student has just clicked
+  // (a preset with a time) still decides the day and time.
+  const [draft] = useState<FormDraft | null>(() => (item || preset?.title ? null : loadFormDraft()));
+  const slot = !!preset?.time;
+  const [restored, setRestored] = useState(draft !== null);
+  const [kind, setKind] = useState<ReminderRule["kind"]>(item?.kind ?? (slot ? preset?.kind : undefined) ?? draft?.kind ?? preset?.kind ?? "todo");
+  const [title, setTitle] = useState(item?.title ?? preset?.title ?? draft?.title ?? "");
+  const [date, setDate] = useState(item ? item.date ?? "" : slot ? preset!.date ?? today : draft?.date ?? preset?.date ?? today);
+  const [time, setTime] = useState(item?.time ?? preset?.time ?? draft?.time ?? "");
+  const [endTime, setEndTime] = useState(item?.end_time ?? preset?.end_time ?? (slot ? "" : draft?.endTime) ?? "");
+  const [repeat, setRepeat] = useState<ReminderRule["repeat"]>(item?.repeat ?? draft?.repeat ?? "none");
+  const [until, setUntil] = useState(item?.repeat_until ?? draft?.until ?? "");
+  const [course, setCourse] = useState(item?.course_code ?? preset?.course_code ?? draft?.course ?? "");
+  const [note, setNote] = useState(item?.note ?? draft?.note ?? "");
+
+  // Keep the draft as it is typed; nothing typed means nothing to keep.
+  const finished = useRef(false);
+  useEffect(() => {
+    if (item || finished.current) return;
+    if (!title.trim() && !note.trim()) return clearFormDraft();
+    try {
+      localStorage.setItem(formDraftKey(), JSON.stringify({ kind, title, date, time, endTime, repeat, until, course, note } satisfies FormDraft));
+    } catch { /* storage full or blocked: the form still works */ }
+  }, [item, kind, title, date, time, endTime, repeat, until, course, note]);
+
+  /** Cancel means "I do not want this": the draft goes too. Closing the sheet any other way keeps it. */
+  function cancel() {
+    if (!item) { finished.current = true; clearFormDraft(); }
+    onCancel();
+  }
+  function startOver() {
+    setTitle(""); setNote(""); setKind(preset?.kind ?? "todo"); setDate(preset?.date ?? today);
+    setTime(preset?.time ?? ""); setEndTime(preset?.end_time ?? ""); setRepeat("none"); setUntil(""); setCourse(preset?.course_code ?? "");
+    setRestored(false);
+    clearFormDraft();
+  }
   const [courses, setCourses] = useState<Course[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -184,7 +276,11 @@ export function ReminderForm({ item, today, preset, onSaved, onCancel }: FormPro
     };
     try {
       if (item) await putJSON(`/api/reminders/${item.id}`, body);
-      else await postJSON("/api/reminders", body);
+      else {
+        await postJSON("/api/reminders", body);
+        finished.current = true; // saved: the draft is no longer needed
+        clearFormDraft();
+      }
       announce();
       onSaved();
     } catch (err) {
@@ -200,6 +296,14 @@ export function ReminderForm({ item, today, preset, onSaved, onCancel }: FormPro
 
   return (
     <form onSubmit={save} className="space-y-3">
+      {restored && (
+        <div role="status" className="flex items-center gap-2 rounded-xl px-3 text-sm" style={{ backgroundColor: "var(--accent-light)", color: "var(--text-primary)" }}>
+          <span className="flex-1 py-2">{t("rem.draftRestored")}</span>
+          <button type="button" onClick={startOver} className="shrink-0 min-h-11 px-2 font-medium" style={{ color: "var(--danger)" }}>
+            {t("rem.draftClear")}
+          </button>
+        </div>
+      )}
       <div role="radiogroup" aria-label={t("rem.kind")} className="grid grid-cols-3 gap-1 rounded-xl p-1" style={{ backgroundColor: "var(--bg-base)" }}>
         {(["todo", "reminder", "event"] as const).map((k) => (
           <button
@@ -282,7 +386,7 @@ export function ReminderForm({ item, today, preset, onSaved, onCancel }: FormPro
         <button type="submit" disabled={!valid || busy} className="rounded-xl px-5 min-h-11 font-semibold disabled:opacity-40" style={{ backgroundColor: "var(--accent)", color: "#fff" }}>
           {t("rem.save")}
         </button>
-        <button type="button" onClick={onCancel} className="px-3 min-h-11 text-sm" style={{ color: "var(--text-secondary)" }}>
+        <button type="button" onClick={cancel} className="px-3 min-h-11 text-sm" style={{ color: "var(--text-secondary)" }}>
           {t("nav.cancel")}
         </button>
         {item && (

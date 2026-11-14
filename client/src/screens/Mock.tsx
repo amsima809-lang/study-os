@@ -708,6 +708,9 @@ function Runner({
       {showConfirm && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={t("mock.confirm")}
             className="rounded-2xl p-5 max-w-sm w-full space-y-3"
             style={{ backgroundColor: "var(--bg-surface)" }}
           >
@@ -985,7 +988,7 @@ function SettingsTab() {
         <div className="space-y-2">
           {draft.map((c, i) => (
             <div key={i} className="flex items-center gap-2">
-              <input
+              <input aria-label={t("field.grade")}
                 type="text"
                 value={c.label}
                 onChange={(e) => {
@@ -997,7 +1000,7 @@ function SettingsTab() {
                 style={inputStyle}
               />
               <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>{t("mock.minPct")}</span>
-              <input
+              <input aria-label={t("mock.minPct")}
                 type="number" min={0} max={100}
                 value={c.min_pct}
                 onChange={(e) => {

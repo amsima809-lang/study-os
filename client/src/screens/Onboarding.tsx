@@ -89,10 +89,10 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
         <form onSubmit={submit} className="space-y-5">
           {/* University */}
           <div>
-            <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>
+            <label htmlFor="ob-university" className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>
               {t("onboard.university")}
             </label>
-            <select
+            <select id="ob-university"
               value={universityId}
               onChange={(e) => setUniversityId(e.target.value)}
               required
@@ -118,10 +118,10 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
           {hasCatalog && (<>
           {/* Faculty */}
           <div>
-            <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>
+            <label htmlFor="ob-faculty" className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>
               {t("onboard.faculty")}
             </label>
-            <select
+            <select id="ob-faculty"
               value={facultyId}
               onChange={(e) => setFacultyId(e.target.value)}
               required
@@ -141,10 +141,10 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
 
           {/* Program */}
           <div>
-            <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>
+            <label htmlFor="ob-program" className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>
               {t("onboard.program")}
             </label>
-            <select
+            <select id="ob-program"
               value={programId}
               onChange={(e) => setProgramId(e.target.value)}
               required
@@ -170,10 +170,10 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
           {/* Entry year + term */}
           <div className="flex gap-3">
             <div className="flex-1">
-              <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>
+              <label htmlFor="ob-year" className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>
                 {t("onboard.entry_year")}
               </label>
-              <input
+              <input id="ob-year"
                 type="text"
                 value={entryYear}
                 onChange={(e) => setEntryYear(e.target.value)}
@@ -189,10 +189,10 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
               />
             </div>
             <div className="w-28">
-              <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>
+              <label htmlFor="ob-term" className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>
                 {t("onboard.entry_term")}
               </label>
-              <select
+              <select id="ob-term"
                 value={entryTerm}
                 onChange={(e) => setEntryTerm(e.target.value)}
                 className="w-full rounded-xl border px-4 py-3 text-sm appearance-none min-h-11"

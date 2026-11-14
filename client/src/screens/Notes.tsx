@@ -12,6 +12,8 @@ import {
   type NoteLearning,
   type ApiError,
 } from "../api.ts";
+import { setUnsaved } from "../unsaved.ts";
+import { consumeNoteFormRequest } from "../shareIntake.ts";
 import { formatDate, formatTime } from "../format.ts";
 import { AddButton, Card, ConfirmDialog, ErrorBox, Loading } from "../components/ui.tsx";
 import { DRAFT_CHANGED, clearNoteDraft, isEmptyDraft, loadNoteDraft, saveNoteDraft, type Drawing, type NoteDraft } from "../noteDraft.ts";
@@ -36,7 +38,8 @@ type View =
 
 export default function Notes() {
   const { t } = useT();
-  const [view, setView] = useState<View>({ screen: "courses" });
+  // Opens straight on the form when something was just shared into the app.
+  const [view, setView] = useState<View>(() => (consumeNoteFormRequest() ? { screen: "add" } : { screen: "courses" }));
   const [result, setResult] = useState<NoteLearning | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [query, setQuery] = useState(""); // kept here so it survives opening a result and coming back
@@ -629,6 +632,7 @@ function AddNote({
   const [restoredAt, setRestoredAt] = useState<number | null>(null);
   const [padKey, setPadKey] = useState(0);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [draftState, setDraftState] = useState<"saved" | "partial" | "failed">("saved");
   const saved = useRef(false);
   const padRef = useRef<HandwritingHandle>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -665,7 +669,14 @@ function AddNote({
   latest.current = { courseCode, title, text, mode, drawing, files };
   useEffect(() => {
     if (!ready) return;
-    const timer = setTimeout(() => { if (!saved.current) void saveNoteDraft(latest.current); }, 400);
+    const timer = setTimeout(() => {
+      if (saved.current) return;
+      // If the draft cannot be kept on this device, leaving would lose the note: say so before it happens.
+      void saveNoteDraft(latest.current).then((outcome) => {
+        setDraftState(outcome);
+        if (!saved.current) setUnsaved("note", outcome === "failed" ? "leave.note" : outcome === "partial" ? "leave.notePhotos" : null);
+      });
+    }, 400);
     return () => clearTimeout(timer);
   }, [ready, courseCode, title, text, mode, drawing, files]);
   useEffect(() => {
@@ -678,6 +689,7 @@ function AddNote({
       document.removeEventListener("visibilitychange", onHide);
       window.removeEventListener("pagehide", flush);
       flush();
+      setUnsaved("note", null); // the form is gone: nothing left to warn about
     };
   }, [ready]);
 
@@ -943,7 +955,12 @@ function AddNote({
           </button>
         </div>
         <p className="text-xs text-center" style={{ color: "var(--text-tertiary)" }}>{t("notes.saveHint")}</p>
-        {hasContent && <p className="text-xs text-center" style={{ color: "var(--text-tertiary)" }}>{t("notes.draftKept")}</p>}
+        {hasContent && draftState === "saved" && <p className="text-xs text-center" style={{ color: "var(--text-tertiary)" }}>{t("notes.draftKept")}</p>}
+        {hasContent && draftState !== "saved" && (
+          <p role="alert" className="text-xs text-center font-medium" style={{ color: "var(--danger)" }}>
+            {t(draftState === "failed" ? "leave.note" : "leave.notePhotos")}
+          </p>
+        )}
         {confirmDiscard && (
           <ConfirmDialog
             title={t("notes.draftDiscardTitle")}

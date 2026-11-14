@@ -21,6 +21,13 @@ export default defineConfig({
         background_color: "#f8fafc",
         display: "standalone",
         start_url: "/",
+        // "Share → StudyOS" from other apps (installed app only): shared text and
+        // links start a new note. Handled in client/src/shareIntake.ts.
+        share_target: {
+          action: "/",
+          method: "GET",
+          params: { title: "share_title", text: "share_text", url: "share_url" },
+        },
         icons: [
           { src: "pwa-192x192.png", sizes: "192x192", type: "image/png", purpose: "any maskable" },
           { src: "pwa-512x512.png", sizes: "512x512", type: "image/png", purpose: "any maskable" },

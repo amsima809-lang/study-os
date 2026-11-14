@@ -225,7 +225,7 @@ function SliderInput({
           {value} {suffix}
         </span>
       </div>
-      <input
+      <input aria-label={label}
         type="range"
         min={min}
         max={max}

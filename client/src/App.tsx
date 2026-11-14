@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { LanguageProvider, LanguageToggle, useT } from "./i18n.tsx";
 import { getJSON, SIGNED_OUT } from "./api.ts";
 import { setDraftOwner } from "./noteDraft.ts";
-import { LayoutContext, ThemeProvider, ThemeToggle, useOnline, type Layout } from "./components/ui.tsx";
+import { ConfirmDialog, LayoutContext, ThemeProvider, ThemeToggle, useOnline, type Layout } from "./components/ui.tsx";
+import { unsavedReason } from "./unsaved.ts";
+import { addSharedToDraft, requestNoteForm, takeShared } from "./shareIntake.ts";
 import { SubscriptionProvider } from "./components/SubscriptionGate.tsx";
 import Icon from "./components/Icon.tsx";
 import Login from "./screens/Login.tsx";
@@ -79,6 +81,65 @@ function useLayout(): Layout {
   return layout;
 }
 
+/**
+ * Pull down from the top of a screen to load it again. Only a touch that starts
+ * with the page at the very top, moves mostly downwards, and is not inside
+ * something with its own scrolling or drawing (a sheet, the hour grid, the
+ * drawing pad, a text field) counts. Returns how far the page is pulled (0–1+)
+ * and whether a refresh has just been asked for, for the indicator.
+ */
+const PULL_AT = 64;
+function usePullToRefresh(onRefresh: () => void) {
+  const [pull, setPull] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const refresh = useRef(onRefresh);
+  refresh.current = onRefresh;
+  useEffect(() => {
+    let from: { x: number; y: number } | null = null;
+    let pulled = 0;
+    const blocked = (target: EventTarget | null) => {
+      for (let el = target instanceof Element ? target : null; el && el !== document.body; el = el.parentElement) {
+        if (el.matches("canvas, input, textarea, select, [role=dialog], [role=alertdialog], .timegrid-scroll")) return true;
+        if (el.scrollTop > 0) return true;
+      }
+      return false;
+    };
+    const onStart = (e: TouchEvent) => {
+      from = e.touches.length === 1 && window.scrollY <= 0 && !blocked(e.target) ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : null;
+      pulled = 0;
+    };
+    const onMove = (e: TouchEvent) => {
+      if (!from) return;
+      const dy = e.touches[0].clientY - from.y;
+      const dx = e.touches[0].clientX - from.x;
+      if (dy <= 0 || Math.abs(dx) > dy || window.scrollY > 0) { from = dy <= 0 ? from : null; pulled = 0; setPull(0); return; }
+      pulled = Math.min(110, dy * 0.5); // the page resists: half the finger's travel
+      setPull(pulled);
+    };
+    const onEnd = () => {
+      if (from && pulled >= PULL_AT) {
+        setRefreshing(true);
+        refresh.current();
+        window.setTimeout(() => setRefreshing(false), 700);
+      }
+      from = null;
+      pulled = 0;
+      setPull(0);
+    };
+    window.addEventListener("touchstart", onStart, { passive: true });
+    window.addEventListener("touchmove", onMove, { passive: true });
+    window.addEventListener("touchend", onEnd);
+    window.addEventListener("touchcancel", onEnd);
+    return () => {
+      window.removeEventListener("touchstart", onStart);
+      window.removeEventListener("touchmove", onMove);
+      window.removeEventListener("touchend", onEnd);
+      window.removeEventListener("touchcancel", onEnd);
+    };
+  }, []);
+  return { pull, refreshing };
+}
+
 function Shell() {
   const { t } = useT();
   const { nav, canPin, pin, unpin, replace } = useNav();
@@ -92,7 +153,7 @@ function Shell() {
 
   // Screens can ask to open another screen (see navigateTo in destinations.tsx).
   useEffect(() => {
-    const onNavigate = (e: Event) => setTab((e as CustomEvent<DestId>).detail);
+    const onNavigate = (e: Event) => open((e as CustomEvent<DestId>).detail);
     window.addEventListener(NAVIGATE_EVENT, onNavigate);
     return () => window.removeEventListener(NAVIGATE_EVENT, onNavigate);
   }, []);
@@ -108,12 +169,47 @@ function Shell() {
   const label = (id: Tab) => t(id === "more" ? "nav.more" : destination(id).navLabel);
   const Screen = tab === "more" ? null : destination(tab).Screen;
 
+  // Something was shared into StudyOS from another app: start a note with it.
+  useEffect(() => {
+    const shared = takeShared();
+    if (!shared) return;
+    void addSharedToDraft(shared).then(() => {
+      requestNoteForm();
+      setTab("notes");
+      setReloads((n) => n + 1); // if Notes is already open, show the form now
+    });
+  }, []);
+
+  // Pull down to reload the screen's data. Not while leaving would lose work.
+  const [reloads, setReloads] = useState(0);
+  const puller = usePullToRefresh(() => { if (!unsavedReason()) setReloads((n) => n + 1); });
+
+  // Leaving a screen that holds work which cannot be kept: ask first.
+  const [leaving, setLeaving] = useState<{ to: Tab; reason: string } | null>(null);
+  const tabRef = useRef(tab);
+  tabRef.current = tab;
+  function open(id: Tab) {
+    const reason = id === tabRef.current ? null : unsavedReason();
+    if (reason) setLeaving({ to: id, reason });
+    else setTab(id);
+  }
+  // The same question when the page itself is being closed or reloaded.
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!unsavedReason()) return;
+      e.preventDefault();
+      e.returnValue = ""; // older browsers need this to show their prompt
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, []);
+
   function go(id: Tab) {
     if (press.fired.current) {
       press.fired.current = false; // this click ended a long press
       return;
     }
-    setTab(id);
+    open(id);
   }
 
   function moveToMore(id: DestId) {
@@ -273,7 +369,7 @@ function Shell() {
         >
           <LayoutContext.Provider value={layout}>
             <div className="animate-fade-in">
-              {Screen ? <Screen key={tab} /> : <More nav={nav} canPin={canPin} onPin={pin} onReplace={replace} />}
+              {Screen ? <Screen key={`${tab}:${reloads}`} /> : <More nav={nav} canPin={canPin} onPin={pin} onReplace={replace} />}
             </div>
           </LayoutContext.Provider>
         </main>
@@ -314,6 +410,38 @@ function Shell() {
           </nav>
         )}
       </div>
+
+      {/* Pull-to-refresh indicator: follows the finger, turns solid when letting go will reload */}
+      {(puller.pull > 0 || puller.refreshing) && (
+        <div className="fixed inset-x-0 z-30 flex justify-center pointer-events-none" style={{ top: "calc(0.5rem + env(safe-area-inset-top))" }}>
+          <div
+            role="status"
+            aria-label={t("status.refreshing")}
+            className={`w-10 h-10 rounded-full border flex items-center justify-center ${puller.refreshing ? "animate-spin" : ""}`}
+            style={{
+              transform: puller.refreshing ? undefined : `translateY(${puller.pull}px) rotate(${puller.pull * 3}deg)`,
+              marginTop: puller.refreshing ? PULL_AT : 0,
+              backgroundColor: puller.pull >= PULL_AT || puller.refreshing ? "var(--accent)" : "var(--bg-surface)",
+              borderColor: "var(--border)",
+              color: puller.pull >= PULL_AT || puller.refreshing ? "#fff" : "var(--text-secondary)",
+              boxShadow: "var(--shadow-lg)",
+            }}
+          >
+            <Icon name="refresh" size={18} />
+          </div>
+        </div>
+      )}
+
+      {leaving && (
+        <ConfirmDialog
+          title={t("leave.title")}
+          message={t(leaving.reason)}
+          confirmLabel={t("leave.go")}
+          cancelLabel={t("leave.stay")}
+          onConfirm={() => { setTab(leaving.to); setLeaving(null); }}
+          onCancel={() => setLeaving(null)}
+        />
+      )}
 
       {/* A reminder or timed to-do has just come due */}
       {alerts.banners.length > 0 && (
@@ -399,7 +527,37 @@ function Shell() {
 
 type User = { id: string; email: string; name: string; avatar_url: string; plan: string; onboarded: number; university_id: string | null };
 
+/**
+ * The on-screen keyboard. Where the keyboard covers the page instead of
+ * shrinking it (iPhone, iPad), sheets pinned to the bottom would have their
+ * fields and Save button hidden behind it. This measures the covered strip and
+ * publishes it as the CSS variable --keyboard-inset (plus the class
+ * "keyboard-open" on <html>); index.css lifts sheets and dialogs by that much.
+ * It also brings the field being typed in back into view.
+ */
+function useKeyboardInset() {
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const root = document.documentElement;
+    const update = () => {
+      const covered = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      const open = covered > 80; // smaller differences are toolbars, not a keyboard
+      root.style.setProperty("--keyboard-inset", open ? `${Math.round(covered)}px` : "0px");
+      root.classList.toggle("keyboard-open", open);
+      const field = document.activeElement;
+      if (open && field instanceof HTMLElement && field.matches("input, textarea, select")) {
+        field.scrollIntoView({ block: "center", behavior: "smooth" });
+      }
+    };
+    vv.addEventListener("resize", update);
+    update();
+    return () => vv.removeEventListener("resize", update);
+  }, []);
+}
+
 function AuthGate() {
+  useKeyboardInset();
   const [user, setUser] = useState<User | null | undefined>(undefined);
 
   const refreshUser = () =>

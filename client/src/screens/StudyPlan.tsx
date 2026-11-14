@@ -175,7 +175,7 @@ function Setup({ onGenerated, hasPlan }: { onGenerated: () => void; hasPlan: boo
                     {c.chapters.map((ch) => (
                       <li key={ch.id} className="flex items-center gap-2 text-xs">
                         <span className="truncate flex-1" style={{ color: "var(--text-secondary)" }}>{ch.name}</span>
-                        <input
+                        <input aria-label={ch.name}
                           type="number" min="1" value={ch.page_count}
                           onChange={(e) => updateChapterPages(ch.id, Number(e.target.value) || 1)}
                           className="w-16 rounded border px-2 py-1 text-right text-xs min-h-11"

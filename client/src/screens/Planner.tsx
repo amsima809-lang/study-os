@@ -254,7 +254,7 @@ function ItemRow({
     <li className="flex items-center gap-2 text-sm rounded-md px-2 py-1" style={statusBg}>
       <CourseTitle code={item.course_code} name_th={item.name_th} name_en={item.name_en} className="flex-1" />
       {showGrade && (
-        <select
+        <select aria-label={t("plan.gradeOf", { code: item.course_code })}
           value={item.grade ?? ""}
           onChange={(e) => onSetStatus(item.course_code!, "PASSED", e.target.value || null)}
           className="text-xs rounded border px-1 py-1 w-14 min-h-11"
@@ -264,7 +264,7 @@ function ItemRow({
           {gradeScale.map((g) => <option key={g.grade} value={g.grade}>{g.grade}</option>)}
         </select>
       )}
-      <select
+      <select aria-label={t("plan.statusOf", { code: item.course_code })}
         value={item.status ?? "PLANNED"}
         onChange={(e) => {
           const newStatus = e.target.value;
@@ -326,7 +326,7 @@ function WhatIfTab({ gradeScale, currentGpa }: { gradeScale: PlanGradeScale[]; c
                 className="flex-1 text-sm border rounded px-2 py-1.5 min-h-11"
                 style={inputStyle}
               />
-              <select
+              <select aria-label={t("field.grade")}
                 value={entry.grade}
                 onChange={(e) => updateEntry(i, "grade", e.target.value)}
                 className="text-sm border rounded px-2 py-1.5 w-16 min-h-11"
@@ -435,7 +435,7 @@ function GradeScaleTab({ scale, onSaved }: { scale: PlanGradeScale[]; onSaved: (
           <div key={g.grade} className="flex items-center justify-between text-sm">
             <span className="font-medium w-10" style={{ color: "var(--text-primary)" }}>{g.grade}</span>
             {editing ? (
-              <input
+              <input aria-label={t("plan.pointsOf", { grade: g.grade })}
                 type="number" step="0.5" min="0" max="4" value={g.points}
                 onChange={(e) => updateDraft(i, parseFloat(e.target.value) || 0)}
                 className="w-20 text-right border rounded px-2 py-1 text-sm min-h-11"

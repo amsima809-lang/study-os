@@ -25,7 +25,17 @@ const HL_WIDTH = 44;
 const HL_ALPHA = 0.35;
 
 type Tool = "pen" | "highlighter" | "eraser";
-type Point = { x: number; y: number };
+/** A point of a stroke. `p` is the pen's pressure (0–1), present only for a pressure-sensitive pen. */
+type Point = { x: number; y: number; p?: number };
+
+/**
+ * How thick the pen line is at a point. A pressure-sensitive pen (Apple Pencil,
+ * S Pen) draws thinner when it is light and thicker when it presses; a mouse,
+ * a finger, the highlighter and the eraser keep one width.
+ */
+function widthAt(s: Stroke, point: Point): number {
+  return s.tool === "pen" && point.p !== undefined ? s.width * (0.45 + 1.1 * point.p) : s.width;
+}
 export type Stroke = { tool: Tool; color: string; width: number; points: Point[] };
 
 type Props = {
@@ -80,8 +90,17 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
     const pts = s.points;
     if (pts.length === 1) {
       ctx.beginPath();
-      ctx.arc(pts[0].x, pts[0].y, s.width / 2, 0, Math.PI * 2);
+      ctx.arc(pts[0].x, pts[0].y, widthAt(s, pts[0]) / 2, 0, Math.PI * 2);
       ctx.fill();
+    } else if (s.tool === "pen" && pts.some((pt) => pt.p !== undefined)) {
+      // Pressure changes along the line: draw it piece by piece, each at its own width.
+      for (let i = 1; i < pts.length; i++) {
+        ctx.lineWidth = (widthAt(s, pts[i - 1]) + widthAt(s, pts[i])) / 2;
+        ctx.beginPath();
+        ctx.moveTo(pts[i - 1].x, pts[i - 1].y);
+        ctx.lineTo(pts[i].x, pts[i].y);
+        ctx.stroke();
+      }
     } else {
       ctx.beginPath();
       ctx.moveTo(pts[0].x, pts[0].y);
@@ -126,10 +145,13 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
   function toCanvas(e: React.PointerEvent): Point {
     const c = canvasRef.current!;
     const r = c.getBoundingClientRect();
-    return {
+    const point: Point = {
       x: ((e.clientX - r.left) / r.width) * c.width,
       y: ((e.clientY - r.top) / r.height) * c.height,
     };
+    // Only a real pen reports pressure; a mouse always says 0.5 and a finger 0 or 1.
+    if (e.pointerType === "pen" && e.pressure > 0) point.p = Math.round(e.pressure * 100) / 100;
+    return point;
   }
 
   // Palm rejection. A resting palm arrives as separate "touch" pointers while
@@ -257,7 +279,7 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
     ctx.save();
     if (tool === "highlighter") ctx.globalAlpha = HL_ALPHA;
     ctx.strokeStyle = tool === "eraser" ? "#ffffff" : current.current.color;
-    ctx.lineWidth = current.current.width;
+    ctx.lineWidth = (widthAt(current.current, last.current!) + widthAt(current.current, p)) / 2;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.beginPath();

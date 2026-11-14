@@ -12,6 +12,7 @@ import {
 } from "../api.ts";
 import { Card, ConfirmDialog, ErrorBox, Loading } from "../components/ui.tsx";
 import { draftOwner } from "../noteDraft.ts";
+import { setUnsaved } from "../unsaved.ts";
 import Icon from "../components/Icon.tsx";
 import { useSubscription, handleSubscriptionError } from "../components/SubscriptionGate.tsx";
 
@@ -47,6 +48,12 @@ export default function Quiz() {
   const [phase, setPhase] = useState<Phase>(resumed ? "quiz" : "setup");
   const [questions, setQuestions] = useState<QuizQuestion[]>(resumed?.questions ?? []);
   const [results, setResults] = useState<AnswerResult[]>([]);
+
+  // While the questions are being written, leaving would throw the request away.
+  useEffect(() => {
+    setUnsaved("quiz", phase === "loading" ? "leave.quizGenerating" : null);
+    return () => setUnsaved("quiz", null);
+  }, [phase]);
 
   function reset() {
     clearProgress();
@@ -212,7 +219,7 @@ function Setup({
         </div>
 
         {mode === "note" && (
-          <select
+          <select aria-label={t("quiz.pickNote")}
             value={noteId}
             onChange={(e) => setNoteId(e.target.value)}
             className="w-full rounded-lg border px-3 py-2 text-sm min-h-11"
@@ -228,7 +235,7 @@ function Setup({
         )}
 
         {mode === "course" && (
-          <select
+          <select aria-label={t("field.course")}
             value={courseCode}
             onChange={(e) => setCourseCode(e.target.value)}
             className="w-full rounded-lg border px-3 py-2 text-sm min-h-11"
@@ -245,7 +252,7 @@ function Setup({
 
         {mode === "material" && (
           <div className="space-y-2">
-            <select
+            <select aria-label={t("field.course")}
               value={matCourseCode}
               onChange={(e) => { setMatCourseCode(e.target.value); setChapterId(""); }}
               className="w-full rounded-lg border px-3 py-2 text-sm min-h-11"
@@ -257,7 +264,7 @@ function Setup({
               ))}
             </select>
             {chapters.length > 0 && (
-              <select
+              <select aria-label={t("quiz.pickChapter")}
                 value={chapterId}
                 onChange={(e) => setChapterId(e.target.value)}
                 className="w-full rounded-lg border px-3 py-2 text-sm min-h-11"
@@ -272,7 +279,7 @@ function Setup({
             <div className="grid grid-cols-3 gap-2">
               <div>
                 <label className="text-xs" style={{ color: "var(--text-tertiary)" }}>{t("quiz.difficulty")}</label>
-                <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)} className="w-full rounded-lg border px-2 py-1 text-sm min-h-11" style={selectStyle}>
+                <select aria-label={t("quiz.difficulty")} value={difficulty} onChange={(e) => setDifficulty(e.target.value)} className="w-full rounded-lg border px-2 py-1 text-sm min-h-11" style={selectStyle}>
                   <option value="0">ทุกระดับ</option>
                   <option value="1">{t("quiz.diff.1")}</option>
                   <option value="2">{t("quiz.diff.2")}</option>
@@ -281,7 +288,7 @@ function Setup({
               </div>
               <div>
                 <label className="text-xs" style={{ color: "var(--text-tertiary)" }}>{t("quiz.format")}</label>
-                <select value={qType} onChange={(e) => setQType(e.target.value)} className="w-full rounded-lg border px-2 py-1 text-sm min-h-11" style={selectStyle}>
+                <select aria-label={t("quiz.format")} value={qType} onChange={(e) => setQType(e.target.value)} className="w-full rounded-lg border px-2 py-1 text-sm min-h-11" style={selectStyle}>
                   <option value="mixed">{t("quiz.format.mixed")}</option>
                   <option value="mcq">{t("quiz.format.mcq")}</option>
                   <option value="short">{t("quiz.format.short")}</option>
@@ -289,7 +296,7 @@ function Setup({
               </div>
               <div>
                 <label className="text-xs" style={{ color: "var(--text-tertiary)" }}>{t("quiz.count")}</label>
-                <select value={count} onChange={(e) => setCount(e.target.value)} className="w-full rounded-lg border px-2 py-1 text-sm min-h-11" style={selectStyle}>
+                <select aria-label={t("quiz.count")} value={count} onChange={(e) => setCount(e.target.value)} className="w-full rounded-lg border px-2 py-1 text-sm min-h-11" style={selectStyle}>
                   {[5, 10, 15, 20].map((n) => (
                     <option key={n} value={n}>{n}</option>
                   ))}

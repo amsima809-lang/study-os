@@ -24,7 +24,7 @@ Severity: **A** blocks a task or loses work, **B** slows a task, **C** cosmetic.
 
 ### 1. Finding the main action (reported in testing, confirmed)
 
-**Status: fixed 2026-11-14 (Phase 35).** One labelled Add button on the calendar; custom events folded into reminders as a third kind, "event"; clicking an empty hour, double-clicking a day, or the "add on this day" row opens the same form with the day and time filled in; one shared add-button style on Calendar, Reminders, Notes and Library. Not done: moving the button to the bottom right on phones.
+**Status: fixed 2026-11-14 (Phase 35).** One labelled Add button on the calendar; custom events folded into reminders as a third kind, "event"; clicking an empty hour, double-clicking a day, or the "add on this day" row opens the same form with the day and time filled in; one shared add-button style on Calendar, Reminders, Notes and Library. On phones the button now floats at the bottom right on every screen that has one (Phase 42).
 
 | # | Sev | Finding | Fix |
 |---|---|---|---|
@@ -46,7 +46,7 @@ Severity: **A** blocks a task or loses work, **B** slows a task, **C** cosmetic.
 
 ### 3. Layout, by device and orientation
 
-**Status: fixed 2026-11-14 (Phase 38).** Phone landscape and tablet portrait get a 72px icon rail instead of the 224px sidebar (content width 734 and 690 pixels, up from 588 and 504); desktop content is 1,152 pixels wide with Today in two columns and card lists in two columns; the wide sidebar lists every screen. Not done: two-column layouts for Library, Mock and Schedule detail views, which still stretch to one wide column.
+**Status: fixed 2026-11-14 (Phase 38).** Phone landscape and tablet portrait get a 72px icon rail instead of the 224px sidebar (content width 734 and 690 pixels, up from 588 and 504); desktop content is 1,152 pixels wide with Today in two columns and card lists in two columns; the wide sidebar lists every screen. Library and Mock lists are two columns as well (Phase 42).
 
 | # | Sev | Finding | Fix |
 |---|---|---|---|
@@ -69,7 +69,7 @@ Severity: **A** blocks a task or loses work, **B** slows a task, **C** cosmetic.
 
 ### 5. Not losing work
 
-**Status: fixed 2026-11-14 (Phase 36).** The unfinished note (text, drawing, photos) is kept on the device and comes back after a tab switch, refresh, lock or sign-out; sign-ins survive a server restart; an ended session returns to the login page. Not done: drafts for other forms (reminders, planner edits) and syncing a draft between devices.
+**Status: fixed 2026-11-14 (Phase 36).** The unfinished note (text, drawing, photos) is kept on the device and comes back after a tab switch, refresh, lock or sign-out; sign-ins survive a server restart; an ended session returns to the login page. A new reminder, to-do or event being written is kept too (Phase 43), and so is a quiz in progress (Phase 42). Where a draft cannot be stored on the device, or a quiz is still being generated, the app asks before leaving the screen or closing the page (Phase 43). Not done: syncing a draft between devices, which belongs to the offline-and-sync decision.
 
 | # | Sev | Finding | Fix |
 |---|---|---|---|
@@ -80,7 +80,7 @@ Severity: **A** blocks a task or loses work, **B** slows a task, **C** cosmetic.
 
 ### 6. Feedback, errors and loading
 
-**Status: 6.1 and 6.3 fixed, 6.2 stopgap done, 2026-11-14 (Phase 40).** Failed loads on Today, Reminders, Week and Exams offer "try again" and say when the device is offline; an offline banner shows across the app; every delete uses the same in-page confirmation. Still open: offline use with sync (nothing is queued), and retry on the remaining screens' load errors.
+**Status: 6.1 and 6.3 fixed, 6.2 stopgap done, 2026-11-14 (Phase 40).** Failed loads on Today, Reminders, Week and Exams offer "try again" and say when the device is offline; an offline banner shows across the app; every delete uses the same in-page confirmation. Every other screen got the same "try again" in Phase 42. Still open: offline use with sync (nothing is queued).
 
 | # | Sev | Finding | Fix |
 |---|---|---|---|
@@ -98,7 +98,7 @@ Severity: **A** blocks a task or loses work, **B** slows a task, **C** cosmetic.
 
 ### 8. Gestures and stylus
 
-**Status: 8.1 and 8.2 fixed 2026-11-14 (Phase 41), with simulated touches only.** Swipe on the calendar; one-finger scroll, two-finger pinch and pan, and optional finger drawing on the pad. Still open: swipe to complete a to-do, pull to refresh, pen pressure, and a real-device test of all of it (8.3).
+**Status: 8.1 and 8.2 fixed 2026-11-14 (Phase 41), with simulated touches only.** Swipe on the calendar; one-finger scroll, two-finger pinch and pan, and optional finger drawing on the pad. Phase 43 added swipe right on a to-do to tick it, pull down to reload a screen, and pen pressure. Still open: a real-device test of all of it (8.3).
 
 | # | Sev | Finding | Fix |
 |---|---|---|---|
@@ -108,7 +108,7 @@ Severity: **A** blocks a task or loses work, **B** slows a task, **C** cosmetic.
 
 ### 9. Content in and out
 
-**Status: 9.2 and 9.3 fixed, 9.1 partly, 2026-11-14 (Phase 41).** Notes can be searched and exported (print or PDF, and a text file); photos can be dropped or pasted into a note and a file dropped onto the Library upload. Still open: other apps sharing into StudyOS (needs the installed or native app).
+**Status: 9.2 and 9.3 fixed, 9.1 partly, 2026-11-14 (Phase 41).** Notes can be searched and exported (print or PDF, and a text file); photos can be dropped or pasted into a note and a file dropped onto the Library upload. Phase 43 added sharing text and links into StudyOS from other apps once it is installed to the home screen; sharing photos or files in is not built (it needs a handler in the service worker and an installed app to test on).
 
 | # | Sev | Finding | Fix |
 |---|---|---|---|
@@ -146,7 +146,23 @@ Needs a device, a person or a decision, so not done here:
 - **Decisions:** offline use with sync (6.2 is only a notice and clear errors); notifications when the app is closed (web push); the native wrapper with its in-app browser and share-from-other-apps (web app only for now); what AI may do with a lecture transcript.
 - **Data:** 60 course names that need the 2569 admission guide.
 - **Not verified:** the lecture-collector bookmark on a deployed HTTPS site.
-- **Smaller, not built:** swipe to complete a to-do, pull to refresh, pen pressure, drafts for the reminder form, and the later Onboarding steps and paywall were not in the automated audit.
+- **Not built:** sharing photos or files into StudyOS from other apps (text and links work).
+
+## Third pass, 2026-11-14 (Phase 43)
+
+Everything left on the list above that did not need a device, a decision or data:
+
+- **Reminder form draft.** A new item being written survives the sheet being closed by a stray tap, a tab switch or a refresh. Cancel discards it.
+- **Warning before leaving (5.2).** Asked only when work would really be lost: a note whose draft could not be stored on the device, or a quiz still being generated. The browser asks the same when the page is closed or reloaded. Work that is safely kept as a draft does not trigger a warning.
+- **Swipe to complete (8.1).** Swipe a to-do or reminder right to tick it, or to un-tick it.
+- **Pull to refresh (8.1).** Pull down from the top of any screen to reload it; drafts are kept.
+- **Pen pressure (8.3).** A pressure-sensitive pen draws thinner or thicker lines.
+- **On-screen keyboard (7.1).** Sheets and dialogs lift above the keyboard where it covers the page, and the field being typed in is scrolled into view. Built from the specification; the keyboard itself could not be tested here.
+- **Share into StudyOS (9.1).** Text and links.
+- **Onboarding and paywall audit.** All five onboarding fields and the paywall were audited at phone size. Found and fixed: the onboarding labels were not connected to their fields; the paywall had no dialog role, an unlabelled close button and no Escape key.
+- **Field labels everywhere.** The same check, run on every screen and inner form, found 19 fields with no accessible name (quiz, planner, stats, costs, library, mock, study plan). All now have one.
+
+Tested with simulated touch, pen and keyboard-size events in a desktop browser. None of it has been tried on a real phone, tablet or Apple Pencil.
 
 ## Priority order
 

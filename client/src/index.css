@@ -244,3 +244,20 @@ input {
 @media (hover: hover) and (pointer: fine) {
   .pointer-fine-only { display: block; }
 }
+
+/* The app has its own pull-to-refresh (it reloads the screen's data and keeps
+   drafts); stop the browser's, which would reload the whole page on top of it. */
+html { overscroll-behavior-y: contain; }
+
+/* ── On-screen keyboard (see useKeyboardInset in App.tsx) ──
+   Lift bottom sheets and dialogs above the keyboard, and keep them no taller
+   than the space that is left, so their fields and buttons stay reachable. */
+:has(> [role="dialog"]),
+:has(> [role="alertdialog"]) {
+  padding-bottom: var(--keyboard-inset, 0px);
+}
+html.keyboard-open [role="dialog"],
+html.keyboard-open [role="alertdialog"] {
+  max-height: calc(100dvh - var(--keyboard-inset, 0px) - 0.5rem) !important;
+  overflow-y: auto;
+}

@@ -99,7 +99,7 @@ function Pomodoro() {
     <Card>
       <h2 className="font-semibold mb-3" style={{ color: "var(--text-primary)" }}>{t("pomo.title")}</h2>
 
-      <select
+      <select aria-label={t("field.course")}
         value={courseCode}
         onChange={(e) => setCourseCode(e.target.value)}
         className="w-full rounded-lg border px-3 py-2 text-sm mb-3 min-h-11"

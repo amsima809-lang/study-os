@@ -57,6 +57,13 @@ function PaywallModal({ onClose, onActivated }: { onClose: () => void; onActivat
     }
   }
 
+  // Escape closes it, like every other dialog in the app.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center px-5"
@@ -64,7 +71,10 @@ function PaywallModal({ onClose, onActivated }: { onClose: () => void; onActivat
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
-        className="w-full max-w-sm rounded-3xl p-7 animate-slide-up relative"
+        role="dialog"
+        aria-modal="true"
+        aria-label={t("sub.title")}
+        className="w-full max-w-sm max-h-[92dvh] overflow-y-auto rounded-3xl p-7 animate-slide-up relative"
         style={{
           backgroundColor: "var(--bg-surface)",
           boxShadow: "var(--shadow-lg)",
@@ -73,6 +83,7 @@ function PaywallModal({ onClose, onActivated }: { onClose: () => void; onActivat
       >
         <button
           onClick={onClose}
+          aria-label={t("uni.close")}
           className="absolute top-2 right-2 w-11 h-11 flex items-center justify-center rounded-lg"
           style={{ color: "var(--text-tertiary)" }}
         >
