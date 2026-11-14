@@ -8,18 +8,13 @@ import { z } from "zod";
 import type { DB } from "./db.js";
 import { getSetting, hasCatalog, termCourses } from "./api.js";
 import { buildTrail, nextTerm, parseTerm, termIndex, CREDIT_LIMITS, type Category, type TrailInput } from "./trail.js";
+import { courseResults, passedCourses, passedCreditsByCategory, setPassedList, setResult } from "./results.js";
+
+export { passedCourses };
 
 const currentTerm = (db: DB) => getSetting(db, "current_term_id", "2/69");
 
 type Profile = { program_id: string | null; entry_year: string | null; target_years: number | null; trail_target: string | null; trail_summers: number; trail_max: number | null };
-
-/** Courses the student has passed: marked here, or recorded with a grade in the degree planner. */
-export function passedCourses(db: DB, userId: string): string[] {
-  return (db.prepare(
-    `SELECT course_code FROM passed_courses WHERE user_id = ?
-     UNION SELECT course_code FROM enrollments WHERE user_id = ? AND status = 'PASSED'`,
-  ).all(userId, userId) as { course_code: string }[]).map((r) => r.course_code);
-}
 
 /** The goal to plan for: what the student set, or four years from their entry year, or the term after next. */
 export function trailGoal(db: DB, userId: string): { target: string; summers: boolean; maxPerTerm: number; isDefault: boolean } {
@@ -101,16 +96,17 @@ export function suggestedCourses(db: DB, userId: string): { term: string; codes:
 
 // ---- a new term: which of last term's courses were passed? ----
 export type TermCheck = { term: string; due: boolean; courses: { term_id: string; code: string; name_th: string; name_en: string | null }[] };
-/** Courses the student chose in an EARLIER term and has not marked as passed. */
+/** Courses the student chose in an EARLIER term that have no result yet: not passed, and not marked "not passed" for that term. */
 function unsettled(db: DB, userId: string, now: string): TermCheck["courses"] {
+  const results = courseResults(db, userId);
+  const passed = new Set(results.filter((r) => r.status === "PASSED").map((r) => r.course_code));
+  const settled = new Set(results.filter((r) => r.term_id).map((r) => `${r.course_code} ${r.term_id}`));
   return (db.prepare(
     `SELECT DISTINCT pi.term_id, c.code, c.name_th, c.name_en
      FROM plan_items pi JOIN courses c ON c.code = pi.course_code
-     WHERE pi.user_id = ? AND pi.course_code IS NOT NULL
-       AND pi.course_code NOT IN (SELECT course_code FROM passed_courses WHERE user_id = ?)
-       AND pi.course_code NOT IN (SELECT course_code FROM enrollments WHERE user_id = ? AND status = 'PASSED')
-     ORDER BY c.code`,
-  ).all(userId, userId, userId) as TermCheck["courses"]).filter((r) => termIndex(r.term_id) < termIndex(now));
+     WHERE pi.user_id = ? AND pi.course_code IS NOT NULL ORDER BY c.code`,
+  ).all(userId) as TermCheck["courses"])
+    .filter((r) => termIndex(r.term_id) < termIndex(now) && !passed.has(r.code) && !settled.has(`${r.code} ${r.term_id}`));
 }
 /** Asked once per term (`user_profiles.term_reviewed`), so the new term's plan starts from what is really done. */
 export function termCheck(db: DB, userId: string): TermCheck {
@@ -119,13 +115,16 @@ export function termCheck(db: DB, userId: string): TermCheck {
   const courses = reviewed === now ? [] : unsettled(db, userId, now);
   return { term: now, due: courses.length > 0, courses };
 }
-/** Her answer: these were passed. Only courses that were asked about are recorded. */
+/**
+ * Her answer: the ticked courses were passed, the others were not. Each is recorded against the
+ * term it was taken in (results.ts), so the grades page shows the same thing and she is not asked
+ * about them again. Only courses that were asked about are touched.
+ */
 export function answerTermCheck(db: DB, userId: string, codes: string[]): void {
   const now = currentTerm(db);
-  const asked = new Set(unsettled(db, userId, now).map((c) => c.code));
+  const passed = new Set(codes);
   db.transaction(() => {
-    const ins = db.prepare("INSERT OR IGNORE INTO passed_courses (user_id, course_code) VALUES (?, ?)");
-    for (const code of new Set(codes)) if (asked.has(code)) ins.run(userId, code);
+    for (const c of unsettled(db, userId, now)) setResult(db, userId, c.code, passed.has(c.code) ? "PASSED" : "FAILED", undefined, c.term_id);
     db.prepare("UPDATE user_profiles SET term_reviewed = ? WHERE user_id = ?").run(now, userId);
   })();
 }
@@ -158,6 +157,11 @@ export function createTrailRouter(db: DB): Router {
       available: true, currentTerm: input.currentTerm, goal, targets, limits: CREDIT_LIMITS, trail, names,
       history: [...input.historyTerms].sort((a, b) => termIndex(a) - termIndex(b)),
       chosenThisTerm: input.current.length, passedCount: input.passed.length,
+      // Credits passed in each part of the curriculum (the bars the degree planner used to show).
+      categories: (() => {
+        const done = passedCreditsByCategory(db, userId);
+        return (["GE", "CORE", "MAJOR_REQ", "MAJOR_ELEC", "FREE"] as Category[]).filter((c) => input.required[c] > 0).map((c) => ({ category: c, required: input.required[c], passed: Math.min(done[c] ?? 0, input.required[c]) }));
+      })(),
     });
   });
 
@@ -193,7 +197,7 @@ export function createTrailRouter(db: DB): Router {
     res.json({ courses, passed: passedCourses(db, userId) });
   });
 
-  // Replace the list of passed courses (those marked here; grades in the degree planner are left alone).
+  // Make the passed courses exactly this list. A course that stays passed keeps its grade.
   router.put("/trail/passed", (req, res) => {
     const userId = req.user!.id;
     const parsed = passedSchema.safeParse(req.body);
@@ -201,11 +205,7 @@ export function createTrailRouter(db: DB): Router {
     const wanted = [...new Set(parsed.data.codes)];
     const known = new Set(wanted.length === 0 ? [] : (db.prepare(`SELECT code FROM courses WHERE code IN (${wanted.map(() => "?").join(",")})`).all(...wanted) as { code: string }[]).map((r) => r.code));
     if (wanted.some((c) => !known.has(c))) return res.status(400).json({ error: "ไม่พบบางวิชา", code: "BAD_COURSES" });
-    db.transaction(() => {
-      db.prepare("DELETE FROM passed_courses WHERE user_id = ?").run(userId);
-      const ins = db.prepare("INSERT INTO passed_courses (user_id, course_code) VALUES (?, ?)");
-      for (const c of wanted) ins.run(userId, c);
-    })();
+    setPassedList(db, userId, wanted);
     res.json({ passed: passedCourses(db, userId) });
   });
 

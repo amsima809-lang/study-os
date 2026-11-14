@@ -36,6 +36,7 @@ describe("Phase 62 — the app's five sections", () => {
   it("opens a page by its name, by a name it used to have, and nothing else", () => {
     expect(pageNamed("trail")).toBe("trail");
     expect(pageNamed("schedule")).toBe("timetable"); // the old combined class-and-exam screen
+    expect(pageNamed("weakness")).toBe("stats"); // merged into the Progress page
     expect(pageNamed("more")).toBeNull();
     expect(pageNamed("settings")).toBeNull(); // not a page of a section: only the gear opens it
     expect(pageNamed(undefined)).toBeNull();

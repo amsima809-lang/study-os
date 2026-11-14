@@ -301,7 +301,7 @@ export type MockChapterScore = {
 
 export type GradeCutoff = { label: string; min_pct: number };
 
-// ---------- Phase 7: degree planner ----------
+// ---------- Grades (began as the Phase 7 degree planner) ----------
 export type PlanItem = {
   course_code: string | null;
   placeholder_label: string | null;
@@ -309,8 +309,7 @@ export type PlanItem = {
   name_en: string | null;
   credits: number;
   category: string | null;
-  difficulty: number | null;
-  status: "PLANNED" | "PASSED" | "FAILED" | "ENROLLED" | "WITHDRAWN" | null;
+  status: "PLANNED" | "PASSED" | "FAILED" | null;
   grade: string | null;
 };
 
@@ -319,7 +318,6 @@ export type PlanTerm = {
   ord: number;
   max_credits: number;
   credits: number;
-  runningTotal: number;
   items: PlanItem[];
   gpa: number | null;
 };
@@ -329,13 +327,6 @@ export type GpaResult = {
   totalCredits: number;
   totalPoints: number;
   courseCount: number;
-};
-
-export type PlanPace = {
-  remainingCredits: number;
-  futureTerms: number;
-  creditsPerTerm: number;
-  status: "on_track" | "heavy" | "behind";
 };
 
 export type PlanGradeScale = { grade: string; points: number };
@@ -349,16 +340,13 @@ export type WhatIfResult = {
 };
 
 export type PlanData = {
+  /** The terms she has courses in, with how each course went. */
   terms: PlanTerm[];
-  totalPassedCredits: number;
-  totalPlannedCredits: number;
-  categoryProgress: { category: string; required: number; passed: number }[];
-  failed: { course_code: string; name_th: string; retakeTerm: string | null }[];
+  /** Courses passed before she used the app: no term. */
+  before: { course_code: string; name_th: string; name_en: string | null; credits: number; grade: string | null }[];
   blocked: { course_code: string; name_th: string; dueTo: string[] }[];
-  internship: { eligible: boolean; rules: { id: string; ok: boolean; detail: string }[] };
   gpa: GpaResult;
   gradeScale: PlanGradeScale[];
-  pace: PlanPace;
 };
 
 // ---------- Phase 6: analytics ----------

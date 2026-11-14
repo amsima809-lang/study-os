@@ -48,6 +48,7 @@ type TrailData =
       history: string[];
       chosenThisTerm: number;
       passedCount: number;
+      categories: { category: string; required: number; passed: number }[];
     };
 
 export default function Trail() {
@@ -215,6 +216,20 @@ export default function Trail() {
         <button onClick={() => setPicking(true)} className="tap-area text-sm font-medium mt-1" style={{ color: "var(--accent-text)" }}>
           {t("trail.passedLink", { n: data.passedCount })} ›
         </button>
+        {/* Passed credits in each part of the curriculum */}
+        <div className="mt-4 space-y-2">
+          {data.categories.map((c) => (
+            <div key={c.category}>
+              <div className="flex justify-between text-xs" style={{ color: "var(--text-tertiary)" }}>
+                <span>{t(`cat.${c.category}`)}</span>
+                <span>{c.passed}/{c.required}</span>
+              </div>
+              <div className="h-1.5 rounded-full overflow-hidden mt-0.5" style={{ backgroundColor: "var(--border-light)" }}>
+                <div className="h-full rounded-full" style={{ width: `${Math.min((c.passed / c.required) * 100, 100)}%`, backgroundColor: "var(--success)" }} />
+              </div>
+            </div>
+          ))}
+        </div>
       </Card>
 
       {/* Term by term */}

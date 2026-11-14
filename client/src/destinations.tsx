@@ -10,7 +10,7 @@
  *   Today    — what do I do today?
  *   Classes  — when and where are my classes and exams?
  *   Study    — my material: notes, documents, recorded lectures
- *   Practice — test myself, and see how I am doing
+ *   Practice — test myself, and see how I am doing (one Progress page)
  *   Degree   — the long view: the plan to graduate, grades, cost
  */
 import { useState, type ComponentType } from "react";
@@ -20,11 +20,10 @@ import Quiz from "./screens/Quiz.tsx";
 import Review from "./screens/Review.tsx";
 import Week from "./screens/Week.tsx";
 import Exams from "./screens/Exams.tsx";
-import Stats from "./screens/Stats.tsx";
+import Progress from "./screens/Progress.tsx";
 import Planner from "./screens/Planner.tsx";
 import Mock from "./screens/Mock.tsx";
 import Library from "./screens/Library.tsx";
-import Weakness from "./screens/Weakness.tsx";
 import StudyPlan from "./screens/StudyPlan.tsx";
 import Costs from "./screens/Costs.tsx";
 import Reminders from "./screens/Reminders.tsx";
@@ -72,8 +71,7 @@ export const DESTINATIONS: Destination[] = [
   { id: "quiz", icon: "target", label: "nav.quiz", Screen: Quiz, narrow: true },
   { id: "review", icon: "refresh", label: "nav.flashcards", Screen: Review, narrow: true },
   { id: "mock", icon: "fileEdit", label: "nav.mock", Screen: Mock },
-  { id: "stats", icon: "chartBar", label: "nav.stats", Screen: Stats },
-  { id: "weakness", icon: "crosshair", label: "nav.weakness", Screen: Weakness, narrow: true },
+  { id: "stats", icon: "chartBar", label: "nav.progress", Screen: Progress },
   { id: "trail", icon: "flag", label: "nav.trail", Screen: Trail, narrow: true },
   { id: "planner", icon: "graduationCap", label: "nav.grades", Screen: Planner },
   { id: "costs", icon: "coins", label: "nav.costs", Screen: Costs, narrow: true },

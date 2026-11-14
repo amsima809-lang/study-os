@@ -6,7 +6,7 @@ export const PAGE_IDS = [
   "today", "reminders", "studyplan",
   "timetable", "exams", "map",
   "notes", "library",
-  "quiz", "review", "mock", "stats", "weakness",
+  "quiz", "review", "mock", "stats",
   "trail", "planner", "costs",
 ] as const;
 export type DestId = (typeof PAGE_IDS)[number];
@@ -16,13 +16,13 @@ export const SECTIONS: { id: SectionId; icon: string; label: string; pages: Dest
   { id: "today", icon: "calendar", label: "sec.today", pages: ["today", "reminders", "studyplan"] },
   { id: "classes", icon: "calendarRange", label: "sec.classes", pages: ["timetable", "exams", "map"] },
   { id: "study", icon: "notebook", label: "sec.study", pages: ["notes", "library"] },
-  { id: "practice", icon: "target", label: "sec.practice", pages: ["quiz", "review", "mock", "stats", "weakness"] },
+  { id: "practice", icon: "target", label: "sec.practice", pages: ["quiz", "review", "mock", "stats"] },
   { id: "degree", icon: "graduationCap", label: "sec.degree", pages: ["trail", "planner", "costs"] },
 ];
 export const sectionOf = (id: DestId) => SECTIONS.find((s) => s.pages.includes(id))!;
 
 /** Names a page used to be opened by, still accepted from links and old code. */
-const FORMER: Record<string, DestId> = { schedule: "timetable" };
+const FORMER: Record<string, DestId> = { schedule: "timetable", weakness: "stats" };
 /** The page a name stands for, or null if it is no page at all. */
 export function pageNamed(name: unknown): DestId | null {
   if (typeof name !== "string") return null;
