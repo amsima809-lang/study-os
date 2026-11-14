@@ -339,7 +339,7 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
 
   const toolBtn = (active: boolean) =>
     `px-3 min-h-11 min-w-11 rounded-md text-sm font-medium ${
-      active ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600"
+      active ? "bg-green-700 text-white" : "bg-slate-100 text-slate-600"
     }`;
 
   return (
@@ -397,7 +397,7 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
               }}
               title={t(`draw.${w.key}`)}
               className={`w-11 h-11 rounded-md flex items-center justify-center ${
-                width === w.val ? "bg-indigo-100" : "bg-slate-100"
+                width === w.val ? "bg-green-100" : "bg-slate-100"
               }`}
             >
               <span className="rounded-full bg-slate-700" style={{ width: w.val / 2 + 2, height: w.val / 2 + 2 }} />

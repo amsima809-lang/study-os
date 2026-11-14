@@ -177,6 +177,9 @@ describe("push: announcing what is due", () => {
 });
 
 // ── The service-worker half (client/public/push-sw.js), run in a sandbox ──
+const PUSH_WORKER = readFileSync(fileURLToPath(new URL("../../client/public/push-sw.js", import.meta.url)), "utf8");
+// The product's name as the worker carries it (kept in step with client/src/brand.ts by scripts/rename-app.mjs).
+const APP = /const APP_NAME = "([^"]*)"; \/\/ @app-name/.exec(PUSH_WORKER)![1];
 type Shown = { title: string; body: string; tag: string };
 function loadPushWorker(server: { status: number; json?: unknown } | "offline") {
   const shown: Shown[] = [];
@@ -198,8 +201,7 @@ function loadPushWorker(server: { status: number; json?: unknown } | "offline") 
     if (server === "offline") throw new Error("offline");
     return { ok: server.status === 200, status: server.status, json: async () => server.json };
   };
-  const file = fileURLToPath(new URL("../../client/public/push-sw.js", import.meta.url));
-  vm.runInNewContext(readFileSync(file, "utf8"), { self, fetch, Promise, JSON });
+  vm.runInNewContext(PUSH_WORKER, { self, fetch, Promise, JSON });
   const fire = async (type: string, extra: object = {}) => {
     let work: Promise<unknown> = Promise.resolve();
     handlers[type]({ waitUntil: (p: Promise<unknown>) => { work = p; }, ...extra });
@@ -225,7 +227,7 @@ describe("push: the service worker showing a notification", () => {
   it("shows the test notification, in the student's language", async () => {
     const w = loadPushWorker({ status: 200, json: { lang: "th", test: true, items: [] } });
     await w.fire("push");
-    expect(w.shown).toEqual([{ title: "StudyOS", body: "การแจ้งเตือนทำงานแล้ว", tag: "studyos-test" }]);
+    expect(w.shown).toEqual([{ title: APP, body: "การแจ้งเตือนทำงานแล้ว", tag: "studyos-test" }]);
   });
 
   it("always shows something: a plain notice when offline or when nothing is listed", async () => {
@@ -235,7 +237,7 @@ describe("push: the service worker showing a notification", () => {
     expect(offline.shown[0].tag).toBe("studyos-due");
     const empty = loadPushWorker({ status: 200, json: { lang: "en", test: false, items: [] } });
     await empty.fire("push");
-    expect(empty.shown).toEqual([{ title: "StudyOS", body: "Something is due. Open StudyOS to see it.", tag: "studyos-due" }]);
+    expect(empty.shown).toEqual([{ title: APP, body: `Something is due. Open ${APP} to see it.`, tag: "studyos-due" }]);
   });
 
   it("stops the pushes on a device where nobody is signed in, and shows no reminder text", async () => {

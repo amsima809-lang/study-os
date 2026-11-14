@@ -1,6 +1,6 @@
 /**
  * Colour themes. A theme is separate from light/dark mode:
- *   "default"        the built-in purple
+ *   "default"        the brand's own colours: leaf green with a lime second colour
  *   "palette:<id>"   one of the palettes below
  *   "school:<id>"    a university's colours (client/src/data/universities.ts)
  *   "hc:light|dark"  high contrast (this one also fixes the mode)
@@ -18,17 +18,25 @@ export type Mode = "light" | "dark";
 export type Colour = string;
 
 export const PALETTES = [
+  { id: "indigo", primary: "#6d5cdf", secondary: "#a096f5" }, // the app's colour before the Upleaf brand
   { id: "ocean", primary: "#2563eb", secondary: "#06b6d4" },
   { id: "teal", primary: "#0d9488", secondary: "#5eead4" },
-  { id: "forest", primary: "#15803d", secondary: "#a3e635" },
   { id: "sunset", primary: "#ea580c", secondary: "#fbbf24" },
   { id: "rose", primary: "#e11d48", secondary: "#fb7185" },
   { id: "berry", primary: "#a21caf", secondary: "#f0abfc" },
   { id: "slate", primary: "#475569", secondary: "#94a3b8" },
 ] as const;
 
+/**
+ * The brand's colours (docs/brand/): leaf green, and lime for the lifted page
+ * of the logo. They are the default theme. The accent tokens in index.css are
+ * the shades computed from these (so the first paint is already green); if
+ * these change, recompute them — see the note above the tokens there.
+ */
+export const BRAND = { primary: "#15803d", secondary: "#a3e635" };
+
 /** Swatch shown for the default theme in the selector. */
-export const DEFAULT_SWATCH = { primary: "#6d5cdf", secondary: "#a096f5" };
+export const DEFAULT_SWATCH = BRAND;
 
 // Card and page backgrounds of the two modes (same values as index.css).
 const SURFACE = { light: "#ffffff", dark: "#1a1929" };
@@ -113,6 +121,7 @@ const HIGH_CONTRAST: Record<Mode, Record<string, string>> = {
     "--border": "#000000", "--border-light": "#000000",
     "--text-primary": "#000000", "--text-secondary": "#1a1a1a", "--text-tertiary": "#333333", "--text-inverse": "#ffffff",
     "--accent": "#0033aa", "--accent-hover": "#002277", "--accent-light": "#e0e7ff", "--accent-text": "#0033aa",
+    "--accent-2": "#0033aa",
     "--success": "#005a2b", "--success-bg": "#e6f4ea", "--warning": "#6b4000", "--warning-bg": "#fff4d6",
     "--danger": "#8f0000", "--danger-bg": "#fde8e8",
   },
@@ -121,6 +130,7 @@ const HIGH_CONTRAST: Record<Mode, Record<string, string>> = {
     "--border": "#ffffff", "--border-light": "#ffffff",
     "--text-primary": "#ffffff", "--text-secondary": "#f0f0f0", "--text-tertiary": "#d6d6d6", "--text-inverse": "#000000",
     "--accent": "#1f4fd8", "--accent-hover": "#3a66e6", "--accent-light": "#001a66", "--accent-text": "#ffe94d",
+    "--accent-2": "#ffe94d",
     "--success": "#5dfc9b", "--success-bg": "#002b12", "--warning": "#ffd84d", "--warning-bg": "#2b2000",
     "--danger": "#ff8a8a", "--danger-bg": "#330000",
   },
@@ -151,15 +161,19 @@ export function applyColour(colour: Colour, mode: Mode): void {
   for (const name of MANAGED) root.style.removeProperty(name);
 
   const forced = forcedMode(colour);
-  const base = baseColours(colour);
+  const chosen = baseColours(colour);
+  // The default theme (and a saved palette that no longer exists) is the brand's own colours.
+  const base = chosen ?? BRAND;
   const vars: Record<string, string> = forced
     ? HIGH_CONTRAST[forced]
-    : base
-      ? { ...accentVars(base.primary, mode), "--brand-bar": `linear-gradient(90deg, ${base.primary}, ${base.secondary})` }
-      : {};
+    : {
+        ...accentVars(base.primary, mode),
+        // The two-colour stripe marks a palette or a school; the brand itself does not need one.
+        ...(chosen ? { "--brand-bar": `linear-gradient(90deg, ${base.primary}, ${base.secondary})` } : {}),
+      };
   // Themes without a usable second colour leave --accent-2 unset; every use
   // site falls back to the first colour.
-  const second = base && !forced ? secondAccent(base.secondary, mode) : null;
+  const second = !forced ? secondAccent(base.secondary, mode) : null;
   if (second) vars["--accent-2"] = second;
   for (const [name, value] of Object.entries(vars)) root.style.setProperty(name, value);
 }

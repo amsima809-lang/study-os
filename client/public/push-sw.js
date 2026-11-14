@@ -12,8 +12,8 @@
  */
 // The product's name. This file cannot import client/src/brand.ts, so the name is
 // repeated here; scripts/rename-app.mjs changes both together.
-const APP_NAME = "StudyOS"; // @app-name
-const APP_NAME_TH = "StudyOS"; // @app-name-th
+const APP_NAME = "Upleaf"; // @app-name
+const APP_NAME_TH = "Upleaf"; // @app-name-th
 
 const WORDS = {
   th: { due: "มีรายการถึงเวลาแล้ว เปิด " + APP_NAME_TH + " เพื่อดู", test: "การแจ้งเตือนทำงานแล้ว", signIn: "เข้าสู่ระบบ " + APP_NAME_TH + " เพื่อรับการแจ้งเตือนต่อ" },

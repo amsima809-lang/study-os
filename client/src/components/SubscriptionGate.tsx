@@ -135,7 +135,7 @@ function PaywallModal({ onClose, onActivated }: { onClose: () => void; onActivat
           className="w-full py-3.5 rounded-2xl font-semibold text-white disabled:opacity-50 transition-all active:scale-[0.98] min-h-11"
           style={{
             background: "linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%)",
-            boxShadow: "0 4px 16px rgba(91,79,199,0.3)",
+            boxShadow: "0 4px 16px color-mix(in srgb, var(--accent) 30%, transparent)",
           }}
         >
           {busy ? t("sub.activating") : t("sub.activate")}

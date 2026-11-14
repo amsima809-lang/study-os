@@ -20,7 +20,7 @@ export default defineConfig({
         short_name: APP_NAME,
         description: "ผู้ช่วยการเรียนส่วนตัว ม.รามคำแหง",
         lang: "th",
-        theme_color: "#4f46e5",
+        theme_color: "#15803d",
         background_color: "#f8fafc",
         display: "standalone",
         start_url: "/",

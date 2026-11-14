@@ -52,7 +52,7 @@ export function Markdown({ source }: { source: string }) {
           className="flex gap-2 text-sm text-slate-700"
           style={{ paddingLeft: `${level * 16}px` }}
         >
-          <span className="text-indigo-400">•</span>
+          <span style={{ color: "var(--accent-text)" }}>•</span>
           <span>{renderInline(bullet[2], `li${idx}`)}</span>
         </div>,
       );

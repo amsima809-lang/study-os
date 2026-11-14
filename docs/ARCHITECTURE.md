@@ -405,3 +405,9 @@ AI ช่วยเรา "ฝึก" ไม่ใช่ "ทำแทน" — �
 - **Name.** `client/src/brand.ts` exports `APP_NAME`, `APP_NAME_TH` and `appName(lang)`. `t()` replaces `{app}` in every string and the language effect sets `document.title`. `vite.config.ts` imports `APP_NAME` for the manifest and replaces `%APP_NAME%` in `index.html`. The service-worker push code and the lecture collector are plain JS that cannot import it; they keep copies on lines tagged `@app-name` / `@app-name-th`, which `scripts/rename-app.mjs` rewrites together with `brand.ts`.
 - **Checked** by renaming to a candidate, building, and inspecting the output (title, home-screen title, manifest, notification text, collector messages, no leftover name in the bundle), then renaming back.
 
+## Phase 47 — The brand: Upleaf, leaf green and lime
+- **Name.** Applied with `scripts/rename-app.mjs "Upleaf"`. `server/test/brand.test.ts` keeps `brand.ts`, `push-sw.js` and `collector/ru-vod.js` in step and rejects a translated string that spells the name out.
+- **Colours.** `BRAND` in `theme.ts`. `applyColour` uses it whenever no palette or school is chosen (`default`, or a saved palette that no longer exists), through the same `accentVars` / `secondAccent` maths as every other theme, without the two-colour stripe. The same computed shades are written into the three token blocks of `index.css` so the page is green before any script runs: light `#15803d` / text `#137638` / tint `#e3f0e8` / second colour `#6c9923`; dark `#15803d` / text `#5da779` / tint `#19332e` / second colour `#a3e635`. White on the button green is 5.0:1.
+- **Icons.** `scripts/make-icons.mjs` now draws white and lime on leaf green; `favicon.svg` matches (`docs/brand/icon-book-leaf.svg`).
+- **Leftovers removed.** Indigo that did not come from tokens: Markdown bullets, the paywall button's shadow, the drawing pad's active tool, the login page's no-university gradient and blobs.
+

@@ -11,6 +11,7 @@ marks = [
     ("cards", "Study cards",             "Two cards, the front one ticked: notes and flashcards done. Clear, but close to the standard “copy” and “checkbox” icons."),
 ]
 names = json.load(open('names.json'))
+chosen_icon = re.sub(r'<svg ', '<svg width="132" height="132" ', open('icon-book-leaf.svg').read(), count=1)
 def lockup(name, thai, dark=False):
     """The outlined logo-with-name files from docs/brand/lockups/, Latin then Thai."""
     slug = re.sub(r'[^a-z0-9]+', '-', name.lower())
@@ -64,10 +65,13 @@ tr:last-child td{{border-bottom:0}} .nm{{min-width:150px}} .th{{color:#55556c;ma
 @media (max-width:640px){{.pair{{grid-template-columns:1fr}} body{{padding:20px 14px 40px}}}}
 </style></head><body>
 <h1>Brand board</h1>
-<p class="lede">Three logo marks and a checked list of names to replace the “StudyOS” placeholder. Marks are drawn in one colour so they take any school theme; the app-icon versions use the current indigo.</p>
+<p class="lede"><strong>Chosen on 14 November 2026: the name Upleaf, the book-and-tick mark, and leaf green with lime.</strong> Below: the chosen brand, then the three logo concepts as first explored (in the earlier indigo), and every name that was checked.</p>
+<h2>Upleaf</h2>
+<div class="concept wide"><div class="row">{chosen_icon}<img src="upleaf-green-options.png" alt="Green options that were compared: leaf green and lime (chosen), fresh green and sun, deep forest and mint, and the earlier indigo" style="max-width:min(100%,640px);border-radius:12px;border:1px solid #e4e4ee"></div>
+<p>Leaf green <code>#15803d</code> for the app and its icon; lime <code>#a3e635</code> for the lifted page, which reads as a leaf going up. On a white background the lime is darkened so it stays visible. Students who pick their school’s colours still get those: the mark follows the theme.</p></div>
 <h2>Logo marks</h2>
 <div class="grid">{''.join(cols)}</div>
-<h2>How the leading names look with the recommended mark</h2>
+<h2>The chosen name with the mark</h2>
 {lock}
 <p class="note">These are the finished files in <code>lockups/</code>: the lettering (IBM Plex Sans Thai Looped, the app’s typeface) is converted to outlines, so they look the same on any device. Each name has a Latin and a Thai version, for light and dark backgrounds.</p>
 <h2>Names checked</h2>

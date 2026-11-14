@@ -2,15 +2,23 @@
 
 "StudyOS" and the old book icon were placeholders. This folder holds the logo work and the name research.
 
-## What is live in the app
+## The brand (chosen 14 November 2026)
 
-- **Logo: the book that becomes a tick** (`mark-book.svg`). It is in the app header, the sidebar and the login page (`client/src/components/Logo.tsx`), the browser tab (`client/public/favicon.svg`), and the home-screen and notification icons (`client/public/*.png`, built by `node scripts/make-icons.mjs`).
-- **Name: still "StudyOS".** The name has not been chosen. It is kept in one place so that changing it is one command (below).
+- **Name: Upleaf.** An English name; the same in the Thai interface.
+- **Logo: the book that becomes a tick** (`mark-book.svg`): an open book whose right page lifts — a leaf going up.
+- **Colours: leaf green `#15803d` and lime `#a3e635`** (`BRAND` in `client/src/theme.ts`). Green is the app's default theme and its icon; lime is the lifted page. The earlier indigo is still offered as a colour theme.
+
+Where it lives: `client/src/brand.ts` (name), `client/src/components/Logo.tsx` (mark, follows the theme), `client/public/favicon.svg` and the PNG icons (built by `node scripts/make-icons.mjs`), `lockups/upleaf-light.svg` and `upleaf-dark.svg` (logo with the name, lettering outlined).
+
+Not done, and why:
+- **Trademark clearance and the domain.** The checks here are product and register searches, not legal clearance. `upleaf.com` belongs to a web agency; `upleaf.app` did not resolve on the day.
+- **Internal names stay `studyos`:** storage keys, notification tags, log prefixes, the repository, the Fly app, and most of these documents. Students never see them, and changing storage keys would sign everyone's settings away.
 
 ## Changing the name
 
 ```bash
-node scripts/rename-app.mjs "Khuenjai" "ขึ้นใจ"   # Latin name, then the Thai form (optional)
+node scripts/rename-app.mjs "Upleaf"               # one name for both languages
+node scripts/rename-app.mjs "Khuenjai" "ขึ้นใจ"   # or a Latin name and its Thai form
 npm run build
 ```
 
@@ -64,8 +72,6 @@ A word-mark search of Thailand's DIP register (search.ipthailand.go.th), TMview 
 
 Records can be opened by number at `https://search.ipthailand.go.th/search?q=<number>&tab=trademark`. WIPO rate-limited part of the run, so the spaced spellings of the last three names were not searched there.
 
-## Still to do once the name is chosen
+## Changing the colours
 
-- Run the rename command.
-- Use that name's files from `lockups/` wherever the logo appears with the name (they are ready for all five shortlisted names).
-- A proper trademark clearance, and the domain.
+Change `BRAND` in `client/src/theme.ts`, recompute the accent tokens in `client/src/index.css` (the note above them says how), update `GREEN` and `LIME` in `scripts/make-icons.mjs` and run it, copy the new icon over `client/public/favicon.svg`, and set `theme-color` in `client/index.html` and `theme_color` in `client/vite.config.ts`.

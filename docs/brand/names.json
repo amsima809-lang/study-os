@@ -14,7 +14,7 @@
   "meaning": "wise about the term",
   "verdict": "TAKEN",
   "label": "Used by a school app",
-  "pick": true,
+  "pick": false,
   "found": "An app named Termwise is on Google Play: school-management software for Nigerian schools (<a href=\"https://termwise.org\">termwise.org</a>, very few downloads). Not on the App Store in the US or Thailand. termwise.com is for sale; termwise.app is an unrelated browser extension."
  },
  {
@@ -23,7 +23,7 @@
   "meaning": "from “semester”",
   "verdict": "CAUTION",
   "label": "One letter from taken apps",
-  "pick": true,
+  "pick": false,
   "found": "Nothing found under this exact spelling (App Store US and Thailand, Google Play, semstra.com / .app / .co do not resolve). But <strong>Semestra</strong>, one letter longer and said the same way, is two Education apps on the App Store in Thailand and one on Google Play, all semester planners."
  },
  {

@@ -4,6 +4,8 @@
 import { createRequire } from "node:module";
 const require = createRequire(process.cwd() + "/server/package.json");
 const sharp = require("sharp");
+// The brand colours (BRAND in client/src/theme.ts): leaf green, and lime for the lifted page.
+const GREEN = "#15803d", LIME = "#a3e635";
 const LEFT = "M8 21.5c0-1.9 1.6-3.3 3.5-3 6.3 1 11.8 3.4 16.5 7.3V53c-4.7-3.7-10.3-6-16.7-6.900C9.400 45.900 8 44.300 8 42.400z";
 const RIGHT = "M28 25.8 49.2 8.300c2.900-2.400 7.200 0.800 5.600 4.200L36.600 51.800c-1.500 3.200-5.600 4-8.600 1.200z";
 // `scale` = how much of the square the 64-unit mark box fills. Home-screen icons are
@@ -11,8 +13,8 @@ const RIGHT = "M28 25.8 49.2 8.300c2.900-2.400 7.200 0.800 5.600 4.200L36.600 51
 // inside the safe middle (within the central 80% circle) and the colour runs to the edge.
 const svg = (scale, radius) => {
   const box = 96 * scale, off = (96 - box) / 2, k = box / 64;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><rect width="96" height="96" rx="${radius}" fill="#4f46e5"/>
-  <g transform="translate(${off + 1} ${off + 1}) scale(${k})"><path fill="#fff" opacity=".9" d="${LEFT}"/><path fill="#fbbf24" d="${RIGHT}"/></g></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><rect width="96" height="96" rx="${radius}" fill="${GREEN}"/>
+  <g transform="translate(${off + 1} ${off + 1}) scale(${k})"><path fill="#fff" opacity=".9" d="${LEFT}"/><path fill="${LIME}" d="${RIGHT}"/></g></svg>`;
 };
 const out = async (file, size, scale, radius) => {
   await sharp(Buffer.from(svg(scale, radius)), { density: 72 * (size / 96) * 2 }).resize(size, size).png().toFile(`client/public/${file}`);
