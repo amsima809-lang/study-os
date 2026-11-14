@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
 import { useT } from "../i18n.tsx";
 import Icon from "./Icon.tsx";
 
@@ -139,8 +139,99 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
   // the stroke short.
   const activePointer = useRef<number | null>(null);
 
+  // ── Fingers ──
+  // The canvas takes every touch itself (touch-action: none), because the
+  // browser cannot tell a pen from a finger when it decides what scrolls. So
+  // fingers are handled here: one finger scrolls the page, two fingers pinch
+  // to zoom and pan. With "draw with a finger" switched on, one finger draws
+  // and two fingers still zoom and pan. A palm is not a finger: a large
+  // contact, or any touch while the pen is down or has just lifted, is ignored.
+  const scroller = useRef<HTMLDivElement>(null);
+  const touches = useRef(new Map<number, { x: number; y: number }>());
+  const pinch = useRef<{ dist: number; zoom: number } | null>(null);
+  const penDown = useRef(false);
+  const lastPenAt = useRef(0);
+  const anchor = useRef<{ mx: number; my: number; fx: number; fy: number } | null>(null);
+  const [fingerDraw, setFingerDraw] = useState(() => {
+    try { return localStorage.getItem("studyos.fingerDraw") === "1"; } catch { return false; }
+  });
+  function toggleFingerDraw() {
+    setFingerDraw((on) => {
+      try { localStorage.setItem("studyos.fingerDraw", on ? "0" : "1"); } catch { /* not saved */ }
+      return !on;
+    });
+  }
+  const spread = () => {
+    const [a, b] = [...touches.current.values()];
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  };
+  // After a pinch changes the zoom, keep the spot between the fingers where it was.
+  useLayoutEffect(() => {
+    const a = anchor.current;
+    const sc = scroller.current;
+    if (!a || !sc) return;
+    anchor.current = null;
+    sc.scrollLeft = a.fx * sc.scrollWidth - a.mx;
+    sc.scrollTop = a.fy * sc.scrollHeight - a.my;
+  }, [zoom]);
+
+  function touchDown(e: React.PointerEvent) {
+    const palm = Math.max(e.width, e.height) > 44;
+    if (palm || penDown.current || Date.now() - lastPenAt.current < 400) return;
+    touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (touches.current.size === 2) {
+      // A second finger means zoom, not a line: drop the stroke the first finger began.
+      if (activePointer.current !== null) {
+        activePointer.current = null;
+        drawing.current = false;
+        current.current = null;
+        last.current = null;
+        redraw();
+      }
+      pinch.current = { dist: spread() || 1, zoom };
+    } else if (touches.current.size === 1 && fingerDraw) {
+      beginStroke(e);
+    }
+  }
+  function touchMove(e: React.PointerEvent) {
+    const prev = touches.current.get(e.pointerId);
+    const sc = scroller.current;
+    if (!prev || !sc) return;
+    const dx = e.clientX - prev.x;
+    const dy = e.clientY - prev.y;
+    touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (touches.current.size === 1) {
+      sc.scrollLeft -= dx;
+      sc.scrollTop -= dy;
+    } else if (touches.current.size === 2 && pinch.current) {
+      // Each finger moves the midpoint by half its own movement.
+      sc.scrollLeft -= dx / 2;
+      sc.scrollTop -= dy / 2;
+      const next = Math.min(4, Math.max(0.5, pinch.current.zoom * (spread() / pinch.current.dist)));
+      if (Math.abs(next - zoom) >= 0.02) {
+        const [a, b] = [...touches.current.values()];
+        const box = sc.getBoundingClientRect();
+        const mx = (a.x + b.x) / 2 - box.left;
+        const my = (a.y + b.y) / 2 - box.top;
+        anchor.current = { mx, my, fx: (sc.scrollLeft + mx) / sc.scrollWidth, fy: (sc.scrollTop + my) / sc.scrollHeight };
+        setZoom(next);
+      }
+    }
+  }
+  function touchUp(e: React.PointerEvent) {
+    touches.current.delete(e.pointerId);
+    if (touches.current.size < 2) pinch.current = null;
+  }
+
   function down(e: React.PointerEvent) {
-    if (e.pointerType === "touch") return;
+    if (e.pointerType === "touch") return touchDown(e);
+    // The pen (or mouse) always wins over fingers already on the glass.
+    touches.current.clear();
+    pinch.current = null;
+    penDown.current = true;
+    beginStroke(e);
+  }
+  function beginStroke(e: React.PointerEvent) {
     if (activePointer.current !== null) return; // a stroke is already in progress
     activePointer.current = e.pointerId;
     drawing.current = true;
@@ -156,6 +247,7 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
     paintStroke(ctxOf(), current.current);
   }
   function move(e: React.PointerEvent) {
+    if (e.pointerType === "touch" && e.pointerId !== activePointer.current) return touchMove(e);
     if (e.pointerId !== activePointer.current) return; // e.g. the palm moving
     if (!drawing.current || !current.current) return;
     const p = toCanvas(e);
@@ -178,6 +270,11 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
   // Also handles pointercancel: iPadOS can cancel the pen when the palm lands,
   // and the stroke drawn so far should be kept, not left hanging.
   function up(e: React.PointerEvent) {
+    if (e.pointerType === "touch") touchUp(e);
+    else if (e.type !== "pointerleave" || e.pointerId === activePointer.current) {
+      penDown.current = false;
+      lastPenAt.current = Date.now();
+    }
     if (e.pointerId !== activePointer.current) return; // e.g. the palm lifting
     activePointer.current = null;
     if (!drawing.current || !current.current) return;
@@ -339,11 +436,22 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
             ⤢
           </button>
         </div>
-        <div className="text-xs text-slate-400 text-right">{t("draw.pages", { n: pages })}</div>
+        <div className="flex items-center gap-2 text-xs text-slate-500">
+          <button
+            className={`${toolBtn(fingerDraw)} inline-flex items-center gap-1.5`}
+            onClick={toggleFingerDraw}
+            aria-pressed={fingerDraw}
+          >
+            <Icon name="hand" size={16} />
+            {t("draw.finger")}
+          </button>
+          <span className="flex-1 min-w-0">{t("draw.gestureHint")}</span>
+          <span className="text-slate-400 whitespace-nowrap">{t("draw.pages", { n: pages })}</span>
+        </div>
       </div>
 
       {/* scrollable canvas area */}
-      <div className={`overflow-auto bg-slate-100 ${expanded ? "h-[70vh]" : "h-72"}`}>
+      <div ref={scroller} className={`overflow-auto bg-slate-100 ${expanded ? "h-[70vh]" : "h-72"}`}>
         <canvas
           ref={canvasRef}
           onPointerDown={down}

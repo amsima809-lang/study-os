@@ -40,6 +40,45 @@ async function resizeToJpeg(buffer: Buffer): Promise<Buffer> {
     .toBuffer();
 }
 
+export type NoteHit = {
+  id: number;
+  course_code: string | null;
+  title: string | null;
+  created_at: string;
+  /** A short piece of the note around the first match, or its opening words. */
+  snippet: string;
+};
+
+/**
+ * Search one student's notes: every word of the query must appear somewhere in
+ * the title, the typed text or the AI summary (any order, case-insensitive).
+ * Newest first, at most 50.
+ */
+export function searchNotes(db: DB, userId: string, query: string): NoteHit[] {
+  const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean).slice(0, 6);
+  if (words.length === 0) return [];
+  // % and _ are wildcards in LIKE; search for them literally.
+  const like = (w: string) => `%${w.replace(/[\\%_]/g, "\\$&")}%`;
+  const haystack = "lower(coalesce(title,'') || ' ' || coalesce(raw_text,'') || ' ' || coalesce(ai_summary_md,''))";
+  const rows = db
+    .prepare(
+      `SELECT id, course_code, title, created_at, raw_text, ai_summary_md
+         FROM notes
+        WHERE user_id = ? AND ${words.map(() => `${haystack} LIKE ? ESCAPE '\\'`).join(" AND ")}
+        ORDER BY created_at DESC LIMIT 50`,
+    )
+    .all(userId, ...words.map(like)) as Array<Omit<NoteHit, "snippet"> & { raw_text: string | null; ai_summary_md: string | null }>;
+
+  return rows.map(({ raw_text, ai_summary_md, ...note }) => {
+    const body = [raw_text, ai_summary_md].find((t) => t && words.some((w) => t.toLowerCase().includes(w))) ?? raw_text ?? ai_summary_md ?? "";
+    const flat = body.replace(/\s+/g, " ").trim();
+    const at = Math.max(0, ...words.map((w) => flat.toLowerCase().indexOf(w)).filter((i) => i >= 0).slice(0, 1));
+    const start = Math.max(0, at - 40);
+    const snippet = (start > 0 ? "…" : "") + flat.slice(start, start + 140) + (flat.length > start + 140 ? "…" : "");
+    return { ...note, snippet };
+  });
+}
+
 export function createNotesRouter(db: DB): Router {
   const router = Router();
 
@@ -74,6 +113,11 @@ export function createNotesRouter(db: DB): Router {
       )
       .all(userId);
     res.json({ notes: rows });
+  });
+
+  // Search the student's own notes. (Before /notes/:id, or "search" would be read as an id.)
+  router.get("/notes/search", (req, res) => {
+    res.json({ notes: searchNotes(db, req.user!.id, String(req.query.q ?? "")) });
   });
 
   // Read one note with all AI fields.

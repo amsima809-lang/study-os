@@ -98,6 +98,8 @@ Severity: **A** blocks a task or loses work, **B** slows a task, **C** cosmetic.
 
 ### 8. Gestures and stylus
 
+**Status: 8.1 and 8.2 fixed 2026-11-14 (Phase 41), with simulated touches only.** Swipe on the calendar; one-finger scroll, two-finger pinch and pan, and optional finger drawing on the pad. Still open: swipe to complete a to-do, pull to refresh, pen pressure, and a real-device test of all of it (8.3).
+
 | # | Sev | Finding | Fix |
 |---|---|---|---|
 | 8.1 | B | The only gestures are press-and-hold on the menu and drawing with a pen. No swipe between days, weeks or months; no swipe to complete a to-do; no pull to refresh. | Swipe left and right on the calendar first. |
@@ -105,6 +107,8 @@ Severity: **A** blocks a task or loses work, **B** slows a task, **C** cosmetic.
 | 8.3 | ? | Palm rejection was fixed in code but has not been tried with a real Apple Pencil. Pen pressure is not used. | Device test. |
 
 ### 9. Content in and out
+
+**Status: 9.2 and 9.3 fixed, 9.1 partly, 2026-11-14 (Phase 41).** Notes can be searched and exported (print or PDF, and a text file); photos can be dropped or pasted into a note and a file dropped onto the Library upload. Still open: other apps sharing into StudyOS (needs the installed or native app).
 
 | # | Sev | Finding | Fix |
 |---|---|---|---|

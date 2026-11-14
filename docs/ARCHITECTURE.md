@@ -360,3 +360,10 @@ AI ช่วยเรา "ฝึก" ไม่ใช่ "ทำแทน" — �
 - **One delete pattern.** `ConfirmDialog` everywhere: `NoteView`, `MaterialDetail`, `ChapterManager`, `TranscriptView` (all in `screens/`), and `ReminderForm`. A failed delete closes the dialog and shows the error in place.
 - **Calendar marks.** `DotMark` draws a shape per kind: class ●, exam ◆, study-plan task ■, e-Testing ▲, event ▬, reminder ○, to-do □. `monthKinds` drives the legend; day buttons carry `aria-label` such as "18, Class, Event, Reminder".
 
+## Phase 41 — Gestures, search, export, import
+- **Calendar swipe.** `useSwipe(step)` uses touch events on the grid wrapper (they keep firing while the page scrolls, unlike pointer events). No `touch-action` is set, so the day view's own sideways scroll still works; a swipe that starts on a sideways-scrolling element is ignored.
+- **Drawing pad fingers.** The canvas keeps `touch-action: none` (the browser cannot scroll with a finger but not a pen), so touches are handled in `HandwritingPad`: a `touches` map, `touchDown/Move/Up`, a `pinch` record (start distance and zoom) and an `anchor` applied in a layout effect after the zoom changes. A second finger cancels a finger-drawn stroke in progress. The pen always wins: pen down clears the touch state.
+- **Note search.** `searchNotes(db, userId, query)` in `server/src/notes.ts`: up to six words, each must appear in title + text + summary (SQL `LIKE … ESCAPE`), newest first, 50 at most, with a 140-character snippet. The route is registered before `/notes/:id`. Tested in `server/test/noteSearch.test.ts`, including that another student's notes never appear. The client waits 250 ms after typing.
+- **Note export.** `window.print()` with a print stylesheet in `index.css` (`.print-area`, `.no-print`), and a Markdown download built in the browser.
+- **Import.** `AddNote` accepts dropped and pasted image files; `UploadForm` in Library accepts a dropped file by assigning it to the file input. Hints for these show only where there is a mouse (`.pointer-fine-only`).
+

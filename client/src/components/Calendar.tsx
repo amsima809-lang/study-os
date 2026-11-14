@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useT } from "../i18n.tsx";
 import { getJSON, type CalendarData, type CalEvent } from "../api.ts";
 import { CourseTitle, CourseChip } from "./CourseTitle.tsx";
@@ -53,6 +53,38 @@ function DotMark({ type, color }: { type: DotType; color: string }) {
     todo: { ...base, borderRadius: 1, border: `1.5px solid ${color}` },
   };
   return <span aria-hidden="true" style={shapes[type]} />;
+}
+
+/**
+ * Swipe left or right with one finger to go to the next or previous month,
+ * week or day. A swipe must be mostly sideways, at least 60px and quick, so
+ * scrolling the page or the hour grid up and down never turns the page. If the
+ * finger starts on something that scrolls sideways itself (a busy day in the
+ * day view), that scrolls instead.
+ */
+function useSwipe(onSwipe: (delta: 1 | -1) => void) {
+  const start = useRef<{ x: number; y: number; at: number } | null>(null);
+  return {
+    onTouchStart: (e: React.TouchEvent) => {
+      start.current = null;
+      if (e.touches.length !== 1) return;
+      for (let el = e.target as HTMLElement | null; el && el !== e.currentTarget; el = el.parentElement) {
+        const scrollsSideways = el.scrollWidth > el.clientWidth + 4 && /auto|scroll/.test(getComputedStyle(el).overflowX);
+        if (scrollsSideways) return;
+      }
+      start.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, at: Date.now() };
+    },
+    onTouchEnd: (e: React.TouchEvent) => {
+      const from = start.current;
+      start.current = null;
+      const to = e.changedTouches[0];
+      if (!from || !to || e.touches.length > 0) return;
+      const dx = to.clientX - from.x;
+      const dy = to.clientY - from.y;
+      if (Math.abs(dx) >= 60 && Math.abs(dx) > 2 * Math.abs(dy) && Date.now() - from.at < 700) onSwipe(dx < 0 ? 1 : -1);
+    },
+    onTouchCancel: () => { start.current = null; },
+  };
 }
 
 type View = "month" | "week" | "day";
@@ -152,6 +184,7 @@ export default function Calendar() {
     if (view === "month") setMonth((m) => shiftMonth(m, delta));
     else setAnchor((a) => shiftDay(a, delta * (view === "week" ? 7 : 1)));
   }
+  const swipe = useSwipe(step);
   const today = data?.today ?? bangkokDate();
   function goToday() {
     setAnchor(today);
@@ -245,6 +278,8 @@ export default function Calendar() {
         <AddButton label={t("cal.add")} onClick={() => setSheet({ date: view === "month" ? selected ?? today : anchor })} />
       </div>
 
+      {/* Swipe sideways anywhere on the grid for the next / previous month, week or day */}
+      <div {...swipe}>
       {/* Hour-by-hour week or day */}
       {view !== "month" && (
         <TimeGrid
@@ -332,6 +367,7 @@ export default function Calendar() {
       )}
 
       </>)}
+      </div>
 
       {/* Selected day detail */}
       {view === "month" && selected && (

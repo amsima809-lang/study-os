@@ -463,7 +463,37 @@ function UploadForm({ courses, onDone }: { courses: Course[]; onDone: () => void
 
   const selectStyle = { backgroundColor: "var(--bg-surface)", borderColor: "var(--border)", color: "var(--text-primary)" };
 
+  // On a computer: drop a file onto the form instead of using the file picker.
+  const [dragging, setDragging] = useState(false);
+  const ACCEPT = /\.(pdf|jpe?g|png|heic|heif|webp|txt)$/i;
+  function onDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (!file || !fileRef.current) return;
+    if (!ACCEPT.test(file.name)) { setErr(t("lib.uploadFailed")); return; }
+    const one = new DataTransfer();
+    one.items.add(file);
+    fileRef.current.files = one.files; // the file field now shows this file
+    setErr("");
+  }
+
   return (
+    <div
+      onDragOver={(e) => { if (Array.from(e.dataTransfer.types).includes("Files")) { e.preventDefault(); setDragging(true); } }}
+      onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragging(false); }}
+      onDrop={onDrop}
+      className="relative rounded-2xl"
+      style={dragging ? { outline: "2px dashed var(--accent-text)", outlineOffset: 2 } : undefined}
+    >
+    {dragging && (
+      <div
+        className="absolute inset-0 z-10 rounded-2xl flex items-center justify-center text-lg font-semibold pointer-events-none"
+        style={{ backgroundColor: "color-mix(in srgb, var(--accent-light) 92%, transparent)", color: "var(--accent-text)" }}
+      >
+        {t("lib.dropHere")}
+      </div>
+    )}
     <Card>
       <div className="space-y-3">
         <h3 className="font-medium" style={{ color: "var(--text-primary)" }}>{t("lib.upload")}</h3>
@@ -495,9 +525,10 @@ function UploadForm({ courses, onDone }: { courses: Course[]; onDone: () => void
           ref={fileRef}
           type="file"
           accept=".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp,.txt"
-          className="w-full text-sm"
+          className="w-full text-sm min-h-11"
           style={{ color: "var(--text-secondary)" }}
         />
+        <p className="pointer-fine-only text-xs" style={{ color: "var(--text-tertiary)" }}>{t("lib.dropHint")}</p>
         <button
           onClick={handleUpload}
           disabled={!courseCode || uploading}
@@ -508,6 +539,7 @@ function UploadForm({ courses, onDone }: { courses: Course[]; onDone: () => void
         </button>
       </div>
     </Card>
+    </div>
   );
 }
 

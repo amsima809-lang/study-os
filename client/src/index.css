@@ -221,3 +221,26 @@ input {
   [data-layout="sidebar"] .wide-grid > .span-all { grid-column: 1 / -1; }
   [data-layout="sidebar"] .wide-grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+
+/* ── Printing a note (Notes → Print / PDF) ──
+   Only the note is printed: no menus, no buttons, black on white whatever the theme. */
+@media print {
+  aside, header, nav, .no-print, [role="status"], [role="alert"] { display: none !important; }
+  html, body, #root, [data-layout], main { background: #fff !important; }
+  [data-layout] > div { margin-left: 0 !important; }
+  main { max-width: none !important; padding: 0 !important; }
+  .print-area, .print-area * {
+    color: #000 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+  .print-area .rounded-2xl { border-color: #bbb !important; break-inside: avoid; }
+  .print-area img { max-width: 100%; break-inside: avoid; }
+  .animate-fade-in, .animate-slide-up { animation: none !important; opacity: 1 !important; transform: none !important; }
+}
+
+/* Hints that only make sense with a mouse (drag a file here, paste an image). */
+.pointer-fine-only { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  .pointer-fine-only { display: block; }
+}

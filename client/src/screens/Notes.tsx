@@ -6,6 +6,7 @@ import {
   postJSON,
   deleteJSON,
   type Course,
+  type NoteHit,
   type NoteListItem,
   type NoteDetail,
   type NoteLearning,
@@ -16,7 +17,7 @@ import { AddButton, Card, ConfirmDialog, ErrorBox, Loading } from "../components
 import { DRAFT_CHANGED, clearNoteDraft, isEmptyDraft, loadNoteDraft, saveNoteDraft, type Drawing, type NoteDraft } from "../noteDraft.ts";
 import { Markdown } from "../components/Markdown.tsx";
 import Icon from "../components/Icon.tsx";
-import { CourseTitle } from "../components/CourseTitle.tsx";
+import { CourseChip, CourseTitle } from "../components/CourseTitle.tsx";
 import { HandwritingPad, type HandwritingHandle } from "../components/HandwritingPad.tsx";
 import { useSubscription, handleSubscriptionError } from "../components/SubscriptionGate.tsx";
 
@@ -30,7 +31,7 @@ type CourseGroup = {
 type View =
   | { screen: "courses" }
   | { screen: "course-notes"; group: CourseGroup }
-  | { screen: "view"; noteId: number; group: CourseGroup }
+  | { screen: "view"; noteId: number; group?: CourseGroup }
   | { screen: "add" };
 
 export default function Notes() {
@@ -38,6 +39,7 @@ export default function Notes() {
   const [view, setView] = useState<View>({ screen: "courses" });
   const [result, setResult] = useState<NoteLearning | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [query, setQuery] = useState(""); // kept here so it survives opening a result and coming back
   // An unfinished note waiting in this browser (see noteDraft.ts).
   const [draft, setDraft] = useState<NoteDraft | null>(null);
   useEffect(() => {
@@ -48,7 +50,7 @@ export default function Notes() {
   }, []);
 
   function goBack() {
-    if (view.screen === "view") {
+    if (view.screen === "view" && view.group) {
       setView({ screen: "course-notes", group: view.group });
     } else {
       setView({ screen: "courses" });
@@ -88,10 +90,15 @@ export default function Notes() {
       )}
 
       {view.screen === "courses" && (
-        <CourseList
-          key={refreshKey}
-          onSelectGroup={(g) => setView({ screen: "course-notes", group: g })}
-        />
+        <>
+          <NoteSearch query={query} onQuery={setQuery} onOpen={(id) => setView({ screen: "view", noteId: id })} />
+          {!query.trim() && (
+            <CourseList
+              key={refreshKey}
+              onSelectGroup={(g) => setView({ screen: "course-notes", group: g })}
+            />
+          )}
+        </>
       )}
 
       {view.screen === "course-notes" && (
@@ -129,6 +136,70 @@ export default function Notes() {
             onCancel={() => setView({ screen: "courses" })}
           />
         ))}
+    </div>
+  );
+}
+
+/** Search across all of the student's notes: title, typed text and AI summary. */
+function NoteSearch({ query, onQuery, onOpen }: { query: string; onQuery: (q: string) => void; onOpen: (id: number) => void }) {
+  const { t, lang } = useT();
+  const [hits, setHits] = useState<NoteHit[] | null>(null);
+  const [failed, setFailed] = useState(false);
+  const q = query.trim();
+
+  useEffect(() => {
+    if (!q) { setHits(null); setFailed(false); return; }
+    let alive = true;
+    // Wait for a pause in typing before asking the server.
+    const timer = setTimeout(() => {
+      getJSON<{ notes: NoteHit[] }>(`/api/notes/search?q=${encodeURIComponent(q)}`)
+        .then((r) => { if (alive) { setHits(r.notes); setFailed(false); } })
+        .catch(() => { if (alive) setFailed(true); });
+    }, 250);
+    return () => { alive = false; clearTimeout(timer); };
+  }, [q]);
+
+  return (
+    <div className="space-y-2">
+      <div className="relative">
+        <Icon name="search" size={18} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "var(--text-tertiary)" }} />
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => onQuery(e.target.value)}
+          placeholder={t("notes.search")}
+          aria-label={t("notes.search")}
+          className="w-full rounded-xl border pl-10 pr-3 min-h-11"
+          style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border)", color: "var(--text-primary)" }}
+        />
+      </div>
+      {q && failed && <ErrorBox />}
+      {q && !failed && hits === null && <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t("status.connecting")}</p>}
+      {q && !failed && hits && (
+        <>
+          <p role="status" className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+            {hits.length === 0 ? t("notes.searchNone", { q }) : t("notes.searchCount", { n: hits.length })}
+          </p>
+          <ul className="wide-grid space-y-2">
+            {hits.map((n) => (
+              <li key={n.id}>
+                <button
+                  onClick={() => onOpen(n.id)}
+                  className="w-full text-left rounded-2xl border px-4 py-3 min-h-11"
+                  style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-light)" }}
+                >
+                  <span className="flex items-center gap-2 flex-wrap">
+                    {n.course_code && <CourseChip code={n.course_code} />}
+                    <span className="font-medium" style={{ color: "var(--text-primary)" }}>{n.title || `#${n.id}`}</span>
+                    <span className="ml-auto text-xs" style={{ color: "var(--text-tertiary)" }}>{formatDate(n.created_at.slice(0, 10), lang)}</span>
+                  </span>
+                  {n.snippet && <span className="block text-sm mt-1" style={{ color: "var(--text-secondary)" }}>{n.snippet}</span>}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </div>
   );
 }
@@ -369,15 +440,42 @@ function NoteView({ noteId, onBack, onDeleted }: { noteId: number; onBack: () =>
   }
 
   if (loading) return <Loading>{t("status.connecting")}</Loading>;
-  if (!note) return <ErrorBox>ไม่พบโน้ตนี้</ErrorBox>;
+  if (!note) return <ErrorBox>{t("notes.notFound")}</ErrorBox>;
 
   const hasAi = note.ai_summary_md || note.key_terms.length > 0 || note.ai_mindmap_md;
 
+  /** The note as a Markdown file: the student's own text first, AI parts clearly marked. */
+  function downloadText() {
+    const parts = [
+      `# ${note!.title || `#${note!.id}`}`,
+      [note!.course_code, note!.created_at.slice(0, 10)].filter(Boolean).join(" · "),
+      note!.raw_text ? `## ${t("notes.text")}\n\n${note!.raw_text}` : "",
+      note!.ai_summary_md ? `## ${t("notes.result.summary")} (AI)\n\n> ${t("notes.disclaimer")}\n\n${note!.ai_summary_md}` : "",
+      note!.key_terms.length ? `## ${t("notes.result.terms")} (AI)\n\n${note!.key_terms.map((k) => `- **${k.term}**: ${k.definition}`).join("\n")}` : "",
+      note!.ai_mindmap_md ? `## ${t("notes.result.mindmap")} (AI)\n\n${note!.ai_mindmap_md}` : "",
+    ].filter(Boolean);
+    const url = URL.createObjectURL(new Blob([parts.join("\n\n") + "\n"], { type: "text/markdown;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${(note!.title || `note-${note!.id}`).replace(/[\\/:*?"<>|]+/g, " ").trim().slice(0, 60)}.md`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
   return (
-    <div className="space-y-4">
-      <button onClick={onBack} className="text-sm min-h-11" style={{ color: "var(--accent-text)" }}>
-        {t("notes.backToCourse")}
-      </button>
+    <div className="print-area space-y-4">
+      <div className="no-print flex items-center gap-2 flex-wrap">
+        <button onClick={onBack} className="text-sm min-h-11 mr-auto" style={{ color: "var(--accent-text)" }}>
+          {t("notes.backToCourse")}
+        </button>
+        {/* Export: the browser's print dialog also saves as PDF; the text file opens anywhere. */}
+        <button onClick={() => window.print()} className="inline-flex items-center gap-1.5 rounded-xl border px-3 min-h-11 text-sm font-medium" style={{ borderColor: "var(--border)", color: "var(--text-primary)" }}>
+          <Icon name="printer" size={16} /> {t("notes.exportPdf")}
+        </button>
+        <button onClick={downloadText} className="inline-flex items-center gap-1.5 rounded-xl border px-3 min-h-11 text-sm font-medium" style={{ borderColor: "var(--border)", color: "var(--text-primary)" }}>
+          <Icon name="download" size={16} /> {t("notes.exportText")}
+        </button>
+      </div>
 
       <div>
         <h2 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
@@ -483,11 +581,12 @@ function NoteView({ noteId, onBack, onDeleted }: { noteId: number; onBack: () =>
       <button
         onClick={() => setConfirmDelete(true)}
         disabled={deleting}
-        className="w-full text-sm font-medium py-3 rounded-lg border disabled:opacity-50 min-h-11"
+        className="no-print w-full text-sm font-medium py-3 rounded-lg border disabled:opacity-50 min-h-11"
         style={{ color: "var(--danger)", borderColor: "var(--danger-bg)" }}
       >
         {t("notes.delete")}
       </button>
+      {/* (the delete button above is hidden when printing) */}
       {confirmDelete && (
         <ConfirmDialog
           title={t("notes.deleteTitle")}
@@ -593,9 +692,39 @@ function AddNote({
     void clearNoteDraft();
   }
 
-  function addFiles(list: FileList | null) {
-    if (list) setFiles((prev) => [...prev, ...Array.from(list)]);
+  function addFiles(list: FileList | File[] | null) {
+    // Photos only: this is the same limit as the camera and gallery buttons.
+    const images = Array.from(list ?? []).filter((f) => f.type.startsWith("image/"));
+    if (images.length) setFiles((prev) => [...prev, ...images]);
   }
+
+  // On a computer: drop photos onto the form, or paste one (a screenshot, a copied image).
+  const [dragging, setDragging] = useState(false);
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      const images = Array.from(e.clipboardData?.files ?? []).filter((f) => f.type.startsWith("image/"));
+      if (images.length === 0) return; // ordinary text paste: leave it to the field
+      e.preventDefault();
+      addFiles(images);
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, []);
+  const dropHandlers = {
+    onDragOver: (e: React.DragEvent) => {
+      if (!Array.from(e.dataTransfer.types).includes("Files")) return;
+      e.preventDefault();
+      setDragging(true);
+    },
+    onDragLeave: (e: React.DragEvent) => {
+      if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragging(false);
+    },
+    onDrop: (e: React.DragEvent) => {
+      e.preventDefault();
+      setDragging(false);
+      addFiles(e.dataTransfer.files);
+    },
+  };
 
   async function submit() {
     setError(null);
@@ -633,6 +762,15 @@ function AddNote({
   const inputStyle = { borderColor: "var(--border)", backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" };
 
   return (
+    <div {...dropHandlers} className="relative rounded-2xl" style={dragging ? { outline: "2px dashed var(--accent-text)", outlineOffset: 2 } : undefined}>
+    {dragging && (
+      <div
+        className="absolute inset-0 z-10 rounded-2xl flex items-center justify-center text-lg font-semibold pointer-events-none"
+        style={{ backgroundColor: "color-mix(in srgb, var(--accent-light) 92%, transparent)", color: "var(--accent-text)" }}
+      >
+        {t("notes.dropHere")}
+      </div>
+    )}
     <Card>
       <div className="space-y-3">
         <div className="flex items-center gap-2">
@@ -753,6 +891,9 @@ function AddNote({
           </button>
         </div>
 
+        {/* Only where there is a mouse: phones have the two buttons above. */}
+        <p className="pointer-fine-only text-xs" style={{ color: "var(--text-tertiary)" }}>{t("notes.dropHint")}</p>
+
         {files.length > 0 && (
           <div>
             <p className="text-xs mb-1" style={{ color: "var(--text-tertiary)" }}>{t("notes.photoCount", { n: files.length })}</p>
@@ -811,6 +952,7 @@ function AddNote({
         )}
       </div>
     </Card>
+    </div>
   );
 }
 

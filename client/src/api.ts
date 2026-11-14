@@ -170,6 +170,9 @@ export type NoteDetail = {
   topics: string[];
 };
 
+/** One result of a note search (GET /api/notes/search). */
+export type NoteHit = { id: number; course_code: string | null; title: string | null; created_at: string; snippet: string };
+
 export type ApiError = { error: string; code?: string };
 
 /** POST multipart form; returns parsed JSON or throws an ApiError-shaped error. */
