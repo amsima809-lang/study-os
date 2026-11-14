@@ -72,6 +72,12 @@ describe("Phase 24 — first start of a new database", () => {
     expect(termExams(db, "2/69", USER).length).toBeGreaterThan(0);
   });
 
+  it("stores recorded-lecture links only for courses that exist", () => {
+    expect(count("SELECT COUNT(*) n FROM course_lectures")).toBe(52);
+    expect(count("SELECT COUNT(*) n FROM course_lectures WHERE course_code NOT IN (SELECT code FROM courses)")).toBe(0);
+    expect(count("SELECT COUNT(*) n FROM course_lectures WHERE url NOT LIKE 'https://sub-demo.ru.ac.th/student/watch.php?session_id=%'")).toBe(0);
+  });
+
   it("gives other programs their shared courses too", () => {
     db.prepare("UPDATE user_profiles SET program_id = 'bus-mgt' WHERE user_id = ?").run(USER);
     const classes = weekClasses(db, "2/69", USER).map((c) => c.course_code);

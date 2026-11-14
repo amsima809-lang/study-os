@@ -16,7 +16,7 @@ import {
 import { useSubscription, handleSubscriptionError } from "../components/SubscriptionGate.tsx";
 import { Card, ErrorBox, Loading } from "../components/ui.tsx";
 
-type View = "list" | "detail" | "pages";
+type View = "list" | "detail" | "pages" | "transcript";
 
 export default function Library() {
   const { t } = useT();
@@ -24,6 +24,7 @@ export default function Library() {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [selected, setSelected] = useState<Material | null>(null);
+  const [transcript, setTranscript] = useState<OpenTranscript | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -59,6 +60,10 @@ export default function Library() {
         </button>
       )}
 
+      {view === "list" && <LectureLinks onRead={(tr) => { setTranscript(tr); setView("transcript"); }} />}
+      {view === "transcript" && transcript && (
+        <TranscriptView which={transcript} onDeleted={() => { setView("list"); setTranscript(null); }} />
+      )}
       {view === "list" && (
         <MaterialList
           materials={materials}
@@ -79,6 +84,278 @@ export default function Library() {
       {view === "pages" && selected && (
         <PageViewer materialId={selected.id} filename={selected.filename} />
       )}
+    </div>
+  );
+}
+
+type Lecture = { no: number; url: string; transcript: { cues: number; minutes: number } | null };
+type LectureCourse = { code: string; name_th: string; name_en: string | null; lectures: Lecture[] };
+type Cue = { startMs: number; endMs: number; text: string };
+type OpenTranscript = { code: string; no: number };
+
+const clock = (ms: number) => {
+  const s = Math.floor(ms / 1000);
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+  return (h ? `${h}:${String(m).padStart(2, "0")}` : `${m}`) + `:${String(sec).padStart(2, "0")}`;
+};
+
+/**
+ * The university's recorded lectures for the student's courses.
+ * - "Watch" opens the lecture on the RU site (the student signs in there).
+ * - A student can import their own transcripts: the collector script
+ *   (/collector/ru-vod.js) runs on the RU site in their signed-in browser and
+ *   saves a .json file, which is imported here. See docs/LECTURE_TRANSCRIPTS_PLAN.md.
+ */
+function LectureLinks({ onRead }: { onRead: (t: OpenTranscript) => void }) {
+  const { t, lang } = useT();
+  const [courses, setCourses] = useState<LectureCourse[]>([]);
+  const [open, setOpen] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const [showHelp, setShowHelp] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const bookmarkRef = useRef<HTMLAnchorElement>(null);
+
+  const load = useCallback(
+    () => getJSON<{ courses: LectureCourse[] }>("/api/lectures").then((r) => setCourses(r.courses)).catch(() => {}),
+    [],
+  );
+  useEffect(() => { load(); }, [load]);
+
+  // React refuses javascript: links in JSX, so the bookmark's address is set here.
+  useEffect(() => {
+    const src = `${window.location.origin}/collector/ru-vod.js`;
+    bookmarkRef.current?.setAttribute(
+      "href",
+      `javascript:(function(){var s=document.createElement('script');s.src='${src}?'+Date.now();document.body.appendChild(s)})()`,
+    );
+  }, [showHelp]);
+
+  async function importFile(file: File) {
+    setBusy(true);
+    setMessage(null);
+    try {
+      const bundle = JSON.parse(await file.text());
+      const r = await postJSON<{ courses: string[]; saved: number }>("/api/lectures/transcripts/import", bundle);
+      setMessage({ ok: true, text: t("lib.importDone", { n: r.saved, course: r.courses.join(", ") }) });
+      setOpen(r.courses[0] ?? null);
+      await load();
+    } catch (e) {
+      setMessage({ ok: false, text: (e as ApiError)?.error ?? t("lib.importBad") });
+    } finally {
+      setBusy(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  if (courses.length === 0) return null;
+
+  return (
+    <Card>
+      <h2 className="font-semibold" style={{ color: "var(--text-primary)" }}>{t("lib.lectures")}</h2>
+      <p className="text-xs mt-0.5 mb-2" style={{ color: "var(--text-tertiary)" }}>{t("lib.lecturesHint")}</p>
+
+      <ul className="space-y-1.5">
+        {courses.map((c) => {
+          const isOpen = open === c.code;
+          const saved = c.lectures.filter((l) => l.transcript).length;
+          return (
+            <li key={c.code} className="rounded-xl border" style={{ borderColor: "var(--border-light)" }}>
+              <button
+                onClick={() => setOpen(isOpen ? null : c.code)}
+                aria-expanded={isOpen}
+                className="w-full flex items-center gap-2 px-3 py-3 text-left"
+              >
+                <span className="flex-1 min-w-0">
+                  <span className="block text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                    ({c.code}) {lang === "en" && c.name_en ? c.name_en : c.name_th}
+                  </span>
+                  <span className="block text-xs" style={{ color: "var(--text-tertiary)" }}>
+                    {t("lib.lectureCount", { n: c.lectures.length })}
+                    {saved > 0 && ` · ${t("lib.transcriptCount", { n: saved })}`}
+                  </span>
+                </span>
+                <span aria-hidden style={{ color: "var(--text-tertiary)" }}>{isOpen ? "▾" : "▸"}</span>
+              </button>
+              {isOpen && (
+                <ul className="px-3 pb-3 space-y-1.5">
+                  {c.lectures.map((l) => (
+                    <li key={l.no} className="flex items-center gap-2">
+                      <span className="flex-1 min-w-0 text-sm" style={{ color: "var(--text-primary)" }}>
+                        {t("lib.lectureNo", { n: l.no })}
+                        {l.transcript && (
+                          <span className="ml-2 text-xs" style={{ color: "var(--text-tertiary)" }}>
+                            {t("lib.minutes", { n: l.transcript.minutes })}
+                          </span>
+                        )}
+                      </span>
+                      {l.transcript && (
+                        <button
+                          onClick={() => onRead({ code: c.code, no: l.no })}
+                          className="rounded-lg px-3 min-h-11 text-sm font-medium"
+                          style={{ backgroundColor: "var(--accent)", color: "#fff" }}
+                        >
+                          {t("lib.read")}
+                        </button>
+                      )}
+                      <a
+                        href={l.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center rounded-lg px-3 min-h-11 text-sm font-medium"
+                        style={{ backgroundColor: "var(--accent-light)", color: "var(--accent-text)" }}
+                      >
+                        {t("lib.watch")} ↗
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+
+      {/* Import a transcript file made by the collector */}
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".json,application/json"
+          className="hidden"
+          onChange={(e) => e.target.files?.[0] && importFile(e.target.files[0])}
+        />
+        <button
+          onClick={() => fileRef.current?.click()}
+          disabled={busy}
+          className="rounded-lg border px-3 min-h-11 text-sm font-medium disabled:opacity-50"
+          style={{ borderColor: "var(--border)", color: "var(--text-primary)" }}
+        >
+          {busy ? t("lib.importing") : t("lib.importTranscripts")}
+        </button>
+        <button
+          onClick={() => setShowHelp((v) => !v)}
+          aria-expanded={showHelp}
+          className="text-sm min-h-11 px-1"
+          style={{ color: "var(--accent-text)" }}
+        >
+          {t("lib.howToGet")}
+        </button>
+      </div>
+      {message && (
+        <p role="status" className="text-sm mt-2" style={{ color: message.ok ? "var(--success)" : "var(--danger)" }}>
+          {message.text}
+        </p>
+      )}
+      {showHelp && (
+        <div className="mt-2 rounded-xl p-3 text-sm space-y-2" style={{ backgroundColor: "var(--bg-base)", color: "var(--text-secondary)" }}>
+          <p>{t("lib.help.intro")}</p>
+          <ol className="list-decimal pl-5 space-y-1">
+            <li>
+              {t("lib.help.step1")}{" "}
+              <a
+                ref={bookmarkRef}
+                onClick={(e) => e.preventDefault()}
+                className="inline-block rounded-lg px-2 py-1 font-medium cursor-grab"
+                style={{ backgroundColor: "var(--accent-light)", color: "var(--accent-text)" }}
+              >
+                StudyOS: {t("lib.help.bookmark")}
+              </a>
+            </li>
+            <li>{t("lib.help.step2")}</li>
+            <li>{t("lib.help.step3")}</li>
+            <li>{t("lib.help.step4")}</li>
+          </ol>
+          <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{t("lib.help.privacy")}</p>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+/** One imported transcript: time-stamped text with a search box. */
+function TranscriptView({ which, onDeleted }: { which: OpenTranscript; onDeleted: () => void }) {
+  const { t } = useT();
+  const [cues, setCues] = useState<Cue[] | null>(null);
+  const [sourceUrl, setSourceUrl] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState("");
+  const path = `/api/lectures/transcripts/${which.code}/${which.no}`;
+
+  useEffect(() => {
+    getJSON<{ cues: Cue[]; source_url: string | null }>(path)
+      .then((r) => { setCues(r.cues); setSourceUrl(r.source_url); })
+      .catch(() => setError(t("lib.transcriptMissing")));
+  }, [path, t]);
+
+  if (error) return <ErrorBox>{error}</ErrorBox>;
+  if (!cues) return <Loading>{t("status.connecting")}</Loading>;
+
+  const q = query.trim().toLowerCase();
+  const shown = q ? cues.filter((c) => c.text.toLowerCase().includes(q)) : cues;
+
+  return (
+    <div className="space-y-3">
+      <h1 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>
+        ({which.code}) {t("lib.lectureNo", { n: which.no })}
+      </h1>
+      <input
+        type="search"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder={t("lib.searchTranscript")}
+        aria-label={t("lib.searchTranscript")}
+        className="w-full rounded-xl border px-4 py-3"
+        style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-light)", color: "var(--text-primary)" }}
+      />
+      <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+        {q ? t("lib.matches", { n: shown.length }) : t("lib.transcriptNote")}
+      </p>
+      <Card>
+        <ul className="space-y-3">
+          {shown.map((c) => (
+            <li key={c.startMs} className="flex gap-3">
+              <span className="shrink-0 w-14 text-xs pt-1 tabular-nums" style={{ color: "var(--text-tertiary)" }}>
+                {clock(c.startMs)}
+              </span>
+              <span className="text-base leading-relaxed" style={{ color: "var(--text-primary)" }}>{c.text}</span>
+            </li>
+          ))}
+          {shown.length === 0 && <li className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t("lib.noMatches")}</li>}
+        </ul>
+      </Card>
+      <div className="flex flex-wrap items-center gap-2">
+        {sourceUrl && (
+          <a
+            href={sourceUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center rounded-lg px-3 min-h-11 text-sm font-medium"
+            style={{ backgroundColor: "var(--accent-light)", color: "var(--accent-text)" }}
+          >
+            {t("lib.watch")} ↗
+          </a>
+        )}
+        {!confirming ? (
+          <button onClick={() => setConfirming(true)} className="min-h-11 px-3 text-sm" style={{ color: "var(--danger)" }}>
+            {t("lib.deleteTranscript")}
+          </button>
+        ) : (
+          <>
+            <button
+              onClick={async () => { await deleteJSON(path); onDeleted(); }}
+              className="rounded-lg px-3 min-h-11 text-sm font-medium"
+              style={{ backgroundColor: "var(--danger)", color: "#fff" }}
+            >
+              {t("lib.deleteConfirm")}
+            </button>
+            <button onClick={() => setConfirming(false)} className="min-h-11 px-3 text-sm" style={{ color: "var(--text-secondary)" }}>
+              {t("nav.cancel")}
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
 }

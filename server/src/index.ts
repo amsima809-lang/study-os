@@ -23,6 +23,7 @@ import { createPlannerRouter } from "./planner.js";
 import { createMockRouter } from "./mock.js";
 import { createMaterialsRouter } from "./materials.js";
 import { createStudyPlanRouter } from "./studyplan.js";
+import { createLecturesRouter } from "./lectures.js";
 
 const app = express();
 const db = openDb(env.dbPath);
@@ -185,6 +186,7 @@ app.use("/api", createPlannerRouter(db));
 app.use("/api", createMockRouter(db));
 app.use("/api", createMaterialsRouter(db));
 app.use("/api", createStudyPlanRouter(db));
+app.use("/api", createLecturesRouter(db));
 
 // --- subscription ---
 app.get("/api/subscription", (req, res) => {

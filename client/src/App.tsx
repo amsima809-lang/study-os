@@ -168,7 +168,8 @@ function Shell() {
               }}
             >
               <Icon name={icon(id)} size={20} />
-              <span className="max-w-full truncate px-0.5">{label(id)}</span>
+              {/* Taller line box: truncate clips Thai tone marks stacked above a vowel (นี้) at the default height. */}
+              <span className="max-w-full truncate px-0.5 leading-[1.6]">{label(id)}</span>
               {tab === id && (
                 <span
                   className="absolute top-0 w-8 h-1 rounded-full"
