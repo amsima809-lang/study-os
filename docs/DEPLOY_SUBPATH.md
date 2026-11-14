@@ -66,3 +66,10 @@ launchctl bootout gui/$(id -u)/com.amsima.termtrail
 ```
 
 and remove the tunnel rule. The data stays in `~/termtrail-data`.
+
+## Changing one setting
+
+`bash ~/termtrail/app/deploy/set-env.sh NAME` asks for the value at a prompt (it is not shown),
+writes it to `~/termtrail/termtrail.env`, restarts the service and checks it answers. For example
+`GOOGLE_MAPS_EMBED_KEY`: with it, walking directions open on a Google map inside the app. Restrict
+that key at Google to the Maps Embed API and to `https://amsima.com/*`.
