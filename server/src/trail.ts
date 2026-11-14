@@ -71,6 +71,17 @@ export type TrailInput = {
   /** Credits of passed or current courses that are outside the major's lists (they count as free electives). */
   otherCredits: number;
   currentTerm: string;
+  /**
+   * The first term to plan. The term after the current one once this term's courses are
+   * chosen; the current term itself while they are not (the plan then says what to take now).
+   */
+  firstTerm?: string;
+  /**
+   * The published course list of one term (the current one), when there is one: exactly which
+   * courses run, and each one's exam ("2027-03-15 A"). In that term the plan uses this instead
+   * of what past terms suggest, and does not put two exams in the same period.
+   */
+  published?: { term: string; offered: string[]; exams: Record<string, string> };
   targetTerm: string;
   summers: boolean;
   /** The student's own ceiling per regular term, if lower than the university's. */
@@ -90,6 +101,8 @@ export type TrailItem = {
   /** Out of `of` recorded terms of this kind, how many offered the course. Null when there is no record at all. */
   offered: number | null;
   of: number;
+  /** True when the term's own course list is published and the course is on it. */
+  confirmed?: boolean;
 };
 export type TrailTerm = { term: string; kind: TermKind; max: number; credits: number; items: TrailItem[] };
 export type Trail = {
@@ -208,10 +221,14 @@ export function buildTrail(input: TrailInput): Trail {
     let remaining = strategy === "order" ? [...units] : [...units].sort((a, b) => freedom(a) - freedom(b) || a.rank - b.rank);
     const used = new Set<string>();
     const terms: TrailTerm[] = [];
-    let term = input.currentTerm;
+    let term = input.firstTerm ?? nextTerm(input.currentTerm, input.summers);
     for (let n = 0; n < HORIZON && remaining.length > 0; n++) {
-      term = nextTerm(term, input.summers);
+      if (n > 0) term = nextTerm(term, input.summers);
       const kind = parseTerm(term).kind;
+      // A term whose course list is out: what runs is known, and so is every exam period.
+      const list = input.published?.term === term ? input.published : null;
+      const onList = list ? new Set(list.offered) : null;
+      const examsTaken = new Set<string>();
       const max = kind === "S" ? Math.min(cap, CREDIT_LIMITS.summer) : cap;
       const items: TrailItem[] = [];
       let load = 0;
@@ -226,15 +243,17 @@ export function buildTrail(input: TrailInput): Trail {
           // course), a regular term is assumed and the plan says so.
           const open = u.candidates.filter((c) => !used.has(c));
           const fits = open
-            .filter((c) => offeredIn(c, kind) > 0 || (!everOffered(c) && kind !== "S"))
+            .filter((c) => (onList ? onList.has(c) && !(list!.exams[c] && examsTaken.has(list!.exams[c])) : offeredIn(c, kind) > 0 || (!everOffered(c) && kind !== "S")))
             .sort((a, b) => offeredIn(b, kind) - offeredIn(a, kind) || a.localeCompare(b));
           if (fits.length > 0) {
             const code = fits[0];
             used.add(code);
+            if (list?.exams[code]) examsTaken.add(list.exams[code]);
             item = {
               type: u.type, code, credits: byCode.get(code)?.credits ?? u.credits, category: u.category, label: u.label,
-              ...(u.type === "choice" ? { alternatives: open.filter((c) => c !== code) } : {}),
+              ...(u.type === "choice" ? { alternatives: open.filter((c) => c !== code && (!onList || onList.has(c))) } : {}),
               offered: everOffered(code) ? offeredIn(code, kind) : null, of: recorded[kind],
+              ...(onList ? { confirmed: true } : {}),
             };
           }
         }

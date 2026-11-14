@@ -18,11 +18,15 @@ import { rebuildSql } from "./lib/term-rebuild-sql.mjs";
 import { lines, examOf, readMr30 } from "./lib/mr30.mjs";
 
 
-const [mr30Path, examPath, term, outName, flag] = process.argv.slice(2);
-// The first import creates the table; later terms pass --data-only.
-const dataOnly = flag === "--data-only";
+const [mr30Path, examPath, term, outName] = process.argv.slice(2);
+// The first import creates the table; later terms pass --data-only. Add --make-current when the
+// term has started: the app then treats it as the current term (students are asked what they
+// passed last term, and choose their courses for this one).
+const flags = process.argv.slice(6);
+const dataOnly = flags.includes("--data-only");
+const makeCurrent = flags.includes("--make-current");
 if (!mr30Path || !examPath || !/^\d\/\d\d$/.test(term ?? "") || !/^\d{3}_[a-z0-9_]+\.sql$/.test(outName ?? "")) {
-  console.error("usage: node scripts/import-ru-term.mjs <mr30.pdf> <exam.pdf> <term e.g. 2/69> <NNN_name.sql> [--data-only]");
+  console.error("usage: node scripts/import-ru-term.mjs <mr30.pdf> <exam.pdf> <term e.g. 2/69> <NNN_name.sql> [--data-only] [--make-current]");
   process.exit(1);
 }
 
@@ -130,6 +134,14 @@ WHERE code IN (SELECT o.course_code FROM term_offerings o WHERE o.term_id = ${q(
 -- Rebuild the timetable and exams of this term for the courses in the catalogue.
 -- (The same statements are in server/src/termSchedule.ts, which the seed runs again after it adds courses.)
 ${rebuildSql(`term_id = ${q(term)}`)}`;
+// Position of a term among the planner's terms: 2/69 is 0, 1/70 is 1, 2/70 is 2 … (as the seed
+// numbers them); a summer term sits half a step after the second term before it.
+const ordOf = (t) => { const kind = t[0], y = +t.slice(2); return kind === "S" ? (y - 69) * 2 + 0.5 : (y - 69) * 2 + (kind === "1" ? -1 : 0); };
+const CURRENT = makeCurrent ? `
+-- This term has started: make it the current one.
+INSERT OR IGNORE INTO plan_terms (term_id, ord, max_credits) VALUES (${q(term)}, ${ordOf(term)}, ${term[0] === "S" ? 12 : 24});
+UPDATE settings SET value = ${q(term)} WHERE key = 'current_term_id';
+` : "";
 function chunks(list, size) { const out = []; for (let i = 0; i < list.length; i += size) out.push(list.slice(i, i + size)); return out; }
-writeFileSync(`server/migrations/${outName}`, sql);
+writeFileSync(`server/migrations/${outName}`, sql + CURRENT);
 console.log(`server/migrations/${outName}: ${mr30.courses.size} courses, ${Object.keys(mr30.depts).length} headings, ${dated} dated exams (${(sql.length / 1024).toFixed(0)} KB)`);

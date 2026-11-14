@@ -3,7 +3,8 @@ import { openDb, type DB } from "../src/db.js";
 import { seedDatabase } from "../src/seed.js";
 import { findOrCreateUser } from "../src/auth.js";
 import { buildTrail, nextTerm, termIndex, CREDIT_LIMITS, type TrailInput, type TrailCourse } from "../src/trail.js";
-import { loadTrailInput, trailGoal, passedCourses } from "../src/trailRoutes.js";
+import { loadTrailInput, trailGoal, passedCourses, suggestedCourses, termCheck, answerTermCheck } from "../src/trailRoutes.js";
+import { termCourses } from "../src/api.js";
 
 describe("terms", () => {
   it("run first term, second term, summer, then the next year", () => {
@@ -225,5 +226,123 @@ describe("the trail planner on the real curriculum", () => {
     const other = findOrCreateUser(db, { email: "cmu@studyos.test", name: "C", avatar: "" });
     db.prepare("UPDATE user_profiles SET university_id = 'cmu', onboarded = 1 WHERE user_id = ?").run(other);
     expect(loadTrailInput(db, other)).toBeNull();
+  });
+});
+
+describe("Phase 59 — the trail and the term's published course list", () => {
+  it("starts with the current term when its courses are not chosen yet, taking only what is on the list", () => {
+    // COR1002 is a second-term course by the faculty's plan, but this term's list is what counts.
+    const t = buildTrail(base({
+      firstTerm: "2/69", targetTerm: "1/70",
+      published: { term: "2/69", offered: ["COR1001", "COR2001", "REQ3001", "ELE3001", "GEN1002"], exams: {} },
+    }));
+    expect(t.terms[0].term).toBe("2/69");
+    expect(t.terms[0].items.map((i) => i.code)).toEqual(["COR1001", "GEN1002", "COR2001", "REQ3001", "ELE3001"]);
+    expect(t.terms[0].items.every((i) => i.confirmed)).toBe(true);
+    // the next term is not published: it goes by past terms, and says nothing is confirmed
+    expect(t.terms[1].term).toBe("1/70");
+    expect(t.terms[1].items.some((i) => i.confirmed)).toBe(false);
+  });
+
+  it("never puts two exams in the same period of the published term", () => {
+    const all = ["COR1001", "COR1002", "COR2001", "COR2002", "REQ3001", "REQ4001", "ELE3001", "ELE3002", "ELE4001", "GEN1001", "GEN1002"];
+    const t = buildTrail(base({
+      firstTerm: "2/69", targetTerm: "2/70", maxPerTerm: 24,
+      published: { term: "2/69", offered: all, exams: { COR1001: "2027-03-10 A", COR1002: "2027-03-10 A", COR2001: "2027-03-10 B", GEN1001: "2027-03-10 A", GEN1002: "2027-03-11 A" } },
+    }));
+    const first = t.terms[0].items.map((i) => i.code);
+    expect(first).toContain("COR1001");
+    expect(first).not.toContain("COR1002"); // same day and period as COR1001: waits for a later term
+    expect(first).toContain("COR2001"); // the afternoon of that day is free
+    expect(first).toContain("GEN1002"); // the choice whose exam does not clash is the one taken
+    expect(first).not.toContain("GEN1001");
+    expect(t.terms.flatMap((x) => x.items.map((i) => i.code))).toContain("COR1002");
+  });
+});
+
+describe("Phase 59 — suggestions for the course picker, and the new-term check", () => {
+  let db: DB;
+  let user: string;
+  const setTerm = (t: string) => db.prepare("UPDATE settings SET value = ? WHERE key = 'current_term_id'").run(t);
+  beforeAll(() => {
+    db = openDb(":memory:");
+    seedDatabase(db, { reset: false });
+    user = findOrCreateUser(db, { email: "p59@studyos.test", name: "P", avatar: "" });
+    db.prepare("UPDATE user_profiles SET program_id = 'bus-mkt', university_id = 'ru', entry_year = '69', onboarded = 1 WHERE user_id = ?").run(user);
+  });
+
+  it("suggests this term's courses from the trail: on the registrar's list, in her major, within the limit, no two exams together", () => {
+    const s = suggestedCourses(db, user);
+    expect(s.term).toBe("2/69");
+    expect(s.codes.length).toBeGreaterThanOrEqual(3);
+    expect(s.credits).toBeLessThanOrEqual(CREDIT_LIMITS.regular);
+    const rows = db.prepare(
+      `SELECT o.course_code, o.exam_date, o.exam_slot FROM term_offerings o
+       WHERE o.term_id = '2/69' AND o.course_code IN (SELECT course_code FROM program_courses WHERE program_id = 'bus-mkt')`,
+    ).all() as { course_code: string; exam_date: string | null; exam_slot: string | null }[];
+    const listed = new Map(rows.map((r) => [r.course_code, r]));
+    for (const c of s.codes) expect(listed.has(c), `${c} is offered in 2/69`).toBe(true);
+    const periods = s.codes.map((c) => listed.get(c)!).filter((r) => r.exam_date).map((r) => `${r.exam_date} ${r.exam_slot}`);
+    expect(new Set(periods).size).toBe(periods.length);
+  });
+
+  it("leaves out what she has already passed", () => {
+    const before = suggestedCourses(db, user).codes;
+    db.prepare("INSERT INTO passed_courses (user_id, course_code) VALUES (?, ?)").run(user, before[0]);
+    expect(suggestedCourses(db, user).codes).not.toContain(before[0]);
+    db.prepare("DELETE FROM passed_courses WHERE user_id = ?").run(user);
+  });
+
+  it("keeps suggesting the same courses after she has chosen, and the plan then starts next term", () => {
+    const s = suggestedCourses(db, user);
+    for (const c of s.codes) db.prepare("INSERT INTO plan_items (user_id, term_id, course_code) VALUES (?, '2/69', ?)").run(user, c);
+    expect(suggestedCourses(db, user).codes).toEqual(s.codes);
+    const t = buildTrail(loadTrailInput(db, user)!);
+    expect(t.credits.thisTerm).toBe(s.credits);
+    expect(t.terms[0].term).toBe("1/70");
+    expect(t.achievable).toBe(true);
+  });
+
+  it("has nothing to ask while it is still the term she chose them in", () => {
+    expect(termCheck(db, user)).toEqual({ term: "2/69", due: false, courses: [] });
+  });
+
+  it("asks once, when a new term starts, which of last term's courses she passed", () => {
+    const taken = termCourses(db, user, "2/69");
+    setTerm("1/70");
+    const check = termCheck(db, user);
+    expect(check.due).toBe(true);
+    expect(check.courses.map((c) => c.code)).toEqual(taken);
+
+    // she passed all but the first; a code that was never asked about is not recorded
+    const [failed, ...passed] = taken;
+    answerTermCheck(db, user, [...passed, "ZZZ9999", "ACC1103"].filter((c) => c !== failed));
+    expect(passedCourses(db, user).sort()).toEqual([...passed].sort());
+    expect(termCheck(db, user)).toEqual({ term: "1/70", due: false, courses: [] }); // not asked again this term
+
+    // the new term's plan starts from that: passed courses are gone, the failed one is back in
+    const placed = buildTrail(loadTrailInput(db, user)!).terms.flatMap((x) => x.items.map((i) => i.code));
+    for (const c of passed) expect(placed).not.toContain(c);
+    expect(placed).toContain(failed);
+    expect(suggestedCourses(db, user).term).toBe("1/70");
+    setTerm("2/69");
+  });
+
+  it("answering 'none' still counts as answered", () => {
+    const other = findOrCreateUser(db, { email: "p59b@studyos.test", name: "Q", avatar: "" });
+    db.prepare("UPDATE user_profiles SET program_id = 'bus-mkt', university_id = 'ru', entry_year = '69', onboarded = 1 WHERE user_id = ?").run(other);
+    db.prepare("INSERT INTO plan_items (user_id, term_id, course_code) VALUES (?, '2/69', 'MKT2101')").run(other);
+    setTerm("1/70");
+    expect(termCheck(db, other).due).toBe(true);
+    answerTermCheck(db, other, []);
+    expect(termCheck(db, other).due).toBe(false);
+    expect(passedCourses(db, other)).toEqual([]);
+    setTerm("2/69");
+  });
+
+  it("suggests nothing to a student without a major", () => {
+    const none = findOrCreateUser(db, { email: "p59c@studyos.test", name: "N", avatar: "" });
+    expect(suggestedCourses(db, none)).toEqual({ term: "2/69", codes: [], credits: 0 });
+    expect(termCheck(db, none).due).toBe(false);
   });
 });
