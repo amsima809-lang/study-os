@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { useT } from "../i18n.tsx";
 import { postJSON } from "../api.ts";
@@ -7,6 +7,7 @@ import { useTheme } from "../components/ui.tsx";
 import { DESTINATIONS, destination, MAX_NAV, type DestId } from "../destinations.tsx";
 import UniversityPicker from "../components/UniversityPicker.tsx";
 import { UNIVERSITIES } from "../data/universities.ts";
+import { formatTime, getClock, setClock, subscribeClock, type Clock } from "../format.ts";
 import { PALETTES, DEFAULT_SWATCH, forcedMode, FONTS, FONT_SAMPLE, fontStack, loadFontPreviews } from "../theme.ts";
 
 const THEMES = [
@@ -33,6 +34,7 @@ export default function More({
   onReplace: (outgoing: DestId, incoming: DestId) => void;
 }) {
   const { t, lang } = useT();
+  const clock = useSyncExternalStore(subscribeClock, getClock);
   const { theme, setTheme, colour, setColour, font, setFont } = useTheme();
   useEffect(loadFontPreviews, []);
   const [pickingSchool, setPickingSchool] = useState(false);
@@ -336,6 +338,40 @@ export default function More({
             </div>
           ))}
         </div>
+      </section>
+
+      {/* Time format: 24-hour or AM/PM, for every time the app shows */}
+      <section
+        className="rounded-2xl border px-4 py-4 space-y-2"
+        style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-light)", boxShadow: "var(--shadow-sm)" }}
+      >
+        <h2 className="font-semibold" style={{ color: "var(--text-primary)" }}>
+          {t("more.clock")}
+        </h2>
+        <div
+          role="radiogroup"
+          aria-label={t("more.clock")}
+          className="grid grid-cols-2 gap-1 rounded-xl p-1"
+          style={{ backgroundColor: "var(--bg-base)" }}
+        >
+          {(["24", "12"] as Clock[]).map((c) => (
+            <button
+              key={c}
+              role="radio"
+              aria-checked={clock === c}
+              onClick={() => setClock(c)}
+              className="flex flex-col items-center justify-center rounded-lg py-1.5 text-sm font-medium transition-colors min-h-11"
+              style={{
+                backgroundColor: clock === c ? "var(--accent)" : "transparent",
+                color: clock === c ? "#fff" : "var(--text-secondary)",
+              }}
+            >
+              <span>{t(c === "24" ? "more.clock_24" : "more.clock_12")}</span>
+              <span className="text-xs opacity-80">{formatTime("13:30", c)}</span>
+            </button>
+          ))}
+        </div>
+        <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{t("more.clock_hint")}</p>
       </section>
 
       {pickingSchool && createPortal(

@@ -349,3 +349,8 @@ AI ช่วยเรา "ฝึก" ไม่ใช่ "ทำแทน" — �
 - **Hour grid height.** `.timegrid-scroll`: 60dvh normally, nearly the whole height when the screen is under 500px tall, and the full column height in the desktop Today grid.
 - Checked at 375×812, 812×375, 768×1024, 1024×768, 1440×900 and 900×1440: no screen scrolls sideways.
 
+## Phase 39 — Time format setting
+- **Setting.** `Clock = "24" | "12"` in `client/src/format.ts`, read once from localStorage `studyos.clock` and changed with `setClock()`; `subscribeClock` + `getClock` feed `useSyncExternalStore` for the selector in More. Screens re-read it when they are opened.
+- **Formatting.** `formatTime("13:30")` → `13:30` or `1:30 PM`; `timeRange` collapses the period when both ends share it; `hourLabel(h)` labels the hour grid (its label column is 46px wide in AM/PM mode, 40px otherwise). Used by the timetable, exams-by-day lists, calendar day list, hour grid, reminders, due banners and device notifications, and the course picker. Tested in `server/test/clockFormat.test.ts`.
+- **Not affected:** stored values, the API, the `.ics` export, and `<input type="time">`, which the browser draws using the device's own setting.
+

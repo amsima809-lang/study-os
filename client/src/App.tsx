@@ -12,6 +12,7 @@ import { DESTINATIONS, destination, useNav, NAVIGATE_EVENT, type DestId } from "
 import { useReminderAlerts } from "./reminderAlerts.ts";
 import { setDone } from "./components/Reminders.tsx";
 import { CourseChip } from "./components/CourseTitle.tsx";
+import { formatTime } from "./format.ts";
 
 type Tab = DestId | "more";
 
@@ -308,7 +309,7 @@ function Shell() {
               <div className="flex-1 min-w-0">
                 <p className="font-semibold" style={{ color: "var(--text-primary)" }}>{o.title}</p>
                 <p className="text-xs flex flex-wrap items-center gap-2" style={{ color: "var(--text-tertiary)" }}>
-                  {o.time}
+                  {o.time && formatTime(o.time)}
                   {o.course_code && <CourseChip code={o.course_code} />}
                 </p>
                 <div className="flex gap-2 mt-2">

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useT } from "../i18n.tsx";
 import { getJSON, type CalendarData, type CalEvent } from "../api.ts";
 import { CourseTitle, CourseChip } from "./CourseTitle.tsx";
-import { timeRange } from "../format.ts";
+import { timeRange, formatTime } from "../format.ts";
 import Icon from "./Icon.tsx";
 import { setDone, useRemindersChanged, ReminderSheet } from "./Reminders.tsx";
 import { AddButton } from "./ui.tsx";
@@ -460,7 +460,7 @@ function EventRow({
           {ev.start_time && !ev.end_time && (
             <span className="text-xs flex items-center gap-1" style={{ color: "var(--text-tertiary)" }}>
               <Icon name="clock" size={12} />
-              {ev.start_time}
+              {formatTime(ev.start_time)}
             </span>
           )}
           {ev.start_time && ev.end_time && (

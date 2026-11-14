@@ -10,6 +10,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { getJSON, type ReminderOccurrence } from "./api.ts";
+import { formatTime } from "./format.ts";
 
 export type NotifyState = "on" | "off" | "blocked" | "unsupported";
 
@@ -45,7 +46,7 @@ export function newlyDue(items: ReminderOccurrence[], nowHHMM: string, alerted: 
 
 async function showDeviceNotification(o: ReminderOccurrence) {
   if (notificationState() !== "on") return;
-  const options = { body: [o.time, o.course_code, o.note].filter(Boolean).join(" · "), tag: `studyos-${o.id}-${o.on}` };
+  const options = { body: [o.time && formatTime(o.time), o.course_code, o.note].filter(Boolean).join(" · "), tag: `studyos-${o.id}-${o.on}` };
   try {
     // Android only allows notifications through the service worker.
     const reg = await navigator.serviceWorker?.getRegistration();

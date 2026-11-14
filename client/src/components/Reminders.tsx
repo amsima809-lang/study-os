@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useT } from "../i18n.tsx";
 import { getJSON, postJSON, putJSON, deleteJSON, type ApiError, type ReminderRule } from "../api.ts";
-import { formatDate } from "../format.ts";
+import { formatDate, formatTime, timeRange } from "../format.ts";
 import { CourseChip } from "./CourseTitle.tsx";
 import Icon from "./Icon.tsx";
 
@@ -107,7 +107,7 @@ export function ReminderRow({ item, on, done, overdue, today, hideDate, onToggle
               {dayLabel(on!, today, t, lang)}
             </span>
           )}
-          {item.time && <span>{item.time}{item.end_time ? `–${item.end_time}` : ""}</span>}
+          {item.time && <span>{item.end_time ? timeRange(item.time, item.end_time) : formatTime(item.time)}</span>}
           {item.repeat !== "none" && (
             <span className="inline-flex items-center gap-1">
               <Icon name="repeat" size={12} />

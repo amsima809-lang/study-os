@@ -11,6 +11,7 @@ import { getJSON, putJSON, type ApiError } from "../api.ts";
 import { CourseChip } from "./CourseTitle.tsx";
 import { REMINDERS_CHANGED } from "./Reminders.tsx";
 import Icon from "./Icon.tsx";
+import { timeRange } from "../format.ts";
 
 type Option = { code: string; name_th: string; name_en: string | null; category: string; classes: string | null };
 type Data = { term: string; chosen: string[]; options: Option[] };
@@ -65,7 +66,8 @@ export default function TermCoursesPicker({ onClose }: { onClose: () => void }) 
     classes
       ? classes.split(";").map((c) => {
           const [day, time] = c.split(" ");
-          return `${t(DAY_KEYS[Number(day)] ?? "")} ${time.replace("-", "–")}`;
+          const [start, end] = time.split("-");
+          return `${t(DAY_KEYS[Number(day)] ?? "")} ${timeRange(start, end)}`;
         }).join(", ")
       : t("tc.examOnly");
 

@@ -10,7 +10,7 @@ import {
   type NoteLearning,
   type ApiError,
 } from "../api.ts";
-import { formatDate } from "../format.ts";
+import { formatDate, formatTime } from "../format.ts";
 import { AddButton, Card, ConfirmDialog, ErrorBox, Loading } from "../components/ui.tsx";
 import { DRAFT_CHANGED, clearNoteDraft, isEmptyDraft, loadNoteDraft, saveNoteDraft, type Drawing, type NoteDraft } from "../noteDraft.ts";
 import { Markdown } from "../components/Markdown.tsx";
@@ -632,7 +632,7 @@ function AddNote({
             style={{ backgroundColor: "var(--accent-light)", color: "var(--text-primary)" }}
           >
             <span className="flex-1">
-              {t("notes.draftRestored", { time: new Date(restoredAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })}
+              {t("notes.draftRestored", { time: formatTime(new Date(restoredAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })) })}
             </span>
             <button onClick={() => setConfirmDiscard(true)} className="shrink-0 min-h-11 px-2 font-medium" style={{ color: "var(--danger)" }}>
               {t("notes.draftDiscard")}

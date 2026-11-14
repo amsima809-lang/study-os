@@ -13,6 +13,7 @@ import { useT } from "../i18n.tsx";
 import type { CalEvent } from "../api.ts";
 import Icon from "./Icon.tsx";
 import { layoutDay, minutes } from "../calendarLayout.ts";
+import { formatTime, timeRange, hourLabel, getClock } from "../format.ts";
 
 const COLORS: Record<CalEvent["type"], string> = {
   class: "var(--accent-text)",
@@ -63,6 +64,9 @@ export default function TimeGrid({ dates, eventsOn, today, now, onPickDay, onTog
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [dates.join(), eventsOn, week, weekLanes],
   );
+
+  // The hour-label column: "10 AM" needs a little more room than "10:00".
+  const gutter = getClock() === "12" ? 46 : 40;
 
   // Show 07:00 to 20:00 at least, wider when something falls outside.
   const starts = days.flatMap((d) => [...d.placed, ...d.overflow].map((p) => p.start));
@@ -118,7 +122,7 @@ export default function TimeGrid({ dates, eventsOn, today, now, onPickDay, onTog
       {/* All-day row: things with no time */}
       {hasAllDay && (
         <div className="flex pr-1 py-1" style={{ borderTop: "1px solid var(--border-light)" }}>
-          <div className="w-10 shrink-0 text-xs text-right pr-1.5 pt-1" style={{ color: "var(--text-tertiary)" }}>
+          <div className="shrink-0 text-xs text-right pr-1.5 pt-1" style={{ width: gutter, color: "var(--text-tertiary)" }}>
             {t("cal.allDay")}
           </div>
           {days.map((d) => (
@@ -142,16 +146,16 @@ export default function TimeGrid({ dates, eventsOn, today, now, onPickDay, onTog
         className="timegrid-scroll overflow-auto"
         style={{ borderTop: "1px solid var(--border-light)" }}
       >
-        <div className="flex pr-1" style={{ height: hours.length * hourPx + 8, minWidth: dayMinWidth ? dayMinWidth + 40 : undefined }}>
+        <div className="flex pr-1" style={{ height: hours.length * hourPx + 8, minWidth: dayMinWidth ? dayMinWidth + gutter : undefined }}>
           {/* Hour labels */}
-          <div className="w-10 shrink-0 relative sticky left-0 z-10" style={{ backgroundColor: "var(--bg-surface)" }}>
+          <div className="shrink-0 relative sticky left-0 z-10" style={{ width: gutter, backgroundColor: "var(--bg-surface)" }}>
             {hours.map((h) => (
               <div
                 key={h}
-                className="absolute right-1.5 text-xs tabular-nums"
+                className="absolute right-1.5 text-xs tabular-nums whitespace-nowrap"
                 style={{ top: y(h * 60) - 2, color: "var(--text-tertiary)" }}
               >
-                {String(h).padStart(2, "0")}:00
+                {hourLabel(h)}
               </div>
             ))}
           </div>
@@ -201,7 +205,7 @@ export default function TimeGrid({ dates, eventsOn, today, now, onPickDay, onTog
                     )}
                     {!week && height > 34 && (
                       <span className="block truncate opacity-80">
-                        {p.ev.start_time}{p.ev.end_time ? `–${p.ev.end_time}` : ""}
+                        {p.ev.end_time ? timeRange(p.ev.start_time!, p.ev.end_time) : formatTime(p.ev.start_time!)}
                         {p.ev.room ? ` · ${p.ev.room}` : ""}
                         {p.ev.reminder_id && p.ev.description ? ` · ${p.ev.description}` : ""}
                       </span>
@@ -226,7 +230,7 @@ export default function TimeGrid({ dates, eventsOn, today, now, onPickDay, onTog
                     className={cls}
                     style={style}
                     onClick={() => (editable ? onOpen!(p.ev) : onPickDay?.(d.date))}
-                    aria-label={`${p.ev.start_time} ${p.ev.course_code} ${p.ev.name_th}`}
+                    aria-label={`${formatTime(p.ev.start_time!)} ${p.ev.course_code} ${p.ev.name_th}`}
                   >
                     {/* A button centres its content; this keeps the label at the top. */}
                     <span className="block h-full">
