@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { LanguageProvider, LanguageToggle, useT } from "./i18n.tsx";
-import { getJSON } from "./api.ts";
+import { getJSON, SIGNED_OUT } from "./api.ts";
+import { setDraftOwner } from "./noteDraft.ts";
 import { ThemeProvider, ThemeToggle } from "./components/ui.tsx";
 import { SubscriptionProvider } from "./components/SubscriptionGate.tsx";
 import Icon from "./components/Icon.tsx";
@@ -288,11 +289,17 @@ function AuthGate() {
       if (u?.university_id) {
         try { localStorage.setItem("studyos.university", u.university_id); } catch { /* ok */ }
       }
+      if (u) setDraftOwner(u.id); // note drafts are kept per student
       setUser(u ?? null);
     });
 
   useEffect(() => {
     refreshUser().catch(() => setUser(null));
+    // The session ended (expired, or signed out elsewhere): go back to login.
+    // Unsaved note drafts are kept in the browser and offered again after sign-in.
+    const onSignedOut = () => setUser(null);
+    window.addEventListener(SIGNED_OUT, onSignedOut);
+    return () => window.removeEventListener(SIGNED_OUT, onSignedOut);
   }, []);
 
   if (user === undefined) return <div className="min-h-dvh" style={{ backgroundColor: "var(--bg-base)" }} />;

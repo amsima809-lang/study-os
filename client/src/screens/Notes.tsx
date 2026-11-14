@@ -11,7 +11,8 @@ import {
   type ApiError,
 } from "../api.ts";
 import { formatDate } from "../format.ts";
-import { AddButton, Card, ErrorBox, Loading } from "../components/ui.tsx";
+import { AddButton, Card, ConfirmDialog, ErrorBox, Loading } from "../components/ui.tsx";
+import { DRAFT_CHANGED, clearNoteDraft, isEmptyDraft, loadNoteDraft, saveNoteDraft, type Drawing, type NoteDraft } from "../noteDraft.ts";
 import { Markdown } from "../components/Markdown.tsx";
 import Icon from "../components/Icon.tsx";
 import { CourseTitle } from "../components/CourseTitle.tsx";
@@ -36,6 +37,14 @@ export default function Notes() {
   const [view, setView] = useState<View>({ screen: "courses" });
   const [result, setResult] = useState<NoteLearning | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  // An unfinished note waiting in this browser (see noteDraft.ts).
+  const [draft, setDraft] = useState<NoteDraft | null>(null);
+  useEffect(() => {
+    const check = () => { void loadNoteDraft().then(setDraft); };
+    check();
+    window.addEventListener(DRAFT_CHANGED, check);
+    return () => window.removeEventListener(DRAFT_CHANGED, check);
+  }, []);
 
   function goBack() {
     if (view.screen === "view") {
@@ -60,6 +69,22 @@ export default function Notes() {
           />
         )}
       </div>
+
+      {draft && view.screen !== "add" && (
+        <button
+          onClick={() => { setResult(null); setView({ screen: "add" }); }}
+          className="w-full flex items-center gap-3 rounded-2xl border px-4 py-3 text-left"
+          style={{ backgroundColor: "var(--accent-light)", borderColor: "var(--accent-text)", color: "var(--text-primary)" }}
+        >
+          <span className="flex-1 min-w-0">
+            <span className="block font-semibold">{t("notes.draftWaiting")}</span>
+            <span className="block text-sm truncate" style={{ color: "var(--text-secondary)" }}>
+              {draft.title.trim() || draft.text.trim().slice(0, 60) || t(draft.drawing?.strokes.length ? "notes.draftDrawing" : "notes.draftPhotos")}
+            </span>
+          </span>
+          <span className="shrink-0 font-semibold" style={{ color: "var(--accent-text)" }}>{t("notes.draftContinue")}</span>
+        </button>
+      )}
 
       {view.screen === "courses" && (
         <CourseList
@@ -475,8 +500,16 @@ function AddNote({
   const [text, setText] = useState("");
   const [mode, setMode] = useState<"type" | "draw">("type");
   const [files, setFiles] = useState<File[]>([]);
+  const [drawing, setDrawing] = useState<Drawing | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Draft handling: `ready` once any saved draft has been read back; `restoredAt`
+  // when what is on screen came from a draft; `padKey` remounts the drawing pad.
+  const [ready, setReady] = useState(false);
+  const [restoredAt, setRestoredAt] = useState<number | null>(null);
+  const [padKey, setPadKey] = useState(0);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const saved = useRef(false);
   const padRef = useRef<HandwritingHandle>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
@@ -486,6 +519,62 @@ function AddNote({
       .then((d) => setCourses(d.courses))
       .catch(() => setCourses([]));
   }, []);
+
+  // Bring back an unfinished note (after a tab switch, refresh, lock or sign-out).
+  useEffect(() => {
+    let alive = true;
+    loadNoteDraft().then((d) => {
+      if (!alive) return;
+      if (d) {
+        setCourseCode(d.courseCode);
+        setTitle(d.title);
+        setText(d.text);
+        setMode(d.mode);
+        setDrawing(d.drawing);
+        setFiles(d.files ?? []);
+        setRestoredAt(d.savedAt);
+      }
+      setReady(true);
+    });
+    return () => { alive = false; };
+  }, []);
+
+  // Keep the draft up to date: shortly after each change, and at once when the
+  // form goes away (another tab, the session ending) or the page is hidden.
+  const latest = useRef({ courseCode, title, text, mode, drawing, files });
+  latest.current = { courseCode, title, text, mode, drawing, files };
+  useEffect(() => {
+    if (!ready) return;
+    const timer = setTimeout(() => { if (!saved.current) void saveNoteDraft(latest.current); }, 400);
+    return () => clearTimeout(timer);
+  }, [ready, courseCode, title, text, mode, drawing, files]);
+  useEffect(() => {
+    if (!ready) return;
+    const flush = () => { if (!saved.current) void saveNoteDraft(latest.current); };
+    const onHide = () => document.visibilityState === "hidden" && flush();
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("pagehide", flush);
+    return () => {
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("pagehide", flush);
+      flush();
+    };
+  }, [ready]);
+
+  const hasContent = !isEmptyDraft({ title, text, drawing, files });
+
+  /** Throw the draft away. The form closes right after, so stop any further saving. */
+  function discard() {
+    saved.current = true;
+    setTitle("");
+    setText("");
+    setFiles([]);
+    setDrawing(null);
+    setPadKey((k) => k + 1);
+    setRestoredAt(null);
+    setConfirmDiscard(false);
+    void clearNoteDraft();
+  }
 
   function addFiles(list: FileList | null) {
     if (list) setFiles((prev) => [...prev, ...Array.from(list)]);
@@ -509,6 +598,8 @@ function AddNote({
     setBusy(true);
     try {
       const r = await postForm<NoteLearning>("/api/notes", form);
+      saved.current = true; // the note is on the server: the draft is no longer needed
+      await clearNoteDraft();
       onCreated(r);
     } catch (e) {
       const err = e as ApiError;
@@ -519,6 +610,7 @@ function AddNote({
   }
 
   if (busy) return <Loading>{t("notes.processing")}</Loading>;
+  if (!ready) return <Loading>{t("status.connecting")}</Loading>;
 
   const selectStyle = { backgroundColor: "var(--bg-surface)", borderColor: "var(--border)", color: "var(--text-primary)" };
   const inputStyle = { borderColor: "var(--border)", backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" };
@@ -532,6 +624,21 @@ function AddNote({
           </button>
           <h2 className="font-semibold" style={{ color: "var(--text-primary)" }}>{t("notes.newTitle")}</h2>
         </div>
+
+        {restoredAt && (
+          <div
+            role="status"
+            className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm"
+            style={{ backgroundColor: "var(--accent-light)", color: "var(--text-primary)" }}
+          >
+            <span className="flex-1">
+              {t("notes.draftRestored", { time: new Date(restoredAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })}
+            </span>
+            <button onClick={() => setConfirmDiscard(true)} className="shrink-0 min-h-11 px-2 font-medium" style={{ color: "var(--danger)" }}>
+              {t("notes.draftDiscard")}
+            </button>
+          </div>
+        )}
 
         <label className="block text-sm">
           <span style={{ color: "var(--text-tertiary)" }}>{t("notes.course")}</span>
@@ -586,7 +693,7 @@ function AddNote({
         ) : (
           <div>
             <p className="text-xs mb-1" style={{ color: "var(--text-tertiary)" }}>{t("notes.drawHint")}</p>
-            <HandwritingPad ref={padRef} />
+            <HandwritingPad key={padKey} ref={padRef} initial={drawing} onChange={setDrawing} />
           </div>
         )}
 
@@ -665,11 +772,26 @@ function AddNote({
           >
             {t("notes.submit")}
           </button>
-          <button onClick={onCancel} className="px-4" style={{ color: "var(--text-tertiary)" }}>
+          <button
+            onClick={() => (hasContent ? setConfirmDiscard(true) : onCancel())}
+            className="px-4 min-h-11"
+            style={{ color: "var(--text-tertiary)" }}
+          >
             {t("notes.cancel")}
           </button>
         </div>
         <p className="text-xs text-center" style={{ color: "var(--text-tertiary)" }}>{t("notes.saveHint")}</p>
+        {hasContent && <p className="text-xs text-center" style={{ color: "var(--text-tertiary)" }}>{t("notes.draftKept")}</p>}
+        {confirmDiscard && (
+          <ConfirmDialog
+            title={t("notes.draftDiscardTitle")}
+            message={t("notes.draftDiscardMsg")}
+            confirmLabel={t("notes.draftDiscard")}
+            cancelLabel={t("notes.draftKeep")}
+            onConfirm={() => { discard(); onCancel(); }}
+            onCancel={() => setConfirmDiscard(false)}
+          />
+        )}
       </div>
     </Card>
   );

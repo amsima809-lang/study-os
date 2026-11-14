@@ -108,8 +108,27 @@ export type CalendarData = {
   events: Record<string, CalEvent[]>;
 };
 
+/** Fired when the server says the student is no longer signed in. */
+export const SIGNED_OUT = "studyos:signed-out";
+
+/**
+ * Every request goes through here, so two things are handled in one place:
+ * - no connection: fail with a clear OFFLINE error instead of a raw exception;
+ * - the session has ended (401): tell the app, which returns to the login page.
+ */
+async function send(url: string, init?: RequestInit): Promise<Response> {
+  let r: Response;
+  try {
+    r = await fetch(url, init);
+  } catch {
+    throw { error: "ออฟไลน์อยู่ เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ลองใหม่เมื่อมีอินเทอร์เน็ต", code: "OFFLINE" } as ApiError;
+  }
+  if (r.status === 401 && !url.startsWith("/api/auth/")) window.dispatchEvent(new Event(SIGNED_OUT));
+  return r;
+}
+
 export async function getJSON<T>(url: string): Promise<T> {
-  const r = await fetch(url);
+  const r = await send(url);
   if (!r.ok) throw new Error(`${r.status} ${url}`);
   return (await r.json()) as T;
 }
@@ -155,7 +174,7 @@ export type ApiError = { error: string; code?: string };
 
 /** POST multipart form; returns parsed JSON or throws an ApiError-shaped error. */
 export async function postForm<T>(url: string, form: FormData): Promise<T> {
-  const r = await fetch(url, { method: "POST", body: form });
+  const r = await send(url, { method: "POST", body: form });
   const data = await r.json().catch(() => ({ error: "unknown" }));
   if (!r.ok) throw data as ApiError;
   return data as T;
@@ -163,7 +182,7 @@ export async function postForm<T>(url: string, form: FormData): Promise<T> {
 
 /** POST JSON; returns parsed JSON or throws an ApiError-shaped error. */
 export async function postJSON<T>(url: string, body: unknown): Promise<T> {
-  const r = await fetch(url, {
+  const r = await send(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -175,7 +194,7 @@ export async function postJSON<T>(url: string, body: unknown): Promise<T> {
 
 /** PUT JSON; returns parsed JSON or throws. */
 export async function putJSON<T>(url: string, body: unknown): Promise<T> {
-  const r = await fetch(url, {
+  const r = await send(url, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -187,7 +206,7 @@ export async function putJSON<T>(url: string, body: unknown): Promise<T> {
 
 /** DELETE request; returns parsed JSON or throws. */
 export async function deleteJSON<T>(url: string): Promise<T> {
-  const r = await fetch(url, { method: "DELETE" });
+  const r = await send(url, { method: "DELETE" });
   const data = await r.json().catch(() => ({ error: "unknown" }));
   if (!r.ok) throw data as ApiError;
   return data as T;

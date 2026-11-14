@@ -325,3 +325,11 @@ AI ช่วยเรา "ฝึก" ไม่ใช่ "ทำแทน" — �
 - **One form.** `ReminderForm` handles all three kinds; `ReminderSheet` shows it over any screen and loads an existing item by id (`GET /api/reminders/:id`).
 - **Ways in, all to the same sheet:** the calendar's Add button; a click on an empty spot in the week or day grid (`TimeGrid` `onAdd`, snapped to the half hour, prefilled as a one-hour event); a double-click on a day in the month grid; the "add on this day" row under a selected day. A tap on one of the student's own items opens it for editing (`onOpen`).
 - **One button.** `AddButton` (`components/ui.tsx`) is used by Calendar, Reminders, Notes and Library.
+
+## Phase 36 — Stop losing work
+- **Sessions in the database.** `SqliteSessionStore` (`server/src/sessionStore.ts`) implements express-session's store on a `sessions(sid, data, expires)` table (migration 029). Expired rows are ignored on read and pruned at start-up and hourly. Tested in `server/test/sessionStore.test.ts`.
+- **One place for "not signed in" and "offline".** `send()` in `client/src/api.ts` wraps every request. A 401 from anything except `/api/auth/*` dispatches `SIGNED_OUT`; `AuthGate` listens and shows the login page. A failed connection throws `{ code: "OFFLINE" }` with a readable message.
+- **Note drafts.** `client/src/noteDraft.ts` stores one draft per student in IndexedDB (database `studyos`, store `drafts`, key `note:<user id>`): course, title, text, input mode, drawing (vector strokes and page count) and attached photos. `AddNote` saves 400 ms after each change, and at once when the form unmounts or the page is hidden; it clears the draft after a successful save or a confirmed discard. If storage rejects the photos, the draft is saved without them. The Notes screen shows a "continue" card while a draft exists (`DRAFT_CHANGED` event).
+- **Drawing pad.** `HandwritingPad` accepts `initial` (read once) and `onChange`, so its owner holds the strokes. Remount it with a new `key` to clear it.
+- **Confirm pattern.** `ConfirmDialog` (`components/ui.tsx`): portal dialog, Cancel focused first, red button named after the action, Escape or backdrop to cancel.
+

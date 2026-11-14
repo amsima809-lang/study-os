@@ -63,6 +63,8 @@ Severity: **A** blocks a task or loses work, **B** slows a task, **C** cosmetic.
 
 ### 5. Not losing work
 
+**Status: fixed 2026-11-14 (Phase 36).** The unfinished note (text, drawing, photos) is kept on the device and comes back after a tab switch, refresh, lock or sign-out; sign-ins survive a server restart; an ended session returns to the login page. Not done: drafts for other forms (reminders, planner edits) and syncing a draft between devices.
+
 | # | Sev | Finding | Fix |
 |---|---|---|---|
 | 5.1 | A | Switching tabs throws away whatever is on the screen: the app rebuilds each screen from scratch when its tab is opened. A half-typed note, or a drawing in progress, is lost by tapping another tab. | Keep a draft of the note form (text and strokes) and restore it. |

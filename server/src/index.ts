@@ -7,6 +7,7 @@
 import express from "express";
 import cookieParser from "cookie-parser";
 import session from "express-session";
+import { SqliteSessionStore } from "./sessionStore.js";
 import passport from "passport";
 import { join } from "node:path";
 import { env, isProd } from "./env.js";
@@ -38,6 +39,7 @@ app.use(express.json({ limit: "50mb" }));
 app.use(cookieParser(env.sessionSecret));
 app.use(
   session({
+    store: new SqliteSessionStore(db),
     secret: env.sessionSecret,
     resave: false,
     saveUninitialized: false,

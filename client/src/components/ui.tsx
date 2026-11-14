@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import Icon from "./Icon.tsx";
 import { applyColour, applyFont, forcedMode, DEFAULT_FONT, type Colour } from "../theme.ts";
 
@@ -117,6 +118,70 @@ export function AddButton({ label, onClick, expanded }: { label: string; onClick
       <Icon name={expanded ? "x" : "plus"} size={18} />
       {label}
     </button>
+  );
+}
+
+/**
+ * THE confirmation for anything that deletes or throws work away. In the page
+ * (not the browser's own pop-up), same look and wording pattern everywhere:
+ * what will be lost, a red button that names the action, and a way out.
+ */
+export function ConfirmDialog({
+  title,
+  message,
+  confirmLabel,
+  cancelLabel,
+  onConfirm,
+  onCancel,
+  busy,
+}: {
+  title: string;
+  message?: string;
+  confirmLabel: string;
+  cancelLabel: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  busy?: boolean;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onCancel();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+
+  return createPortal(
+    <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center p-3" style={{ background: "rgba(0,0,0,0.5)" }} onClick={onCancel}>
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-label={title}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-sm rounded-3xl border p-5 animate-slide-up"
+        style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-light)", marginBottom: "env(safe-area-inset-bottom)" }}
+      >
+        <h2 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>{title}</h2>
+        {message && <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>{message}</p>}
+        <div className="flex gap-2 mt-4">
+          <button
+            autoFocus
+            onClick={onCancel}
+            className="flex-1 rounded-xl min-h-11 font-medium border"
+            style={{ borderColor: "var(--border)", color: "var(--text-primary)" }}
+          >
+            {cancelLabel}
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={busy}
+            className="flex-1 rounded-xl min-h-11 font-semibold disabled:opacity-40"
+            style={{ backgroundColor: "var(--danger)", color: "#fff" }}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
 

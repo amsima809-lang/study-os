@@ -26,17 +26,24 @@ const HL_ALPHA = 0.35;
 
 type Tool = "pen" | "highlighter" | "eraser";
 type Point = { x: number; y: number };
-type Stroke = { tool: Tool; color: string; width: number; points: Point[] };
+export type Stroke = { tool: Tool; color: string; width: number; points: Point[] };
+
+type Props = {
+  /** Strokes and page count to start from (a restored draft). Read once, on mount. */
+  initial?: { strokes: Stroke[]; pages: number } | null;
+  /** Called after every finished stroke, undo, redo, clear or page change. */
+  onChange?: (drawing: { strokes: Stroke[]; pages: number }) => void;
+};
 
 /**
  * A full drawing pad: pen + eraser, colors, stroke widths, undo/redo, clear,
  * zoom in/out, and an expand toggle. Strokes are stored as vectors (light +
  * redo-friendly) and exported as a JPEG for the AI to read.
  */
-export const HandwritingPad = forwardRef<HandwritingHandle>((_props, ref) => {
+export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, onChange }, ref) => {
   const { t } = useT();
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [strokes, setStrokes] = useState<Stroke[]>([]);
+  const [strokes, setStrokes] = useState<Stroke[]>(() => initial?.strokes ?? []);
   const [redoStack, setRedoStack] = useState<Stroke[]>([]);
   const [tool, setTool] = useState<Tool>("pen");
   const [color, setColor] = useState(COLORS[0]);
@@ -44,7 +51,14 @@ export const HandwritingPad = forwardRef<HandwritingHandle>((_props, ref) => {
   const [width, setWidth] = useState(WIDTHS[1].val);
   const [zoom, setZoom] = useState(1);
   const [expanded, setExpanded] = useState(false);
-  const [pages, setPages] = useState(1);
+  const [pages, setPages] = useState(() => Math.min(MAX_PAGES, Math.max(1, initial?.pages ?? 1)));
+
+  // Tell the owner about every change so it can keep a draft.
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  useEffect(() => {
+    onChangeRef.current?.({ strokes, pages });
+  }, [strokes, pages]);
 
   const drawing = useRef(false);
   const current = useRef<Stroke | null>(null);
