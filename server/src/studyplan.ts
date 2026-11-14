@@ -6,7 +6,7 @@
  */
 import { Router } from "express";
 import type { DB } from "./db.js";
-import { bangkokToday, bangkokWeekday, daysBetween, addDaysISO, getSetting, setSetting, hasCatalog, programFilter } from "./api.js";
+import { bangkokToday, bangkokWeekday, daysBetween, addDaysISO, getSetting, setSetting, hasCatalog, myCoursesFilter } from "./api.js";
 
 // ---- types ----
 
@@ -82,7 +82,7 @@ function availableMinutes(dateStr: string, settings: PlanSettings): number {
 /** Get courses with upcoming exams and their chapters. */
 function getCoursesForPlanning(db: DB, today: string, userId: string): CourseExam[] {
   if (!hasCatalog(db, userId)) return [];
-  const mine = programFilter(db, userId, "e.course_code");
+  const mine = myCoursesFilter(db, userId, getSetting(db, "current_term_id", "2/69"), "e.course_code");
   const exams = db.prepare(
     `SELECT e.course_code, c.name_th, c.name_en,
             DATE(e.datetime_start) AS exam_date

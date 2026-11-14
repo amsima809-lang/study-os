@@ -10,9 +10,21 @@ type Props = {
   inline?: boolean;
 };
 
+/** A course code as a small chip, e.g. [ACC1103]. Use it wherever a code is shown. */
+export function CourseChip({ code, className = "" }: { code: string; className?: string }) {
+  return (
+    <span
+      className={`inline-block align-middle whitespace-nowrap rounded-md px-1.5 py-0.5 text-[0.8em] font-semibold leading-none ${className}`}
+      style={{ backgroundColor: "var(--accent-light)", color: "var(--accent-text)" }}
+    >
+      {code}
+    </span>
+  );
+}
+
 /**
- * Bilingual course label: "(CODE) <primary name>" with the other language shown
- * small and faint underneath. Primary follows the current UI language.
+ * Bilingual course label: a code chip, then the primary name, with the other
+ * language shown small and faint underneath. Primary follows the UI language.
  */
 export function CourseTitle({ code, name_th, name_en, className, secondaryClassName, inline }: Props) {
   const { lang } = useT();
@@ -20,7 +32,7 @@ export function CourseTitle({ code, name_th, name_en, className, secondaryClassN
   const en = name_en ?? "";
   const primary = lang === "en" ? en || th : th;
   const secondary = lang === "en" ? th : en;
-  const prefix = code ? `(${code}) ` : "";
+  const prefix = code ? <CourseChip code={code} className="mr-1.5" /> : null;
 
   if (inline) {
     return (

@@ -5,7 +5,7 @@
  */
 import { Router } from "express";
 import type { DB } from "./db.js";
-import { bangkokToday, daysBetween, getSetting, setSetting, hasCatalog, programFilter } from "./api.js";
+import { bangkokToday, daysBetween, getSetting, setSetting, hasCatalog, myCoursesFilter } from "./api.js";
 
 export const MOCK_DEFAULT_COUNT = 40;
 export const MOCK_DEFAULT_DURATION_MIN = 90;
@@ -73,7 +73,7 @@ export function createMockRouter(db: DB): Router {
     const term = currentTermId(db);
     const today = bangkokToday();
     // Only the student's own program's exams (none for universities without a catalogue).
-    const mine = programFilter(db, userId, "e.course_code");
+    const mine = myCoursesFilter(db, userId, term, "e.course_code");
     const rows = (hasCatalog(db, userId)
       ? db
           .prepare(

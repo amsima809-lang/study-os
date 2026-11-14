@@ -7,7 +7,10 @@ import Icon from "./components/Icon.tsx";
 import Login from "./screens/Login.tsx";
 import Onboarding from "./screens/Onboarding.tsx";
 import More from "./screens/More.tsx";
-import { destination, useNav, type DestId } from "./destinations.tsx";
+import { destination, useNav, NAVIGATE_EVENT, type DestId } from "./destinations.tsx";
+import { useReminderAlerts } from "./reminderAlerts.ts";
+import { setDone } from "./components/Reminders.tsx";
+import { CourseChip } from "./components/CourseTitle.tsx";
 
 type Tab = DestId | "more";
 
@@ -50,7 +53,18 @@ function Shell() {
   const [holding, setHolding] = useState<DestId | null>(null);
   const press = useLongPress(setHolding);
 
+  const alerts = useReminderAlerts();
+
+  // Screens can ask to open another screen (see navigateTo in destinations.tsx).
+  useEffect(() => {
+    const onNavigate = (e: Event) => setTab((e as CustomEvent<DestId>).detail);
+    window.addEventListener(NAVIGATE_EVENT, onNavigate);
+    return () => window.removeEventListener(NAVIGATE_EVENT, onNavigate);
+  }, []);
+
   const tabIds: Tab[] = [...nav, "more"];
+  // A screen opened from More, or by a link, is not in the nav: light up "More".
+  const activeTab: Tab = tab === "more" || nav.includes(tab) ? tab : "more";
   const icon = (id: Tab) => (id === "more" ? "moreHorizontal" : destination(id).icon);
   const label = (id: Tab) => t(id === "more" ? "nav.more" : destination(id).navLabel);
   const Screen = tab === "more" ? null : destination(tab).Screen;
@@ -100,9 +114,9 @@ function Shell() {
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
               style={{
                 ...noCallout,
-                backgroundColor: tab === id ? "var(--accent-light)" : "transparent",
-                color: tab === id ? "var(--accent-text)" : "var(--text-secondary)",
-                boxShadow: tab === id ? "inset 3px 0 0 var(--accent-2, var(--accent))" : "none",
+                backgroundColor: activeTab === id ? "var(--accent-light)" : "transparent",
+                color: activeTab === id ? "var(--accent-text)" : "var(--text-secondary)",
+                boxShadow: activeTab === id ? "inset 3px 0 0 var(--accent-2, var(--accent))" : "none",
               }}
             >
               <Icon name={icon(id)} size={20} />
@@ -164,13 +178,13 @@ function Shell() {
               className="relative flex-1 min-w-0 flex flex-col items-center py-2 text-xs gap-0.5 min-h-12 justify-center font-medium transition-colors"
               style={{
                 ...noCallout,
-                color: tab === id ? "var(--accent-text)" : "var(--text-tertiary)",
+                color: activeTab === id ? "var(--accent-text)" : "var(--text-tertiary)",
               }}
             >
               <Icon name={icon(id)} size={20} />
               {/* Taller line box: truncate clips Thai tone marks stacked above a vowel (นี้) at the default height. */}
               <span className="max-w-full truncate px-0.5 leading-[1.6]">{label(id)}</span>
-              {tab === id && (
+              {activeTab === id && (
                 <span
                   className="absolute top-0 w-8 h-1 rounded-full"
                   style={{ backgroundColor: "var(--accent-2, var(--accent))" }}
@@ -180,6 +194,44 @@ function Shell() {
           ))}
         </nav>
       </div>
+
+      {/* A reminder or timed to-do has just come due */}
+      {alerts.banners.length > 0 && (
+        <div
+          className="fixed inset-x-0 z-40 px-3 space-y-2 pointer-events-none"
+          style={{ top: "calc(0.75rem + env(safe-area-inset-top))" }}
+        >
+          {alerts.banners.map((o) => (
+            <div
+              key={`${o.id}-${o.on}`}
+              role="alert"
+              className="pointer-events-auto mx-auto max-w-md rounded-2xl border p-3 flex items-start gap-3 animate-slide-up"
+              style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--accent-text)", boxShadow: "var(--shadow-lg)" }}
+            >
+              <Icon name="bell" size={20} style={{ color: "var(--accent-2, var(--accent-text))", marginTop: 2 }} />
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold" style={{ color: "var(--text-primary)" }}>{o.title}</p>
+                <p className="text-xs flex flex-wrap items-center gap-2" style={{ color: "var(--text-tertiary)" }}>
+                  {o.time}
+                  {o.course_code && <CourseChip code={o.course_code} />}
+                </p>
+                <div className="flex gap-2 mt-2">
+                  {o.kind !== "event" && <button
+                    onClick={() => { setDone(o.id, o.on, true); alerts.dismiss(o); }}
+                    className="rounded-lg px-3 min-h-11 text-sm font-semibold"
+                    style={{ backgroundColor: "var(--accent)", color: "#fff" }}
+                  >
+                    {t("rem.markDone")}
+                  </button>}
+                  <button onClick={() => alerts.dismiss(o)} className="px-3 min-h-11 text-sm" style={{ color: "var(--text-secondary)" }}>
+                    {t("uni.close")}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Press-and-hold on a nav item: offer to move it back to More */}
       {holding && (

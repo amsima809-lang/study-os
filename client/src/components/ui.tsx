@@ -102,6 +102,24 @@ export function ThemeToggle() {
 
 /* ── UI primitives ── */
 
+/**
+ * THE button for a screen's main "add" action. Every screen uses this one, so
+ * the action looks the same and is found in the same way everywhere.
+ */
+export function AddButton({ label, onClick, expanded }: { label: string; onClick: () => void; expanded?: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-expanded={expanded}
+      className="shrink-0 inline-flex items-center gap-1.5 rounded-xl pl-3 pr-4 min-h-11 text-sm font-semibold transition-all active:scale-[0.98]"
+      style={{ backgroundColor: "var(--accent)", color: "#fff" }}
+    >
+      <Icon name={expanded ? "x" : "plus"} size={18} />
+      {label}
+    </button>
+  );
+}
+
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
     <div

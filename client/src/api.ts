@@ -23,8 +23,31 @@ export type TodayData = {
     daysLeft: number;
   } | null;
   dueFlashcards: number;
+  reminders: ReminderOccurrence[];
+  chosenCourses: number;
+  canChooseCourses: boolean;
   studyTargets: { weeklyTarget: number; totalPoints: number; courses: StudyTarget[] };
 };
+
+export type ReminderRule = {
+  id: number;
+  kind: "reminder" | "todo" | "event";
+  title: string;
+  note: string | null;
+  course_code: string | null;
+  course_name_th: string | null;
+  course_name_en: string | null;
+  date: string | null;
+  time: string | null;
+  /** Events only: when it ends. */
+  end_time: string | null;
+  repeat: "none" | "daily" | "weekdays" | "weekly" | "monthly";
+  repeat_until: string | null;
+};
+/** A rule on one day. `on` is "" for a to-do with no date. */
+export type ReminderOccurrence = ReminderRule & { on: string; done: boolean; overdue: boolean };
+/** A rule in the manage list: `next` is the next day it falls on. */
+export type ReminderListItem = ReminderRule & { next: string | null; finished: boolean; overdue: boolean };
 
 export type ClassSession = {
   course_code: string;
@@ -59,7 +82,7 @@ export type ExamsData = {
 
 // ---------- Calendar ----------
 export type CalEvent = {
-  type: "class" | "exam" | "task" | "etesting" | "custom";
+  type: "class" | "exam" | "task" | "etesting" | "reminder" | "todo" | "event";
   course_code: string;
   name_th: string;
   name_en: string | null;
@@ -73,6 +96,9 @@ export type CalEvent = {
   done?: boolean;
   note?: string | null;
   event_id?: number;
+  /** Set for reminders and to-dos: the rule this occurrence comes from. */
+  reminder_id?: number;
+  repeat?: string;
 };
 
 export type CalendarData = {

@@ -1,8 +1,8 @@
 # UX review plan
 
-Status: planned, not started. Run it after the next round of features is in (agreed 2026-11-14).
+Status: first pass done 2026-11-14 (automated audit at six sizes, a look by eye, and code checks). Findings and the priority order are in `UX_REVIEW_FINDINGS.md`. Still to do: real devices, the on-screen keyboard, Apple Pencil, screen readers, speed on a mid-range phone, and watching students.
 
-Scope: every screen, on three device classes: phone, tablet and desktop.
+Scope: every screen, on three device classes (phone, tablet and desktop), each in portrait and landscape.
 
 ## Before the review
 
@@ -14,6 +14,7 @@ Two items are architecture decisions, not review findings. Decide them first so 
 ## How to run it
 
 - **Devices:** a small iPhone (SE size), a mid-range Android phone, an iPad with Apple Pencil, and a desktop browser.
+- **Orientations:** every device in portrait and in landscape, including a desktop window that is taller than it is wide.
 - **Real tasks:** walk through whole jobs, count taps, and note where people hesitate. Examples: photograph lecture slides and turn them into a quiz; find tomorrow's exam room; mark a course as passed; write a handwritten note and find it again a week later.
 - **Real students:** after the checklist pass, watch two or three students use it. That finds what a checklist cannot.
 
@@ -25,6 +26,9 @@ Two items are architecture decisions, not review findings. Decide them first so 
 - [ ] Collapse and expand controls work properly
 - [ ] Rotation, iPad split screen and Slide Over, notches and home indicators
 - [ ] Returning to the app after hours away lands somewhere sensible
+- [ ] The main action on each screen is easy to find (reported in testing: the "add event" control was hard to spot)
+- [ ] One way to do each thing per screen (reported: two different ways to add to the calendar on the same screen)
+- [ ] Desktop: clicking a day, or an hour in the week and day views, starts adding something there
 
 ### Touch, gestures and stylus
 - [ ] Gestures and multi-touch gestures are used where they help

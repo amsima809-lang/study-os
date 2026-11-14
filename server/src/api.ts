@@ -4,6 +4,7 @@
  */
 import { Router } from "express";
 import type { DB } from "./db.js";
+import { itemsForToday, occurrencesInRange } from "./reminders.js";
 
 // ---------- date helpers (Asia/Bangkok) ----------
 const TZ = "Asia/Bangkok";
@@ -150,9 +151,31 @@ export function programFilter(db: DB, userId: string, column: string): { sql: st
   };
 }
 
+/** The courses a student has chosen for a term (plan_items), in code order. */
+export function termCourses(db: DB, userId: string, termId: string): string[] {
+  return (
+    db
+      .prepare("SELECT DISTINCT course_code FROM plan_items WHERE user_id = ? AND term_id = ? AND course_code IS NOT NULL ORDER BY course_code")
+      .all(userId, termId) as { course_code: string }[]
+  ).map((r) => r.course_code);
+}
+
+/**
+ * SQL filter for "my courses this term". Once a student has chosen their
+ * courses for the term, only those are kept. Until then it falls back to every
+ * course in their program, so the timetable is never empty before they choose.
+ */
+export function myCoursesFilter(db: DB, userId: string, termId: string, column: string): { sql: string; params: string[] } {
+  if (termCourses(db, userId, termId).length === 0) return programFilter(db, userId, column);
+  return {
+    sql: ` AND ${column} IN (SELECT course_code FROM plan_items WHERE user_id = ? AND term_id = ? AND course_code IS NOT NULL)`,
+    params: [userId, termId],
+  };
+}
+
 export function weekClasses(db: DB, termId: string, userId: string): ClassRow[] {
   if (!hasCatalog(db, userId)) return [];
-  const mine = programFilter(db, userId, "cs.course_code");
+  const mine = myCoursesFilter(db, userId, termId, "cs.course_code");
   return db
     .prepare(
       `SELECT cs.course_code, c.name_th, c.name_en, cs.weekday, cs.start_time, cs.end_time, cs.room
@@ -176,7 +199,7 @@ type ExamRow = {
 
 export function termExams(db: DB, termId: string, userId: string): ExamRow[] {
   if (!hasCatalog(db, userId)) return [];
-  const mine = programFilter(db, userId, "e.course_code");
+  const mine = myCoursesFilter(db, userId, termId, "e.course_code");
   return db
     .prepare(
       `SELECT e.course_code, c.name_th, c.name_en, e.datetime_start, e.datetime_end, e.slot, e.location
@@ -259,8 +282,62 @@ export function createApiRouter(db: DB): Router {
           }
         : null,
       dueFlashcards: dueFlashcardCount(db, today, userId),
+      reminders: itemsForToday(db, userId, today),
+      // How many courses the student chose for this term (0 = not chosen: the whole program shows).
+      chosenCourses: termCourses(db, userId, term).length,
+      canChooseCourses: hasCatalog(db, userId),
       studyTargets: studyTargets(db, term, userId),
     });
+  });
+
+  // --- the student's courses for the current term ---
+  // `options` are the courses of their program that have a class or an exam
+  // this term; `chosen` is what they picked (empty = not chosen yet).
+  router.get("/term-courses", (req, res) => {
+    const userId = req.user!.id;
+    const term = currentTermId(db);
+    if (!hasCatalog(db, userId)) return res.json({ term, chosen: [], options: [] });
+    const mine = programFilter(db, userId, "c.code");
+    const options = db
+      .prepare(
+        `SELECT c.code, c.name_th, c.name_en, COALESCE(pc.category, c.category) AS category,
+                (SELECT GROUP_CONCAT(cs.weekday || ' ' || cs.start_time || '-' || cs.end_time, ';')
+                   FROM class_sessions cs WHERE cs.course_code = c.code AND cs.term_id = @term) AS classes
+         FROM courses c
+         LEFT JOIN program_courses pc ON pc.course_code = c.code
+              AND pc.program_id = (SELECT program_id FROM user_profiles WHERE user_id = @user)
+         WHERE (EXISTS (SELECT 1 FROM class_sessions cs WHERE cs.course_code = c.code AND cs.term_id = @term)
+             OR EXISTS (SELECT 1 FROM exams e WHERE e.course_code = c.code AND e.term_id = @term))
+           ${mine.sql.replace("?", "@program")}
+         ORDER BY c.code`,
+      )
+      .all({ term, user: userId, program: mine.params[0] ?? null });
+    res.json({ term, chosen: termCourses(db, userId, term), options });
+  });
+
+  // Replace the student's courses for the current term. Placeholders in the plan are kept.
+  router.put("/term-courses", (req, res) => {
+    const userId = req.user!.id;
+    const term = currentTermId(db);
+    const codes = req.body?.codes;
+    if (!Array.isArray(codes) || codes.length > 40 || !codes.every((c) => typeof c === "string" && /^[A-Z]{3}\d{4}$/.test(c))) {
+      return res.status(400).json({ error: "รายการวิชาไม่ถูกต้อง", code: "BAD_COURSES" });
+    }
+    const wanted = [...new Set(codes as string[])];
+    const known = new Set(
+      (db.prepare(`SELECT code FROM courses WHERE code IN (${wanted.map(() => "?").join(",") || "''"})`).all(...wanted) as { code: string }[]).map((r) => r.code),
+    );
+    if (wanted.some((c) => !known.has(c))) return res.status(400).json({ error: "ไม่พบบางวิชา", code: "BAD_COURSES" });
+    if (!db.prepare("SELECT 1 FROM plan_terms WHERE term_id = ?").get(term)) {
+      return res.status(400).json({ error: "ยังไม่มีข้อมูลภาคเรียนนี้", code: "NO_TERM" });
+    }
+    const tx = db.transaction(() => {
+      db.prepare("DELETE FROM plan_items WHERE user_id = ? AND term_id = ? AND course_code IS NOT NULL").run(userId, term);
+      const ins = db.prepare("INSERT INTO plan_items (user_id, term_id, course_code) VALUES (?, ?, ?)");
+      for (const c of wanted) ins.run(userId, term, c);
+    });
+    tx();
+    res.json({ term, chosen: termCourses(db, userId, term) });
   });
 
   router.get("/schedule/week", (req, res) => {
@@ -289,7 +366,7 @@ export function createApiRouter(db: DB): Router {
     const firstExamDate = exams.length > 0 ? exams[0].datetime_start.slice(0, 10) : null;
 
     type CalEvent = {
-      type: "class" | "exam" | "task" | "etesting" | "custom";
+      type: "class" | "exam" | "task" | "etesting" | "reminder" | "todo" | "event";
       course_code: string;
       name_th: string;
       name_en: string | null;
@@ -303,6 +380,8 @@ export function createApiRouter(db: DB): Router {
       done?: boolean;
       note?: string | null;
       event_id?: number;
+      reminder_id?: number;
+      repeat?: string;
     };
 
     const events: Record<string, CalEvent[]> = {};
@@ -410,24 +489,28 @@ export function createApiRouter(db: DB): Router {
       }
     }
 
-    // custom user events
-    const customEvts = db
-      .prepare("SELECT * FROM custom_events WHERE user_id = ? AND date >= ? AND date <= ? ORDER BY date, start_time")
-      .all(userId, firstDay, lastDay) as Array<{
-      id: number; title: string; date: string; start_time: string | null;
-      end_time: string | null; note: string | null; color: string;
-    }>;
-    for (const ce of customEvts) {
-      push(ce.date, {
-        type: "custom",
-        course_code: "",
-        name_th: ce.title,
-        name_en: null,
-        start_time: ce.start_time ?? undefined,
-        end_time: ce.end_time ?? undefined,
-        note: ce.note,
-        event_id: ce.id,
-      });
+    // the student's reminders, to-dos and events (repeating ones are expanded per day)
+    for (const [date, list] of Object.entries(occurrencesInRange(db, userId, firstDay, lastDay))) {
+      for (const o of list) {
+        push(date, {
+          type: o.kind,
+          course_code: "",
+          name_th: o.title,
+          name_en: null,
+          start_time: o.time ?? undefined,
+          end_time: o.end_time ?? undefined,
+          note: o.note,
+          description: o.course_code ?? undefined,
+          done: o.done,
+          reminder_id: o.id,
+          repeat: o.repeat,
+        });
+      }
+    }
+
+    // Within a day: earliest first; things with no time go last.
+    for (const list of Object.values(events)) {
+      list.sort((a, b) => (a.start_time ?? "99:99").localeCompare(b.start_time ?? "99:99"));
     }
 
     res.json({ month, term, today: bangkokToday(), events });
@@ -452,41 +535,6 @@ export function createApiRouter(db: DB): Router {
   });
 
   // ── Custom events CRUD ──
-  router.post("/custom-events", (req, res) => {
-    const userId = req.user!.id;
-    const { title, date, start_time, end_time, note, color } = req.body as {
-      title: string; date: string; start_time?: string; end_time?: string; note?: string; color?: string;
-    };
-    if (!title || !date) return res.status(400).json({ error: "title and date required" });
-    const r = db.prepare(
-      "INSERT INTO custom_events (user_id, title, date, start_time, end_time, note, color) VALUES (?,?,?,?,?,?,?)",
-    ).run(userId, title, date, start_time ?? null, end_time ?? null, note ?? null, color ?? "#6366f1");
-    res.json({ id: r.lastInsertRowid });
-  });
-
-  router.put("/custom-events/:id", (req, res) => {
-    const userId = req.user!.id;
-    const id = Number(req.params.id);
-    const { title, date, start_time, end_time, note, color } = req.body as {
-      title?: string; date?: string; start_time?: string; end_time?: string; note?: string; color?: string;
-    };
-    db.prepare(
-      `UPDATE custom_events SET
-         title = COALESCE(?, title), date = COALESCE(?, date),
-         start_time = COALESCE(?, start_time), end_time = COALESCE(?, end_time),
-         note = COALESCE(?, note), color = COALESCE(?, color)
-       WHERE id = ? AND user_id = ?`,
-    ).run(title ?? null, date ?? null, start_time ?? null, end_time ?? null, note ?? null, color ?? null, id, userId);
-    res.json({ ok: true });
-  });
-
-  router.delete("/custom-events/:id", (req, res) => {
-    const userId = req.user!.id;
-    const id = Number(req.params.id);
-    db.prepare("DELETE FROM custom_events WHERE id = ? AND user_id = ?").run(id, userId);
-    res.json({ ok: true });
-  });
-
   // ── Fee structure + cost calculator ──
   router.get("/fees", (_req, res) => {
     const fees = db.prepare("SELECT * FROM fee_structure ORDER BY category, campus").all();

@@ -118,6 +118,8 @@ const paths: Record<string, string> = {
     "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",
   arrowLeft: "M19 12H5m7-7l-7 7 7 7",
   plus: "M12 5v14m-7-7h14",
+  bell: "M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0",
+  repeat: "M17 1l4 4-4 4M3 11V9a4 4 0 014-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 01-4 4H3",
   x: "M18 6L6 18M6 6l12 12",
   chevronLeft: "M15 18l-6-6 6-6",
   chevronRight: "M9 18l6-6-6-6",

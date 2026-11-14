@@ -11,7 +11,7 @@ import {
   type ApiError,
 } from "../api.ts";
 import { formatDate } from "../format.ts";
-import { Card, ErrorBox, Loading } from "../components/ui.tsx";
+import { AddButton, Card, ErrorBox, Loading } from "../components/ui.tsx";
 import { Markdown } from "../components/Markdown.tsx";
 import Icon from "../components/Icon.tsx";
 import { CourseTitle } from "../components/CourseTitle.tsx";
@@ -51,16 +51,13 @@ export default function Notes() {
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{t("notes.title")}</h1>
         {view.screen !== "add" && (
-          <button
+          <AddButton
+            label={t("notes.addShort")}
             onClick={() => {
               setResult(null);
               setView({ screen: "add" });
             }}
-            className="text-sm font-medium rounded-full px-4 py-1.5"
-            style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
-          >
-            {t("notes.add")}
-          </button>
+          />
         )}
       </div>
 

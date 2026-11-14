@@ -297,3 +297,31 @@ AI ช่วยเรา "ฝึก" ไม่ใช่ "ทำแทน" — �
 - **UI:** `Library.tsx` — `LectureLinks` (Watch / Read per lecture, import, how-to) and `TranscriptView` (timestamps, search, delete with confirm).
 - **Tests:** `server/test/lectures.test.ts` runs the real collector file in a `vm` sandbox against fake pages shaped like the RU site, and covers import rules.
 - **Checked by hand 2026-11-14:** the collector logic read a full course from the live site (10 lectures, 483 KB, 9 s). The bookmark itself could not be tried from `http://localhost` (the HTTPS lecture page refuses an HTTP script); it needs the deployed HTTPS app.
+
+## Phase 32 — Reminders and to-dos
+- **Data:** `reminders` holds a rule (kind `reminder` or `todo`, title, note, optional `course_code`, first `date`, optional `time` in Asia/Bangkok, `repeat`, optional `repeat_until`). `reminder_done (reminder_id, date)` records one ticked occurrence; the date is `''` for a to-do with no date. A reminder, and anything that repeats, must have a date.
+- **Recurrence** (`server/src/reminders.ts`): `occursOn(rule, date)` and `occurrencesBetween(rule, from, to)` work out the days; nothing is materialised. Monthly on the 29th to 31st falls on the last day of shorter months.
+- **Lists:** `itemsForToday()` returns today's occurrences, open to-dos with no date, and one-off to-dos that are overdue (overdue first, then by time, done last). `GET /api/reminders` returns every rule with `next` (the next unticked day), `finished` and `overdue`, sorted soonest first, plus `todayItems`.
+- **Calendar and Today:** `/api/calendar` adds `reminder` / `todo` events per day (and now sorts each day by start time); `/api/today` adds `reminders`.
+- **Client:** `components/Reminders.tsx` (`ReminderRow`, `ReminderForm`, `setDone`, and the `studyos:reminders-changed` event that keeps the Today card, calendar and manage screen in step), `screens/Reminders.tsx`, `TodayTodos` in `screens/Today.tsx`.
+- **Alerts:** `client/src/reminderAlerts.ts` polls once a minute while the app is open; an item that came due in the last five minutes gets an in-app banner and, if the student allowed it, a device notification (through the service worker when there is one). Nothing is sent when the app is closed: that needs web push (VAPID keys, a push subscription per device, a server-side scheduler), which is not built.
+- **Course chips:** `CourseChip` renders a course code as a chip; `CourseTitle` uses it, so codes are chips across the app.
+
+## Phase 33 — Hour-by-hour week and day views
+- `Calendar.tsx` has three views. Month is the original grid. Week and Day render `TimeGrid` around an `anchor` date; the arrows step by month, week or day, and "Today" jumps back. The chosen view is remembered in localStorage (`studyos.calendarView`).
+- Data still comes from `/api/calendar?month=`. Fetched months are kept in a small cache so a week that crosses two months has both; the cache is cleared when reminders change.
+- `client/src/calendarLayout.ts` (`layoutDay`) is pure: timed events are grouped into clusters of overlapping events and each takes the first free lane; with a lane limit, the rest of a cluster is reported as overflow. A timed event with no end (a reminder) is half an hour tall. Events with no time go to the all-day row.
+- `TimeGrid.tsx` draws 07:00 to 20:00 at least (wider if something falls outside), a red "now" line on today (Bangkok time), and scrolls to the current hour. Week columns on a phone show one lane and a "+N" badge that opens the day; the day view shows every lane at 96px minimum and scrolls sideways. Reminders and to-dos can be ticked in the day view.
+
+## Phase 34 — My courses this term
+- **Problem:** classes and exams were filtered by program only. `plan_items` (a course per student per term) already existed, but only the legacy account had rows, so every other student saw all of their major's classes (17 at once on some mornings).
+- **Rule:** `myCoursesFilter(db, userId, termId, column)` in `server/src/api.ts`. If the student has course rows in `plan_items` for the term, only those courses are kept; otherwise it falls back to `programFilter` (the whole program), so nothing is empty before they choose. Placeholder rows (no course code) and other terms are ignored.
+- **Used by:** `weekClasses`, `termExams` (so Today, the calendar, Schedule and Exams), the study plan's course list, and `/api/mock/available`. Lecture links and the course catalogue stay program-wide.
+- **API:** `GET /api/term-courses` returns the current term, the chosen codes, and the options (courses of the student's program that have a class or exam this term, with their class times). `PUT /api/term-courses { codes }` replaces the student's course rows for the term in one transaction and keeps placeholders.
+- **UI:** `components/TermCourses.tsx` is a sheet with search, a "chosen only" filter and courses grouped by category. Today shows a prompt card until courses are chosen, then an "N courses this term" link on the classes card. Choosing also feeds the existing study targets, which read the same table.
+
+## Phase 35 — One way to add to the calendar
+- **One model.** `reminders.kind` is now `reminder`, `todo` or `event`. An event has an optional `end_time`, nothing to tick, and is never overdue; a one-off event counts as finished once its day has passed. Migration `028_events_in_reminders.sql` rebuilds the table (SQLite cannot alter a CHECK constraint) and copies every `custom_events` row in as an event. The old table stays as an unused backup; its routes are removed.
+- **One form.** `ReminderForm` handles all three kinds; `ReminderSheet` shows it over any screen and loads an existing item by id (`GET /api/reminders/:id`).
+- **Ways in, all to the same sheet:** the calendar's Add button; a click on an empty spot in the week or day grid (`TimeGrid` `onAdd`, snapped to the half hour, prefilled as a one-hour event); a double-click on a day in the month grid; the "add on this day" row under a selected day. A tap on one of the student's own items opens it for editing (`onOpen`).
+- **One button.** `AddButton` (`components/ui.tsx`) is used by Calendar, Reminders, Notes and Library.

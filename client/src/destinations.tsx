@@ -16,10 +16,11 @@ import Library from "./screens/Library.tsx";
 import Weakness from "./screens/Weakness.tsx";
 import StudyPlan from "./screens/StudyPlan.tsx";
 import Costs from "./screens/Costs.tsx";
+import Reminders from "./screens/Reminders.tsx";
 
 export type DestId =
   | "today" | "notes" | "quiz" | "review"
-  | "studyplan" | "library" | "schedule" | "stats" | "planner" | "mock" | "weakness" | "costs";
+  | "reminders" | "studyplan" | "library" | "schedule" | "stats" | "planner" | "mock" | "weakness" | "costs";
 
 export type Destination = {
   id: DestId;
@@ -36,6 +37,7 @@ export const DESTINATIONS: Destination[] = [
   { id: "notes", icon: "notebook", navLabel: "nav.notes", label: "nav.notes", Screen: Notes },
   { id: "quiz", icon: "target", navLabel: "nav.quiz", label: "nav.quiz", Screen: Quiz },
   { id: "review", icon: "refresh", navLabel: "nav.review", label: "nav.review", Screen: Review },
+  { id: "reminders", icon: "bell", navLabel: "nav.reminders", label: "rem.screen", Screen: Reminders },
   { id: "studyplan", icon: "calendarCheck", navLabel: "nav.studyplan", label: "more.studyplan", Screen: StudyPlan },
   { id: "library", icon: "library", navLabel: "nav.library", label: "more.library", Screen: Library },
   { id: "schedule", icon: "calendarRange", navLabel: "nav.schedule", label: "more.schedule", Screen: Schedule },
@@ -47,6 +49,12 @@ export const DESTINATIONS: Destination[] = [
 ];
 
 export const destination = (id: DestId) => DESTINATIONS.find((d) => d.id === id)!;
+
+/** Ask the app shell to open a screen, from anywhere (e.g. a "see all" link). */
+export const NAVIGATE_EVENT = "studyos:navigate";
+export function navigateTo(id: DestId) {
+  window.dispatchEvent(new CustomEvent<DestId>(NAVIGATE_EVENT, { detail: id }));
+}
 
 const DEFAULT_NAV: DestId[] = ["today", "notes", "quiz", "review"];
 /** The phone nav bar fits this many screens plus the "More" button. */

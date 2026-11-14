@@ -14,7 +14,8 @@ import {
   type ApiError,
 } from "../api.ts";
 import { useSubscription, handleSubscriptionError } from "../components/SubscriptionGate.tsx";
-import { Card, ErrorBox, Loading } from "../components/ui.tsx";
+import { AddButton, Card, ErrorBox, Loading } from "../components/ui.tsx";
+import { CourseChip } from "../components/CourseTitle.tsx";
 
 type View = "list" | "detail" | "pages" | "transcript";
 
@@ -168,7 +169,8 @@ function LectureLinks({ onRead }: { onRead: (t: OpenTranscript) => void }) {
               >
                 <span className="flex-1 min-w-0">
                   <span className="block text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-                    ({c.code}) {lang === "en" && c.name_en ? c.name_en : c.name_th}
+                    <CourseChip code={c.code} className="mr-1.5" />
+                    {lang === "en" && c.name_en ? c.name_en : c.name_th}
                   </span>
                   <span className="block text-xs" style={{ color: "var(--text-tertiary)" }}>
                     {t("lib.lectureCount", { n: c.lectures.length })}
@@ -298,7 +300,8 @@ function TranscriptView({ which, onDeleted }: { which: OpenTranscript; onDeleted
   return (
     <div className="space-y-3">
       <h1 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>
-        ({which.code}) {t("lib.lectureNo", { n: which.no })}
+        <CourseChip code={which.code} className="mr-2" />
+        {t("lib.lectureNo", { n: which.no })}
       </h1>
       <input
         type="search"
@@ -376,13 +379,7 @@ function MaterialList({
     <>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{t("lib.title")}</h1>
-        <button
-          onClick={() => setShowUpload(!showUpload)}
-          className="w-10 h-10 rounded-full text-xl flex items-center justify-center"
-          style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
-        >
-          +
-        </button>
+        <AddButton label={t("lib.upload")} expanded={showUpload} onClick={() => setShowUpload(!showUpload)} />
       </div>
 
       {error && <ErrorBox>{error}</ErrorBox>}
