@@ -143,7 +143,7 @@ Found and fixed in this pass:
 
 Needs a device, a person or a decision, so not done here:
 - **Real devices:** phones and tablets, the on-screen keyboard (7.1), Apple Pencil with the new finger gestures (8.2, 8.3), screen readers, speed on a mid-range Android phone, and watching students use it.
-- **Decisions:** offline use with sync (6.2 is only a notice and clear errors); notifications when the app is closed (web push); the native wrapper with its in-app browser and share-from-other-apps (web app only for now); what AI may do with a lecture transcript.
+- **Decisions:** offline use with sync (6.2 is only a notice and clear errors); the native wrapper with its in-app browser (web app only for now); what AI may do with a lecture transcript. (Notifications when the app is closed were built in Phase 45; sharing from other apps in Phases 43 and 44.)
 - **Data:** 60 course names that need the 2569 admission guide.
 - **Not verified:** the lecture-collector bookmark on a deployed HTTPS site.
 

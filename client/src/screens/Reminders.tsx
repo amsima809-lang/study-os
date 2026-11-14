@@ -5,6 +5,8 @@ import { AddButton, Card, ErrorBox, Loading } from "../components/ui.tsx";
 import Icon from "../components/Icon.tsx";
 import { ReminderForm, ReminderRow, setDone, useRemindersChanged } from "../components/Reminders.tsx";
 import { notificationState, askForNotifications } from "../reminderAlerts.ts";
+import { disablePush, enablePush, pushState, sendTestPush, type PushState } from "../push.ts";
+import type { ApiError } from "../api.ts";
 
 type Data = { today: string; items: ReminderListItem[]; todayItems: ReminderOccurrence[] };
 type Tab = "today" | "upcoming" | "all" | "done";
@@ -18,6 +20,35 @@ export default function Reminders() {
   const [tab, setTab] = useState<Tab>("today");
   const [editing, setEditing] = useState<number | "new" | null>(null);
   const [notify, setNotify] = useState(notificationState());
+  // Notifications when the app is closed (web push), for this device.
+  const [push, setPush] = useState<PushState | null>(null);
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushNote, setPushNote] = useState("");
+  useEffect(() => { void pushState().then(setPush); }, []);
+  async function changePush(action: () => Promise<PushState>) {
+    setPushBusy(true);
+    setPushNote("");
+    try {
+      setPush(await action());
+      setNotify(notificationState());
+    } catch (e) {
+      setPushNote((e as ApiError)?.error ?? t("rem.push.failed"));
+    } finally {
+      setPushBusy(false);
+    }
+  }
+  async function testPush() {
+    setPushBusy(true);
+    setPushNote("");
+    try {
+      const r = await sendTestPush();
+      setPushNote(r.sent > 0 ? t("rem.push.testSent", { n: r.sent }) : t("rem.push.testNone"));
+    } catch (e) {
+      setPushNote((e as ApiError)?.error ?? t("rem.push.failed"));
+    } finally {
+      setPushBusy(false);
+    }
+  }
 
   const load = useCallback(
     () => { setError(false); return getJSON<Data>("/api/reminders").then(setData).catch(() => setError(true)); },
@@ -132,6 +163,45 @@ export default function Reminders() {
               >
                 {t("rem.notify.turnOn")}
               </button>
+            )}
+
+            {/* When StudyOS is closed: a push from the server, per device */}
+            {push && notify !== "blocked" && (
+              <div className="pt-2 mt-1 border-t space-y-2" style={{ borderColor: "var(--border-light)" }}>
+                <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{t(`rem.push.${push}`)}</p>
+                {push === "off" && (
+                  <button
+                    onClick={() => changePush(enablePush)}
+                    disabled={pushBusy}
+                    className="rounded-xl px-4 min-h-11 text-sm font-semibold disabled:opacity-40"
+                    style={{ backgroundColor: "var(--accent)", color: "#fff" }}
+                  >
+                    {/* The first time, the browser can take half a minute to register with its push service. */}
+                    {t(pushBusy ? "rem.push.working" : "rem.push.turnOn")}
+                  </button>
+                )}
+                {push === "on" && (
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={testPush}
+                      disabled={pushBusy}
+                      className="rounded-xl border px-4 min-h-11 text-sm font-semibold disabled:opacity-40"
+                      style={{ borderColor: "var(--border)", color: "var(--text-primary)" }}
+                    >
+                      {t("rem.push.test")}
+                    </button>
+                    <button
+                      onClick={() => changePush(disablePush)}
+                      disabled={pushBusy}
+                      className="px-3 min-h-11 text-sm disabled:opacity-40"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
+                      {t("rem.push.turnOff")}
+                    </button>
+                  </div>
+                )}
+                {pushNote && <p role="status" className="text-xs" style={{ color: "var(--text-secondary)" }}>{pushNote}</p>}
+              </div>
             )}
           </div>
         </div>

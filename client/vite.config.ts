@@ -42,7 +42,9 @@ export default defineConfig({
         ],
       },
       workbox: {
-        importScripts: ["share-sw.js"], // receives "Share → StudyOS" (see share_target above)
+        // Extra code for the generated worker: receiving "Share → StudyOS" (see
+        // share_target above), and showing notifications when the app is closed.
+        importScripts: ["share-sw.js", "push-sw.js"],
         navigateFallback: "/index.html",
         // Show last-known data offline for the Today and Review screens.
         runtimeCaching: [

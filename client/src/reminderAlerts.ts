@@ -5,8 +5,9 @@
  * for items whose time has just arrived and tells the student: always with an
  * in-app banner, and with a device notification too if they allowed it.
  *
- * LIMIT: nothing here runs when the app is closed. Reaching a closed app needs
- * web push (a server-side sender plus a push subscription), which is not built.
+ * Nothing here runs when the app is closed: that is the job of web push —
+ * client/src/push.ts, client/public/push-sw.js and server/src/push.ts. Both
+ * use the same notification tag, so an item is never shown twice.
  */
 import { useEffect, useRef, useState } from "react";
 import { getJSON, type ReminderOccurrence } from "./api.ts";

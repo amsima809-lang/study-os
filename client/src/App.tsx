@@ -4,6 +4,7 @@ import { getJSON, SIGNED_OUT } from "./api.ts";
 import { setDraftOwner } from "./noteDraft.ts";
 import { ConfirmDialog, LayoutContext, ThemeProvider, ThemeToggle, useOnline, type Layout } from "./components/ui.tsx";
 import { unsavedReason } from "./unsaved.ts";
+import { syncPush } from "./push.ts";
 import { addSharedToDraft, offerUpload, requestNoteForm, sortShared, takeShared, takeSharedFiles } from "./shareIntake.ts";
 import { SubscriptionProvider } from "./components/SubscriptionGate.tsx";
 import Icon from "./components/Icon.tsx";
@@ -168,6 +169,9 @@ function Shell() {
   const icon = (id: Tab) => (id === "more" ? "moreHorizontal" : destination(id).icon);
   const label = (id: Tab) => t(id === "more" ? "nav.more" : destination(id).navLabel);
   const Screen = tab === "more" ? null : destination(tab).Screen;
+
+  // Keep this device's closed-app notifications tied to the account signed in now.
+  useEffect(() => { void syncPush(); }, []);
 
   // Something was shared into StudyOS from another app: start a note with it.
   useEffect(() => {

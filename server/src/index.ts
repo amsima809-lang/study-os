@@ -26,6 +26,7 @@ import { createMaterialsRouter } from "./materials.js";
 import { createStudyPlanRouter } from "./studyplan.js";
 import { createLecturesRouter } from "./lectures.js";
 import { createRemindersRouter } from "./reminders.js";
+import { createPushRouter, loadVapidKeys, startPushScheduler } from "./push.js";
 
 const app = express();
 const db = openDb(env.dbPath);
@@ -191,6 +192,11 @@ app.use("/api", createMaterialsRouter(db));
 app.use("/api", createStudyPlanRouter(db));
 app.use("/api", createLecturesRouter(db));
 app.use("/api", createRemindersRouter(db));
+
+// Notifications when the app is closed: routes for devices, and the half-minute check for due items.
+const vapidKeys = loadVapidKeys(db);
+app.use("/api", createPushRouter(db, vapidKeys));
+startPushScheduler(db, vapidKeys);
 
 // --- subscription ---
 app.get("/api/subscription", (req, res) => {
