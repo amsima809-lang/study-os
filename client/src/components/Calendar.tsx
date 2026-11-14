@@ -327,27 +327,23 @@ export default function Calendar() {
               onDoubleClick={() => { setSelected(date); setAnchor(date); setSheet({ date }); }}
               aria-label={[String(day), ...DOT_ORDER.filter((typ) => types.has(typ)).map((typ) => t(`cal.kind.${typ}`))].join(", ")}
               aria-pressed={isSel}
-              className="flex flex-col items-center py-1 rounded-xl transition-all relative min-h-11"
-              style={{
-                // White text needs the button shade (--accent), not the text shade.
-                background: isSel
-                  ? "var(--accent)"
-                  : isToday
-                    ? "var(--bg-surface-hover)"
-                    : "transparent",
-                color: isSel
-                  ? "#fff"
-                  : isToday
-                    ? "var(--accent-text)"
-                    : "var(--text-primary)",
-              }}
+              className="flex flex-col items-center py-1 rounded-xl relative min-h-11"
             >
-              <span className={`text-sm leading-6 ${isToday && !isSel ? "font-bold" : ""}`}>{day}</span>
+              {/* The highlight is a circle round the number, whatever the width of the column:
+                  the number sits in its centre, and the marks stay below it. */}
+              <span
+                className={`w-8 h-8 flex items-center justify-center rounded-full text-sm leading-none transition-colors ${isToday && !isSel ? "font-bold" : ""}`}
+                style={{
+                  // White text needs the button shade (--accent), not the text shade.
+                  background: isSel ? "var(--accent)" : isToday ? "var(--bg-surface-hover)" : "transparent",
+                  color: isSel ? "#fff" : isToday ? "var(--accent-text)" : "var(--text-primary)",
+                }}
+              >
+                {day}
+              </span>
               {/* Event dots */}
               <div className="flex items-center gap-0.5 h-2 mt-0.5">
-                {DOT_ORDER.map(
-                  (typ) => types.has(typ) && <DotMark key={typ} type={typ} color={isSel ? "rgba(255,255,255,0.85)" : DOT_COLORS[typ]} />,
-                )}
+                {DOT_ORDER.map((typ) => types.has(typ) && <DotMark key={typ} type={typ} color={DOT_COLORS[typ]} />)}
               </div>
             </button>
           );
