@@ -13,7 +13,7 @@ import { REMINDERS_CHANGED } from "./Reminders.tsx";
 import Icon from "./Icon.tsx";
 import { timeRange } from "../format.ts";
 
-type Option = { code: string; name_th: string; name_en: string | null; category: string; classes: string | null };
+type Option = { code: string; name_th: string; name_en: string | null; category: string; classes: string | null; note?: string | null };
 type Data = { term: string; chosen: string[]; options: Option[] };
 
 const CATEGORIES = ["GE", "CORE", "MAJOR_REQ", "MAJOR_ELEC", "FREE"];
@@ -165,6 +165,8 @@ export default function TermCoursesPicker({ onClose }: { onClose: () => void }) 
                             {lang === "en" && o.name_en ? o.name_en : o.name_th}
                           </span>
                           <span className="block text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>{when(o.classes)}</span>
+                          {/* The registrar's own note on who may register, as printed. */}
+                          {o.note && <span className="block text-xs mt-0.5 whitespace-pre-line" style={{ color: "var(--text-secondary)" }}>{o.note}</span>}
                         </span>
                       </button>
                     </li>

@@ -10,6 +10,7 @@
  */
 import { openDb, type DB } from "./db.js";
 import { env } from "./env.js";
+import { rebuildTermSchedule } from "./termSchedule.js";
 
 type Category = "GE" | "CORE" | "MAJOR_REQ" | "MAJOR_ELEC" | "FREE";
 
@@ -174,28 +175,6 @@ const PLACEHOLDERS: Array<{ label: string; term: string }> = [
   { label: "เลือกเสรี #2", term: "1/73" },
 ];
 
-// ---------- Class schedule 2/2569 ----------
-// Source: มร.30 (26 ส.ค. 2569) + ตารางสอบไล่ ภาค 2/2569
-type ClassSeed = {
-  code: string; weekday: number; start: string; end: string; room: string;
-  instructor: string; examDate: string; slot: "A" | "B";
-};
-const SCHEDULE_2_69: ClassSeed[] = [
-  { code: "RAM1111", weekday: 1, start: "08:30", end: "11:00", room: "KTB 301", instructor: "ASST.PROF.TIPPA-U-SA", examDate: "2027-03-14", slot: "B" },
-  { code: "ACC1103", weekday: 1, start: "11:10", end: "13:40", room: "KTB 301", instructor: "DR.NATCHAREE", examDate: "2027-03-12", slot: "A" },
-  { code: "ECO1121", weekday: 2, start: "13:50", end: "16:20", room: "KTB 201", instructor: "ASSOC.PROF.BOONTHAM", examDate: "2027-03-21", slot: "A" },
-  { code: "MGT2101", weekday: 3, start: "09:30", end: "11:20", room: "VPB 501", instructor: "ASST.PROF.DR.MUNLIKAR", examDate: "2027-03-18", slot: "B" },
-  { code: "RAM1212", weekday: 3, start: "13:50", end: "16:20", room: "KTB 401", instructor: "ASST.PROF.DR.NANTHAWAN", examDate: "2027-03-16", slot: "B" },
-  { code: "MKT2101", weekday: 4, start: "09:30", end: "11:20", room: "KLB 201", instructor: "DR.USA, THITIKUL", examDate: "2027-03-13", slot: "B" },
-  { code: "RAM1301", weekday: 5, start: "09:30", end: "11:20", room: "KLB 201", instructor: "ASSOC.PROF.DR.KRISDA", examDate: "2027-03-10", slot: "B" },
-  { code: "RAM1131", weekday: 5, start: "11:10", end: "13:40", room: "KTB 301", instructor: "ASST.PROF.DR.SATHIT", examDate: "2027-03-09", slot: "A" },
-];
-
-const SLOT_TIMES: Record<"A" | "B", { start: string; end: string }> = {
-  A: { start: "09:30", end: "12:00" },
-  B: { start: "14:00", end: "16:30" },
-};
-
 const DEFAULT_SETTINGS: Array<[string, string]> = [
   ["current_term_id", "2/69"],
   ["weekly_target_hours", "36"],
@@ -290,37 +269,6 @@ export function seedDatabase(db: DB, { reset = true }: { reset?: boolean } = {})
       insItem.run({ user_id: legacyId, term_id: p.term, course_code: null, placeholder_label: p.label });
     }
 
-    const insClass = db.prepare(
-      `INSERT INTO class_sessions (course_code, term_id, weekday, start_time, end_time, room, instructor)
-       VALUES (@code, '2/69', @weekday, @start, @end, @room, @instructor)`,
-    );
-    const insExam = db.prepare(
-      `INSERT INTO exams (course_code, term_id, datetime_start, datetime_end, slot, location)
-       VALUES (@code, '2/69', @start, @end, @slot, @room)`,
-    );
-    // Migration 018 may already hold this class/exam (without room or teacher).
-    const hasClass = db.prepare("SELECT id FROM class_sessions WHERE course_code = ? AND term_id = '2/69'");
-    const fillClass = db.prepare(
-      "UPDATE class_sessions SET room = COALESCE(room, ?), instructor = COALESCE(instructor, ?) WHERE id = ?",
-    );
-    const hasExam = db.prepare("SELECT id FROM exams WHERE course_code = ? AND term_id = '2/69'");
-    for (const s of SCHEDULE_2_69) {
-      const existing = reset ? undefined : (hasClass.get(s.code) as { id: number } | undefined);
-      if (existing) {
-        fillClass.run(s.room, s.instructor, existing.id);
-        if (hasExam.get(s.code)) continue;
-      } else
-      insClass.run({ code: s.code, weekday: s.weekday, start: s.start, end: s.end, room: s.room, instructor: s.instructor });
-      const times = SLOT_TIMES[s.slot];
-      insExam.run({
-        code: s.code,
-        start: `${s.examDate}T${times.start}:00+07:00`,
-        end: `${s.examDate}T${times.end}:00+07:00`,
-        slot: s.slot,
-        room: null,
-      });
-    }
-
     if (!reset) {
       const mapToMarketing = db.prepare(
         "INSERT OR IGNORE INTO program_courses (program_id, course_code, category) VALUES ('bus-mkt', ?, ?)",
@@ -330,6 +278,10 @@ export function seedDatabase(db: DB, { reset = true }: { reset?: boolean } = {})
   });
   tx();
   db.pragma("foreign_keys = ON");
+  // The timetable and exams come from the registrar's own record of the term
+  // (term_offerings, migration 032). Rebuilt here because the seed has just
+  // added courses the migration could not see on a brand-new database.
+  rebuildTermSchedule(db, "2/69");
 }
 
 function summarize(db: DB) {

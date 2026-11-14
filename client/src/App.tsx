@@ -155,7 +155,11 @@ function Shell() {
 
   // Screens can ask to open another screen (see navigateTo in destinations.tsx).
   useEffect(() => {
-    const onNavigate = (e: Event) => open((e as CustomEvent<DestId>).detail);
+    // (an unknown screen name is ignored rather than opening nothing and breaking the page)
+    const onNavigate = (e: Event) => {
+      const id = (e as CustomEvent<DestId>).detail;
+      if (DESTINATIONS.some((d) => d.id === id)) open(id);
+    };
     window.addEventListener(NAVIGATE_EVENT, onNavigate);
     return () => window.removeEventListener(NAVIGATE_EVENT, onNavigate);
   }, []);

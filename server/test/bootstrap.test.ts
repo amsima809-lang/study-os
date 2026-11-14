@@ -34,10 +34,12 @@ describe("Phase 24 — first start of a new database", () => {
     expect(count("SELECT COUNT(*) n FROM settings WHERE key = 'current_term_id'")).toBe(1);
   });
 
-  it("keeps the migrations' timetable and exams, with no duplicates", () => {
-    expect(count("SELECT COUNT(*) n FROM class_sessions")).toBe(before.classes);
-    expect(count("SELECT COUNT(*) n FROM exams")).toBe(before.exams);
-    // The seed knows the room for RAM1111; it fills it in on the existing row.
+  it("completes the timetable and exams for the courses the seed adds, with no duplicates", () => {
+    // Migration 032 builds them for the courses that exist when it runs; the seed
+    // then adds its courses and rebuilds from the same official record.
+    expect(count("SELECT COUNT(*) n FROM class_sessions")).toBeGreaterThan(before.classes);
+    expect(count("SELECT COUNT(*) n FROM exams")).toBeGreaterThan(before.exams);
+    expect(count("SELECT COUNT(*) n FROM (SELECT course_code, weekday, start_time FROM class_sessions GROUP BY 1, 2, 3 HAVING COUNT(*) > 1)")).toBe(0);
     const ram = db.prepare("SELECT room FROM class_sessions WHERE course_code = 'RAM1111'").all() as { room: string | null }[];
     expect(ram).toHaveLength(1);
     expect(ram[0].room).toBeTruthy();

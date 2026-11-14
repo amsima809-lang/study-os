@@ -28,13 +28,16 @@ describe("Phase 2 — study targets", () => {
 });
 
 describe("Phase 2 — exam clashes", () => {
-  it("reports no clashes for the seeded 2/69 exams (all on different dates)", () => {
+  it("reports no clashes for the seeded plan's 2/69 exams (all on different dates)", () => {
+    // The eight courses of the seeded plan for 2/69, not every exam of the term.
     const rows = db
       .prepare(
         `SELECT course_code, name_th, datetime_start, datetime_end, slot, location
-         FROM exams e JOIN courses c ON c.code = e.course_code WHERE e.term_id = '2/69'`,
+         FROM exams e JOIN courses c ON c.code = e.course_code
+         WHERE e.term_id = '2/69' AND e.course_code IN (SELECT course_code FROM plan_items WHERE term_id = '2/69' AND course_code IS NOT NULL)`,
       )
       .all() as never[];
+    expect(rows.length).toBeGreaterThanOrEqual(8);
     expect(findExamClashes(rows as never)).toHaveLength(0);
   });
 

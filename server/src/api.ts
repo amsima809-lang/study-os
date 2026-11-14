@@ -212,6 +212,24 @@ export function termExams(db: DB, termId: string, userId: string): ExamRow[] {
 }
 
 /**
+ * The student's courses this term whose exam the university does NOT schedule:
+ * the registrar prints "คณะจัดสอบเอง" (the faculty arranges it) instead of a date.
+ * They have no row in `exams`, so without this list they would look exam-free.
+ */
+export function facultyArrangedExams(db: DB, termId: string, userId: string): Array<{ course_code: string; name_th: string; name_en: string | null; note: string }> {
+  if (!hasCatalog(db, userId)) return [];
+  const mine = myCoursesFilter(db, userId, termId, "o.course_code");
+  return db
+    .prepare(
+      `SELECT o.course_code, c.name_th, c.name_en, o.exam_note AS note
+       FROM term_offerings o JOIN courses c ON c.code = o.course_code
+       WHERE o.term_id = ? AND o.exam_date IS NULL AND o.exam_note IS NOT NULL${mine.sql}
+       ORDER BY o.course_code`,
+    )
+    .all(termId, ...mine.params) as Array<{ course_code: string; name_th: string; name_en: string | null; note: string }>;
+}
+
+/**
  * A clash = two exams on the same date whose slots overlap.
  * Slots may be "A", "B", or "A,B" (a course occupying both slots that day).
  * Returns the set of exam indexes that are involved in any clash.
@@ -291,8 +309,9 @@ export function createApiRouter(db: DB): Router {
   });
 
   // --- the student's courses for the current term ---
-  // `options` are the courses of their program that have a class or an exam
-  // this term; `chosen` is what they picked (empty = not chosen yet).
+  // `options` are the courses of their program that the university offers this
+  // term (the registrar's record, term_offerings), with the registrar's note on
+  // who may register; `chosen` is what they picked (empty = not chosen yet).
   router.get("/term-courses", (req, res) => {
     const userId = req.user!.id;
     const term = currentTermId(db);
@@ -302,11 +321,13 @@ export function createApiRouter(db: DB): Router {
       .prepare(
         `SELECT c.code, c.name_th, c.name_en, COALESCE(pc.category, c.category) AS category,
                 (SELECT GROUP_CONCAT(cs.weekday || ' ' || cs.start_time || '-' || cs.end_time, ';')
-                   FROM class_sessions cs WHERE cs.course_code = c.code AND cs.term_id = @term) AS classes
+                   FROM class_sessions cs WHERE cs.course_code = c.code AND cs.term_id = @term) AS classes,
+                (SELECT o.notes FROM term_offerings o WHERE o.course_code = c.code AND o.term_id = @term) AS note
          FROM courses c
          LEFT JOIN program_courses pc ON pc.course_code = c.code
               AND pc.program_id = (SELECT program_id FROM user_profiles WHERE user_id = @user)
-         WHERE (EXISTS (SELECT 1 FROM class_sessions cs WHERE cs.course_code = c.code AND cs.term_id = @term)
+         WHERE (EXISTS (SELECT 1 FROM term_offerings o WHERE o.course_code = c.code AND o.term_id = @term)
+             OR EXISTS (SELECT 1 FROM class_sessions cs WHERE cs.course_code = c.code AND cs.term_id = @term)
              OR EXISTS (SELECT 1 FROM exams e WHERE e.course_code = c.code AND e.term_id = @term))
            ${mine.sql.replace("?", "@program")}
          ORDER BY c.code`,
@@ -531,7 +552,14 @@ export function createApiRouter(db: DB): Router {
       location: e.location,
       daysLeft: daysBetween(today, e.datetime_start.slice(0, 10)),
     }));
-    res.json({ term, today, exams, clashes: findExamClashes(termExams(db, term, userId)) });
+    // Until the student has chosen their courses, the list is every exam of their
+    // major: far more than anyone sits, so "clashes" among them mean nothing.
+    const chosen = termCourses(db, userId, term).length > 0;
+    res.json({
+      term, today, exams, chosen,
+      clashes: chosen ? findExamClashes(termExams(db, term, userId)) : [],
+      facultyArranged: facultyArrangedExams(db, term, userId),
+    });
   });
 
   // ── Custom events CRUD ──

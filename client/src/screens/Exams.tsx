@@ -24,7 +24,9 @@ export default function Exams() {
     <div className="space-y-4">
       <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{t("exams.title")}</h1>
 
-      {data.clashes.length === 0 ? (
+      {data.chosen === false ? (
+        <p className="text-sm" style={{ color: "var(--text-secondary)" }}>{t("exams.allOfMajor")}</p>
+      ) : data.clashes.length === 0 ? (
         <div className="rounded-xl text-sm px-4 py-2" style={{ backgroundColor: "var(--success-bg)", color: "var(--success)" }}>
           {t("exams.noClash")}
         </div>
@@ -42,7 +44,7 @@ export default function Exams() {
         </div>
       )}
 
-      {data.exams.length === 0 ? (
+      {data.exams.length === 0 && (data.facultyArranged?.length ?? 0) > 0 ? null : data.exams.length === 0 ? (
         <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t("exams.empty")}</p>
       ) : (
         <ul className="wide-grid space-y-2">
@@ -68,6 +70,21 @@ export default function Exams() {
             </Card>
           ))}
         </ul>
+      )}
+
+      {(data.facultyArranged?.length ?? 0) > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-base font-semibold pt-2" style={{ color: "var(--text-primary)" }}>{t("exams.facultyTitle")}</h2>
+          <p className="text-sm" style={{ color: "var(--text-secondary)" }}>{t("exams.facultyHint")}</p>
+          <ul className="wide-grid space-y-2">
+            {data.facultyArranged!.map((e) => (
+              <Card key={e.course_code}>
+                <CourseTitle code={e.course_code} name_th={e.name_th} name_en={e.name_en} className="font-medium" />
+                <div className="text-sm" style={{ color: "var(--text-tertiary)" }}>{e.note}</div>
+              </Card>
+            ))}
+          </ul>
+        </section>
       )}
     </div>
   );

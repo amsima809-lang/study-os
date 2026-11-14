@@ -79,6 +79,10 @@ export type ExamsData = {
   today: string;
   exams: Exam[];
   clashes: Array<{ date: string; courses: string[] }>;
+  /** Courses whose exam the faculty arranges itself: the university publishes no date. */
+  facultyArranged?: { course_code: string; name_th: string; name_en: string | null; note: string }[];
+  /** False until the student has chosen their courses for the term: the list is then their whole major's. */
+  chosen?: boolean;
 };
 
 // ---------- Calendar ----------

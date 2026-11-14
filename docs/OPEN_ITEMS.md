@@ -1,6 +1,6 @@
 # Open items
 
-Last updated 14 November 2026, after Phase 53. Everything that could be built or checked on the development machine has been. Each item below is **blocked**: it cannot be finished from the development machine, for the reason given. It needs a **person's decision**, something only the **owner** holds, a **device**, or **data** that is not published. For each: what was tried, why it stops there, and the exact next step.
+Last updated 14 November 2026, after Phase 54. Everything that could be built or checked on the development machine has been. Each item below is **blocked**: it cannot be finished from the development machine, for the reason given. It needs a **person's decision**, something only the **owner** holds, a **device**, or **data** that is not published. For each: what was tried, why it stops there, and the exact next step.
 
 What the development machine does not have (re-checked 14 November 2026, after Phase 51): no Docker, Podman, Colima or Fly CLI; no Java runtime (so the Android SDK installer cannot add a system image); Xcode without any iOS simulator (`simctl` lists no runtimes and no devices, and the app's simulator tool also needs an administrator password to select Xcode); one Android emulator image whose Chrome is a stub that cannot open a page; no Google sign-in keys and no Fly credentials; read-only access to the repository (pull, not push).
 
@@ -39,6 +39,17 @@ Because it is a real HTTPS site, the phone checks listed under "Needs a device o
 | **The lecture-collector bookmark** | Its logic was run on the live lecture site; the bookmark itself cannot load from `http://localhost`. | Try it from the deployed HTTPS site. |
 | **Trademark clearance for "Termtrail"** | Nothing identical or similar found at the Thai, US, EU or Australian offices or in WIPO's database; small unregistered uses exist (`brand/trademark-brief.md`). TMview refuses automated access; ASEAN TMview refused connections; the UK office has a human-verification wall; the Swiss register was down. Blocked: clearance is a legal opinion, and those walls are not to be worked around. | Hand `brand/trademark-brief.md` to a trademark professional. |
 | **Domains** | Re-checked on the evening of 14 November 2026: `termtrail.com` and `termtrail.app` have no record in the registries (RDAP answers "not found") and `termtrail.co.th` has none at THNIC. The owner's other domains are registered at Cloudflare, which sells both `.com` and `.app`. **Decision (Patrick, 14 November 2026): not yet.** They stay unregistered until he says otherwise; anyone could take them meanwhile. `termtrail.co.th` cannot be bought at all for now: THNIC gives a `.co.th` name only to a company registered under that name (or holding that trademark), and no such company exists. | When Patrick decides: register `.com` and `.app` in his Cloudflare account. `.co.th` only after a company or a Thai trademark named Termtrail exists. |
+
+## Course data: what is now official, and what is not
+
+Term 2/69's class times, rooms, lecturers and exam dates now come straight from the registrar's two documents (Phase 54) and match them exactly. Three things around them are still not from an official source:
+
+| Item | Where it stands | Next step |
+|---|---|---|
+| **Which courses belong to which major** | `program_courses` came from an earlier automated reading of the faculty's admission guide, and it has mistakes. Evidence from the official term list: 41 codes in the major lists have no name and appear in no university document (13 of them in Hospitality and Tourism), while 15 real courses offered this term for students from year 65 on are missing from every major (13 `HOT…`, 2 `LOG…`). The term documents say which subject heading a course is printed under, not which major requires it, so they cannot settle this. | Rebuild each major's list from the faculty's curriculum (มคอ.2, or the 2569 guide's Business Administration chapter read page by page). Until then a Tourism student sees an incomplete list. |
+| **Other faculties** | The official record holds all 2,762 courses, but only the 9 Business Administration majors exist in the app, so a student of another faculty has no major to choose and sees no courses. | Decide which faculty is next and supply its curriculum; the term data for it is already loaded. |
+| **Clock times of exam periods A and B** | The documents print only "A" or "B". The app shows A as 09:30–12:00 and B as 14:00–16:30, as the first author recorded; the previous data had used 09:00–12:00 and 13:30–16:30. Not found on the registrar's site. | A current student confirms the two times; they are one constant (`EXAM_PERIODS`) and one line in the import script. |
+| **Who may register for a course** | The registrar's notes ("for students with ID 62–64", "not open to accounting students") are shown word for word in the course picker. The app does not use them to hide courses. | Decide whether to filter by entry year automatically. |
 
 ## Needs data that is not published
 
