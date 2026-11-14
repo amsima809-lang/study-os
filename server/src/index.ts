@@ -10,7 +10,7 @@ import session from "express-session";
 import { SqliteSessionStore } from "./sessionStore.js";
 import passport from "passport";
 import { join } from "node:path";
-import { env, isProd } from "./env.js";
+import { env, isProd, signInMethods } from "./env.js";
 import { openDb } from "./db.js";
 import { seedDatabase, needsSeed } from "./seed.js";
 import { setupAuth, requireAuth } from "./auth.js";
@@ -36,6 +36,11 @@ if (needsSeed(db)) {
   console.log("[StudyOS] new database — seeded curriculum data.");
 }
 
+// In production the app sits behind the host's HTTPS proxy (Fly). Without this,
+// Express sees every request as plain HTTP, refuses to send the "secure" session
+// cookie, and nobody can stay signed in.
+if (isProd) app.set("trust proxy", 1);
+
 app.use(express.json({ limit: "50mb" }));
 app.use(cookieParser(env.sessionSecret));
 app.use(
@@ -57,7 +62,7 @@ app.use(passport.session());
 
 // --- public routes ---
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, app: "StudyOS", phase: 20, tz: env.tz, time: new Date().toISOString() });
+  res.json({ ok: true, app: "StudyOS", phase: 48, tz: env.tz, time: new Date().toISOString() });
 });
 app.use("/api", setupAuth(db));
 
@@ -249,6 +254,14 @@ if (isProd) {
 
 app.listen(env.port, () => {
   console.log(`[StudyOS] server listening on http://localhost:${env.port} (${env.nodeEnv})`);
+  if (isProd) {
+    const methods = signInMethods(env);
+    if (methods.devLogin) {
+      console.warn("[StudyOS] WARNING: ALLOW_DEV_LOGIN is on in production. Anyone can sign in as any email address, with no password. Configure Google sign-in and remove it before real students use this.");
+    } else if (!methods.google) {
+      console.warn("[StudyOS] WARNING: no way to sign in is configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET (see docs/DEPLOY.md).");
+    }
+  }
 });
 
 if (isProd) scheduleDailyBackups(db, env.dbPath);

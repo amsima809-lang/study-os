@@ -7,7 +7,7 @@ import type { Request, Response, NextFunction } from "express";
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import type { DB } from "./db.js";
-import { env } from "./env.js";
+import { env, signInMethods } from "./env.js";
 
 export interface AuthUser {
   id: string;
@@ -92,8 +92,15 @@ export function setupAuth(db: DB): Router {
 
   const router = Router();
 
-  // Dev login (only when Google OAuth is not configured)
-  if (!env.googleClientId) {
+  const methods = signInMethods(env);
+
+  // Public: which sign-in buttons the login page should show.
+  router.get("/auth/config", (_req: Request, res: Response) => {
+    res.json(methods);
+  });
+
+  // Dev login: any email, no password. Off in production unless allowed on purpose (see signInMethods).
+  if (methods.devLogin) {
     router.post("/auth/dev-login", (req: Request, res: Response) => {
       const { email, name } = req.body as { email?: string; name?: string };
       if (!email) {
@@ -115,15 +122,22 @@ export function setupAuth(db: DB): Router {
     });
   }
 
-  router.get(
-    "/auth/google",
-    passport.authenticate("google", { scope: ["profile", "email"] }),
-  );
-  router.get(
-    "/auth/google/callback",
-    passport.authenticate("google", { failureRedirect: "/login" }),
-    (_req: Request, res: Response) => res.redirect("/"),
-  );
+  if (methods.google) {
+    router.get(
+      "/auth/google",
+      passport.authenticate("google", { scope: ["profile", "email"] }),
+    );
+    router.get(
+      "/auth/google/callback",
+      passport.authenticate("google", { failureRedirect: "/login" }),
+      (_req: Request, res: Response) => res.redirect("/"),
+    );
+  } else {
+    // Not configured: say so, instead of an unexplained server error.
+    router.get(["/auth/google", "/auth/google/callback"], (_req: Request, res: Response) => {
+      res.status(503).json({ error: "ยังไม่ได้ตั้งค่าการเข้าสู่ระบบด้วย Google", code: "GOOGLE_NOT_CONFIGURED" });
+    });
+  }
 
   router.get("/auth/me", (req: Request, res: Response) => {
     res.json(req.user ?? null);

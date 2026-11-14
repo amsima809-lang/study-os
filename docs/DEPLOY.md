@@ -46,6 +46,23 @@ fly secrets set \
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
+### การเข้าสู่ระบบบนเว็บจริง (ต้องตั้ง ไม่งั้นเข้าไม่ได้)
+บนเว็บจริง แอปให้เข้าสู่ระบบด้วย Google เท่านั้น ต้องตั้งค่า 3 อย่างนี้ (ได้มาจาก Google Cloud Console → Credentials → OAuth client):
+```bash
+fly secrets set \
+  GOOGLE_CLIENT_ID='xxxxx.apps.googleusercontent.com' \
+  GOOGLE_CLIENT_SECRET='xxxxx' \
+  APP_URL='https://ชื่อแอปของคุณ.fly.dev'
+```
+ใน Google Cloud Console ให้ใส่ Authorized redirect URI เป็น `https://ชื่อแอปของคุณ.fly.dev/api/auth/google/callback`
+
+**"เข้าสู่ระบบแบบ Dev" ถูกปิดบนเว็บจริง** เพราะมันให้ใครก็ได้เข้าเป็นอีเมลไหนก็ได้โดยไม่ต้องใส่รหัส
+ถ้าอยากเปิดไว้ทดลองกันเองก่อนตั้งค่า Google (ห้ามใช้กับนักศึกษาจริง):
+```bash
+fly secrets set ALLOW_DEV_LOGIN=true
+```
+พอตั้งค่า Google แล้ว ปุ่ม Dev จะหายไปเองแม้เปิดสวิตช์นี้ไว้
+
 ### แจ้งเตือนตอนปิดแอป (ไม่บังคับ แต่ควรตั้ง)
 แอปส่งการแจ้งเตือนไปที่มือถือได้แม้ปิดแอปอยู่ เซิร์ฟเวอร์สร้างกุญแจเองตอนเปิดครั้งแรกและเก็บไว้ในฐานข้อมูล ไม่ต้องตั้งอะไรเพิ่ม
 แต่ควรบอกที่อยู่ติดต่อจริงของผู้ดูแลไว้ (ผู้ให้บริการแจ้งเตือนใช้ติดต่อถ้ามีปัญหา):

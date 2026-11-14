@@ -411,3 +411,9 @@ AI ช่วยเรา "ฝึก" ไม่ใช่ "ทำแทน" — �
 - **Icons.** `scripts/make-icons.mjs` now draws white and lime on leaf green; `favicon.svg` matches (`docs/brand/icon-book-leaf.svg`).
 - **Leftovers removed.** Indigo that did not come from tokens: Markdown bullets, the paywall button's shadow, the drawing pad's active tool, the login page's no-university gradient and blobs.
 
+## Phase 48 — Production sign-in fixes
+- **How it was found.** `git archive HEAD` into an empty folder, `npm ci` (the committed lockfile installs cleanly; this branch changes no dependencies), `npm run build --workspace @study-os/client`, then `NODE_ENV=production npm start` with a new `DB_PATH`. The fresh database received all 30 migrations and the seed (336 courses, 9 programs, 207 class sessions, 206 exams, 52 lecture links).
+- **Proxy.** `trust proxy` is set to 1 in production (one hop: Fly's edge). Before, `req.secure` was false behind the proxy, so express-session silently skipped the `Secure` cookie. Verified with `X-Forwarded-Proto: https`: the cookie is now set (`HttpOnly; Secure; SameSite=Lax`), `/api/today` answers 200, and the session survives a restart.
+- **Sign-in methods.** `signInMethods({ nodeEnv, googleClientId, allowDevLogin })` is the single rule: dev login only without Google, and in production only with `ALLOW_DEV_LOGIN=true`. `auth.ts` registers routes from it and exposes it at `GET /api/auth/config`; `Login.tsx` renders only what exists and says so when nothing is configured. Tested in `server/test/signIn.test.ts`.
+- **Not verified here:** a deploy to Fly, Google sign-in with a real client, and the Linux image (the Dockerfile's steps were followed on macOS).
+

@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useT, LanguageToggle } from "../i18n.tsx";
-import { postJSON } from "../api.ts";
+import { getJSON, postJSON } from "../api.ts";
 import { ThemeToggle } from "../components/ui.tsx";
 import Icon from "../components/Icon.tsx";
 import UniversityPicker, { useUniversity } from "../components/UniversityPicker.tsx";
@@ -28,6 +28,13 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
   const third = uni ? primary : "#a3e635";
   const approx = uni?.swatches.some((s) => s.source !== "official") ?? false;
   const [showDev, setShowDev] = useState(false);
+  // Which ways of signing in this server offers (dev login is off on a live site).
+  const [methods, setMethods] = useState<{ google: boolean; devLogin: boolean } | null>(null);
+  useEffect(() => {
+    getJSON<{ google: boolean; devLogin: boolean }>("/api/auth/config")
+      .then(setMethods)
+      .catch(() => setMethods({ google: true, devLogin: false })); // an older server: offer Google only
+  }, []);
   const [devEmail, setDevEmail] = useState("");
   const [devName, setDevName] = useState("");
   const [error, setError] = useState("");
@@ -160,7 +167,7 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
         >
           <div className="space-y-4">
             {/* Google OAuth */}
-            <a
+            {methods?.google && <a
               href="/api/auth/google"
               className="w-full flex items-center justify-center gap-3 font-semibold rounded-2xl py-3.5 transition-all active:scale-[0.98] hover:shadow-lg"
               style={{
@@ -176,17 +183,21 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
                 <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
               </svg>
               {t("auth.google")}
-            </a>
+            </a>}
+
+            {methods && !methods.google && !methods.devLogin && (
+              <p role="alert" className="text-sm text-center" style={{ color: "rgba(255,255,255,0.75)" }}>{t("auth.none")}</p>
+            )}
 
             {/* Divider */}
-            <div className="flex items-center gap-3">
+            {methods?.google && methods.devLogin && <div className="flex items-center gap-3">
               <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.08)" }} />
-              <span className="text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>or</span>
+              <span className="text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>{t("auth.or")}</span>
               <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.08)" }} />
-            </div>
+            </div>}
 
             {/* Dev login toggle */}
-            {!showDev && (
+            {methods?.devLogin && !showDev && (
               <button
                 type="button"
                 onClick={() => setShowDev(true)}
@@ -201,7 +212,7 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
               </button>
             )}
 
-            {showDev && (
+            {methods?.devLogin && showDev && (
               <form onSubmit={devLogin} className="space-y-3">
                 <input
                   type="email"
