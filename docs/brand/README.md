@@ -48,6 +48,20 @@ The owner asked for an English name and likes three. What quick checks of the Ap
 
 Logo-with-name files for all three are in `lockups/`.
 
+## Preliminary trademark-register search, English names (14 November 2026)
+
+A word-mark search of Thailand's DIP register and WIPO's Global Brand Database (worldwide, and filtered to Thailand). TMview and ASEAN TMview could not be reached this time, and the US, EU and UK offices were only seen through WIPO's copy of their data. This is not legal clearance.
+
+| Name | Result |
+|---|---|
+| **Upleaf** (chosen) | Nothing identical in Thailand. One identical mark elsewhere: "upleaf" registered in Indonesia in class 9 for fibre-optic cable (reg. IDM001225641), not software. Similar marks: UpLeap (Switzerland, classes 9, 41, 42), UPLEAD (US, class 42), and Thai UPLIFT / UPLIFE marks. |
+| Termwise | Nothing in Thailand. Identical mark pending in Spain in class 9 for downloadable software (app. M4407002, filed 5 Oct 2026); "Balthasar TermWise" registered in the UK in class 9. |
+| Semstra | Nothing found under this spelling. "Semestra": only a dead 1981 US application, but an unregistered study app of that name exists. "SEMESTER" is registered in the UK and EU in classes 9 and 41, once by a student-planner company. |
+
+The Indonesian record: https://branddb.wipo.int/en/similarname/brand/ID502023DID110042. Thai records open by number at `https://search.ipthailand.go.th/search?q=<number>&tab=trademark`.
+
+What a lawyer should look at for Upleaf: whether the Swiss UpLeap mark (same three classes, one letter different) or the Indonesian class 9 registration could be raised against it, and a proper search of TMview, which was not reachable here.
+
 ## If Upleaf has to change: checked English fallbacks
 
 A wider check of 32 more English names (App Store US and Thailand, Google Play, web, domains; no trademark register) found none of the first twenty free. Among them: Flyleaf, Dogear, Recto, Byheart, Kenwise (a Thai exam-prep course), Swotly and Stickwise are all existing study or notes products. Six newly coined names had no similar product:
