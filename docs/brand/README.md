@@ -2,11 +2,13 @@
 
 "StudyOS" and the old book icon were placeholders. This folder holds the logo work and the name research.
 
-## Where the brand stands (14 November 2026)
+## The brand (chosen 14 November 2026)
 
-- **Name: not chosen. The app shows the placeholder "StudyOS".**
-- **Logo: the book that becomes a tick** (`mark-book.svg`), live in the app.
-- **Colours: indigo with an amber page on the logo** (`BRAND` in `client/src/theme.ts`; the icon tile is `#4f46e5`, the page `#fbbf24`). Leaf green is still offered as the "Forest" colour theme.
+- **Name: Termtrail.** English; the same in the Thai interface. "เทอม" (term) is the everyday Thai word for semester.
+- **Logo: the book that becomes a tick** (`mark-book.svg`).
+- **Colours: indigo with an amber page on the logo** (`BRAND` in `client/src/theme.ts`; the icon tile is `#4f46e5`, the page `#fbbf24`). Leaf green is offered as the "Forest" colour theme.
+
+Still to do for the name: a trademark professional's opinion (`trademark-brief.md` is ready to hand over) and the domains (`termtrail.com` and `termtrail.app` were unregistered on the day).
 
 Names tried and dropped, and why:
 

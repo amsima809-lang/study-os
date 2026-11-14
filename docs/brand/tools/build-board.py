@@ -33,7 +33,7 @@ for key, title, why in marks:
 <p>{html.escape(why)}</p></section>''')
 rows = []
 for n in names:
-    badge = {"CLEAR": "clear", "CAUTION": "caution", "TAKEN": "taken"}[n["verdict"]]
+    badge = "clear" if n.get("pick") else {"CLEAR": "clear", "CAUTION": "caution", "TAKEN": "taken"}[n["verdict"]]
     rows.append(f'''<tr><td class="nm"><strong>{html.escape(n["name"])}</strong>{(' <span class="th">' + html.escape(n["thai"]) + '</span>') if n.get("thai") else ''}<div class="mean">{html.escape(n["meaning"])}</div></td>
 <td><span class="badge {badge}">{n["label"]}</span></td><td class="found">{n["found"]}</td></tr>''')
 top = [n for n in names if n.get("pick")]
@@ -65,11 +65,11 @@ tr:last-child td{{border-bottom:0}} .nm{{min-width:150px}} .th{{color:#55556c;ma
 @media (max-width:640px){{.pair{{grid-template-columns:1fr}} body{{padding:20px 14px 40px}}}}
 </style></head><body>
 <h1>Brand board</h1>
-<p class="lede"><strong>The name is not chosen yet.</strong> The logo (the book that becomes a tick) and the colours (indigo with an amber page) are live in the app, which still shows the placeholder “StudyOS”. Upleaf and Semstra were each picked and then dropped; the table below says why.</p>
-<div class="concept wide"><div class="row">{chosen_icon}</div><p>The app icon as it is now. Leaf green, tried for the name Upleaf, remains as a colour theme students can choose.</p></div>
+<p class="lede"><strong>Chosen on 14 November 2026: the name Termtrail, the book-and-tick mark, and indigo with an amber page.</strong> Below: the brand as it is in the app, the three logo concepts as first explored, and every name that was checked, with why the others were dropped.</p>
+<div class="concept wide"><div class="row">{chosen_icon}</div><p>The app icon. Leaf green, tried for an earlier name, remains as a colour theme students can choose.</p></div>
 <h2>Logo marks</h2>
 <div class="grid">{''.join(cols)}</div>
-<h2>Names in the running, with the mark</h2>
+<h2>The name with the mark</h2>
 {lock}
 <p class="note">These are the finished files in <code>lockups/</code>: the lettering (IBM Plex Sans Thai Looped, the app’s typeface) is converted to outlines, so they look the same on any device. Each name has a Latin and a Thai version, for light and dark backgrounds.</p>
 <h2>Names checked</h2>

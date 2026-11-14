@@ -423,3 +423,6 @@ AI ช่วยเรา "ฝึก" ไม่ใช่ "ทำแทน" — �
 - **Course names.** `031_course_names_from_old_guides.sql` only fills rows that are still empty. Names were copied from the guides' text layer; where a guide stores tone marks as private-use characters they were mapped with the fixed glyph table and cross-checked against the older guides.
 - **Open items.** `docs/OPEN_ITEMS.md` lists what is left by what it is waiting for: a decision, the owner, a device, or unpublished data.
 
+## Phase 50 — The name: Termtrail
+- Applied with `scripts/rename-app.mjs "Termtrail"`: `client/src/brand.ts` and the tagged copies in `push-sw.js` and `collector/ru-vod.js`. `server/test/brand.test.ts` holds them together. No code other than those three constants changed.
+

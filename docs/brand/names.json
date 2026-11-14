@@ -1,11 +1,20 @@
 [
  {
+  "name": "Termtrail",
+  "thai": "",
+  "meaning": "your trail through the term",
+  "verdict": "CAUTION",
+  "label": "Chosen",
+  "pick": true,
+  "found": "No app in either store and no trademark record at any office searched; termtrail.com / .app / .co.th are unregistered. Small uses: TermTrail, an AI workspace for freelancers at <a href=\"https://www.termtrail.online/\">termtrail.online</a> (since Aug 2026); a dormant flashcards project on GitHub (2016–2018); empty X and Instagram handles. “เทอม” is the everyday Thai word for semester; “trail” is easy to mistype as “trial”."
+ },
+ {
   "name": "Astute",
   "thai": "",
   "meaning": "a student, a study; the word means sharp and observant",
   "verdict": "TAKEN",
   "label": "Used by a school app",
-  "pick": true,
+  "pick": false,
   "found": "An app named exactly “Astute” is on Google Play in the Education category (<a href=\"https://play.google.com/store/apps/details?id=com.banglafire.astute\">Banglafire Solution</a>, school management, 10K+ installs, listed in the Thai store; “Astute BFSL” on the App Store). Other education uses: Astutely, AstuteTalk, Astute Academics (US test prep, registered in class 41), Learn Astute (Malaysia, class 41). About 76 live ASTUTE marks worldwide in classes 9, 41 and 42. In Thailand: no education use found; ASTUTE is registered for medical diagnostics (class 9/10); astute.co.th belongs to an industrial company. astute.app is for sale at US$35,000."
  },
  {
@@ -14,17 +23,8 @@
   "meaning": "Astute + U for university",
   "verdict": "CAUTION",
   "label": "Reads as Astute + U",
-  "pick": true,
+  "pick": false,
   "found": "No product, no trademark record at any office searched, and astuteu.com / .app / .co.th are unregistered. But a Google Play search for “astuteu” returns the existing “Astute” school app first, so it inherits the knock-off look and is hard to find."
- },
- {
-  "name": "Termtrail",
-  "thai": "",
-  "meaning": "your trail through the term",
-  "verdict": "CAUTION",
-  "label": "Small unrelated uses",
-  "pick": true,
-  "found": "No app in either store and no trademark record at any office searched; termtrail.com / .app / .co.th are unregistered. Small uses: TermTrail, an AI workspace for freelancers at <a href=\"https://www.termtrail.online/\">termtrail.online</a> (since Aug 2026); a dormant flashcards project on GitHub (2016–2018); empty X and Instagram handles. “เทอม” is the everyday Thai word for semester; “trail” is easy to mistype as “trial”."
  },
  {
   "name": "Termleaf",
