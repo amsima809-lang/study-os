@@ -52,7 +52,7 @@ app.use(passport.session());
 
 // --- public routes ---
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, app: "StudyOS", phase: 19, tz: env.tz, time: new Date().toISOString() });
+  res.json({ ok: true, app: "StudyOS", phase: 20, tz: env.tz, time: new Date().toISOString() });
 });
 app.use("/api", setupAuth(db));
 
@@ -179,6 +179,27 @@ app.use("/api", createPlannerRouter(db));
 app.use("/api", createMockRouter(db));
 app.use("/api", createMaterialsRouter(db));
 app.use("/api", createStudyPlanRouter(db));
+
+// --- subscription ---
+app.get("/api/subscription", (req, res) => {
+  const userId = req.user!.id;
+  const sub = db.prepare(
+    "SELECT * FROM subscriptions WHERE user_id = ? AND status = 'active' AND expires_at > datetime('now') ORDER BY expires_at DESC LIMIT 1",
+  ).get(userId) as any;
+  const user = db.prepare("SELECT plan FROM users WHERE id = ?").get(userId) as { plan: string };
+  res.json({ plan: user.plan, subscription: sub ?? null, isPremium: user.plan === "premium" || !!sub });
+});
+
+app.post("/api/subscription/activate", (req, res) => {
+  const userId = req.user!.id;
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+  db.prepare(
+    "INSERT INTO subscriptions (user_id, plan, status, price, expires_at) VALUES (?, 'premium', 'active', 99, ?)",
+  ).run(userId, expiresAt);
+  db.prepare("UPDATE users SET plan = 'premium' WHERE id = ?").run(userId);
+  res.json({ ok: true, expires_at: expiresAt });
+});
 
 app.get("/api/ai/usage", (req, res) => {
   const userId = req.user!.id;

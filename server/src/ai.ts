@@ -36,6 +36,27 @@ export class AiNotConfiguredError extends Error {
   }
 }
 
+/** Thrown when user doesn't have an active premium subscription. */
+export class AiSubscriptionRequired extends Error {
+  constructor() {
+    super("ฟีเจอร์ AI ต้องสมัครสมาชิก Premium (฿99/เดือน)");
+    this.name = "AiSubscriptionRequired";
+  }
+}
+
+export function hasAiSubscription(db: DB, userId: string): boolean {
+  const user = db.prepare("SELECT plan FROM users WHERE id = ?").get(userId) as { plan: string } | undefined;
+  if (user?.plan === "premium") return true;
+  const sub = db.prepare(
+    "SELECT id FROM subscriptions WHERE user_id = ? AND status = 'active' AND expires_at > datetime('now') LIMIT 1",
+  ).get(userId);
+  return !!sub;
+}
+
+export function checkAiSubscription(db: DB, userId: string): void {
+  if (!hasAiSubscription(db, userId)) throw new AiSubscriptionRequired();
+}
+
 /** Thrown when the model keeps returning something we cannot use. */
 export class AiError extends Error {
   constructor(message = "AI ประมวลผลไม่สำเร็จ ลองใหม่อีกครั้ง") {

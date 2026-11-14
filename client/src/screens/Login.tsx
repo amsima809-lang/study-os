@@ -4,8 +4,6 @@ import { postJSON } from "../api.ts";
 import { ThemeToggle } from "../components/ui.tsx";
 import Icon from "../components/Icon.tsx";
 
-const BG_IMAGE = "https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=800&q=80";
-
 export default function Login({ onAuthed }: { onAuthed: () => void }) {
   const { t } = useT();
   const [showDev, setShowDev] = useState(false);
@@ -31,18 +29,52 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
 
   return (
     <div className="min-h-dvh flex flex-col items-center justify-center px-6 relative overflow-hidden">
-      <div
-        className="absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: `url(${BG_IMAGE})` }}
-      />
+      {/* Modern animated gradient background */}
       <div
         className="absolute inset-0"
         style={{
-          background:
-            "linear-gradient(180deg, rgba(10,10,26,0.85) 0%, rgba(26,16,53,0.70) 50%, rgba(10,10,26,0.92) 100%)",
+          background: "linear-gradient(135deg, #0f0c29 0%, #302b63 40%, #24243e 100%)",
+        }}
+      />
+      {/* Floating gradient orbs */}
+      <div
+        className="absolute w-[500px] h-[500px] rounded-full opacity-30 blur-[100px]"
+        style={{
+          background: "radial-gradient(circle, #7c3aed 0%, transparent 70%)",
+          top: "-10%",
+          right: "-10%",
+          animation: "float 8s ease-in-out infinite",
+        }}
+      />
+      <div
+        className="absolute w-[400px] h-[400px] rounded-full opacity-20 blur-[80px]"
+        style={{
+          background: "radial-gradient(circle, #3b82f6 0%, transparent 70%)",
+          bottom: "-5%",
+          left: "-10%",
+          animation: "float 10s ease-in-out infinite reverse",
+        }}
+      />
+      <div
+        className="absolute w-[300px] h-[300px] rounded-full opacity-15 blur-[60px]"
+        style={{
+          background: "radial-gradient(circle, #ec4899 0%, transparent 70%)",
+          top: "40%",
+          left: "50%",
+          animation: "float 12s ease-in-out infinite",
         }}
       />
 
+      {/* Subtle grid overlay */}
+      <div
+        className="absolute inset-0 opacity-[0.03]"
+        style={{
+          backgroundImage: "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)",
+          backgroundSize: "60px 60px",
+        }}
+      />
+
+      {/* Theme/language controls */}
       <div
         className="absolute right-4 flex items-center gap-1 z-10"
         style={{ top: "calc(1rem + env(safe-area-inset-top))", color: "rgba(255,255,255,0.7)" }}
@@ -52,37 +84,47 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
       </div>
 
       <div className="relative z-10 w-full max-w-sm animate-slide-up">
-        <div className="text-center mb-10">
-          <div className="inline-block mb-4" style={{ color: "rgba(255,255,255,0.85)" }}>
-            <Icon name="book" size={56} />
+        {/* Logo and branding */}
+        <div className="text-center mb-8">
+          <div
+            className="inline-flex items-center justify-center w-20 h-20 rounded-3xl mb-5"
+            style={{
+              background: "linear-gradient(135deg, rgba(139,92,246,0.3) 0%, rgba(59,130,246,0.2) 100%)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              backdropFilter: "blur(20px)",
+              boxShadow: "0 8px 32px rgba(139,92,246,0.2)",
+            }}
+          >
+            <Icon name="book" size={40} style={{ color: "rgba(255,255,255,0.9)" }} />
           </div>
-          <h1 className="text-3xl font-bold" style={{ color: "#fff" }}>
+          <h1 className="text-4xl font-extrabold tracking-tight" style={{ color: "#fff" }}>
             {t("app.name")}
           </h1>
-          <p className="text-sm mt-2" style={{ color: "rgba(255,255,255,0.5)" }}>
+          <p className="text-sm mt-2 font-medium" style={{ color: "rgba(255,255,255,0.45)" }}>
             {t("app.tagline")}
           </p>
         </div>
 
+        {/* Login card */}
         <div
-          className="rounded-3xl px-8 py-8 border"
+          className="rounded-3xl px-7 py-7 border"
           style={{
-            background: "rgba(255,255,255,0.06)",
-            backdropFilter: "blur(24px)",
-            WebkitBackdropFilter: "blur(24px)",
-            borderColor: "rgba(255,255,255,0.1)",
-            boxShadow: "0 8px 32px rgba(0,0,0,0.3)",
+            background: "rgba(255,255,255,0.05)",
+            backdropFilter: "blur(40px)",
+            WebkitBackdropFilter: "blur(40px)",
+            borderColor: "rgba(255,255,255,0.08)",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)",
           }}
         >
           <div className="space-y-4">
             {/* Google OAuth */}
             <a
               href="/api/auth/google"
-              className="w-full flex items-center justify-center gap-3 font-semibold rounded-xl py-3 transition-all active:scale-[0.98]"
+              className="w-full flex items-center justify-center gap-3 font-semibold rounded-2xl py-3.5 transition-all active:scale-[0.98] hover:shadow-lg"
               style={{
                 background: "#fff",
                 color: "#333",
-                border: "1px solid rgba(0,0,0,0.1)",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
               }}
             >
               <svg width="20" height="20" viewBox="0 0 48 48">
@@ -94,33 +136,41 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
               {t("auth.google")}
             </a>
 
+            {/* Divider */}
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.08)" }} />
+              <span className="text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>or</span>
+              <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.08)" }} />
+            </div>
+
             {/* Dev login toggle */}
             {!showDev && (
               <button
                 type="button"
                 onClick={() => setShowDev(true)}
-                className="w-full text-center text-xs py-2 transition-opacity"
-                style={{ color: "rgba(255,255,255,0.35)" }}
+                className="w-full text-center text-xs py-2.5 rounded-2xl transition-all"
+                style={{
+                  color: "rgba(255,255,255,0.4)",
+                  border: "1px solid rgba(255,255,255,0.06)",
+                  background: "rgba(255,255,255,0.02)",
+                }}
               >
                 {t("auth.dev_login")}
               </button>
             )}
 
             {showDev && (
-              <form onSubmit={devLogin} className="space-y-3 pt-2 border-t" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
-                <p className="text-xs text-center" style={{ color: "rgba(255,255,255,0.4)" }}>
-                  Dev login (ไม่ต้อง Google)
-                </p>
+              <form onSubmit={devLogin} className="space-y-3">
                 <input
                   type="email"
                   value={devEmail}
                   onChange={(e) => setDevEmail(e.target.value)}
                   placeholder="Email"
                   required
-                  className="w-full rounded-xl border px-4 py-2.5 text-sm"
+                  className="w-full rounded-xl border px-4 py-3 text-sm placeholder:text-white/25"
                   style={{
-                    backgroundColor: "rgba(255,255,255,0.06)",
-                    borderColor: "rgba(255,255,255,0.12)",
+                    backgroundColor: "rgba(255,255,255,0.04)",
+                    borderColor: "rgba(255,255,255,0.08)",
                     color: "#fff",
                   }}
                 />
@@ -129,10 +179,10 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
                   value={devName}
                   onChange={(e) => setDevName(e.target.value)}
                   placeholder={t("auth.name_optional")}
-                  className="w-full rounded-xl border px-4 py-2.5 text-sm"
+                  className="w-full rounded-xl border px-4 py-3 text-sm placeholder:text-white/25"
                   style={{
-                    backgroundColor: "rgba(255,255,255,0.06)",
-                    borderColor: "rgba(255,255,255,0.12)",
+                    backgroundColor: "rgba(255,255,255,0.04)",
+                    borderColor: "rgba(255,255,255,0.08)",
                     color: "#fff",
                   }}
                 />
@@ -142,10 +192,10 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
                 <button
                   type="submit"
                   disabled={busy || !devEmail}
-                  className="w-full font-semibold rounded-xl py-2.5 disabled:opacity-40 transition-all active:scale-[0.98]"
+                  className="w-full font-semibold rounded-xl py-3 disabled:opacity-40 transition-all active:scale-[0.98]"
                   style={{
-                    background: "rgba(255,255,255,0.10)",
-                    border: "1px solid rgba(255,255,255,0.15)",
+                    background: "linear-gradient(135deg, rgba(139,92,246,0.5) 0%, rgba(59,130,246,0.4) 100%)",
+                    border: "1px solid rgba(255,255,255,0.1)",
                     color: "#fff",
                   }}
                 >
@@ -155,7 +205,19 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
             )}
           </div>
         </div>
+
+        {/* Bottom text */}
+        <p className="text-center text-xs mt-6" style={{ color: "rgba(255,255,255,0.2)" }}>
+          Ramkhamhaeng University Study Assistant
+        </p>
       </div>
+
+      <style>{`
+        @keyframes float {
+          0%, 100% { transform: translateY(0px) scale(1); }
+          50% { transform: translateY(-20px) scale(1.05); }
+        }
+      `}</style>
     </div>
   );
 }

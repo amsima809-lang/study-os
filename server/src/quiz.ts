@@ -13,6 +13,8 @@ export { addDaysISO };
 import {
   isAiConfigured,
   AiNotConfiguredError,
+  AiSubscriptionRequired,
+  checkAiSubscription,
   AiError,
   generateQuestions,
   generateValidated,
@@ -86,8 +88,9 @@ export function createQuizRouter(db: DB): Router {
   // returns them WITHOUT the model answers.
   router.post("/quiz/generate", async (req, res) => {
     try {
-      if (!isAiConfigured()) throw new AiNotConfiguredError();
       const userId = req.user!.id;
+      checkAiSubscription(db, userId);
+      if (!isAiConfigured()) throw new AiNotConfiguredError();
 
       const source = req.body.source as "note" | "course";
       let sourceText: string | null = null;
@@ -153,8 +156,9 @@ export function createQuizRouter(db: DB): Router {
   // Enhanced quiz from materials/chapters (Phase 1)
   router.post("/quiz/generate-from-material", async (req, res) => {
     try {
-      if (!isAiConfigured()) throw new AiNotConfiguredError();
       const userId = req.user!.id;
+      checkAiSubscription(db, userId);
+      if (!isAiConfigured()) throw new AiNotConfiguredError();
 
       const courseCode = req.body.course_code as string;
       const chapterId = req.body.chapter_id ? Number(req.body.chapter_id) : null;
@@ -309,6 +313,7 @@ ${diffInstruction}
         score = g.score;
         feedback = g.feedback;
       } else {
+        checkAiSubscription(db, req.user!.id);
         if (!isAiConfigured()) throw new AiNotConfiguredError();
         const g = await gradeAnswer(
           gradeModelCall(db, {
@@ -347,7 +352,9 @@ ${diffInstruction}
 }
 
 function handleAiError(res: import("express").Response, err: unknown): void {
-  if (err instanceof AiNotConfiguredError) {
+  if (err instanceof AiSubscriptionRequired) {
+    res.status(403).json({ error: err.message, code: "SUBSCRIPTION_REQUIRED" });
+  } else if (err instanceof AiNotConfiguredError) {
     res.status(503).json({ error: err.message, code: "AI_NOT_CONFIGURED" });
   } else if (err instanceof AiError) {
     res.status(502).json({ error: err.message, code: "AI_ERROR" });

@@ -16,6 +16,9 @@ import {
   courseSummaryModelCall,
   isAiConfigured,
   AiNotConfiguredError,
+  AiSubscriptionRequired,
+  checkAiSubscription,
+  hasAiSubscription,
   AiError,
   type ImageInput,
 } from "./ai.js";
@@ -94,11 +97,11 @@ export function createNotesRouter(db: DB): Router {
       const courseCode = req.body.course_code as string | undefined;
       if (!courseCode) return res.status(400).json({ error: "ต้องระบุรหัสวิชา" });
 
+      const userId = req.user!.id;
+      checkAiSubscription(db, userId);
       if (!isAiConfigured()) {
         return res.status(503).json({ error: "AI ยังไม่ได้ตั้งค่า", code: "AI_NOT_CONFIGURED" });
       }
-
-      const userId = req.user!.id;
       const rows = db
         .prepare(
           `SELECT raw_text, ai_summary_md, title FROM notes
@@ -165,8 +168,9 @@ export function createNotesRouter(db: DB): Router {
         key_terms: [] as { term: string; definition: string }[],
         topics: [] as string[],
       };
+      const userId = req.user!.id;
       let aiSkipped = false;
-      if (isAiConfigured()) {
+      if (isAiConfigured() && hasAiSubscription(db, userId)) {
         try {
           learning = await generateNoteLearning(
             noteModelCall(db, { text: rawText, images: aiImages }),
@@ -180,7 +184,6 @@ export function createNotesRouter(db: DB): Router {
         aiSkipped = true;
       }
 
-      const userId = req.user!.id;
       const info = db
         .prepare(
           `INSERT INTO notes
@@ -224,7 +227,9 @@ export function createNotesRouter(db: DB): Router {
 }
 
 function handleAiError(res: import("express").Response, err: unknown): void {
-  if (err instanceof AiNotConfiguredError) {
+  if (err instanceof AiSubscriptionRequired) {
+    res.status(403).json({ error: err.message, code: "SUBSCRIPTION_REQUIRED" });
+  } else if (err instanceof AiNotConfiguredError) {
     res.status(503).json({ error: err.message, code: "AI_NOT_CONFIGURED" });
   } else if (err instanceof AiError) {
     res.status(502).json({ error: err.message, code: "AI_ERROR" });

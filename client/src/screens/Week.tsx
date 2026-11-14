@@ -36,8 +36,8 @@ export default function Week() {
           <Card key={wd}>
             <h2 className="font-semibold mb-2" style={{ color: "var(--accent-text)" }}>{weekdayName(wd, lang)}</h2>
             <ul className="space-y-2">
-              {byDay.get(wd)!.map((c) => (
-                <li key={c.course_code} className="flex justify-between text-sm gap-2">
+              {byDay.get(wd)!.map((c, i) => (
+                <li key={`${c.course_code}-${i}`} className="flex justify-between text-sm gap-2">
                   <CourseTitle
                     code={c.course_code}
                     name_th={c.name_th}

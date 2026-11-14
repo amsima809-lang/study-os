@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { LanguageProvider, LanguageToggle, useT } from "./i18n.tsx";
 import { getJSON } from "./api.ts";
 import { ThemeProvider, ThemeToggle } from "./components/ui.tsx";
+import { SubscriptionProvider } from "./components/SubscriptionGate.tsx";
 import Icon from "./components/Icon.tsx";
 import Login from "./screens/Login.tsx";
 import Onboarding from "./screens/Onboarding.tsx";
@@ -149,7 +150,11 @@ function AuthGate() {
   if (user === undefined) return <div className="min-h-dvh" style={{ backgroundColor: "var(--bg-base)" }} />;
   if (!user) return <Login onAuthed={refreshUser} />;
   if (!user.onboarded) return <Onboarding onDone={refreshUser} />;
-  return <Shell />;
+  return (
+    <SubscriptionProvider>
+      <Shell />
+    </SubscriptionProvider>
+  );
 }
 
 export default function App() {

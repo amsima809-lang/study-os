@@ -13,6 +13,7 @@ import {
   type Course,
   type ApiError,
 } from "../api.ts";
+import { useSubscription, handleSubscriptionError } from "../components/SubscriptionGate.tsx";
 import { Card, ErrorBox, Loading } from "../components/ui.tsx";
 
 type View = "list" | "detail" | "pages";
@@ -247,6 +248,7 @@ function MaterialDetail({
   onBack: () => void;
 }) {
   const { t } = useT();
+  const { showPaywall } = useSubscription();
   const [busy, setBusy] = useState("");
   const [err, setErr] = useState("");
   const [parsed, setParsed] = useState<number | null>(null);
@@ -285,7 +287,9 @@ function MaterialDetail({
       const res = await postJSON<{ parsed: number }>(`/api/materials/${material.id}/parse-exam`, {});
       setParsed(res.parsed);
     } catch (e) {
-      setErr((e as ApiError)?.error ?? "ผิดพลาด");
+      const err2 = e as ApiError;
+      if (handleSubscriptionError(err2, showPaywall)) { setBusy(""); return; }
+      setErr(err2?.error ?? "ผิดพลาด");
     } finally {
       setBusy("");
     }
@@ -471,6 +475,7 @@ function PageViewer({ materialId, filename }: { materialId: number; filename: st
 
 function ChapterManager({ courseCode, materialId }: { courseCode: string; materialId: number }) {
   const { t } = useT();
+  const { showPaywall } = useSubscription();
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
@@ -494,7 +499,10 @@ function ChapterManager({ courseCode, materialId }: { courseCode: string; materi
         material_id: materialId,
       });
       setSuggested(res.suggested);
-    } catch { /* ignore */ }
+    } catch (e) {
+      const err2 = e as ApiError;
+      if (err2?.code) handleSubscriptionError(err2, showPaywall);
+    }
     setBusy("");
   }
 

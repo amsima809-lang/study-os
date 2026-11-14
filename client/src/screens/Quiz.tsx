@@ -12,6 +12,7 @@ import {
 } from "../api.ts";
 import { Card, ErrorBox, Loading } from "../components/ui.tsx";
 import Icon from "../components/Icon.tsx";
+import { useSubscription, handleSubscriptionError } from "../components/SubscriptionGate.tsx";
 
 type Phase = "setup" | "loading" | "quiz" | "done";
 
@@ -31,16 +32,19 @@ export default function Quiz() {
     <div className="space-y-4">
       <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{t("quiz.title")}</h1>
 
-      {phase === "setup" && (
-        <Setup
-          onStart={(qs) => {
-            setQuestions(qs);
-            setResults([]);
-            setPhase("quiz");
-          }}
-          onLoading={() => setPhase("loading")}
-          onError={() => setPhase("setup")}
-        />
+      {(phase === "setup" || phase === "loading") && (
+        // Stay mounted while loading so the error message and picked source survive a failed request.
+        <div hidden={phase === "loading"}>
+          <Setup
+            onStart={(qs) => {
+              setQuestions(qs);
+              setResults([]);
+              setPhase("quiz");
+            }}
+            onLoading={() => setPhase("loading")}
+            onError={() => setPhase("setup")}
+          />
+        </div>
       )}
       {phase === "loading" && <Loading>{t("quiz.generating")}</Loading>}
       {phase === "quiz" && (
@@ -67,6 +71,7 @@ function Setup({
   onError: () => void;
 }) {
   const { t } = useT();
+  const { showPaywall } = useSubscription();
   const [notes, setNotes] = useState<NoteListItem[] | null>(null);
   const [allCourses, setAllCourses] = useState<Course[]>([]);
   const [mode, setMode] = useState<"note" | "course" | "material">("note");
@@ -132,7 +137,9 @@ function Setup({
         onStart(r.questions);
       }
     } catch (e) {
-      setError((e as ApiError).error);
+      const err = e as ApiError;
+      if (handleSubscriptionError(err, showPaywall)) { onError(); return; }
+      setError(err.error);
       onError();
     }
   }
@@ -282,6 +289,7 @@ function Runner({
   onComplete: (results: AnswerResult[]) => void;
 }) {
   const { t } = useT();
+  const { showPaywall } = useSubscription();
   const [idx, setIdx] = useState(0);
   const [answer, setAnswer] = useState("");
   const [result, setResult] = useState<AnswerResult | null>(null);
@@ -304,7 +312,9 @@ function Runner({
       setResult(r);
       setResults((prev) => [...prev, r]);
     } catch (e) {
-      setError((e as ApiError).error);
+      const err = e as ApiError;
+      if (handleSubscriptionError(err, showPaywall)) return;
+      setError(err.error);
     } finally {
       setBusy(false);
     }

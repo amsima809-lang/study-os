@@ -16,6 +16,7 @@ import { Markdown } from "../components/Markdown.tsx";
 import Icon from "../components/Icon.tsx";
 import { CourseTitle } from "../components/CourseTitle.tsx";
 import { HandwritingPad, type HandwritingHandle } from "../components/HandwritingPad.tsx";
+import { useSubscription, handleSubscriptionError } from "../components/SubscriptionGate.tsx";
 
 type CourseGroup = {
   code: string | null;
@@ -183,6 +184,7 @@ function CourseNotes({
   onSelectNote: (id: number) => void;
 }) {
   const { t, lang } = useT();
+  const { showPaywall } = useSubscription();
   const [summaryBusy, setSummaryBusy] = useState(false);
   const [summary, setSummary] = useState<CourseSummaryResult | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
@@ -198,6 +200,7 @@ function CourseNotes({
       setSummary(r);
     } catch (e) {
       const err = e as ApiError;
+      if (handleSubscriptionError(err, showPaywall)) return;
       setSummaryError(err.code === "AI_NOT_CONFIGURED" ? t("notes.aiNotConfigured") : err.error);
     } finally {
       setSummaryBusy(false);

@@ -59,8 +59,8 @@ export default function Today() {
           <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t("today.noClasses")}</p>
         ) : (
           <ul className="space-y-2">
-            {data.classes.map((c) => (
-              <li key={c.course_code} className="flex justify-between text-sm gap-2">
+            {data.classes.map((c, i) => (
+              <li key={`${c.course_code}-${i}`} className="flex justify-between text-sm gap-2">
                 <CourseTitle
                   code={c.course_code}
                   name_th={c.name_th}

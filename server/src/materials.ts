@@ -19,6 +19,9 @@ import {
 import {
   isAiConfigured,
   AiNotConfiguredError,
+  AiSubscriptionRequired,
+  checkAiSubscription,
+  hasAiSubscription,
   AiError,
 } from "./ai.js";
 import Anthropic from "@anthropic-ai/sdk";
@@ -251,8 +254,9 @@ export function createMaterialsRouter(db: DB): Router {
   // --- AI suggest chapters from TOC ---
   router.post("/chapters/suggest", async (req, res) => {
     try {
-      if (!isAiConfigured()) throw new AiNotConfiguredError();
       const userId = req.user!.id;
+      checkAiSubscription(db, userId);
+      if (!isAiConfigured()) throw new AiNotConfiguredError();
       const materialId = Number(req.body.material_id);
       const mat = db.prepare("SELECT * FROM materials WHERE id = ? AND user_id = ?").get(materialId, userId) as any;
       if (!mat) return res.status(404).json({ error: "ไม่พบเอกสาร" });
@@ -407,8 +411,9 @@ ${textSample}`,
   // --- Parse past exam (extract Q&A) ---
   router.post("/materials/:id/parse-exam", async (req, res) => {
     try {
-      if (!isAiConfigured()) throw new AiNotConfiguredError();
       const userId = req.user!.id;
+      checkAiSubscription(db, userId);
+      if (!isAiConfigured()) throw new AiNotConfiguredError();
       const id = Number(req.params.id);
       const mat = db.prepare("SELECT * FROM materials WHERE id = ? AND user_id = ?").get(id, userId) as any;
       if (!mat) return res.status(404).json({ error: "ไม่พบเอกสาร" });
@@ -537,6 +542,7 @@ ${fullText.slice(0, 15000)}`,
 async function processInBackground(db: DB, materialId: number, mat: any): Promise<void> {
   const filePath = mat.file_path.replace("/api/uploads/", "");
   const fullPath = join(env.uploadDir, filePath);
+  const canUseAi = isAiConfigured() && hasAiSubscription(db, mat.user_id);
 
   if (mat.file_type === "image") {
     // Single image: OCR it
@@ -545,7 +551,7 @@ async function processInBackground(db: DB, materialId: number, mat: any): Promis
     let method: "pdf_text" | "ai_ocr" = "ai_ocr";
     let confidence = 0.5;
 
-    if (isAiConfigured()) {
+    if (canUseAi) {
       const ocr = await ocrWithClaude(db, buf);
       text = ocr.text;
       confidence = ocr.confidence;
@@ -590,7 +596,7 @@ async function processInBackground(db: DB, materialId: number, mat: any): Promis
 
     if (isThaiTextGarbled(text)) {
       // Try OCR with Claude vision
-      if (isAiConfigured()) {
+      if (canUseAi) {
         try {
           const imgBuf = await renderPdfPage(buf, page.pageNum);
           const imgName = `mat_${materialId}_p${page.pageNum}.jpg`;
@@ -616,7 +622,9 @@ async function processInBackground(db: DB, materialId: number, mat: any): Promis
 }
 
 function handleAiError(res: import("express").Response, err: unknown): void {
-  if (err instanceof AiNotConfiguredError) {
+  if (err instanceof AiSubscriptionRequired) {
+    res.status(403).json({ error: (err as Error).message, code: "SUBSCRIPTION_REQUIRED" });
+  } else if (err instanceof AiNotConfiguredError) {
     res.status(503).json({ error: (err as Error).message, code: "AI_NOT_CONFIGURED" });
   } else if (err instanceof AiError) {
     res.status(502).json({ error: (err as Error).message, code: "AI_ERROR" });

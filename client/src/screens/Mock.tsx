@@ -138,13 +138,16 @@ function ExamTab() {
 
   return (
     <>
-      {phase === "list" && (
-        <CourseList
-          onStart={handleStart}
-          onResume={handleResume}
-          onLoading={() => setPhase("loading")}
-          onError={() => setPhase("list")}
-        />
+      {(phase === "list" || phase === "loading") && (
+        // Stay mounted while loading so the error message survives a failed request.
+        <div hidden={phase === "loading"}>
+          <CourseList
+            onStart={handleStart}
+            onResume={handleResume}
+            onLoading={() => setPhase("loading")}
+            onError={() => setPhase("list")}
+          />
+        </div>
       )}
       {phase === "loading" && <Loading>{t("mock.generating")}</Loading>}
       {phase === "exam" && mockId != null && (

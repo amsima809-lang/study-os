@@ -43,8 +43,8 @@ export default function Exams() {
         <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t("exams.empty")}</p>
       ) : (
         <ul className="space-y-2">
-          {data.exams.map((e) => (
-            <Card key={e.course_code}>
+          {data.exams.map((e, i) => (
+            <Card key={`${e.course_code}-${i}`}>
               <div className="flex justify-between items-start">
                 <div>
                   <CourseTitle
