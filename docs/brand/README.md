@@ -50,6 +50,20 @@ Already used by study apps: Jodjam (จดจำ), Tiwdee (ติวดี), Pro
 
 Limits: Facebook, Instagram and TikTok were only seen through Google results; the Thai company registry and trademark database were not searched.
 
+## Preliminary trademark-register search, Thai names (14 November 2026)
+
+A word-mark search of Thailand's DIP register (search.ipthailand.go.th), TMview with office = Thailand, and WIPO's Global Brand Database. ASEAN TMview could not be reached, so it was not searched. This is not legal clearance, and it finds word marks only (a logo with the word drawn in it would not show up).
+
+| Name | Result |
+|---|---|
+| Khuenjai / ขึ้นใจ | No identical mark. Nearest: the ชื่นใจ / CHUENJAI family, one consonant away, none live in classes 9, 41 or 42; and "KJ, KWANJAI, BY BUILK" pending in classes 9 and 42 (app 260156386). |
+| ThamEng / ทำเอง | No standalone mark. The words appear inside five longer marks in food, banking and restaurant classes (29, 30, 36, 43). |
+| Maenjai / แม่นใจ | No identical mark. The near-word มั่นใจ appears only inside slogans in classes 9, 41 and 42 (for example a tutoring school's "ยิ่งพร้อม ยิ่งมั่นใจ ในทุกสนามสอบ", reg 241128909). |
+| Jammaen / จำแม่น | Nothing found. |
+| Nuekok / นึกออก | Nothing found. |
+
+Records can be opened by number at `https://search.ipthailand.go.th/search?q=<number>&tab=trademark`. WIPO rate-limited part of the run, so the spaced spellings of the last three names were not searched there.
+
 ## Still to do once the name is chosen
 
 - Run the rename command.
