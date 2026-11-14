@@ -22,6 +22,7 @@ import Icon from "../components/Icon.tsx";
 import { CourseChip, CourseTitle } from "../components/CourseTitle.tsx";
 import { HandwritingPad, type HandwritingHandle } from "../components/HandwritingPad.tsx";
 import { useSubscription, handleSubscriptionError } from "../components/SubscriptionGate.tsx";
+import { withBase } from "../base.ts";
 
 type CourseGroup = {
   code: string | null;
@@ -509,7 +510,7 @@ function NoteView({ noteId, onBack, onDeleted }: { noteId: number; onBack: () =>
             {note.image_paths.map((src, i) => (
               <img
                 key={i}
-                src={src}
+                src={withBase(src)}
                 alt={`Note image ${i + 1}`}
                 className="rounded-lg w-full"
                 style={{ border: "1px solid var(--border-light)" }}

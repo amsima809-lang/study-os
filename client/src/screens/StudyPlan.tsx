@@ -6,6 +6,7 @@ import {
   type PlanSettings, type PlanCourse, type StudyPlanData, type StudyTask, type CourseStatus,
 } from "../api.ts";
 import { Card, ErrorBox, Loading } from "../components/ui.tsx";
+import { withBase } from "../base.ts";
 
 type View = "setup" | "plan";
 
@@ -361,7 +362,7 @@ function PlanView({ data, onRefresh }: { data: StudyPlanData; onRefresh: () => v
 
       <div className="flex gap-2">
         <a
-          href="/api/studyplan/ics"
+          href={withBase("/api/studyplan/ics")}
           download="studyos-plan.ics"
           className="flex-1 text-center text-sm border rounded-xl py-2.5"
           style={{ color: "var(--accent-text)", borderColor: "var(--accent-light)" }}

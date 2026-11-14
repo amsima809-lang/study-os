@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  launchd service for a trial copy of the app on a Mac, behind a tunnel or proxy
+  (docs/DEPLOY_SUBPATH.md). Replace __HOME__ with the account's home folder, save as
+    ~/Library/LaunchAgents/com.amsima.termtrail.plist
+  then:  launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.amsima.termtrail.plist
+
+  Everything the app needs comes from __HOME__/termtrail/termtrail.env
+  (NODE_ENV, BASE_PATH, HOST, PORT, secrets, data paths).
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.amsima.termtrail</string>
+  <key>WorkingDirectory</key>
+  <string>__HOME__/termtrail/app/server</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/bin/node</string>
+    <string>--env-file=__HOME__/termtrail/termtrail.env</string>
+    <string>__HOME__/termtrail/app/node_modules/tsx/dist/cli.mjs</string>
+    <string>src/index.ts</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+  </dict>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+  <key>ExitTimeOut</key>
+  <integer>20</integer>
+  <key>StandardOutPath</key>
+  <string>__HOME__/termtrail/logs/termtrail.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>__HOME__/termtrail/logs/termtrail.err.log</string>
+</dict>
+</plist>

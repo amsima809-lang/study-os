@@ -17,6 +17,7 @@ import { useSubscription, handleSubscriptionError } from "../components/Subscrip
 import { AddButton, Card, ConfirmDialog, ErrorBox, Loading } from "../components/ui.tsx";
 import { CourseChip } from "../components/CourseTitle.tsx";
 import { hasPendingUpload, takePendingUpload } from "../shareIntake.ts";
+import { BASE } from "../base.ts";
 
 type View = "list" | "detail" | "pages" | "transcript";
 
@@ -127,7 +128,7 @@ function LectureLinks({ onRead }: { onRead: (t: OpenTranscript) => void }) {
 
   // React refuses javascript: links in JSX, so the bookmark's address is set here.
   useEffect(() => {
-    const src = `${window.location.origin}/collector/ru-vod.js`;
+    const src = `${window.location.origin}${BASE}/collector/ru-vod.js`;
     bookmarkRef.current?.setAttribute(
       "href",
       `javascript:(function(){var s=document.createElement('script');s.src='${src}?'+Date.now();document.body.appendChild(s)})()`,

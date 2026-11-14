@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { signInMethods } from "../src/env.js";
+import { signInMethods, codeGuard, normaliseBasePath } from "../src/env.js";
 import { openDb } from "../src/db.js";
 import { findOrCreateUser } from "../src/auth.js";
 
@@ -7,21 +7,65 @@ describe("which sign-in methods a server offers", () => {
   const cfg = (nodeEnv: string, googleClientId = "", allowDevLogin = false) => ({ nodeEnv, googleClientId, allowDevLogin });
 
   it("offers dev login on a developer's machine when Google is not set up", () => {
-    expect(signInMethods(cfg("development"))).toEqual({ google: false, devLogin: true });
-    expect(signInMethods(cfg("test"))).toEqual({ google: false, devLogin: true });
+    expect(signInMethods(cfg("development"))).toEqual({ google: false, devLogin: true, needsCode: false });
+    expect(signInMethods(cfg("test"))).toEqual({ google: false, devLogin: true, needsCode: false });
   });
 
   it("does NOT offer dev login in production: it signs anyone in as any email with no password", () => {
-    expect(signInMethods(cfg("production"))).toEqual({ google: false, devLogin: false });
+    expect(signInMethods(cfg("production"))).toEqual({ google: false, devLogin: false, needsCode: false });
   });
 
   it("keeps it in production only when allowed on purpose", () => {
-    expect(signInMethods(cfg("production", "", true))).toEqual({ google: false, devLogin: true });
+    expect(signInMethods(cfg("production", "", true))).toEqual({ google: false, devLogin: true, needsCode: false });
   });
 
   it("never offers dev login once Google sign-in is configured, whatever the switch says", () => {
-    expect(signInMethods(cfg("production", "client-id", true))).toEqual({ google: true, devLogin: false });
-    expect(signInMethods(cfg("development", "client-id"))).toEqual({ google: true, devLogin: false });
+    expect(signInMethods(cfg("production", "client-id", true))).toEqual({ google: true, devLogin: false, needsCode: false });
+    expect(signInMethods(cfg("development", "client-id"))).toEqual({ google: true, devLogin: false, needsCode: false });
+  });
+});
+
+describe("a private trial site: dev login behind an access code", () => {
+  const cfg = (devLoginCode: string, googleClientId = "") => ({ nodeEnv: "production", googleClientId, allowDevLogin: true, devLoginCode });
+
+  it("asks for the code only when one is set, and never once Google is configured", () => {
+    expect(signInMethods(cfg("river-42"))).toEqual({ google: false, devLogin: true, needsCode: true });
+    expect(signInMethods(cfg(""))).toEqual({ google: false, devLogin: true, needsCode: false });
+    expect(signInMethods(cfg("river-42", "client-id"))).toEqual({ google: true, devLogin: false, needsCode: false });
+    // the code alone does not switch the dev login on
+    expect(signInMethods({ nodeEnv: "production", googleClientId: "", allowDevLogin: false, devLoginCode: "river-42" })).toEqual({ google: false, devLogin: false, needsCode: false });
+  });
+
+  it("stops a visitor guessing: after the limit of wrong codes they wait out the window", () => {
+    const guard = codeGuard(3, 60_000);
+    const t0 = 1_000_000;
+    for (let i = 0; i < 3; i++) { expect(guard.blocked("1.2.3.4", t0)).toBe(false); guard.wrong("1.2.3.4", t0); }
+    expect(guard.blocked("1.2.3.4", t0 + 59_000)).toBe(true);
+    expect(guard.blocked("5.6.7.8", t0)).toBe(false); // someone else is not affected
+    expect(guard.blocked("1.2.3.4", t0 + 61_000)).toBe(false); // the window has passed
+  });
+
+  it("forgets the wrong tries of someone who then gets it right", () => {
+    const guard = codeGuard(3, 60_000);
+    guard.wrong("1.2.3.4", 0); guard.wrong("1.2.3.4", 0); guard.right("1.2.3.4");
+    guard.wrong("1.2.3.4", 0);
+    expect(guard.blocked("1.2.3.4", 0)).toBe(false);
+  });
+});
+
+describe("serving the app under a sub-path", () => {
+  it("reads BASE_PATH as a plain path with no trailing slash", () => {
+    expect(normaliseBasePath(undefined)).toBe("");
+    expect(normaliseBasePath("/")).toBe("");
+    expect(normaliseBasePath("termtrail")).toBe("/termtrail");
+    expect(normaliseBasePath("/termtrail/")).toBe("/termtrail");
+    expect(normaliseBasePath("/apps/termtrail")).toBe("/apps/termtrail");
+  });
+
+  it("refuses anything that is not a plain path", () => {
+    expect(() => normaliseBasePath("/term trail")).toThrow();
+    expect(() => normaliseBasePath("https://example.com/x")).toThrow();
+    expect(() => normaliseBasePath("/a/../b?x=1")).toThrow();
   });
 });
 

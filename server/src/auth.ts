@@ -7,7 +7,8 @@ import type { Request, Response, NextFunction } from "express";
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import type { DB } from "./db.js";
-import { env, signInMethods } from "./env.js";
+import { env, signInMethods, codeGuard } from "./env.js";
+import { createHash, timingSafeEqual } from "node:crypto";
 
 export interface AuthUser {
   id: string;
@@ -55,6 +56,12 @@ export function findOrCreateUser(
   db.prepare("INSERT INTO user_profiles (user_id) VALUES (?)").run(id);
   db.prepare("INSERT INTO notification_settings (user_id) VALUES (?)").run(id);
   return id;
+}
+
+/** Compare two strings without giving away, by timing, how much of a guess was right. */
+function sameText(a: string, b: string): boolean {
+  const x = createHash("sha256").update(a).digest(), y = createHash("sha256").update(b).digest();
+  return timingSafeEqual(x, y);
 }
 
 export function setupAuth(db: DB): Router {
@@ -112,8 +119,22 @@ export function setupAuth(db: DB): Router {
 
   // Dev login: any email, no password. Off in production unless allowed on purpose (see signInMethods).
   if (methods.devLogin) {
+    const guard = codeGuard();
     router.post("/auth/dev-login", (req: Request, res: Response) => {
-      const { email, name } = req.body as { email?: string; name?: string };
+      const { email, name, code } = req.body as { email?: string; name?: string; code?: string };
+      if (methods.needsCode) {
+        const who = req.ip ?? "unknown";
+        if (guard.blocked(who)) {
+          res.status(429).json({ error: "ลองหลายครั้งเกินไป รอสักครู่แล้วลองใหม่", code: "TOO_MANY" });
+          return;
+        }
+        if (!sameText(typeof code === "string" ? code : "", env.devLoginCode)) {
+          guard.wrong(who);
+          res.status(403).json({ error: "รหัสเข้าใช้ไม่ถูกต้อง", code: "BAD_CODE" });
+          return;
+        }
+        guard.right(who);
+      }
       if (!email) {
         res.status(400).json({ error: "email required" });
         return;
@@ -143,8 +164,8 @@ export function setupAuth(db: DB): Router {
     // page with a plain message, never a bare server error.
     router.get("/auth/google/callback", (req: Request, res: Response, next: NextFunction) => {
       passport.authenticate("google", (err: unknown, user: Express.User | false) => {
-        if (err || !user) return res.redirect("/?signin=failed");
-        req.logIn(user, (loginErr) => res.redirect(loginErr ? "/?signin=failed" : "/"));
+        if (err || !user) return res.redirect(`${env.basePath}/?signin=failed`);
+        req.logIn(user, (loginErr) => res.redirect(loginErr ? `${env.basePath}/?signin=failed` : `${env.basePath}/`));
       })(req, res, next);
     });
   } else {

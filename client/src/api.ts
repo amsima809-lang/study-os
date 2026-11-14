@@ -1,3 +1,4 @@
+import { withBase } from "./base.ts";
 /** Client-side fetch helpers + shared types for the Phase 2 screens. */
 
 export type StudyTarget = {
@@ -119,7 +120,7 @@ export const SIGNED_OUT = "studyos:signed-out";
 async function send(url: string, init?: RequestInit): Promise<Response> {
   let r: Response;
   try {
-    r = await fetch(url, init);
+    r = await fetch(withBase(url), init);
   } catch {
     throw { error: "ออฟไลน์อยู่ เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ลองใหม่เมื่อมีอินเทอร์เน็ต", code: "OFFLINE" } as ApiError;
   }

@@ -6,6 +6,7 @@ import Icon from "../components/Icon.tsx";
 import UniversityPicker, { useUniversity } from "../components/UniversityPicker.tsx";
 import Logo from "../components/Logo.tsx";
 import { BRAND } from "../theme.ts";
+import { withBase } from "../base.ts";
 
 const DARK = "#0b0b18";
 
@@ -29,14 +30,16 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
   const approx = uni?.swatches.some((s) => s.source !== "official") ?? false;
   const [showDev, setShowDev] = useState(false);
   // Which ways of signing in this server offers (dev login is off on a live site).
-  const [methods, setMethods] = useState<{ google: boolean; devLogin: boolean } | null>(null);
+  const [methods, setMethods] = useState<{ google: boolean; devLogin: boolean; needsCode?: boolean } | null>(null);
   useEffect(() => {
-    getJSON<{ google: boolean; devLogin: boolean }>("/api/auth/config")
+    getJSON<{ google: boolean; devLogin: boolean; needsCode?: boolean }>("/api/auth/config")
       .then(setMethods)
       .catch(() => setMethods({ google: true, devLogin: false })); // an older server: offer Google only
   }, []);
   const [devEmail, setDevEmail] = useState("");
   const [devName, setDevName] = useState("");
+  // A private trial site asks for the access code its owner handed out.
+  const [devCode, setDevCode] = useState("");
   const [error, setError] = useState("");
   // Back from Google without being signed in (cancelled, expired, or an unverified address).
   const [googleFailed] = useState(() => {
@@ -52,10 +55,10 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
     setError("");
     setBusy(true);
     try {
-      await postJSON("/api/auth/dev-login", { email: devEmail, name: devName || devEmail.split("@")[0] });
+      await postJSON("/api/auth/dev-login", { email: devEmail, name: devName || devEmail.split("@")[0], code: devCode });
       onAuthed();
     } catch (err: any) {
-      setError(err?.message ?? t("auth.wrong"));
+      setError(err?.code === "BAD_CODE" ? t("auth.badCode") : err?.code === "TOO_MANY" ? t("auth.tooMany") : (err?.message ?? t("auth.wrong")));
     } finally {
       setBusy(false);
     }
@@ -78,7 +81,7 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
           <div
             key={uni.id}
             className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: `url(${uni.photo.src})` }}
+            style={{ backgroundImage: `url(${withBase(uni.photo.src)})` }}
           />
           <div
             className="absolute inset-0"
@@ -174,7 +177,7 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
           <div className="space-y-4">
             {/* Google OAuth */}
             {methods?.google && <a
-              href="/api/auth/google"
+              href={withBase("/api/auth/google")}
               className="w-full flex items-center justify-center gap-3 font-semibold rounded-2xl py-3.5 transition-all active:scale-[0.98] hover:shadow-lg"
               style={{
                 background: "#fff",
@@ -218,7 +221,7 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
                   background: "rgba(255,255,255,0.02)",
                 }}
               >
-                {t("auth.dev_login")}
+                {methods.needsCode ? t("auth.trial_login") : t("auth.dev_login")}
               </button>
             )}
 
@@ -249,8 +252,25 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
                     color: "#fff",
                   }}
                 />
+                {methods.needsCode && (
+                  <input
+                    type="password"
+                    value={devCode}
+                    onChange={(e) => setDevCode(e.target.value)}
+                    placeholder={t("auth.code")}
+                    aria-label={t("auth.code")}
+                    autoComplete="off"
+                    required
+                    className="w-full rounded-xl border px-4 py-3 text-sm placeholder:text-white/25 min-h-11"
+                    style={{
+                      backgroundColor: "rgba(255,255,255,0.04)",
+                      borderColor: "rgba(255,255,255,0.08)",
+                      color: "#fff",
+                    }}
+                  />
+                )}
                 {error && (
-                  <p className="text-sm text-center" style={{ color: "#f87171" }}>{error}</p>
+                  <p role="alert" className="text-sm text-center" style={{ color: "#f87171" }}>{error}</p>
                 )}
                 <button
                   type="submit"

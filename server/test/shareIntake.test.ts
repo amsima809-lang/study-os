@@ -11,7 +11,7 @@ const { sharedBody, sortShared } = (await import(new URL("../../client/src/share
 
 // ── The service-worker half (client/public/share-sw.js), run with a stand-in cache ──
 type Handler = (event: { request: Request; respondWith: (r: Promise<Response>) => void }) => void;
-function loadShareWorker() {
+function loadShareWorker(scope?: string) {
   const store = new Map<string, Response>();
   const cache = {
     keys: async () => [...store.keys()],
@@ -19,7 +19,7 @@ function loadShareWorker() {
     put: async (k: string, r: Response) => void store.set(k, r),
   };
   let handler: Handler = () => {};
-  const self = { location: { origin: "https://studyos.test" }, addEventListener: (_: string, h: Handler) => { handler = h; } };
+  const self = { location: { origin: "https://studyos.test" }, ...(scope ? { registration: { scope } } : {}), addEventListener: (_: string, h: Handler) => { handler = h; } };
   const file = fileURLToPath(new URL("../../client/public/share-sw.js", import.meta.url));
   vm.runInNewContext(readFileSync(file, "utf8"), { self, caches: { open: async () => cache }, Response, URL, URLSearchParams, Promise });
   /** Send a request through the worker; undefined means the worker left it alone. */
@@ -110,6 +110,19 @@ describe("the service worker receiving a share", () => {
     const { send } = loadShareWorker();
     expect(send(new Request("https://studyos.test/share"))).toBeUndefined(); // a GET
     expect(send(new Request("https://studyos.test/api/notes", { method: "POST", body: "x" }))).toBeUndefined();
+  });
+
+  it("under a sub-path, takes shares sent to its own address and returns there", async () => {
+    const { send } = loadShareWorker("https://studyos.test/termtrail/");
+    const form = new FormData();
+    form.set("share_text", "from another app");
+    const taken = await send(new Request("https://studyos.test/termtrail/share", { method: "POST", body: form }))!;
+    expect(taken.status).toBe(303);
+    expect(taken.headers.get("location")).toBe("https://studyos.test/termtrail/?share_text=from+another+app");
+    // a share sent to the top of the site belongs to some other app
+    expect(send(new Request("https://studyos.test/share", { method: "POST", body: new FormData() }))).toBeUndefined();
+    const broken = await send(new Request("https://studyos.test/termtrail/share", { method: "POST", body: "x", headers: { "content-type": "text/plain" } }))!;
+    expect(broken.headers.get("location")).toBe("https://studyos.test/termtrail/");
   });
 
   it("opens the app even if the share cannot be read", async () => {

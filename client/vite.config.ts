@@ -4,9 +4,15 @@ import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
 import { APP_NAME } from "./src/brand.ts";
 
+// Where the built app will be served: "/" (the default) or a sub-path. Build with
+// BASE_PATH=/termtrail to serve it at https://example.com/termtrail; the server reads
+// the same variable (server/src/env.ts).
+const base = `/${(process.env.BASE_PATH ?? "").replace(/^\/+|\/+$/g, "")}/`.replace("//", "/");
+
 // Client dev server runs on 5180 and proxies /api to the backend on 3100,
 // so both can run together with one `npm run dev`.
 export default defineConfig({
+  base,
   plugins: [
     // The page title and home-screen title take the product's name from src/brand.ts.
     { name: "app-name", transformIndexHtml: (html: string) => html.replaceAll("%APP_NAME%", APP_NAME) },
@@ -23,13 +29,14 @@ export default defineConfig({
         theme_color: "#4f46e5",
         background_color: "#f8fafc",
         display: "standalone",
-        start_url: "/",
+        start_url: base,
+        scope: base,
         // "Share → StudyOS" from other apps (installed app only). Text, links,
         // photos and documents arrive as a form POST to /share, which the service
         // worker takes in (public/share-sw.js); client/src/shareIntake.ts then
         // turns them into a new note or a Library upload.
         share_target: {
-          action: "/share",
+          action: `${base}share`,
           method: "POST",
           enctype: "multipart/form-data",
           params: {
@@ -48,12 +55,13 @@ export default defineConfig({
         // Extra code for the generated worker: receiving "Share → StudyOS" (see
         // share_target above), and showing notifications when the app is closed.
         importScripts: ["share-sw.js", "push-sw.js"],
-        navigateFallback: "/index.html",
+        navigateFallback: "index.html",
         // Show last-known data offline for the Today and Review screens.
         runtimeCaching: [
           {
             urlPattern: ({ url }) =>
-              url.pathname === "/api/today" || url.pathname === "/api/flashcards/due",
+              // (this function is copied into the worker as text, so it cannot use `base`)
+              url.pathname.endsWith("/api/today") || url.pathname.endsWith("/api/flashcards/due"),
             handler: "NetworkFirst",
             options: {
               cacheName: "studyos-api",

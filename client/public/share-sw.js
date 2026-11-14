@@ -1,3 +1,7 @@
+// The app's own address. It may be under a sub-path (https://example.com/termtrail/):
+// the worker's scope says where.
+const home = () => (self.registration && self.registration.scope) || self.location.origin + "/";
+
 /*
  * Loaded into the service worker (see `importScripts` in vite.config.ts).
  *
@@ -40,12 +44,11 @@ async function receiveShare(request) {
     if (typeof value === "string" && value) query.set(key, value);
   }
   if (files.length) query.set("share_files", String(files.length));
-  const target = query.toString() ? `/?${query}` : "/";
-  return Response.redirect(new URL(target, self.location.origin).href, 303);
+  return Response.redirect(home() + (query.toString() ? `?${query}` : ""), 303);
 }
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "POST") return;
-  if (new URL(event.request.url).pathname !== "/share") return;
-  event.respondWith(receiveShare(event.request).catch(() => Response.redirect(new URL("/", self.location.origin).href, 303)));
+  if (new URL(event.request.url).pathname !== new URL("share", home()).pathname) return;
+  event.respondWith(receiveShare(event.request).catch(() => Response.redirect(home(), 303)));
 });

@@ -54,6 +54,8 @@ app.use(
       httpOnly: true,
       maxAge: 30 * 24 * 60 * 60 * 1000,
       sameSite: "lax",
+      // Under a sub-path, keep the cookie to this app: other apps may share the site.
+      path: env.basePath || "/",
     },
   }),
 );
@@ -62,7 +64,7 @@ app.use(passport.session());
 
 // --- public routes ---
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, app: "StudyOS", phase: 48, tz: env.tz, time: new Date().toISOString() });
+  res.json({ ok: true, app: "StudyOS", phase: 52, tz: env.tz, time: new Date().toISOString() });
 });
 app.use("/api", setupAuth(db));
 
@@ -241,7 +243,7 @@ if (isProd) {
   // "Share → StudyOS" is normally taken by the service worker (client/public/share-sw.js).
   // If it is not running yet, open the app instead of answering 404; the shared
   // content is not read or stored here.
-  app.post("/share", (_req, res) => res.redirect(303, "/"));
+  app.post("/share", (_req, res) => res.redirect(303, `${env.basePath}/`));
   app.use(express.static(env.clientDist));
   app.use((req, res) => {
     if (req.method === "GET" && !req.path.startsWith("/api")) {
@@ -252,16 +254,24 @@ if (isProd) {
   });
 }
 
-app.listen(env.port, () => {
-  console.log(`[StudyOS] server listening on http://localhost:${env.port} (${env.nodeEnv})`);
+// Under a sub-path (BASE_PATH=/termtrail) the whole app is mounted there: every route
+// above keeps its own address, and anything outside the sub-path is "not found".
+const site = env.basePath ? express().use(env.basePath, app) : app;
+if (env.basePath && isProd) site.set("trust proxy", 1);
+const onListening = () => {
+  console.log(`[StudyOS] server listening on http://${env.host ?? "localhost"}:${env.port}${env.basePath} (${env.nodeEnv})`);
   if (isProd) {
     const methods = signInMethods(env);
-    if (methods.devLogin) {
-      console.warn("[StudyOS] WARNING: ALLOW_DEV_LOGIN is on in production. Anyone can sign in as any email address, with no password. Configure Google sign-in and remove it before real students use this.");
+    if (methods.devLogin && methods.needsCode) {
+      console.warn("[StudyOS] Trial sign-in is on: anyone holding DEV_LOGIN_CODE can sign in as any email address. Configure Google sign-in before real students use this.");
+    } else if (methods.devLogin) {
+      console.warn("[StudyOS] WARNING: ALLOW_DEV_LOGIN is on in production with no DEV_LOGIN_CODE. Anyone can sign in as any email address, with no password. Set DEV_LOGIN_CODE, or configure Google sign-in and remove it, before this is on the internet.");
     } else if (!methods.google) {
       console.warn("[StudyOS] WARNING: no way to sign in is configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET (see docs/DEPLOY.md).");
     }
   }
-});
+};
+if (env.host) site.listen(env.port, env.host, onListening);
+else site.listen(env.port, onListening);
 
 if (isProd) scheduleDailyBackups(db, env.dbPath);

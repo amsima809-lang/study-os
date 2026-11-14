@@ -181,7 +181,7 @@ const PUSH_WORKER = readFileSync(fileURLToPath(new URL("../../client/public/push
 // The product's name as the worker carries it (kept in step with client/src/brand.ts by scripts/rename-app.mjs).
 const APP = /const APP_NAME = "([^"]*)"; \/\/ @app-name/.exec(PUSH_WORKER)![1];
 type Shown = { title: string; body: string; tag: string };
-function loadPushWorker(server: { status: number; json?: unknown } | "offline") {
+function loadPushWorker(server: { status: number; json?: unknown } | "offline", scope?: string) {
   const shown: Shown[] = [];
   const requests: { url: string; body: string }[] = [];
   const handlers: Record<string, (e: any) => void> = {};
@@ -190,6 +190,7 @@ function loadPushWorker(server: { status: number; json?: unknown } | "offline") 
   let focused = 0;
   const self = {
     registration: {
+      ...(scope ? { scope } : {}),
       showNotification: async (title: string, o: { body: string; tag: string }) => { shown.push({ title, body: o.body, tag: o.tag }); },
       pushManager: { getSubscription: async () => ({ endpoint: "https://fcm.googleapis.com/fcm/send/device-a", unsubscribe: async () => { unsubscribed = true; } }) },
     },
@@ -201,7 +202,7 @@ function loadPushWorker(server: { status: number; json?: unknown } | "offline") 
     if (server === "offline") throw new Error("offline");
     return { ok: server.status === 200, status: server.status, json: async () => server.json };
   };
-  vm.runInNewContext(PUSH_WORKER, { self, fetch, Promise, JSON });
+  vm.runInNewContext(PUSH_WORKER, { self, fetch, Promise, JSON, URL });
   const fire = async (type: string, extra: object = {}) => {
     let work: Promise<unknown> = Promise.resolve();
     handlers[type]({ waitUntil: (p: Promise<unknown>) => { work = p; }, ...extra });
@@ -209,6 +210,16 @@ function loadPushWorker(server: { status: number; json?: unknown } | "offline") 
   };
   return { shown, requests, fire, self, opened, wasUnsubscribed: () => unsubscribed, focusedCount: () => focused, onFocus: () => { focused++; } };
 }
+
+describe("push: the service worker when the app is served under a sub-path", () => {
+  it("asks its own server, and opens its own address when tapped", async () => {
+    const w = loadPushWorker({ status: 200, json: { lang: "en", test: true, items: [] } }, "https://example.com/termtrail/");
+    await w.fire("push");
+    expect(w.requests.map((r) => r.url)).toEqual(["https://example.com/termtrail/api/push/pending"]);
+    await w.fire("notificationclick", { notification: { close: () => {} } });
+    expect(w.opened).toEqual(["https://example.com/termtrail/"]);
+  });
+});
 
 describe("push: the service worker showing a notification", () => {
   it("asks the server what is due and shows each item", async () => {

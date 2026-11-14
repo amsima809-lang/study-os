@@ -19,16 +19,20 @@ const WORDS = {
   th: { due: "มีรายการถึงเวลาแล้ว เปิด " + APP_NAME_TH + " เพื่อดู", test: "การแจ้งเตือนทำงานแล้ว", signIn: "เข้าสู่ระบบ " + APP_NAME_TH + " เพื่อรับการแจ้งเตือนต่อ" },
   en: { due: "Something is due. Open " + APP_NAME + " to see it.", test: "Notifications are working.", signIn: "Sign in to " + APP_NAME + " to keep getting notifications." },
 };
-const ICON = "/pwa-192x192.png";
+// The app may be served under a sub-path (https://example.com/termtrail/); the worker's
+// scope is that address, so everything is addressed from it.
+const scope = () => (self.registration && self.registration.scope) || (self.location ? self.location.origin + "/" : "/");
+const at = (path) => (scope() === "/" ? "/" + path : new URL(path, scope()).href);
 
 async function showWhatIsDue() {
-  const show = (title, body, tag) => self.registration.showNotification(title, { body, tag, icon: ICON, badge: ICON, data: { url: "/" } });
+  const ICON = at("pwa-192x192.png");
+  const show = (title, body, tag) => self.registration.showNotification(title, { body, tag, icon: ICON, badge: ICON, data: { url: at("") } });
   const subscription = await self.registration.pushManager.getSubscription().catch(() => null);
 
   let answer = null;
   let signedOut = false;
   try {
-    const response = await fetch("/api/push/pending", {
+    const response = await fetch(at("api/push/pending"), {
       method: "POST",
       credentials: "same-origin",
       headers: { "content-type": "application/json" },
@@ -67,7 +71,7 @@ self.addEventListener("notificationclick", (event) => {
       for (const client of windows) {
         if ("focus" in client) return client.focus();
       }
-      return self.clients.openWindow("/");
+      return self.clients.openWindow(at(""));
     })(),
   );
 });
