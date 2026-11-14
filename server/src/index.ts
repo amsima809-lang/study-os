@@ -64,7 +64,7 @@ app.use(passport.session());
 
 // --- public routes ---
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, app: "StudyOS", phase: 52, tz: env.tz, time: new Date().toISOString() });
+  res.json({ ok: true, app: "StudyOS", phase: 53, tz: env.tz, time: new Date().toISOString() });
 });
 app.use("/api", setupAuth(db));
 

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useT } from "../i18n.tsx";
 import { getJSON, putJSON } from "../api.ts";
 import Icon from "../components/Icon.tsx";
-import { UNIVERSITIES } from "../data/universities.ts";
+import { listUniversities } from "../data/universityList.ts";
 import { useUniversity } from "../components/UniversityPicker.tsx";
 
 // Only this university has a course catalogue (faculties, programs, schedules).
@@ -66,9 +66,8 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
     onDone();
   }
 
-  const universities = [...UNIVERSITIES].sort((a, b) =>
-    lang === "th" ? a.nameTh.localeCompare(b.nameTh, "th") : a.nameEn.localeCompare(b.nameEn, "en"),
-  );
+  // The university already chosen on the login page comes first.
+  const universities = listUniversities(lang, loginUni?.id ?? null);
   const name = (f: Faculty | Program) => (lang === "en" && f.name_en ? f.name_en : f.name_th);
 
   return (
