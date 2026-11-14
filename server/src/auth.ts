@@ -25,7 +25,12 @@ declare global {
   }
 }
 
-function findOrCreateUser(
+/**
+ * The account for a sign-in: the existing one with that email (so a student who
+ * first used dev login keeps their notes when they later sign in with Google,
+ * and the Google identity is attached once), or a new one.
+ */
+export function findOrCreateUser(
   db: DB,
   profile: { googleId?: string; email: string; name: string; avatar: string },
 ): string {
@@ -63,6 +68,12 @@ export function setupAuth(db: DB): Router {
         },
         (_accessToken, _refreshToken, profile, done) => {
           const email = profile.emails?.[0]?.value ?? "";
+          // Accounts are matched by email, so a sign-in with no email, or with one
+          // Google has not verified, must not be let in: every email-less sign-in
+          // would land in the same account, and an unverified address could claim
+          // someone else's.
+          const verified = (profile as { _json?: { email_verified?: boolean } })._json?.email_verified;
+          if (!email || verified === false) return done(null, false);
           const name = profile.displayName ?? "";
           const avatar = profile.photos?.[0]?.value ?? "";
           const userId = findOrCreateUser(db, {
@@ -127,11 +138,15 @@ export function setupAuth(db: DB): Router {
       "/auth/google",
       passport.authenticate("google", { scope: ["profile", "email"] }),
     );
-    router.get(
-      "/auth/google/callback",
-      passport.authenticate("google", { failureRedirect: "/login" }),
-      (_req: Request, res: Response) => res.redirect("/"),
-    );
+    // Back from Google. Anything that goes wrong (the student pressed Cancel, the
+    // code expired or was reused, Google is unreachable) returns to the login
+    // page with a plain message, never a bare server error.
+    router.get("/auth/google/callback", (req: Request, res: Response, next: NextFunction) => {
+      passport.authenticate("google", (err: unknown, user: Express.User | false) => {
+        if (err || !user) return res.redirect("/?signin=failed");
+        req.logIn(user, (loginErr) => res.redirect(loginErr ? "/?signin=failed" : "/"));
+      })(req, res, next);
+    });
   } else {
     // Not configured: say so, instead of an unexplained server error.
     router.get(["/auth/google", "/auth/google/callback"], (_req: Request, res: Response) => {

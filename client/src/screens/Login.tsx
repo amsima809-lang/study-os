@@ -38,6 +38,12 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
   const [devEmail, setDevEmail] = useState("");
   const [devName, setDevName] = useState("");
   const [error, setError] = useState("");
+  // Back from Google without being signed in (cancelled, expired, or an unverified address).
+  const [googleFailed] = useState(() => {
+    const failed = new URLSearchParams(window.location.search).get("signin") === "failed";
+    if (failed) window.history.replaceState(null, "", window.location.pathname);
+    return failed;
+  });
   const [busy, setBusy] = useState(false);
 
   async function devLogin(e: React.FormEvent) {
@@ -184,6 +190,10 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
               </svg>
               {t("auth.google")}
             </a>}
+
+            {googleFailed && (
+              <p role="alert" className="text-sm text-center" style={{ color: "#fca5a5" }}>{t("auth.googleFailed")}</p>
+            )}
 
             {methods && !methods.google && !methods.devLogin && (
               <p role="alert" className="text-sm text-center" style={{ color: "rgba(255,255,255,0.75)" }}>{t("auth.none")}</p>
