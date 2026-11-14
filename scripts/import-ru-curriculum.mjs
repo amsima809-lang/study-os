@@ -20,8 +20,11 @@ import { rebuildSql } from "./lib/term-rebuild-sql.mjs";
 const require = createRequire(process.cwd() + "/server/package.json");
 const pdfjs = await import(require.resolve("pdfjs-dist/legacy/build/pdf.mjs"));
 
-const [pdfPath, outName] = process.argv.slice(2);
+const [pdfPath, outName, planName] = process.argv.slice(2);
 const report = outName === "--report";
+// Optional third argument: a second migration holding the ORDER the faculty recommends
+// (which year and semester each course is planned for), read from the semester plans.
+if (planName && !/^(\d{3}_[a-z0-9_]+\.sql|--names)$/.test(planName)) { console.error("the third argument must be a migration file name"); process.exit(1); }
 if (!pdfPath || !(report || /^\d{3}_[a-z0-9_]+\.sql$/.test(outName ?? ""))) {
   console.error("usage: node scripts/import-ru-curriculum.mjs <chapter.pdf> <NNN_name.sql | --report>");
   process.exit(1);
@@ -227,6 +230,76 @@ for (const P of programs) for (const c of P.courses) {
   if (!n || (c.name_th.length + c.name_en.length > n.name_th.length + n.name_en.length)) names.set(c.code, c);
 }
 
+// ---------- the semester-by-semester plan: which year and semester each course is meant for ----------
+// The page is two columns, each read top to bottom: "Freshman Year", "First Semester", courses,
+// "Total 18", "Second Semester", … The right column carries on from where the left one stops.
+const YEARS = { Freshman: 1, Sophomore: 2, Junior: 3, Senior: 4 };
+const planNotes = [];
+for (const P of programs) {
+  const items = pages[P.plan - 1].flatMap((l) => l.items.map((i) => ({ ...i, y: l.y })));
+  // Where the right column begins differs a little from page to page: it is where its course
+  // codes (or the dots standing for an elective) start.
+  const divide = Math.min(...items.filter((i) => i.x > 250 && /^([A-Z]{3}\d{4}|[A-Z]{0,3}\.{6,})$/.test(i.s.replace(/\s/g, ""))).map((i) => i.x)) - 1;
+  const column = (left) => {
+    const lines = [];
+    let cur = null;
+    for (const i of items.filter((i) => (i.x < divide) === left).sort((a, b) => b.y - a.y || a.x - b.x)) {
+      if (!cur || Math.abs(cur.y - i.y) > 2.5) lines.push((cur = { y: i.y, items: [] }));
+      cur.items.push(i);
+    }
+    return lines.map((l) => ({ ...l, text: l.items.sort((a, b) => a.x - b.x).map((i) => i.s).join(" ") }));
+  };
+  const listed = new Map(P.courses.map((c) => [c.code, c]));
+  let year = 0, sem = 0, rangeFrom = null;
+  P.order = new Map(); // code -> { year, sem }
+  P.slots = [];        // elective places: { year, sem, kind, label }
+  const semesters = new Map(); // "year.sem" -> { digits, total }
+  const key = () => `${year}.${sem}`;
+  for (const line of [...column(true), ...column(false)]) {
+    const t = line.text;
+    if (/Total for 4 years/.test(t)) continue;
+    const y = /(Freshman|Sophomore|Junior|Senior) Year/.exec(t);
+    if (y) { year = YEARS[y[1]]; continue; }
+    const sm = /(First|Second) Semester/.exec(t);
+    if (sm) { sem = sm[1] === "First" ? 1 : 2; continue; }
+    if (!year || !sem) continue;
+    const here = semesters.get(key()) ?? semesters.set(key(), { digits: 0, total: null }).get(key());
+    const total = /T\s?otal\s+(\d+)/.exec(t);
+    if (total) { here.total = +total[1]; continue; }
+    for (const i of line.items) {
+      const code = i.s.replace(/\s/g, "");
+      if (/^[A-Z]{3}\d{4}-$/.test(code)) { rangeFrom = code.slice(0, 7); continue; } // "RAM1112-" … "RAM1128": choose one of the range
+      if (/^[A-Z]{3}\d{4}$/.test(code)) {
+        const codes = rangeFrom ? [...listed.keys()].filter((c) => c >= rangeFrom && c <= code && c.slice(0, 3) === code.slice(0, 3)) : [code];
+        rangeFrom = null;
+        for (const c of codes) {
+          if (P.order.has(c)) problems.push(`${P.id}: ${c} appears twice in the semester plan`);
+          P.order.set(c, { year, sem });
+        }
+      } else if (/^\d$/.test(i.s)) here.digits += +i.s;
+    }
+    const slot = /(Major Elective[^0-9(]*|Free Elective)/.exec(t);
+    if (slot) P.slots.push({ year, sem, kind: /Free/.test(slot[1]) ? "FREE" : "MAJOR_ELEC", label: t.replace(/^[.\sA-Z]*\.{3,}\s*/, "").replace(/\s+\d$/, "").trim() });
+  }
+  // Each semester's credits, as read, must add up to the total printed under it.
+  // (One line printed without its credits, as happens once in the Logistics plan, is noted, not refused:
+  // the eight printed totals must still add up to the degree, which is checked just below.)
+  for (const [k, v] of semesters) {
+    if (v.total !== null && v.total - v.digits === 3) planNotes.push(`${P.en}, year ${k.replace(".", " semester ")}: one 3-credit line of the plan is printed without its credits (${v.digits} read, total ${v.total} printed)`);
+    else if (v.total === null || v.digits !== v.total) problems.push(`${P.id}: semester ${k} of the plan adds up to ${v.digits} credits; the page prints ${v.total}`);
+  }
+  if (semesters.size !== 8) problems.push(`${P.id}: ${semesters.size} semesters were read from the plan, not 8`);
+  const planTotal = [...semesters.values()].reduce((n, v) => n + (v.total ?? 0), 0);
+  if (planTotal !== P.total) problems.push(`${P.id}: the semester plan adds up to ${planTotal} credits; the degree is ${P.total}`);
+  for (const c of P.courses) if ((c.section === "CORE" || c.section === "MAJOR_REQ" || c.section === "GE") && !P.order.has(c.code)) problems.push(`${P.id}: ${c.code} (${c.section}) has no place in the semester plan`);
+  const need = (kind) => P.required[kind] / 3;
+  // (elective lines may wrap, so count what was found against what the sections require)
+  for (const kind of ["MAJOR_ELEC", "FREE"]) {
+    const n = P.slots.filter((x) => x.kind === kind).length;
+    if (n !== need(kind)) problems.push(`${P.id}: ${n} ${kind} places in the semester plan; ${need(kind)} are required`);
+  }
+}
+
 if (report) {
   for (const P of programs) {
     console.log(`\n${P.id}  ${P.en}  pages ${P.pages.join("-")}  total ${P.sum}  required ${JSON.stringify(P.required)}`);
@@ -235,9 +308,10 @@ if (report) {
       console.log(`  ${s.padEnd(10)} ${String(list.length).padStart(3)} courses ${String(list.reduce((n, c) => n + (c.credits ?? 0), 0)).padStart(3)} cr: ${list.map((c) => c.code).join(" ")}`);
     }
   }
+  for (const P of programs) console.log(`order ${P.id}: ${[1, 2, 3, 4].flatMap((y) => [1, 2].map((m) => `${y}.${m}:${[...P.order.values()].filter((o) => o.year === y && o.sem === m).length}c+${P.slots.filter((x) => x.year === y && x.sem === m).length}e`)).join(" ")}`);
   for (const P of programs) console.log(`plan check ${P.id}: required courses missing from the semester plan: ${P.notInPlan.join(" ") || "none"} | in the plan but not in the lists: ${P.planOnly.join(" ") || "none"}`);
   console.log(`\n${names.size} different courses in all`);
-  for (const n of notes) console.log("note: " + n);
+  for (const n of [...notes, ...planNotes]) console.log("note: " + n);
   if (process.argv.includes("--names")) for (const c of [...names.values()].sort((a, b) => a.code.localeCompare(b.code))) console.log(`${c.code}\t${c.credits}\t${c.name_th}\t${c.name_en}`);
 }
 if (problems.length) {
@@ -298,3 +372,38 @@ ${REFERRING.map((t) => `  AND code NOT IN (SELECT ${t.includes(".") ? t.split(".
 -- rebuilt: the new courses get the class times and exam dates the registrar published.
 ${rebuildSql("term_id IN (SELECT DISTINCT term_id FROM term_offerings)")}`);
 console.log(`server/migrations/${outName}: ${programs.length} majors, ${all.length} courses, ${programs.reduce((n, P) => n + P.courses.length, 0)} placements`);
+
+// ---------- the recommended order, as its own migration ----------
+if (planName && planName.endsWith(".sql")) {
+  const orderSql = `-- Migration ${planName.slice(0, 3)}: the order the faculty recommends for each major's courses.
+-- GENERATED by scripts/import-ru-curriculum.mjs. Do not edit by hand: fix the script and run it again.
+--
+-- Source: the semester-by-semester "Program of Study" pages of the same chapter
+--   ${basename(pdfPath)}  sha256 ${sha}
+-- Checked while generating, for every major: eight semesters were read; the credits read in each
+-- add up to the total printed under it; the eight totals add up to the degree; every required
+-- and general-education course has a place; the elective places equal what the sections require.
+${planNotes.map((n) => "-- Note: " + n).join("\n")}
+--
+-- plan_year 1 to 4 and plan_sem 1 or 2 say where the faculty puts a course in a four-year plan.
+-- The long-term planner uses this as the order to take courses in. Electives have no fixed
+-- course there, only places ("Major Elective", "Free Elective"): program_plan_slots.
+
+ALTER TABLE program_courses ADD COLUMN plan_year INTEGER;
+ALTER TABLE program_courses ADD COLUMN plan_sem INTEGER;
+CREATE TABLE IF NOT EXISTS program_plan_slots (
+  program_id TEXT NOT NULL REFERENCES programs(id) ON DELETE CASCADE,
+  plan_year  INTEGER NOT NULL,
+  plan_sem   INTEGER NOT NULL,
+  kind       TEXT NOT NULL CHECK (kind IN ('MAJOR_ELEC', 'FREE')),
+  seq        INTEGER NOT NULL,      -- 1, 2, … within the major, in plan order
+  label      TEXT NOT NULL,         -- as printed, e.g. "Major Elective in Foreign Language (2)"
+  PRIMARY KEY (program_id, kind, seq)
+);
+DELETE FROM program_plan_slots WHERE program_id IN (${programs.map((P) => q(P.id)).join(", ")});
+${programs.map((P) => [...P.order].map(([code, o]) => `UPDATE program_courses SET plan_year = ${o.year}, plan_sem = ${o.sem} WHERE program_id = ${q(P.id)} AND course_code = ${q(code)};`).join("\n")).join("\n")}
+${programs.map((P) => { const seq = { MAJOR_ELEC: 0, FREE: 0 }; const rows = [...P.slots].sort((a, b) => a.year - b.year || a.sem - b.sem).map((x) => `(${q(P.id)}, ${x.year}, ${x.sem}, ${q(x.kind)}, ${++seq[x.kind]}, ${q(x.label)})`); return `INSERT INTO program_plan_slots (program_id, plan_year, plan_sem, kind, seq, label) VALUES\n  ${rows.join(",\n  ")};`; }).join("\n")}
+`;
+  writeFileSync(`server/migrations/${planName}`, orderSql);
+  console.log(`server/migrations/${planName}: order for ${programs.reduce((n, P) => n + P.order.size, 0)} placements, ${programs.reduce((n, P) => n + P.slots.length, 0)} elective places`);
+}

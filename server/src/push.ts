@@ -32,10 +32,14 @@ export type VapidKeys = {
 
 const b64u = (buf: Buffer | Uint8Array) => Buffer.from(buf).toString("base64url");
 
+const pad32 = (d: Buffer) => (d.length >= 32 ? d : Buffer.concat([Buffer.alloc(32 - d.length), d]));
+
 export function generateVapidKeys(): VapidKeys {
   const ecdh = createECDH("prime256v1");
   ecdh.generateKeys();
-  return { publicKey: b64u(ecdh.getPublicKey()), privateKey: b64u(ecdh.getPrivateKey()) };
+  // The private number is 32 bytes, but Node drops leading zero bytes: about one key in 256
+  // comes back shorter, and a short key cannot be loaded again to sign. Put the zeros back.
+  return { publicKey: b64u(ecdh.getPublicKey()), privateKey: b64u(pad32(ecdh.getPrivateKey())) };
 }
 
 /**
@@ -64,7 +68,8 @@ export function vapidHeader(endpoint: string, keys: VapidKeys, subject = vapidSu
   const pub = Buffer.from(keys.publicKey, "base64url"); // 0x04 | X (32) | Y (32)
   const key = createPrivateKey({
     format: "jwk",
-    key: { kty: "EC", crv: "P-256", d: keys.privateKey, x: b64u(pub.subarray(1, 33)), y: b64u(pub.subarray(33, 65)) },
+    // (a key stored before the fix in generateVapidKeys may be a byte short: pad it here too)
+    key: { kty: "EC", crv: "P-256", d: b64u(pad32(Buffer.from(keys.privateKey, "base64url"))), x: b64u(pub.subarray(1, 33)), y: b64u(pub.subarray(33, 65)) },
   });
   const part = (o: object) => b64u(Buffer.from(JSON.stringify(o)));
   const unsigned = `${part({ typ: "JWT", alg: "ES256" })}.${part({ aud: new URL(endpoint).origin, exp: Math.floor(now / 1000) + 12 * 60 * 60, sub: subject })}`;

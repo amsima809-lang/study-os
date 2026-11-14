@@ -23,6 +23,17 @@ describe("push: signing (VAPID)", () => {
     expect(Buffer.from(k.privateKey, "base64url").length).toBe(32);
   });
 
+  it("always makes a 32-byte private key that can sign, also when its first byte is zero", () => {
+    // About one generated key in 256 starts with a zero byte, which Node leaves out.
+    const now = Date.UTC(2026, 10, 16, 3, 0, 0);
+    for (let i = 0; i < 1500; i++) {
+      const k = generateVapidKeys();
+      const d = Buffer.from(k.privateKey, "base64url");
+      expect(d.length).toBe(32);
+      if (d[0] === 0) expect(vapidHeader(FCM, k, "mailto:ops@studyos.test", now)).toMatch(/^vapid t=/);
+    }
+  });
+
   it("signs a token the push service can verify with the public key", () => {
     const keys = generateVapidKeys();
     const now = Date.UTC(2026, 10, 16, 3, 0, 0);

@@ -117,7 +117,8 @@ describe("the migration's own safety list", () => {
   it("names every table that points at a course, so a course in use is never removed", () => {
     const tables = (db.prepare(
       "SELECT m.name FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type = 'table' AND p.name = 'course_code' ORDER BY 1",
-    ).all() as { name: string }[]).map((r) => r.name).filter((n) => n !== "program_courses" && n !== "term_offerings");
+    ).all() as { name: string }[]).map((r) => r.name).filter((n) => !["program_courses", "term_offerings", "course_offering_history"].includes(n)) // the official records are not a student's work
+      .filter((n) => n !== "passed_courses"); // created by a later migration: it did not exist when 033 ran
     const script = readFileSync(fileURLToPath(new URL("../../scripts/import-ru-curriculum.mjs", import.meta.url)), "utf8");
     const listed = JSON.parse(/const REFERRING = (\[[^\]]*\]);/.exec(script)![1]) as string[];
     for (const t of tables) expect(listed, t).toContain(t);

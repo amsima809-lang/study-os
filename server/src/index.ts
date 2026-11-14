@@ -26,6 +26,7 @@ import { createMaterialsRouter } from "./materials.js";
 import { createStudyPlanRouter } from "./studyplan.js";
 import { createLecturesRouter } from "./lectures.js";
 import { createRemindersRouter } from "./reminders.js";
+import { createTrailRouter } from "./trailRoutes.js";
 import { createPushRouter, loadVapidKeys, startPushScheduler } from "./push.js";
 
 const app = express();
@@ -64,7 +65,7 @@ app.use(passport.session());
 
 // --- public routes ---
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, app: "StudyOS", phase: 56, tz: env.tz, time: new Date().toISOString() });
+  res.json({ ok: true, app: "StudyOS", phase: 57, tz: env.tz, time: new Date().toISOString() });
 });
 app.use("/api", setupAuth(db));
 
@@ -199,6 +200,7 @@ app.use("/api", createMaterialsRouter(db));
 app.use("/api", createStudyPlanRouter(db));
 app.use("/api", createLecturesRouter(db));
 app.use("/api", createRemindersRouter(db));
+app.use("/api", createTrailRouter(db));
 
 // Notifications when the app is closed: routes for devices, and the half-minute check for due items.
 const vapidKeys = loadVapidKeys(db);
