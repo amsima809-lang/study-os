@@ -4,6 +4,8 @@ For showing the app to someone before the real deploy (`DEPLOY.md`, Fly). The ap
 
 **Live trial: https://amsima.com/termtrail** (since 14 November 2026, on the owner's Mac mini).
 
+The access code is in `~/termtrail/termtrail.env` on that Mac (`DEV_LOGIN_CODE`), and a copy is kept on the development machine in `data/private/termtrail-trial-access-code.txt`, a folder git ignores. It is never written in the repository or in a message.
+
 ## What is different from the real deploy
 
 | | Real deploy (Fly) | Trial copy |

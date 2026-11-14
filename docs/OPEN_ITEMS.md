@@ -1,8 +1,14 @@
 # Open items
 
-Last updated 14 November 2026, after Phase 51. Everything that could be built or checked on the development machine has been. Each item below is **blocked**: it cannot be finished from the development machine, for the reason given. It needs a **person's decision**, something only the **owner** holds, a **device**, or **data** that is not published. For each: what was tried, why it stops there, and the exact next step.
+Last updated 14 November 2026, after Phase 52. Everything that could be built or checked on the development machine has been. Each item below is **blocked**: it cannot be finished from the development machine, for the reason given. It needs a **person's decision**, something only the **owner** holds, a **device**, or **data** that is not published. For each: what was tried, why it stops there, and the exact next step.
 
 What the development machine does not have (re-checked 14 November 2026, after Phase 51): no Docker, Podman, Colima or Fly CLI; no Java runtime (so the Android SDK installer cannot add a system image); Xcode without any iOS simulator (`simctl` lists no runtimes and no devices, and the app's simulator tool also needs an administrator password to select Xcode); one Android emulator image whose Chrome is a stub that cannot open a page; no Google sign-in keys and no Fly credentials; read-only access to the repository (pull, not push).
+
+## A trial copy is live
+
+**https://amsima.com/termtrail** (Phase 52, 14 November 2026) runs this branch on the owner's Mac mini, for his partner to review. Sign-in is the trial sign-in: any email address plus the access code (kept in `data/private/termtrail-trial-access-code.txt` on the development machine, never in the repository). It has no Google sign-in and no AI key, so the AI features say they are not set up. Checked from the public internet in a clean browser: the page, icons, manifest and service worker load under `/termtrail` with no errors, a wrong code is refused, and the right code signs in and reaches onboarding. How it is hosted and updated: `DEPLOY_SUBPATH.md`.
+
+Because it is a real HTTPS site, the phone checks listed under "Needs a device or a person" can now be done on it by anyone holding a phone and the access code: add to Home Screen, notifications, touch and Pencil, the share sheet, and the lecture-collector bookmark.
 
 ## Needs a decision
 
