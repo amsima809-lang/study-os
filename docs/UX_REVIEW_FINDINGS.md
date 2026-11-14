@@ -46,6 +46,8 @@ Severity: **A** blocks a task or loses work, **B** slows a task, **C** cosmetic.
 
 ### 3. Layout, by device and orientation
 
+**Status: fixed 2026-11-14 (Phase 38).** Phone landscape and tablet portrait get a 72px icon rail instead of the 224px sidebar (content width 734 and 690 pixels, up from 588 and 504); desktop content is 1,152 pixels wide with Today in two columns and card lists in two columns; the wide sidebar lists every screen. Not done: two-column layouts for Library, Mock and Schedule detail views, which still stretch to one wide column.
+
 | # | Sev | Finding | Fix |
 |---|---|---|---|
 | 3.1 | B | **Desktop (1440×900):** content is one column capped at 728 pixels, about half the window, with empty bands either side. More is 1,864 pixels tall and Planner 1,674, so long scrolling beside unused space. The week grid is also held to 728 pixels. | Raise the cap on wide screens; two columns on Today (calendar beside the lists); let the calendar use the full width. |

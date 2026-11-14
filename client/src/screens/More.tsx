@@ -66,7 +66,7 @@ export default function More({
         {t("more.title")}
       </h1>
 
-      <ul className="space-y-2">
+      <ul className="wide-grid space-y-2">
         {items.map((it, i) => (
           <li
             key={it.id}

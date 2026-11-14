@@ -26,8 +26,8 @@ export default function Week() {
   const days = [...byDay.keys()].sort((a, b) => a - b);
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{t("week.title")}</h1>
+    <div className="wide-grid space-y-4">
+      <h1 className="span-all text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{t("week.title")}</h1>
 
       {days.length === 0 ? (
         <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t("week.empty")}</p>

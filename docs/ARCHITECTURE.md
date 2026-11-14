@@ -340,3 +340,12 @@ AI ช่วยเรา "ฝึก" ไม่ใช่ "ทำแทน" — �
 - **Text floor.** `CourseChip` uses `max(0.8em, 12px)`; `TimeGrid` labels are 12px (the "+N" badge 11px).
 - **Reduced motion.** One media query in `index.css` shortens every animation and transition to nothing when the device asks for less motion.
 
+## Phase 38 — Layout by device and orientation
+- **Three frames.** `useLayout()` reads two media queries and re-renders on change: `sidebar` = `(min-width: 1024px) and (min-height: 500px)`; `rail` = `(min-width: 768px), (min-width: 560px) and (max-height: 500px)`; otherwise `phone`. The root element carries `data-layout`, which the CSS in `index.css` keys on.
+- **Sidebar** (240px): pinned screens (press-and-hold still unpins), an "other screens" group with every remaining destination, then More. Labels wrap instead of truncating.
+- **Rail** (72px plus the left safe area): the student's menu as icons with a 12px label, language and theme buttons at the bottom; it scrolls if the screen is very short.
+- **Content width.** `max-w-6xl` on the sidebar layout, `max-w-3xl` otherwise and for destinations flagged `narrow`.
+- **Two columns from 1200px.** `.today-grid` places the calendar in the left column and the to-dos and day lists in the right, while keeping the phone order in the DOM. `.wide-grid` turns a stack of cards into two columns (`.span-all` for headings); used on More, Notes, Week, Exams, Stats and the degree planner.
+- **Hour grid height.** `.timegrid-scroll`: 60dvh normally, nearly the whole height when the screen is under 500px tall, and the full column height in the desktop Today grid.
+- Checked at 375×812, 812×375, 768×1024, 1024×768, 1440×900 and 900×1440: no screen scrolls sideways.
+

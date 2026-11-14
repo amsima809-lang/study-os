@@ -16,8 +16,8 @@ const BREAK_MIN = 10;
 export default function Stats() {
   const { t } = useT();
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{t("stats.pageTitle")}</h1>
+    <div className="wide-grid space-y-4">
+      <h1 className="span-all text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{t("stats.pageTitle")}</h1>
       <Pomodoro />
       <Analytics />
     </div>

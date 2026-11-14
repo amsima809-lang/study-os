@@ -30,22 +30,24 @@ export type Destination = {
   /** i18n key of the full label used in the More list. */
   label: string;
   Screen: ComponentType;
+  /** A reading or form screen: keeps a reading-width column even on a wide window. */
+  narrow?: boolean;
 };
 
 export const DESTINATIONS: Destination[] = [
   { id: "today", icon: "calendar", navLabel: "nav.today", label: "nav.today", Screen: Today },
   { id: "notes", icon: "notebook", navLabel: "nav.notes", label: "nav.notes", Screen: Notes },
-  { id: "quiz", icon: "target", navLabel: "nav.quiz", label: "nav.quiz", Screen: Quiz },
-  { id: "review", icon: "refresh", navLabel: "nav.review", label: "nav.review", Screen: Review },
-  { id: "reminders", icon: "bell", navLabel: "nav.reminders", label: "rem.screen", Screen: Reminders },
-  { id: "studyplan", icon: "calendarCheck", navLabel: "nav.studyplan", label: "more.studyplan", Screen: StudyPlan },
+  { id: "quiz", icon: "target", navLabel: "nav.quiz", label: "nav.quiz", Screen: Quiz, narrow: true },
+  { id: "review", icon: "refresh", navLabel: "nav.review", label: "nav.review", Screen: Review, narrow: true },
+  { id: "reminders", icon: "bell", navLabel: "nav.reminders", label: "rem.screen", Screen: Reminders, narrow: true },
+  { id: "studyplan", icon: "calendarCheck", navLabel: "nav.studyplan", label: "more.studyplan", Screen: StudyPlan, narrow: true },
   { id: "library", icon: "library", navLabel: "nav.library", label: "more.library", Screen: Library },
   { id: "schedule", icon: "calendarRange", navLabel: "nav.schedule", label: "more.schedule", Screen: Schedule },
   { id: "stats", icon: "chartBar", navLabel: "nav.stats", label: "more.stats", Screen: Stats },
   { id: "planner", icon: "graduationCap", navLabel: "nav.planner", label: "more.planner", Screen: Planner },
   { id: "mock", icon: "fileEdit", navLabel: "nav.mock", label: "more.mock", Screen: Mock },
-  { id: "weakness", icon: "crosshair", navLabel: "nav.weakness", label: "more.weakness", Screen: Weakness },
-  { id: "costs", icon: "coins", navLabel: "nav.costs", label: "more.costs", Screen: Costs },
+  { id: "weakness", icon: "crosshair", navLabel: "nav.weakness", label: "more.weakness", Screen: Weakness, narrow: true },
+  { id: "costs", icon: "coins", navLabel: "nav.costs", label: "more.costs", Screen: Costs, narrow: true },
 ];
 
 export const destination = (id: DestId) => DESTINATIONS.find((d) => d.id === id)!;

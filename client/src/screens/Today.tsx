@@ -110,15 +110,18 @@ export default function Today() {
   if (error) return <ErrorBox>{t("status.error")}</ErrorBox>;
   if (!data) return <Loading>{t("status.connecting")}</Loading>;
 
+  // Phone order: to-dos, calendar, the rest. On a wide window (see .today-grid
+  // in index.css) the calendar takes the left column and the lists sit beside it.
   return (
-    <div className="space-y-4">
-      <header>
+    <div className="today-grid space-y-4">
+      <header className="today-head">
         <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{t("today.title")}</h1>
         <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>
           {formatDate(data.today, lang)} · {t("today.term", { term: data.term })}
         </p>
       </header>
 
+      <div className="today-top space-y-4">
       <TodayTodos data={data} />
 
       {/* Not chosen yet: the timetable shows every course of the program */}
@@ -141,9 +144,11 @@ export default function Today() {
         </Card>
       )}
       {choosing && <TermCoursesPicker onClose={() => setChoosing(false)} />}
+      </div>
 
-      <Calendar />
+      <div className="today-cal"><Calendar /></div>
 
+      <div className="today-rest space-y-4">
       <Card>
         <h2 className="font-semibold mb-1" style={{ color: "var(--text-primary)" }}>{t("today.nextExam")}</h2>
         {data.nextExam ? (
@@ -235,6 +240,7 @@ export default function Today() {
           ))}
         </ul>
       </Card>
+      </div>
     </div>
   );
 }

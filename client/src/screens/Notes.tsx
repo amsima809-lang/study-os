@@ -161,7 +161,7 @@ function CourseList({ onSelectGroup }: { onSelectGroup: (g: CourseGroup) => void
   if (groups.length === 0) return <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t("notes.empty")}</p>;
 
   return (
-    <ul className="space-y-2">
+    <ul className="wide-grid space-y-2">
       {groups.map((g) => (
         <li key={g.code ?? "__none__"}>
           <button

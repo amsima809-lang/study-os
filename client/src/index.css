@@ -183,3 +183,41 @@ input {
     scroll-behavior: auto !important;
   }
 }
+
+/* ── Layout by device ──
+   The shell sets data-layout="phone" | "rail" | "sidebar" (see useLayout in App.tsx). */
+
+/* The hour grid's own scroll area: most of a tall screen, nearly all of a short one. */
+.timegrid-scroll { max-height: 60dvh; }
+@media (max-height: 500px) {
+  .timegrid-scroll { max-height: calc(100dvh - 4.5rem); }
+}
+
+@media (min-width: 1200px) {
+  /* Today: calendar on the left, to-dos and the day's lists beside it. */
+  [data-layout="sidebar"] .today-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+    grid-template-rows: auto auto 1fr;
+    column-gap: 1.25rem;
+    row-gap: 1rem;
+    align-items: start;
+  }
+  [data-layout="sidebar"] .today-grid > * { margin-top: 0; }
+  [data-layout="sidebar"] .today-head { grid-column: 1 / -1; }
+  [data-layout="sidebar"] .today-cal { grid-column: 1; grid-row: 2 / span 2; }
+  [data-layout="sidebar"] .today-top { grid-column: 2; grid-row: 2; }
+  [data-layout="sidebar"] .today-rest { grid-column: 2; grid-row: 3; }
+  [data-layout="sidebar"] .today-cal .timegrid-scroll { max-height: calc(100dvh - 19rem); }
+
+  /* A list of cards becomes two columns instead of one very wide one. */
+  [data-layout="sidebar"] .wide-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem 1rem;
+    align-items: start;
+  }
+  [data-layout="sidebar"] .wide-grid > * { margin-top: 0; }
+  [data-layout="sidebar"] .wide-grid > .span-all { grid-column: 1 / -1; }
+  [data-layout="sidebar"] .wide-grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}

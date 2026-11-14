@@ -139,8 +139,8 @@ export default function TimeGrid({ dates, eventsOn, today, now, onPickDay, onTog
       {/* Hour grid */}
       <div
         ref={scroller}
-        className="overflow-auto"
-        style={{ maxHeight: "60dvh", borderTop: "1px solid var(--border-light)" }}
+        className="timegrid-scroll overflow-auto"
+        style={{ borderTop: "1px solid var(--border-light)" }}
       >
         <div className="flex pr-1" style={{ height: hours.length * hourPx + 8, minWidth: dayMinWidth ? dayMinWidth + 40 : undefined }}>
           {/* Hour labels */}

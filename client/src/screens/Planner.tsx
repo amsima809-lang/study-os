@@ -42,8 +42,8 @@ export default function Planner() {
   ];
 
   return (
-    <div className="space-y-4">
-      <div className="flex gap-1 rounded-lg p-1" style={{ backgroundColor: "var(--bg-surface-hover)" }}>
+    <div className="wide-grid space-y-4">
+      <div className="span-all flex gap-1 rounded-lg p-1" style={{ backgroundColor: "var(--bg-surface-hover)" }}>
         {tabs.map((tb) => (
           <button
             key={tb.id}
@@ -108,7 +108,7 @@ function PlanTabContent({
         </div>
       )}
 
-      <div>
+      <div className="span-all">
         <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{t("plan.title")}</h1>
         <p className="text-sm mt-1" style={{ color: "var(--text-tertiary)" }}>
           {t("plan.creditsPassed", { passed: data.totalPassedCredits, total: data.totalPlannedCredits })}
@@ -306,7 +306,7 @@ function WhatIfTab({ gradeScale, currentGpa }: { gradeScale: PlanGradeScale[]; c
   const inputStyle = { borderColor: "var(--border)", backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" };
 
   return (
-    <div className="space-y-4">
+    <div className="span-all max-w-3xl space-y-4">
       <Card>
         <h2 className="font-semibold mb-1" style={{ color: "var(--text-primary)" }}>{t("plan.whatIf")}</h2>
         <p className="text-sm mb-3" style={{ color: "var(--text-tertiary)" }}>
