@@ -1,6 +1,6 @@
 /**
  * Colour themes. A theme is separate from light/dark mode:
- *   "default"        the brand's own colours: leaf green with a lime second colour
+ *   "default"        the brand's own colours: indigo, with amber as the second colour
  *   "palette:<id>"   one of the palettes below
  *   "school:<id>"    a university's colours (client/src/data/universities.ts)
  *   "hc:light|dark"  high contrast (this one also fixes the mode)
@@ -18,9 +18,9 @@ export type Mode = "light" | "dark";
 export type Colour = string;
 
 export const PALETTES = [
-  { id: "indigo", primary: "#6d5cdf", secondary: "#a096f5" }, // the app's colour before the Upleaf brand
   { id: "ocean", primary: "#2563eb", secondary: "#06b6d4" },
   { id: "teal", primary: "#0d9488", secondary: "#5eead4" },
+  { id: "forest", primary: "#15803d", secondary: "#a3e635" },
   { id: "sunset", primary: "#ea580c", secondary: "#fbbf24" },
   { id: "rose", primary: "#e11d48", secondary: "#fb7185" },
   { id: "berry", primary: "#a21caf", secondary: "#f0abfc" },
@@ -28,12 +28,12 @@ export const PALETTES = [
 ] as const;
 
 /**
- * The brand's colours (docs/brand/): leaf green, and lime for the lifted page
- * of the logo. They are the default theme. The accent tokens in index.css are
- * the shades computed from these (so the first paint is already green); if
- * these change, recompute them — see the note above the tokens there.
+ * The brand's colours (docs/brand/): indigo, and amber for the lifted page of
+ * the logo. They are the default theme. The accent tokens in index.css are the
+ * shades computed from these (so the first paint is already right); if these
+ * change, recompute them — see the note above the tokens there.
  */
-export const BRAND = { primary: "#15803d", secondary: "#a3e635" };
+export const BRAND = { primary: "#6d5cdf", secondary: "#fbbf24" };
 
 /** Swatch shown for the default theme in the selector. */
 export const DEFAULT_SWATCH = BRAND;

@@ -12,9 +12,9 @@
  */
 
 /** The name in Latin letters: used in English, in the installed-app name and in the page title. */
-export const APP_NAME = "Upleaf";
+export const APP_NAME = "StudyOS";
 
 /** The name as shown when the app is in Thai. The same as APP_NAME unless the brand has a Thai-script form. */
-export const APP_NAME_TH = "Upleaf";
+export const APP_NAME_TH = "StudyOS";
 
 export const appName = (lang: "th" | "en"): string => (lang === "th" ? APP_NAME_TH : APP_NAME);

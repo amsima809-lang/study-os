@@ -22,10 +22,10 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
   const [picking, setPicking] = useState(false);
 
   // Theme colours: the chosen university's, or the default purple/blue/pink.
-  // With no university chosen, the page wears the brand's own greens.
+  // With no university chosen, the page wears the brand's own indigo.
   const primary = uni?.swatches[0].hex ?? BRAND.primary;
-  const secondary = uni?.swatches[1]?.hex ?? (uni ? primary : "#65a30d");
-  const third = uni ? primary : "#a3e635";
+  const secondary = uni?.swatches[1]?.hex ?? (uni ? primary : "#3b82f6");
+  const third = uni ? primary : "#fbbf24";
   const approx = uni?.swatches.some((s) => s.source !== "official") ?? false;
   const [showDev, setShowDev] = useState(false);
   // Which ways of signing in this server offers (dev login is off on a live site).
@@ -69,7 +69,7 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
         style={{
           background: uni
             ? `linear-gradient(135deg, ${mix(primary, DARK, 0.85)} 0%, ${mix(primary, DARK, 0.6)} 40%, ${mix(secondary, DARK, 0.8)} 100%)`
-            : "linear-gradient(135deg, #07140d 0%, #14532d 42%, #0f2a1c 100%)" /* the brand's deep greens */,
+            : "linear-gradient(135deg, #0f0c29 0%, #302b63 40%, #24243e 100%)" /* the brand's deep indigo */,
         }}
       />
       {/* Campus photo (only some universities have one) under a tinted dark overlay */}

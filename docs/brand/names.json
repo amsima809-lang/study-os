@@ -1,12 +1,48 @@
 [
  {
+  "name": "Astute",
+  "thai": "",
+  "meaning": "a student, a study; the word means sharp and observant",
+  "verdict": "CAUTION",
+  "label": "Crowded word",
+  "pick": true,
+  "found": "The owner's idea. First look: about nine App Store apps carry the word, two in Education (“Astute BFSL”, “Astutely”); an app named exactly “Astute” is on Google Play; astute.com is a B2B company, astute.app is for sale, astute.co.th is in use."
+ },
+ {
+  "name": "AstuteU",
+  "thai": "",
+  "meaning": "Astute + U for university",
+  "verdict": "CLEAR",
+  "label": "No similar product found",
+  "pick": true,
+  "found": "First look only: no app found; astuteu.com and astuteu.app did not resolve. Still built on a common word."
+ },
+ {
+  "name": "Termtrail",
+  "thai": "",
+  "meaning": "your trail through the term",
+  "verdict": "CLEAR",
+  "label": "No similar product found",
+  "pick": true,
+  "found": "First look only: no app found; termtrail.com and termtrail.app did not resolve."
+ },
+ {
+  "name": "Termleaf",
+  "thai": "",
+  "meaning": "term + leaf",
+  "verdict": "CAUTION",
+  "label": "In use elsewhere",
+  "pick": false,
+  "found": "A live writing tool at <a href=\"https://termleaf.com\">termleaf.com</a> (“Write. Nothing else.”). Same “leaf” association as Upleaf."
+ },
+ {
   "name": "Upleaf",
   "thai": "",
   "meaning": "a page lifting up, like the logo",
   "verdict": "CAUTION",
-  "label": "In use elsewhere",
-  "pick": true,
-  "found": "No study or education product found. A posture-walking app, “Upleaf: Posture Walks” (Health &amp; Fitness), is on the App Store, and a web agency uses <a href=\"https://upleaf.com\">upleaf.com</a>. A wider check also reported an AI studio using the name at upleaf.io (that site would not load when checked directly). upleaf.app does not resolve."
+  "label": "Dropped: reads as cannabis",
+  "pick": false,
+  "found": "No study or education product found. A posture-walking app, “Upleaf: Posture Walks” (Health &amp; Fitness), is on the App Store, and a web agency uses <a href=\"https://upleaf.com\">upleaf.com</a>. A wider check also reported an AI studio using the name at upleaf.io (that site would not load when checked directly). upleaf.app does not resolve. Chosen and dropped on the same day: “leaf” reads as cannabis, and the closest US mark, UPLEAF’D, is a cannabis-information site."
  },
  {
   "name": "Termwise",
@@ -22,7 +58,7 @@
   "thai": "",
   "meaning": "from “semester”",
   "verdict": "CAUTION",
-  "label": "One letter from taken apps",
+  "label": "Dropped: looks like a knock-off",
   "pick": false,
   "found": "Nothing found under this exact spelling (App Store US and Thailand, Google Play, semstra.com / .app / .co do not resolve). But <strong>Semestra</strong>, one letter longer and said the same way, is two Education apps on the App Store in Thailand and one on Google Play, all semester planners."
  },

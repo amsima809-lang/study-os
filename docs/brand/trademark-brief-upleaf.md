@@ -1,4 +1,6 @@
-# Brief for a trademark lawyer: "Upleaf"
+# Brief for a trademark lawyer: "Upleaf" (name dropped)
+
+> **Upleaf was dropped on 14 November 2026**, the same day it was chosen: "leaf" carries a cannabis association (the closest US mark, UPLEAF'D, is a cannabis-information site). This brief is kept as a record of the search, and as a pattern for the next name.
 
 Prepared 14 November 2026. This is what a preliminary search found, set out so a trademark professional can give an opinion without repeating it. It is not legal advice and not a clearance.
 

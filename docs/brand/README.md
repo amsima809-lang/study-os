@@ -2,22 +2,34 @@
 
 "StudyOS" and the old book icon were placeholders. This folder holds the logo work and the name research.
 
-## The brand (chosen 14 November 2026)
+## Where the brand stands (14 November 2026)
 
-- **Name: Upleaf.** An English name; the same in the Thai interface.
-- **Logo: the book that becomes a tick** (`mark-book.svg`): an open book whose right page lifts — a leaf going up.
-- **Colours: leaf green `#15803d` and lime `#a3e635`** (`BRAND` in `client/src/theme.ts`). Green is the app's default theme and its icon; lime is the lifted page. The earlier indigo is still offered as a colour theme.
+- **Name: not chosen. The app shows the placeholder "StudyOS".**
+- **Logo: the book that becomes a tick** (`mark-book.svg`), live in the app.
+- **Colours: indigo with an amber page on the logo** (`BRAND` in `client/src/theme.ts`; the icon tile is `#4f46e5`, the page `#fbbf24`). Leaf green is still offered as the "Forest" colour theme.
 
-Where it lives: `client/src/brand.ts` (name), `client/src/components/Logo.tsx` (mark, follows the theme), `client/public/favicon.svg` and the PNG icons (built by `node scripts/make-icons.mjs`), `lockups/upleaf-light.svg` and `upleaf-dark.svg` (logo with the name, lettering outlined).
+Names tried and dropped, and why:
 
-Not done, and why:
-- **Trademark clearance and the domain.** The checks here are product and register searches, not legal clearance. `upleaf.com` belongs to a web agency; `upleaf.app` did not resolve on the day.
-- **Internal names stay `studyos`:** storage keys, notification tags, log prefixes, the repository, the Fly app, and most of these documents. Students never see them, and changing storage keys would sign everyone's settings away.
+| Name | Dropped because |
+|---|---|
+| Upleaf | Chosen, then dropped the same day: "leaf" reads as cannabis (the closest US mark, UPLEAF'D, is a cannabis-information site). Search record: `trademark-brief-upleaf.md`. |
+| Semstra | One letter from Semestra, three existing semester-planner apps. It would look like a knock-off trading on a misspelling. |
+| Semestra | Those three apps, plus an unregistered AI study app of the same name. |
+| Termwise | An app of this exact name on Google Play (school management, Nigeria); an identical mark pending in Spain for software. |
+| Termleaf | A live writing tool at termleaf.com ("Write. Nothing else."), and the same "leaf" association. |
+
+Being checked: **Astute** (the owner's idea: a student, a study, and the word's meaning), with **AstuteU** and **Termtrail** as alternatives. First look at Astute: about nine App Store apps carry the word, two of them in Education ("Astute BFSL", "Astutely"); an app named exactly "Astute" is on Google Play; astute.com is a B2B company, astute.app is for sale, astute.co.th is in use.
+
+A first screen (app stores and domains only) of 25 more "term" and "semester" names found most taken or parked. No app and no .com or .app in use: Termtrail. No app, one domain in use: Termnest, Termrise, Termpath, Semwell, Semwise, Semly, Semnest. Already study apps: Termflow, Semora, Gradewise, Planwise.
+
+Where the brand lives: `client/src/brand.ts` (name), `client/src/components/Logo.tsx` (mark, follows the theme), `client/public/favicon.svg` and the PNG icons (built by `node scripts/make-icons.mjs`), `lockups/` (logo with a name, lettering outlined).
+
+Internal names stay `studyos` whatever the brand becomes: storage keys, notification tags, log prefixes, the repository and the Fly app.
 
 ## Changing the name
 
 ```bash
-node scripts/rename-app.mjs "Upleaf"               # one name for both languages
+node scripts/rename-app.mjs "NewName"              # one name for both languages
 node scripts/rename-app.mjs "Khuenjai" "ขึ้นใจ"   # or a Latin name and its Thai form
 npm run build
 ```
@@ -54,7 +66,7 @@ A word-mark search of Thailand's DIP register and WIPO's Global Brand Database (
 
 | Name | Result |
 |---|---|
-| **Upleaf** (chosen) | Nothing identical in Thailand. One identical mark elsewhere: "upleaf" registered in Indonesia in class 9 for fibre-optic cable (reg. IDM001225641), not software. Similar marks: UpLeap (Switzerland, classes 9, 41, 42), UPLEAD (US, class 42), and Thai UPLIFT / UPLIFE marks. |
+| **Upleaf** (chosen, then dropped) | Nothing identical in Thailand. One identical mark elsewhere: "upleaf" registered in Indonesia in class 9 for fibre-optic cable (reg. IDM001225641), not software. Similar marks: UpLeap (Switzerland, classes 9, 41, 42), UPLEAD (US, class 42), and Thai UPLIFT / UPLIFE marks. |
 | Termwise | Nothing in Thailand. Identical mark pending in Spain in class 9 for downloadable software (app. M4407002, filed 5 Oct 2026); "Balthasar TermWise" registered in the UK in class 9. |
 | Semstra | Nothing found under this spelling. "Semestra": only a dead 1981 US application, but an unregistered study app of that name exists. "SEMESTER" is registered in the UK and EU in classes 9 and 41, once by a student-planner company. |
 
@@ -66,11 +78,11 @@ Registers that could not be searched, and why (tried again the same day, by dire
 
 The Thai-name search above was also partial at WIPO (it rate-limited). That was not taken further because the owner chose an English name.
 
-Since TMview was closed to automated access, the national offices were then searched directly: no identical Upleaf mark at the USPTO, EUIPO or IP Australia; the Indonesian fibre-optic-cable registration was confirmed on Indonesia's own register; and WIPO's Madrid Monitor shows no international registration for the Swiss UpLeap mark, so no sign it reaches Thailand. The UK office blocked the search and the Swiss register was down. The three leftover WIPO queries for the Thai names ("Maen Jai", "Jam Maen", "Nuek Ok") found nothing. Full table: `trademark-brief.md`.
+Since TMview was closed to automated access, the national offices were then searched directly: no identical Upleaf mark at the USPTO, EUIPO or IP Australia; the Indonesian fibre-optic-cable registration was confirmed on Indonesia's own register; and WIPO's Madrid Monitor shows no international registration for the Swiss UpLeap mark, so no sign it reaches Thailand. The UK office blocked the search and the Swiss register was down. The three leftover WIPO queries for the Thai names ("Maen Jai", "Jam Maen", "Nuek Ok") found nothing. Full table: `trademark-brief-upleaf.md`.
 
 What a lawyer should look at for Upleaf: whether the Swiss UpLeap mark (same three classes, one letter different) or the Indonesian class 9 registration could be raised against it, and a proper search of TMview, which was not reachable here.
 
-## If Upleaf has to change: checked English fallbacks
+## Checked English fallbacks
 
 A wider check of 32 more English names (App Store US and Thailand, Google Play, web, domains; no trademark register) found none of the first twenty free. Among them: Flyleaf, Dogear, Recto, Byheart, Kenwise (a Thai exam-prep course), Swotly and Stickwise are all existing study or notes products. Six newly coined names had no similar product:
 
@@ -109,4 +121,4 @@ Records can be opened by number at `https://search.ipthailand.go.th/search?q=<nu
 
 ## Changing the colours
 
-Change `BRAND` in `client/src/theme.ts`, recompute the accent tokens in `client/src/index.css` (the note above them says how), update `GREEN` and `LIME` in `scripts/make-icons.mjs` and run it, copy the new icon over `client/public/favicon.svg`, and set `theme-color` in `client/index.html` and `theme_color` in `client/vite.config.ts`.
+Change `BRAND` in `client/src/theme.ts`, recompute the accent tokens in `client/src/index.css` (the note above them says how), update `TILE` and `PAGE` in `scripts/make-icons.mjs` and run it, copy the new icon over `client/public/favicon.svg`, and set `theme-color` in `client/index.html` and `theme_color` in `client/vite.config.ts`.

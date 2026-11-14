@@ -57,9 +57,10 @@ describe("Phase 24 — first start of a new database", () => {
     expect(rows.filter((r) => /[\uE000-\uF8FF]/.test(r.name_th + (r.name_en ?? ""))).map((r) => r.code)).toEqual([]);
     // An English name stuck on the end of the Thai name.
     expect(rows.filter((r) => /[A-Za-z]{3}/.test(r.name_th) && !r.name_en).map((r) => r.code)).toEqual([]);
-    // TODO(data): migration 017 inserted 60 courses with no name. They are not
-    // in the 2566 or 2567 guide, so they are left empty rather than guessed.
-    expect(rows.filter((r) => !r.name_th).length).toBe(60);
+    // TODO(data): migration 017 inserted 60 courses with no name. Migration 031
+    // named the 19 found in the university's older guides; the other 41 are in
+    // no official document, so they are left empty rather than guessed.
+    expect(rows.filter((r) => !r.name_th).length).toBe(41);
   });
 
   it("gives Marketing its courses, so a Marketing student has a timetable", () => {

@@ -6,11 +6,10 @@ const { outline } = require("./outline.cjs");
 
 const LEFT = "M8 21.5c0-1.9 1.6-3.3 3.5-3 6.3 1 11.8 3.400 16.500 7.300V53c-4.700-3.700-10.300-6-16.700-6.900C9.400 45.900 8 44.300 8 42.400z";
 const RIGHT = "M28 25.8 49.2 8.300c2.900-2.400 7.200 0.800 5.600 4.200L36.600 51.800c-1.500 3.200-5.600 4-8.600 1.200z";
-// Brand colours (BRAND in client/src/theme.ts): the left page in leaf green, the lifted page in lime.
-// On white the lime is darkened so it stays visible. Set BRAND=indigo for the earlier exploration colours.
-const THEMES = process.env.BRAND === "indigo"
-  ? { light: { page: "#4f46e5", tick: "#4f46e5", text: "#16162a" }, dark: { page: "#c7d2fe", tick: "#c7d2fe", text: "#f4f4f8" } }
-  : { light: { page: "#15803d", tick: "#65a30d", text: "#16162a" }, dark: { page: "#bbf7d0", tick: "#a3e635", text: "#f4f4f8" } };
+// Brand colours: the mark in indigo. Set BRAND=leaf for the leaf-green and lime exploration colours.
+const THEMES = process.env.BRAND === "leaf"
+  ? { light: { page: "#15803d", tick: "#65a30d", text: "#16162a" }, dark: { page: "#bbf7d0", tick: "#a3e635", text: "#f4f4f8" } }
+  : { light: { page: "#4f46e5", tick: "#4f46e5", text: "#16162a" }, dark: { page: "#c7d2fe", tick: "#c7d2fe", text: "#f4f4f8" } };
 const MARK = 56;          // drawn size of the mark's 64-unit box
 const SIZE = 40;          // lettering size
 const GAP = 12, PAD = 10;
