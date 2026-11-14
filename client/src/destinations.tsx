@@ -18,10 +18,11 @@ import StudyPlan from "./screens/StudyPlan.tsx";
 import Costs from "./screens/Costs.tsx";
 import Reminders from "./screens/Reminders.tsx";
 import Trail from "./screens/Trail.tsx";
+import CampusMap from "./screens/CampusMap.tsx";
 
 export type DestId =
   | "today" | "notes" | "quiz" | "review"
-  | "reminders" | "studyplan" | "library" | "schedule" | "trail" | "stats" | "planner" | "mock" | "weakness" | "costs";
+  | "reminders" | "studyplan" | "library" | "schedule" | "trail" | "map" | "stats" | "planner" | "mock" | "weakness" | "costs";
 
 export type Destination = {
   id: DestId;
@@ -45,6 +46,7 @@ export const DESTINATIONS: Destination[] = [
   { id: "library", icon: "library", navLabel: "nav.library", label: "more.library", Screen: Library },
   { id: "schedule", icon: "calendarRange", navLabel: "nav.schedule", label: "more.schedule", Screen: Schedule },
   { id: "trail", icon: "flag", navLabel: "nav.trail", label: "more.trail", Screen: Trail, narrow: true },
+  { id: "map", icon: "mapPin", navLabel: "nav.map", label: "more.map", Screen: CampusMap },
   { id: "stats", icon: "chartBar", navLabel: "nav.stats", label: "more.stats", Screen: Stats },
   { id: "planner", icon: "graduationCap", navLabel: "nav.planner", label: "more.planner", Screen: Planner },
   { id: "mock", icon: "fileEdit", navLabel: "nav.mock", label: "more.mock", Screen: Mock },

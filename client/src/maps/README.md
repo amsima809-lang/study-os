@@ -7,6 +7,8 @@
 Both are the app's own redrawings of the university's maps: the same buildings in the same
 places, as plain shapes. South is at the top of the Hua Mak map, as on the university's.
 
+The app shows them on the Campus map screen (`client/src/screens/CampusMap.tsx`).
+
 ## Using one
 
 Put the SVG **inline** inside an element with class `campus-map` (an `<img>` cannot see the

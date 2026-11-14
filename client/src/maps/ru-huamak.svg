@@ -14,6 +14,8 @@
   .site { fill: none; stroke: var(--map-line, #8b80e3); stroke-width: 2; stroke-dasharray: 7 6; }
   .b { fill: var(--map-building, #dedaf8); stroke: var(--map-line, #8b80e3); stroke-width: 2; stroke-linejoin: round; }
   .b.other { fill: var(--map-building-2, #eceaf6); }
+  .b.has-class { stroke: var(--map-highlight, #6d5cdf); stroke-width: 4; }
+  .b { cursor: pointer; }
   .b.is-selected { fill: var(--map-highlight, #6d5cdf); stroke: var(--map-highlight-line, #4f3fd0); }
   .b.is-selected ~ text { fill: var(--map-highlight-label, #ffffff); }
   text { font-family: var(--map-font, "IBM Plex Sans Thai Looped", "IBM Plex Sans", system-ui, sans-serif); fill: var(--map-label, #1f1d33); text-anchor: middle; dominant-baseline: central; pointer-events: none; }

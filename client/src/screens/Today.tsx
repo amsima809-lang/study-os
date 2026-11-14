@@ -97,6 +97,33 @@ function TodayTodos({ data }: { data: TodayData }) {
   );
 }
 
+type TrailSummary = { available: boolean; goal?: { target: string }; trail?: { achievable: boolean; finishTerm: string | null; credits: { left: number } } };
+
+/** One line on the trail to the degree, linking to the planner. Hidden when there is nothing to plan. */
+function TrailCard() {
+  const { t } = useT();
+  const [d, setD] = useState<TrailSummary | null>(null);
+  useEffect(() => { getJSON<TrailSummary>("/api/trail").then(setD).catch(() => setD(null)); }, []);
+  if (!d?.available || !d.trail || !d.goal || d.trail.credits.left === 0) return null;
+  const termName = (id: string) => { const [k, yy] = id.split("/"); return k === "S" ? t("trail.summerOf", { year: `25${yy}` }) : t("trail.termOf", { n: k, year: `25${yy}` }); };
+  const on = d.trail.achievable && d.trail.finishTerm;
+  return (
+    <button onClick={() => navigateTo("trail")} className="block w-full text-left">
+      <Card>
+        <div className="flex items-center gap-3">
+          <Icon name="flag" size={22} style={{ color: on ? "var(--success)" : "var(--warning, var(--danger))" }} />
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold" style={{ color: "var(--text-primary)" }}>
+              {on ? t("trail.cardOn", { term: termName(d.trail.finishTerm!) }) : t("trail.cardOff", { term: termName(d.goal.target) })}
+            </p>
+            <p className="text-sm" style={{ color: "var(--accent-text)" }}>{t("trail.cardOpen")} ›</p>
+          </div>
+        </div>
+      </Card>
+    </button>
+  );
+}
+
 export default function Today() {
   const { t, lang } = useT();
   const [data, setData] = useState<TodayData | null>(null);
@@ -129,6 +156,7 @@ export default function Today() {
 
       {/* Not chosen yet: the timetable is empty. Straight after onboarding the picker opens by itself. */}
       <ChooseCoursesCard onChanged={load} />
+      <TrailCard />
       {choosing && <TermCoursesPicker onClose={() => setChoosing(false)} />}
       </div>
 
