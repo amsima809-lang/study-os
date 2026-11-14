@@ -45,6 +45,22 @@ Not searched: **TMview** (it refuses automated access; a person can run it at ht
 
 Records open by number at `https://search.ipthailand.go.th/search?q=<number>&tab=trademark`; the Indonesian record is at https://branddb.wipo.int/en/similarname/brand/ID502023DID110042.
 
+## National offices searched directly (14 November 2026)
+
+Word-mark text only, on each office's own public search.
+
+| Office | Searched? | Result for Upleaf / Up Leaf |
+|---|---|---|
+| USPTO (United States) | Yes, live and dead marks, all classes | No identical mark. Closest: UPLEAF'D (Firpo Productions, class 44, registered, two filings: SN 88829872 / reg. 7360707 and SN 88829865); UP LEEF (classes 5 and 30, pending); SUPLEAF (class 22). Near-marks: UPLEAD registered in class 42 (reg. 7009726, lead-generation software); UPLEAP pending in class 28 only (toys). |
+| EUIPO (European Union) | Yes | No upleaf, up leaf or upleap marks. |
+| IP Australia | Yes | None. |
+| Indonesia DGIP | Yes, record confirmed | "upleaf", reg. IDM001225641, class 9 only, goods "kabel serat optik" (fibre-optic cable), owner Dofi Rajabarlian, protected to 23 Nov 2033. https://pdki-indonesia.dgip.go.id/detail/e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 |
+| UK IPO | No | Blocked by a human-verification check. |
+| Swiss IPI (Swissreg) | No | Down for maintenance, so the **UpLeap** registration 824741 (owner, status, goods wording) is NOT confirmed from the Swiss register itself; it is known only from WIPO's database. |
+| WIPO Madrid Monitor | Yes | No international registration for UpLeap, and none held by breathe medical AG, so no sign that the Swiss mark has been extended to Thailand. |
+
+USPTO records open at `https://tmsearch.uspto.gov/search/search-results/<serial>`.
+
 ## If Upleaf cannot be used
 
 Six alternative names with no similar product found (app stores, web and domains only; no register search): Gradetick, Owntick, Termtick, Heartpen, Acetick, Hearttick. Details in `README.md`.

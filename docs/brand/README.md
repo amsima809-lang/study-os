@@ -66,6 +66,8 @@ Registers that could not be searched, and why (tried again the same day, by dire
 
 The Thai-name search above was also partial at WIPO (it rate-limited). That was not taken further because the owner chose an English name.
 
+Since TMview was closed to automated access, the national offices were then searched directly: no identical Upleaf mark at the USPTO, EUIPO or IP Australia; the Indonesian fibre-optic-cable registration was confirmed on Indonesia's own register; and WIPO's Madrid Monitor shows no international registration for the Swiss UpLeap mark, so no sign it reaches Thailand. The UK office blocked the search and the Swiss register was down. The three leftover WIPO queries for the Thai names ("Maen Jai", "Jam Maen", "Nuek Ok") found nothing. Full table: `trademark-brief.md`.
+
 What a lawyer should look at for Upleaf: whether the Swiss UpLeap mark (same three classes, one letter different) or the Indonesian class 9 registration could be raised against it, and a proper search of TMview, which was not reachable here.
 
 ## If Upleaf has to change: checked English fallbacks
