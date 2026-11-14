@@ -11,7 +11,7 @@ import {
   type PlanGradeScale,
   type WhatIfResult,
 } from "../api.ts";
-import { Card, Loading } from "../components/ui.tsx";
+import { Card, ErrorBox, Loading } from "../components/ui.tsx";
 import { CourseTitle } from "../components/CourseTitle.tsx";
 
 export default function Planner() {
@@ -19,8 +19,10 @@ export default function Planner() {
   const [data, setData] = useState<PlanData | null>(null);
   const [tab, setTab] = useState<"plan" | "whatif" | "scale">("plan");
 
+  const [failed, setFailed] = useState(false);
   function load() {
-    getJSON<PlanData>("/api/plan").then(setData).catch(() => setData(null));
+    setFailed(false);
+    getJSON<PlanData>("/api/plan").then(setData).catch(() => setFailed(true));
   }
   useEffect(load, []);
 
@@ -31,6 +33,7 @@ export default function Planner() {
     } catch { /* ignore */ }
   }
 
+  if (failed && !data) return <ErrorBox onRetry={load} />;
   if (!data) return <Loading>{t("status.connecting")}</Loading>;
 
   const pct = Math.round((data.totalPassedCredits / data.totalPlannedCredits) * 100);

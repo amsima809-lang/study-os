@@ -104,22 +104,46 @@ export function ThemeToggle() {
 
 /* ── UI primitives ── */
 
+/** Which frame the app is wearing (see useLayout in App.tsx). Provided by the shell. */
+export type Layout = "phone" | "rail" | "sidebar";
+export const LayoutContext = createContext<Layout>("sidebar");
+
 /**
  * THE button for a screen's main "add" action. Every screen uses this one, so
- * the action looks the same and is found in the same way everywhere.
+ * the action looks the same and is found in the same place everywhere:
+ * - on a phone it floats at the bottom right, above the tabs, within reach of
+ *   the thumb and in view however far the page is scrolled;
+ * - on wider layouts it sits where the screen puts it (top right), with its label.
  */
 export function AddButton({ label, onClick, expanded }: { label: string; onClick: () => void; expanded?: boolean }) {
-  return (
+  const floating = useContext(LayoutContext) === "phone";
+  const button = (
     <button
       onClick={onClick}
       aria-expanded={expanded}
-      className="shrink-0 inline-flex items-center gap-1.5 rounded-xl pl-3 pr-4 min-h-11 text-sm font-semibold transition-all active:scale-[0.98]"
-      style={{ backgroundColor: "var(--accent)", color: "#fff" }}
+      className={
+        floating
+          ? "no-print fixed z-[15] inline-flex items-center gap-1.5 rounded-full pl-4 pr-5 min-h-14 font-semibold transition-all active:scale-[0.97]"
+          : "shrink-0 inline-flex items-center gap-1.5 rounded-xl pl-3 pr-4 min-h-11 text-sm font-semibold transition-all active:scale-[0.98]"
+      }
+      style={{
+        backgroundColor: "var(--accent)",
+        color: "#fff",
+        ...(floating
+          ? {
+              right: "max(1rem, env(safe-area-inset-right))",
+              bottom: "calc(4.75rem + env(safe-area-inset-bottom))",
+              boxShadow: "0 6px 20px rgba(0,0,0,0.35)",
+            }
+          : {}),
+      }}
     >
-      <Icon name={expanded ? "x" : "plus"} size={18} />
+      <Icon name={expanded ? "x" : "plus"} size={floating ? 22 : 18} />
       {label}
     </button>
   );
+  // On <body>: screens sit in an animated container, which would trap position:fixed inside it.
+  return floating ? createPortal(button, document.body) : button;
 }
 
 /**

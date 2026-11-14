@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { LanguageProvider, LanguageToggle, useT } from "./i18n.tsx";
 import { getJSON, SIGNED_OUT } from "./api.ts";
 import { setDraftOwner } from "./noteDraft.ts";
-import { ThemeProvider, ThemeToggle, useOnline } from "./components/ui.tsx";
+import { LayoutContext, ThemeProvider, ThemeToggle, useOnline, type Layout } from "./components/ui.tsx";
 import { SubscriptionProvider } from "./components/SubscriptionGate.tsx";
 import Icon from "./components/Icon.tsx";
 import Login from "./screens/Login.tsx";
@@ -55,18 +55,26 @@ function useLongPress(onLongPress: (id: DestId) => void) {
  * - "rail":    tablets upright, and any short landscape screen — slim icon rail;
  * - "phone":   everything else — top bar and bottom tabs.
  */
-type Layout = "phone" | "rail" | "sidebar";
 const SIDEBAR_QUERY = "(min-width: 1024px) and (min-height: 500px)";
 const RAIL_QUERY = "(min-width: 768px), (min-width: 560px) and (max-height: 500px)";
+// Kept at module level so the media-query objects (and their listeners) live as
+// long as the page does.
+const layoutQueries = [window.matchMedia(SIDEBAR_QUERY), window.matchMedia(RAIL_QUERY)];
+const readLayout = (): Layout => (layoutQueries[0].matches ? "sidebar" : layoutQueries[1].matches ? "rail" : "phone");
 function useLayout(): Layout {
-  const read = (): Layout =>
-    window.matchMedia(SIDEBAR_QUERY).matches ? "sidebar" : window.matchMedia(RAIL_QUERY).matches ? "rail" : "phone";
-  const [layout, setLayout] = useState<Layout>(read);
+  const [layout, setLayout] = useState<Layout>(readLayout);
   useEffect(() => {
-    const queries = [window.matchMedia(SIDEBAR_QUERY), window.matchMedia(RAIL_QUERY)];
-    const onChange = () => setLayout(read());
-    queries.forEach((q) => q.addEventListener("change", onChange));
-    return () => queries.forEach((q) => q.removeEventListener("change", onChange));
+    const onChange = () => setLayout(readLayout());
+    layoutQueries.forEach((q) => q.addEventListener("change", onChange));
+    // Belt and braces: resizing or turning the device always re-checks.
+    window.addEventListener("resize", onChange);
+    window.addEventListener("orientationchange", onChange);
+    onChange();
+    return () => {
+      layoutQueries.forEach((q) => q.removeEventListener("change", onChange));
+      window.removeEventListener("resize", onChange);
+      window.removeEventListener("orientationchange", onChange);
+    };
   }, []);
   return layout;
 }
@@ -258,14 +266,16 @@ function Shell() {
 
         {/* Screen content. Wide screens get more room; reading and form screens keep a reading width. */}
         <main
-          className={`flex-1 px-5 py-5 w-full mx-auto ${layout === "phone" ? "pb-24" : ""} ${
+          className={`flex-1 px-5 py-5 w-full mx-auto ${layout === "phone" ? "pb-36" : ""} ${
             layout === "sidebar" && !(tab !== "more" && destination(tab).narrow) ? "max-w-6xl" : "max-w-3xl"
           }`}
           style={{ paddingRight: "max(1.25rem, env(safe-area-inset-right))" }}
         >
-          <div className="animate-fade-in">
-            {Screen ? <Screen key={tab} /> : <More nav={nav} canPin={canPin} onPin={pin} onReplace={replace} />}
-          </div>
+          <LayoutContext.Provider value={layout}>
+            <div className="animate-fade-in">
+              {Screen ? <Screen key={tab} /> : <More nav={nav} canPin={canPin} onPin={pin} onReplace={replace} />}
+            </div>
+          </LayoutContext.Provider>
         </main>
 
         {/* Bottom nav — phone */}

@@ -367,3 +367,9 @@ AI ช่วยเรา "ฝึก" ไม่ใช่ "ทำแทน" — �
 - **Note export.** `window.print()` with a print stylesheet in `index.css` (`.print-area`, `.no-print`), and a Markdown download built in the browser.
 - **Import.** `AddNote` accepts dropped and pasted image files; `UploadForm` in Library accepts a dropped file by assigning it to the file input. Hints for these show only where there is a mouse (`.pointer-fine-only`).
 
+## Phase 42 — Re-audit fixes
+- **Floating add button.** The shell provides `LayoutContext`; `AddButton` renders a fixed, labelled button at the bottom right on the `phone` layout (through a portal, 56px tall, above the tab bar and the safe area) and its usual inline form elsewhere. Screens whose form opens at the top (Reminders, Library) scroll up when it is tapped. Phone content has extra bottom padding so nothing ends under it.
+- **Quiz progress.** `loadProgress` / `saveProgress` / `clearProgress` in `screens/Quiz.tsx`; `Runner` takes `resumed` and `onLeave`. Cleared on finish, on leave, and ignored after 24 hours. Questions never include answers, so nothing is revealed early.
+- **Failed loads.** Each screen keeps a `failed` flag (and an `attempt` counter or its `load` function) and returns `<ErrorBox onRetry … />`. A failed request no longer turns into an empty list.
+- **Layout hook.** Media-query objects are module-level; `resize` and `orientationchange` also trigger a re-read.
+

@@ -58,7 +58,7 @@ export default function Reminders() {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{t("rem.screen")}</h1>
-        <AddButton label={t("cal.add")} expanded={editing === "new"} onClick={() => setEditing(editing === "new" ? null : "new")} />
+        <AddButton label={t("cal.add")} expanded={editing === "new"} onClick={() => { setEditing(editing === "new" ? null : "new"); window.scrollTo({ top: 0, behavior: "smooth" }); /* the form opens at the top */ }} />
       </div>
 
       {editing === "new" && (

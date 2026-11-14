@@ -272,7 +272,7 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
               {uni.photo && (
                 <p>
                   {t("uni.photo_by")}{" "}
-                  <a href={uni.photo.page} target="_blank" rel="noreferrer" className="underline">
+                  <a href={uni.photo.page} target="_blank" rel="noreferrer" className="tap-area inline-block underline">
                     {uni.photo.author}
                   </a>
                   , {uni.photo.licence} (Wikimedia Commons)

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useT } from "../i18n.tsx";
 import { getJSON, postJSON, type DueCard } from "../api.ts";
-import { Card, Loading } from "../components/ui.tsx";
+import { Card, ErrorBox, Loading } from "../components/ui.tsx";
 import { CourseTitle } from "../components/CourseTitle.tsx";
 import Icon from "../components/Icon.tsx";
 
@@ -15,16 +15,21 @@ export default function Review() {
   const [idx, setIdx] = useState(0);
   const [remembered, setRemembered] = useState(0);
 
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+
   useEffect(() => {
+    setFailed(false);
     getJSON<{ cards: DueCard[]; totalDue: number; limit: number }>("/api/flashcards/due")
       .then((d) => {
         setCards(d.cards);
         setTotalDue(d.totalDue);
         setLimit(d.limit);
       })
-      .catch(() => setCards([]));
-  }, []);
+      .catch(() => setFailed(true)); // not "nothing due": the cards could not be read
+  }, [attempt]);
 
+  if (failed) return <ErrorBox onRetry={() => setAttempt((n) => n + 1)} />;
   if (!cards) return <Loading>{t("status.connecting")}</Loading>;
 
   return (

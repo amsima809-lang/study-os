@@ -26,6 +26,11 @@ export function setDraftOwner(userId: string): void {
   owner = userId;
 }
 
+/** Who is signed in — for other things kept in this browser per student (e.g. a quiz in progress). */
+export function draftOwner(): string {
+  return owner;
+}
+
 /** A draft with nothing in it is not worth keeping (a chosen course alone does not count). */
 export function isEmptyDraft(d: Pick<NoteDraft, "title" | "text" | "drawing" | "files">): boolean {
   return !d.title.trim() && !d.text.trim() && !(d.drawing && d.drawing.strokes.length > 0) && d.files.length === 0;

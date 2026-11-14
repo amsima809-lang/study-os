@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useT } from "../i18n.tsx";
 import { getJSON } from "../api.ts";
 import Icon from "../components/Icon.tsx";
+import { ErrorBox } from "../components/ui.tsx";
 
 type CostEstimate = {
   campus: string;
@@ -39,11 +40,15 @@ export default function Costs() {
   const [creditsPerCourse, setCreditsPerCourse] = useState(3);
   const [data, setData] = useState<CostEstimate | null>(null);
 
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+
   useEffect(() => {
+    setFailed(false);
     getJSON<CostEstimate>(
       `/api/cost-estimate?campus=${campus}&courses=${courses}&etesting=${etesting}&retake=${retake}&credits_per_course=${creditsPerCourse}`,
-    ).then(setData);
-  }, [campus, courses, etesting, retake, creditsPerCourse]);
+    ).then(setData).catch(() => setFailed(true));
+  }, [campus, courses, etesting, retake, creditsPerCourse, attempt]);
 
   return (
     <div className="space-y-4">
@@ -51,6 +56,8 @@ export default function Costs() {
         <Icon name="coins" size={24} style={{ color: "var(--accent-text)" }} />
         {t("costs.title")}
       </h1>
+
+      {failed && <ErrorBox onRetry={() => setAttempt((n) => n + 1)} />}
 
       {/* Campus toggle */}
       <div className="flex gap-2">

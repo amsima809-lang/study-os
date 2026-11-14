@@ -7,7 +7,7 @@ import {
   type AnalyticsData,
   type CourseAnalytics,
 } from "../api.ts";
-import { Card, Loading } from "../components/ui.tsx";
+import { Card, ErrorBox, Loading } from "../components/ui.tsx";
 import { CourseTitle } from "../components/CourseTitle.tsx";
 
 const FOCUS_MIN = 45;
@@ -162,10 +162,15 @@ function Analytics() {
   const { t } = useT();
   const [data, setData] = useState<AnalyticsData | null>(null);
 
-  useEffect(() => {
-    getJSON<AnalyticsData>("/api/analytics").then(setData).catch(() => setData(null));
-  }, []);
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
+  useEffect(() => {
+    setFailed(false);
+    getJSON<AnalyticsData>("/api/analytics").then(setData).catch(() => setFailed(true));
+  }, [attempt]);
+
+  if (failed) return <ErrorBox onRetry={() => setAttempt((n) => n + 1)} />;
   if (!data) return <Loading>{t("status.connecting")}</Loading>;
 
   return (

@@ -10,19 +10,46 @@ import {
   type Course,
   type Chapter,
 } from "../api.ts";
-import { Card, ErrorBox, Loading } from "../components/ui.tsx";
+import { Card, ConfirmDialog, ErrorBox, Loading } from "../components/ui.tsx";
+import { draftOwner } from "../noteDraft.ts";
 import Icon from "../components/Icon.tsx";
 import { useSubscription, handleSubscriptionError } from "../components/SubscriptionGate.tsx";
 
 type Phase = "setup" | "loading" | "quiz" | "done";
 
+/**
+ * A quiz in progress, kept in this browser so that tapping another tab, a
+ * refresh or a locked phone does not throw away the questions (which cost an
+ * AI call to make) or the student's place in them. One per student, dropped
+ * when the quiz is finished or left, and ignored after a day.
+ */
+type Progress = { questions: QuizQuestion[]; idx: number; answer: string; result: AnswerResult | null; results: AnswerResult[]; savedAt: number };
+const progressKey = () => `studyos.quiz:${draftOwner()}`;
+function loadProgress(): Progress | null {
+  try {
+    const p = JSON.parse(localStorage.getItem(progressKey()) ?? "null") as Progress | null;
+    const fresh = p && Array.isArray(p.questions) && p.questions.length > 0 && Date.now() - p.savedAt < 24 * 60 * 60 * 1000;
+    return fresh ? p : null;
+  } catch {
+    return null;
+  }
+}
+function saveProgress(p: Omit<Progress, "savedAt">) {
+  try { localStorage.setItem(progressKey(), JSON.stringify({ ...p, savedAt: Date.now() })); } catch { /* storage full or blocked */ }
+}
+function clearProgress() {
+  try { localStorage.removeItem(progressKey()); } catch { /* nothing to remove */ }
+}
+
 export default function Quiz() {
   const { t } = useT();
-  const [phase, setPhase] = useState<Phase>("setup");
-  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
+  const [resumed] = useState(loadProgress);
+  const [phase, setPhase] = useState<Phase>(resumed ? "quiz" : "setup");
+  const [questions, setQuestions] = useState<QuizQuestion[]>(resumed?.questions ?? []);
   const [results, setResults] = useState<AnswerResult[]>([]);
 
   function reset() {
+    clearProgress();
     setQuestions([]);
     setResults([]);
     setPhase("setup");
@@ -50,7 +77,10 @@ export default function Quiz() {
       {phase === "quiz" && (
         <Runner
           questions={questions}
+          resumed={resumed && resumed.questions === questions ? resumed : null}
+          onLeave={reset}
           onComplete={(rs) => {
+            clearProgress();
             setResults(rs);
             setPhase("done");
           }}
@@ -86,15 +116,19 @@ function Setup({
   const [qType, setQType] = useState("mixed");
   const [count, setCount] = useState("10");
 
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+
   useEffect(() => {
+    setLoadFailed(false);
     Promise.all([
-      getJSON<{ notes: NoteListItem[] }>("/api/notes").catch(() => ({ notes: [] as NoteListItem[] })),
-      getJSON<{ courses: Course[] }>("/api/courses").catch(() => ({ courses: [] as Course[] })),
+      getJSON<{ notes: NoteListItem[] }>("/api/notes"),
+      getJSON<{ courses: Course[] }>("/api/courses"),
     ]).then(([n, c]) => {
       setNotes(n.notes);
       setAllCourses(c.courses);
-    });
-  }, []);
+    }).catch(() => setLoadFailed(true));
+  }, [attempt]);
 
   useEffect(() => {
     if (!matCourseCode) { setChapters([]); return; }
@@ -265,6 +299,7 @@ function Setup({
           </div>
         )}
 
+        {loadFailed && <ErrorBox onRetry={() => setAttempt((n) => n + 1)} />}
         {error && <ErrorBox>{error}</ErrorBox>}
 
         <button
@@ -283,19 +318,30 @@ function Setup({
 
 function Runner({
   questions,
+  resumed,
+  onLeave,
   onComplete,
 }: {
   questions: QuizQuestion[];
+  /** Where the student was, when this quiz is being picked up again. */
+  resumed: Progress | null;
+  onLeave: () => void;
   onComplete: (results: AnswerResult[]) => void;
 }) {
   const { t } = useT();
   const { showPaywall } = useSubscription();
-  const [idx, setIdx] = useState(0);
-  const [answer, setAnswer] = useState("");
-  const [result, setResult] = useState<AnswerResult | null>(null);
+  const [idx, setIdx] = useState(resumed ? Math.min(resumed.idx, questions.length - 1) : 0);
+  const [answer, setAnswer] = useState(resumed?.answer ?? "");
+  const [result, setResult] = useState<AnswerResult | null>(resumed?.result ?? null);
   const [busy, setBusy] = useState(false);
-  const [results, setResults] = useState<AnswerResult[]>([]);
+  const [results, setResults] = useState<AnswerResult[]>(resumed?.results ?? []);
   const [error, setError] = useState<string | null>(null);
+  const [leaving, setLeaving] = useState(false);
+
+  // Keep the place: every answer typed, every question graded, every step forward.
+  useEffect(() => {
+    saveProgress({ questions, idx, answer, result, results });
+  }, [questions, idx, answer, result, results]);
 
   const q = questions[idx];
   const answered = result !== null;
@@ -428,6 +474,23 @@ function Runner({
           >
             {idx + 1 >= questions.length ? t("quiz.finish") : t("quiz.next")}
           </button>
+        )}
+
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{t("quiz.kept")}</p>
+          <button onClick={() => setLeaving(true)} className="shrink-0 px-2 min-h-11 text-sm" style={{ color: "var(--text-secondary)" }}>
+            {t("quiz.leave")}
+          </button>
+        </div>
+        {leaving && (
+          <ConfirmDialog
+            title={t("quiz.leaveTitle")}
+            message={t("quiz.leaveMsg", { n: questions.length - results.length })}
+            confirmLabel={t("quiz.leave")}
+            cancelLabel={t("quiz.stay")}
+            onConfirm={onLeave}
+            onCancel={() => setLeaving(false)}
+          />
         )}
       </div>
     </Card>

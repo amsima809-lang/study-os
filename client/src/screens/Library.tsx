@@ -31,6 +31,7 @@ export default function Library() {
 
   const load = useCallback(async () => {
     try {
+      setError("");
       setLoading(true);
       const [m, c] = await Promise.all([
         getJSON<{ materials: Material[] }>("/api/materials"),
@@ -377,16 +378,16 @@ function MaterialList({
     <>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{t("lib.title")}</h1>
-        <AddButton label={t("lib.upload")} expanded={showUpload} onClick={() => setShowUpload(!showUpload)} />
+        <AddButton label={t("lib.upload")} expanded={showUpload} onClick={() => { setShowUpload(!showUpload); window.scrollTo({ top: 0, behavior: "smooth" }); /* the form opens at the top */ }} />
       </div>
 
-      {error && <ErrorBox>{error}</ErrorBox>}
+      {error && <ErrorBox onRetry={onReload}>{error}</ErrorBox>}
       {showUpload && <UploadForm courses={courses} onDone={() => { setShowUpload(false); onReload(); }} />}
 
       {materials.length === 0 ? (
         <p className="text-sm text-center py-8" style={{ color: "var(--text-tertiary)" }}>{t("lib.empty")}</p>
       ) : (
-        <ul className="space-y-2">
+        <ul className="wide-grid space-y-2">
           {materials.map((m) => (
             <li key={m.id}>
               <button onClick={() => onSelect(m)} className="w-full text-left min-h-11">

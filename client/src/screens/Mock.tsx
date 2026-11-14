@@ -197,7 +197,11 @@ function CourseList({
   const [duration, setDuration] = useState(90);
   const [selectedChapters, setSelectedChapters] = useState<number[]>([]);
 
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+
   useEffect(() => {
+    setFailed(false);
     Promise.all([
       getJSON<{ courses: AvailableCourse[] }>("/api/mock/available"),
       getJSON<{ exams: InProgressExam[] }>("/api/mock/in-progress"),
@@ -206,9 +210,10 @@ function CourseList({
         setCourses(c.courses);
         setInProgress(ip.exams);
       })
-      .catch(() => setCourses([]));
-  }, []);
+      .catch(() => setFailed(true));
+  }, [attempt]);
 
+  if (failed) return <ErrorBox onRetry={() => setAttempt((n) => n + 1)} />;
   if (!courses) return <Loading>{t("status.connecting")}</Loading>;
   if (courses.length === 0) return <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t("mock.empty")}</p>;
 
@@ -255,8 +260,8 @@ function CourseList({
   const inputStyle = { borderColor: "var(--border)", backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" };
 
   return (
-    <div className="space-y-3">
-      {error && <ErrorBox>{error}</ErrorBox>}
+    <div className="wide-grid space-y-3">
+      {error && <div className="span-all"><ErrorBox>{error}</ErrorBox></div>}
 
       {inProgress.map((ip) => (
         <Card key={ip.id}>

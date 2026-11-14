@@ -207,8 +207,11 @@ function NoteSearch({ query, onQuery, onOpen }: { query: string; onQuery: (q: st
 function CourseList({ onSelectGroup }: { onSelectGroup: (g: CourseGroup) => void }) {
   const { t } = useT();
   const [groups, setGroups] = useState<CourseGroup[] | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
+    setFailed(false);
     getJSON<{ notes: NoteListItem[] }>("/api/notes")
       .then((d) => {
         const map = new Map<string, CourseGroup>();
@@ -226,9 +229,10 @@ function CourseList({ onSelectGroup }: { onSelectGroup: (g: CourseGroup) => void
         }
         setGroups(Array.from(map.values()));
       })
-      .catch(() => setGroups([]));
-  }, []);
+      .catch(() => setFailed(true)); // not "no notes yet": the list could not be read
+  }, [attempt]);
 
+  if (failed) return <ErrorBox onRetry={() => setAttempt((n) => n + 1)} />;
   if (!groups) return <Loading>{t("status.connecting")}</Loading>;
   if (groups.length === 0) return <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t("notes.empty")}</p>;
 

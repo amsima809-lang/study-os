@@ -126,6 +126,28 @@ Severity: **A** blocks a task or loses work, **B** slows a task, **C** cosmetic.
 | 10.2 | B | The "reduce motion" setting is ignored: fades, slide-ins and the login page's drifting shapes always animate. | Honour the setting. |
 | 10.3 | B | Calendar dots tell the kind of item apart by colour alone. | Add a shape or count; the day list already labels them. |
 
+## Second pass, 2026-11-14 (after Phases 36 to 42)
+
+Same automated audit, all 14 screens at the same six sizes, plus the Login screen, the first Onboarding step, the reminder sheet, the course picker and the university picker at phone size.
+
+**Result:** no control under 44 pixels, no text under 12 pixels, no sideways scrolling, no unlabelled button, no input under 16 pixels, at any size. The one exception is the week view on a 375-pixel phone, whose seven day headers are 41 pixels wide (58 tall) because seven columns have to fit.
+
+Found and fixed in this pass:
+- The login page's photo-credit link was 70×20 pixels; it now has a 44-pixel touch area.
+- Ten screens hid a failed load (an empty list, or a spinner that never ended); they now say so and offer "try again".
+- A quiz in progress was lost by tapping another tab; it is now kept and resumed.
+- The main add button on phones now sits in one fixed place, bottom right (the part of finding 1.4 left open).
+- Library and Mock lists use two columns on wide windows.
+
+### Still open
+
+Needs a device, a person or a decision, so not done here:
+- **Real devices:** phones and tablets, the on-screen keyboard (7.1), Apple Pencil with the new finger gestures (8.2, 8.3), screen readers, speed on a mid-range Android phone, and watching students use it.
+- **Decisions:** offline use with sync (6.2 is only a notice and clear errors); notifications when the app is closed (web push); the native wrapper with its in-app browser and share-from-other-apps (web app only for now); what AI may do with a lecture transcript.
+- **Data:** 60 course names that need the 2569 admission guide.
+- **Not verified:** the lecture-collector bookmark on a deployed HTTPS site.
+- **Smaller, not built:** swipe to complete a to-do, pull to refresh, pen pressure, drafts for the reminder form, and the later Onboarding steps and paywall were not in the automated audit.
+
 ## Priority order
 
 1. **Stop losing work** (5.1 to 5.4): drafts for notes, sessions that survive a restart, and a clean return to login.

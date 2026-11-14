@@ -5,7 +5,7 @@ import {
   getJSON, postJSON, putJSON,
   type PlanSettings, type PlanCourse, type StudyPlanData, type StudyTask, type CourseStatus,
 } from "../api.ts";
-import { Card, Loading } from "../components/ui.tsx";
+import { Card, ErrorBox, Loading } from "../components/ui.tsx";
 
 type View = "setup" | "plan";
 
@@ -15,7 +15,9 @@ export default function StudyPlan() {
   const [plan, setPlan] = useState<StudyPlanData | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const [failed, setFailed] = useState(false);
   const loadPlan = () => {
+    setFailed(false);
     setLoading(true);
     getJSON<StudyPlanData>("/api/studyplan")
       .then((d) => {
@@ -23,13 +25,14 @@ export default function StudyPlan() {
         if (!d.plan) setView("setup");
         else setView("plan");
       })
-      .catch(() => setPlan(null))
+      .catch(() => setFailed(true)) // not "no plan yet": the plan could not be read
       .finally(() => setLoading(false));
   };
 
   useEffect(loadPlan, []);
 
   if (loading) return <Loading>{t("status.connecting")}</Loading>;
+  if (failed) return <ErrorBox onRetry={loadPlan} />;
 
   return (
     <div className="space-y-4">
