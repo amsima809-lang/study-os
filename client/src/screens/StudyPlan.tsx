@@ -7,6 +7,7 @@ import {
 } from "../api.ts";
 import { Card, ErrorBox, Loading } from "../components/ui.tsx";
 import { withBase } from "../base.ts";
+import { ChooseCoursesCard } from "../components/TermCourses.tsx";
 
 type View = "setup" | "plan";
 
@@ -37,6 +38,8 @@ export default function StudyPlan() {
 
   return (
     <div className="space-y-4">
+      {/* A plan is built from the exams of the courses chosen for the term: ask for those first. */}
+      <ChooseCoursesCard onChanged={loadPlan} />
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{t("sp.title")}</h1>
         {plan?.plan && (

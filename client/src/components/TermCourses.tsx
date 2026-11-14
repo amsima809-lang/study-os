@@ -1,23 +1,110 @@
 /**
  * "My courses this term": the picker that tells the app which courses a
- * student is actually taking, so the timetable, exams, study plan and mock
- * exams show only those. Until a student chooses, the app shows every course
- * of their program.
+ * student is actually taking. The timetable, exams, study plan and mock exams
+ * show those and nothing else; until a student chooses, they are empty and
+ * each shows `ChooseCoursesCard` instead.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useT } from "../i18n.tsx";
 import { getJSON, putJSON, type ApiError } from "../api.ts";
 import { CourseChip } from "./CourseTitle.tsx";
 import { REMINDERS_CHANGED } from "./Reminders.tsx";
 import Icon from "./Icon.tsx";
+import { Card } from "./ui.tsx";
 import { timeRange } from "../format.ts";
 
 type Option = { code: string; name_th: string; name_en: string | null; category: string; classes: string | null; note?: string | null };
 type Data = { term: string; chosen: string[]; options: Option[] };
 
 const CATEGORIES = ["GE", "CORE", "MAJOR_REQ", "MAJOR_ELEC", "FREE"];
+
+/**
+ * Most courses carry the same one-line note: "for students with ID 65 onwards". The
+ * lists in the app ARE that curriculum, so on its own the line says nothing and, repeated
+ * on every row, hides the notes that matter. Any other note is shown as printed.
+ */
+const worthShowing = (note?: string | null): note is string =>
+  !!note && !/^สำหรับนักศึกษา\s*รหัส\s*65[\s.]*เป็นต้นไป\s*ลงทะเบียนเรียน$/.test(note.trim());
 const DAY_KEYS = ["", "cal.mon", "cal.tue", "cal.wed", "cal.thu", "cal.fri", "cal.sat", "cal.sun"];
+
+/** Set by the app when onboarding has just finished: the picker then opens by itself, once. */
+export const JUST_ONBOARDED = "studyos.justOnboarded";
+/** The term for which this device has already opened the picker by itself. */
+const PROMPTED = "studyos.coursesPrompted";
+
+/**
+ * The call to choose courses. It asks the server itself, and shows:
+ * nothing if the student cannot choose (no catalogue for their university);
+ * a card with one button while nothing is chosen; and after that, with
+ * `showLink`, a small "N courses this term" link to change the choice.
+ * `onChanged` runs after the picker closes, so the screen can reload.
+ */
+export function ChooseCoursesCard({ onChanged, showLink = false }: { onChanged?: () => void; showLink?: boolean }) {
+  const { t } = useT();
+  const [state, setState] = useState<{ chosen: number; options: number } | null>(null);
+  const [choosing, setChoosing] = useState(false);
+  const load = useCallback(
+    () =>
+      getJSON<Data>("/api/term-courses")
+        .then((d) => {
+          setState({ chosen: d.chosen.length, options: d.options.length });
+          // Nobody should have to find the button: with nothing chosen, the picker opens by
+          // itself straight after onboarding, and once per term on a device that has not
+          // shown it yet (a student who onboarded before this existed). After that, the card.
+          let fresh = false, shown = true;
+          try {
+            fresh = sessionStorage.getItem(JUST_ONBOARDED) === "1";
+            sessionStorage.removeItem(JUST_ONBOARDED);
+            shown = localStorage.getItem(PROMPTED) === d.term;
+          } catch { /* ok */ }
+          if (d.chosen.length === 0 && d.options.length > 0 && (fresh || !shown)) {
+            setChoosing(true);
+            try { localStorage.setItem(PROMPTED, d.term); } catch { /* ok */ }
+          }
+        })
+        .catch(() => setState(null)),
+    [],
+  );
+  useEffect(() => { load(); }, [load]);
+
+  if (!state || state.options === 0) return null;
+  return (
+    <>
+      {state.chosen === 0 ? (
+        <Card>
+          <div className="flex items-start gap-3">
+            <Icon name="graduationCap" size={22} style={{ color: "var(--accent-2, var(--accent-text))", marginTop: 2 }} />
+            <div className="flex-1 min-w-0 space-y-2">
+              <p className="font-semibold" style={{ color: "var(--text-primary)" }}>{t("tc.promptTitle")}</p>
+              <p className="text-sm" style={{ color: "var(--text-secondary)" }}>{t("tc.prompt")}</p>
+              <button
+                onClick={() => setChoosing(true)}
+                className="rounded-xl px-4 min-h-11 text-sm font-semibold"
+                style={{ backgroundColor: "var(--accent)", color: "#fff" }}
+              >
+                {t("tc.choose")}
+              </button>
+            </div>
+          </div>
+        </Card>
+      ) : showLink ? (
+        <button onClick={() => setChoosing(true)} className="tap-area text-sm font-medium" style={{ color: "var(--accent-text)" }}>
+          {t("tc.link", { n: state.chosen })} ›
+        </button>
+      ) : null}
+      {choosing && (
+        <TermCoursesPicker
+          onClose={() => {
+            setChoosing(false);
+            load();
+            onChanged?.();
+          }}
+        />
+      )}
+    </>
+  );
+}
 
 export default function TermCoursesPicker({ onClose }: { onClose: () => void }) {
   const { t, lang } = useT();
@@ -166,7 +253,7 @@ export default function TermCoursesPicker({ onClose }: { onClose: () => void }) 
                           </span>
                           <span className="block text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>{when(o.classes)}</span>
                           {/* The registrar's own note on who may register, as printed. */}
-                          {o.note && <span className="block text-xs mt-0.5 whitespace-pre-line" style={{ color: "var(--text-secondary)" }}>{o.note}</span>}
+                          {worthShowing(o.note) && <span className="block text-xs mt-0.5 whitespace-pre-line" style={{ color: "var(--text-secondary)" }}>{o.note}</span>}
                         </span>
                       </button>
                     </li>
@@ -180,7 +267,7 @@ export default function TermCoursesPicker({ onClose }: { onClose: () => void }) 
         <div className="px-5 py-3 border-t" style={{ borderColor: "var(--border-light)", paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}>
           {error && <p role="alert" className="text-sm mb-2" style={{ color: "var(--danger)" }}>{error}</p>}
           <p className="text-xs mb-2" style={{ color: "var(--text-tertiary)" }}>
-            {picked.size === 0 ? t("tc.noneMeansAll") : t("tc.savedMeans")}
+            {picked.size === 0 ? t("tc.noneMeansEmpty") : t("tc.savedMeans")}
           </p>
           <div className="flex gap-2">
             <button onClick={save} disabled={busy || !data} className="flex-1 rounded-xl min-h-11 font-semibold disabled:opacity-40" style={{ backgroundColor: "var(--accent)", color: "#fff" }}>

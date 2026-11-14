@@ -161,12 +161,13 @@ export function termCourses(db: DB, userId: string, termId: string): string[] {
 }
 
 /**
- * SQL filter for "my courses this term". Once a student has chosen their
- * courses for the term, only those are kept. Until then it falls back to every
- * course in their program, so the timetable is never empty before they choose.
+ * SQL filter for "my courses this term": the courses the student has chosen
+ * for the term, and nothing else. Until they choose, it keeps NOTHING: showing
+ * every course of the major instead (as it once did) put some sixty classes
+ * that were not theirs on a new student's timetable, and looked broken.
  */
 export function myCoursesFilter(db: DB, userId: string, termId: string, column: string): { sql: string; params: string[] } {
-  if (termCourses(db, userId, termId).length === 0) return programFilter(db, userId, column);
+  if (termCourses(db, userId, termId).length === 0) return { sql: " AND 0", params: [] };
   return {
     sql: ` AND ${column} IN (SELECT course_code FROM plan_items WHERE user_id = ? AND term_id = ? AND course_code IS NOT NULL)`,
     params: [userId, termId],
@@ -363,7 +364,8 @@ export function createApiRouter(db: DB): Router {
 
   router.get("/schedule/week", (req, res) => {
     const term = currentTermId(db);
-    res.json({ term, classes: weekClasses(db, term, req.user!.id) });
+    // `chosen` lets the screen tell "pick your courses first" from "no class this week".
+    res.json({ term, classes: weekClasses(db, term, req.user!.id), chosen: termCourses(db, req.user!.id, term).length > 0 });
   });
 
   router.get("/calendar", (req, res) => {
@@ -552,8 +554,7 @@ export function createApiRouter(db: DB): Router {
       location: e.location,
       daysLeft: daysBetween(today, e.datetime_start.slice(0, 10)),
     }));
-    // Until the student has chosen their courses, the list is every exam of their
-    // major: far more than anyone sits, so "clashes" among them mean nothing.
+    // `chosen` lets the screen tell "pick your courses first" from "no exam".
     const chosen = termCourses(db, userId, term).length > 0;
     res.json({
       term, today, exams, chosen,

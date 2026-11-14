@@ -125,25 +125,21 @@ describe("the timetable and exams built from it", () => {
 });
 
 describe("what a student sees", () => {
-  it("shows a student only their own major's classes and exams, all from the record", () => {
+  it("shows a student the classes and exams of the courses they chose, all from the record", () => {
     const user = findOrCreateUser(db, { email: "acc-student@studyos.test", name: "A", avatar: "" });
     db.prepare("UPDATE user_profiles SET program_id = 'bus-acc', university_id = 'ru', onboarded = 1 WHERE user_id = ?").run(user);
-    const classes = weekClasses(db, "2/69", user).map((c) => c.course_code);
-    expect(classes).toContain("ACC2201");
-    expect(classes).not.toContain("DBC3101"); // another major's course
-    expect(classes.every((c) => count("SELECT COUNT(*) n FROM program_courses WHERE program_id = 'bus-acc' AND course_code = ?", c) === 1)).toBe(true);
-    const exams = termExams(db, "2/69", user).map((e) => e.course_code);
-    expect(exams).toContain("ACC4200");
-    expect(exams).not.toContain("ACC3349");
+    expect(weekClasses(db, "2/69", user)).toEqual([]);
+    expect(termExams(db, "2/69", user)).toEqual([]);
+    expect(facultyArrangedExams(db, "2/69", user)).toEqual([]);
+    for (const code of ["ACC2201", "ACC4200", "ACC3349"]) db.prepare("INSERT INTO plan_items (user_id, term_id, course_code) VALUES (?, '2/69', ?)").run(user, code);
+    expect(weekClasses(db, "2/69", user).map((c) => c.course_code).sort()).toEqual(["ACC2201", "ACC3349", "ACC4200"]);
+    expect(termExams(db, "2/69", user).map((e) => e.course_code).sort()).toEqual(["ACC2201", "ACC4200"]);
+    db.prepare("DELETE FROM plan_items WHERE user_id = ?").run(user);
   });
 
   it("lists the exams the faculty arranges, so they do not look exam-free", () => {
     const user = findOrCreateUser(db, { email: "acc-student@studyos.test", name: "A", avatar: "" });
-    const list = facultyArrangedExams(db, "2/69", user);
-    expect(list.map((e) => e.course_code)).toContain("ACC3349");
-    expect(list.every((e) => e.note === "คณะจัดสอบเอง")).toBe(true);
-    expect(list.map((e) => e.course_code)).not.toContain("ACC4200"); // has a date
-    // once the student has chosen their courses, only those are listed
+    // a chosen course with a dated exam is not on this list
     db.prepare("INSERT INTO plan_items (user_id, term_id, course_code) VALUES (?, '2/69', 'ACC4200')").run(user);
     expect(facultyArrangedExams(db, "2/69", user)).toEqual([]);
     db.prepare("INSERT INTO plan_items (user_id, term_id, course_code) VALUES (?, '2/69', 'ACC3349')").run(user);

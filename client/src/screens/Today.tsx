@@ -10,7 +10,7 @@ import { ReminderRow, setDone, useRemindersChanged } from "../components/Reminde
 import { postJSON } from "../api.ts";
 import { navigateTo } from "../destinations.tsx";
 import { bangkokTime } from "../reminderAlerts.ts";
-import TermCoursesPicker from "../components/TermCourses.tsx";
+import TermCoursesPicker, { ChooseCoursesCard } from "../components/TermCourses.tsx";
 
 /**
  * Today's reminders and to-dos, soonest first, with a one-line quick add.
@@ -127,25 +127,8 @@ export default function Today() {
       <div className="today-top space-y-4">
       <TodayTodos data={data} />
 
-      {/* Not chosen yet: the timetable shows every course of the program */}
-      {data.canChooseCourses && data.chosenCourses === 0 && (
-        <Card>
-          <div className="flex items-start gap-3">
-            <Icon name="graduationCap" size={22} style={{ color: "var(--accent-2, var(--accent-text))", marginTop: 2 }} />
-            <div className="flex-1 min-w-0 space-y-2">
-              <p className="font-semibold" style={{ color: "var(--text-primary)" }}>{t("tc.promptTitle")}</p>
-              <p className="text-sm" style={{ color: "var(--text-secondary)" }}>{t("tc.prompt")}</p>
-              <button
-                onClick={() => setChoosing(true)}
-                className="rounded-xl px-4 min-h-11 text-sm font-semibold"
-                style={{ backgroundColor: "var(--accent)", color: "#fff" }}
-              >
-                {t("tc.choose")}
-              </button>
-            </div>
-          </div>
-        </Card>
-      )}
+      {/* Not chosen yet: the timetable is empty. Straight after onboarding the picker opens by itself. */}
+      <ChooseCoursesCard onChanged={load} />
       {choosing && <TermCoursesPicker onClose={() => setChoosing(false)} />}
       </div>
 

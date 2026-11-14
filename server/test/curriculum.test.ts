@@ -99,10 +99,11 @@ describe("what follows from the corrected lists", () => {
   it("a Tourism student now gets the classes and exams of courses that were missing", () => {
     const user = findOrCreateUser(db, { email: "tour-student@studyos.test", name: "T", avatar: "" });
     db.prepare("UPDATE user_profiles SET program_id = 'bus-tour', university_id = 'ru', onboarded = 1 WHERE user_id = ?").run(user);
+    expect(weekClasses(db, "2/69", user)).toEqual([]); // nothing until they choose
+    for (const code of ["HOT4304", "HOT4321", "HOT2402", "HOT1101"]) db.prepare("INSERT INTO plan_items (user_id, term_id, course_code) VALUES (?, '2/69', ?)").run(user, code);
     const classes = weekClasses(db, "2/69", user).map((c) => c.course_code);
     for (const code of ["HOT4304", "HOT4321", "HOT2402"]) expect(classes).toContain(code); // offered in 2/69 per the registrar
-    expect(classes).not.toContain("ACC1103"); // not in this major's curriculum
-    expect(termExams(db, "2/69", user).length).toBeGreaterThan(20);
+    expect(termExams(db, "2/69", user).map((e) => e.course_code)).toContain("HOT4304");
   });
 
   it("the new major, Accounting and Financial, can be chosen and has its own lists", () => {

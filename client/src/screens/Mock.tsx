@@ -16,6 +16,7 @@ import {
 import { Card, ErrorBox, Loading } from "../components/ui.tsx";
 import { CourseTitle } from "../components/CourseTitle.tsx";
 import Icon from "../components/Icon.tsx";
+import { ChooseCoursesCard } from "../components/TermCourses.tsx";
 
 type MockQuestion = QuizQuestion & { chapter_id?: number | null };
 type GradeCutoff = { label: string; min_pct: number };
@@ -215,7 +216,14 @@ function CourseList({
 
   if (failed) return <ErrorBox onRetry={() => setAttempt((n) => n + 1)} />;
   if (!courses) return <Loading>{t("status.connecting")}</Loading>;
-  if (courses.length === 0) return <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t("mock.empty")}</p>;
+  if (courses.length === 0)
+    return (
+      <div className="space-y-3">
+        {/* No exams listed may simply mean no courses chosen yet: offer that first. */}
+        <ChooseCoursesCard onChanged={() => setAttempt((n) => n + 1)} />
+        <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t("mock.empty")}</p>
+      </div>
+    );
 
   async function startExam(code: string) {
     setError(null);

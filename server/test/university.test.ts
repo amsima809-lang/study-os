@@ -32,7 +32,7 @@ describe("Phase 22 — university at onboarding", () => {
   });
 });
 
-describe("Phase 23 — timetable and exams follow the student's program", () => {
+describe("Phase 23 — timetable and exams are the student's own courses (and nothing before they choose)", () => {
   // Two courses with a class + exam each; only A belongs to Marketing.
   beforeAll(() => {
     db.pragma("foreign_keys = OFF");
@@ -47,8 +47,8 @@ describe("Phase 23 — timetable and exams follow the student's program", () => 
         ('TSTB101', '2/69', '2027-03-11T09:30:00+07:00', '2027-03-11T12:00:00+07:00', 'A');
       INSERT INTO program_courses (program_id, course_code, category) VALUES
         ('bus-mkt', 'TSTA101', 'MAJOR_REQ'), ('bus-mgt', 'TSTB101', 'MAJOR_REQ');
-      -- This student has not chosen their courses for the term yet, so the
-      -- program decides what they see (the seed gives the legacy user a plan).
+      -- This student has not chosen their courses for the term yet
+      -- (the seed gives the legacy user a plan).
       DELETE FROM plan_items;
     `);
   });
@@ -57,21 +57,21 @@ describe("Phase 23 — timetable and exams follow the student's program", () => 
     db.prepare("UPDATE user_profiles SET university_id = ?, program_id = ? WHERE user_id = ?").run(uni, program, USER);
   const codes = (rows: { course_code: string }[]) => rows.map((r) => r.course_code);
 
-  it("shows a Marketing student only Marketing classes and exams", () => {
+  it("shows a student NOTHING until they have chosen their courses, whatever their major", () => {
+    // It used to show every course of the major: dozens of classes that were not theirs.
+    for (const program of ["bus-mkt", "bus-mgt", null]) {
+      setProfile(program ? "ru" : null, program);
+      expect(codes(weekClasses(db, "2/69", USER))).toEqual([]);
+      expect(codes(termExams(db, "2/69", USER))).toEqual([]);
+    }
+  });
+
+  it("then shows exactly the courses they chose", () => {
     setProfile("ru", "bus-mkt");
+    db.prepare("INSERT INTO plan_items (user_id, term_id, course_code) VALUES (?, '2/69', 'TSTA101')").run(USER);
     expect(codes(weekClasses(db, "2/69", USER))).toEqual(["TSTA101"]);
     expect(codes(termExams(db, "2/69", USER))).toEqual(["TSTA101"]);
-  });
-
-  it("shows a Management student only Management classes and exams", () => {
-    setProfile("ru", "bus-mgt");
-    expect(codes(weekClasses(db, "2/69", USER))).toEqual(["TSTB101"]);
-    expect(codes(termExams(db, "2/69", USER))).toEqual(["TSTB101"]);
-  });
-
-  it("leaves an account with no program unfiltered", () => {
-    setProfile(null, null);
-    expect(codes(weekClasses(db, "2/69", USER))).toEqual(["TSTA101", "TSTB101"]);
+    db.prepare("DELETE FROM plan_items WHERE user_id = ?").run(USER);
   });
 
   it("shows nothing to a student of a university without a catalogue", () => {
@@ -100,10 +100,10 @@ describe("Phase 34 — timetable follows the courses chosen for the term", () =>
     `);
   });
 
-  it("shows the whole program until the student chooses", () => {
+  it("shows nothing until the student chooses", () => {
     choose(USER);
     expect(termCourses(db, USER, TERM)).toEqual([]);
-    expect(classes()).toEqual(["TSTA101", "TSTC101"]);
+    expect(classes()).toEqual([]);
   });
 
   it("shows only the chosen courses once they have", () => {
@@ -117,7 +117,7 @@ describe("Phase 34 — timetable follows the courses chosen for the term", () =>
     db.prepare("INSERT INTO plan_items (user_id, term_id, course_code, placeholder_label) VALUES (?, ?, NULL, 'วิชาโท #1')").run(USER, TERM);
     db.prepare("INSERT INTO plan_items (user_id, term_id, course_code) VALUES (?, '1/70', 'TSTC101')").run(USER);
     expect(termCourses(db, USER, TERM)).toEqual([]);
-    expect(classes()).toEqual(["TSTA101", "TSTC101"]);
+    expect(classes()).toEqual([]); // a placeholder, or a course in another term, is not a choice for this term
   });
 
   it("keeps one student's choice from affecting another", () => {
@@ -125,6 +125,9 @@ describe("Phase 34 — timetable follows the courses chosen for the term", () =>
     db.prepare("INSERT OR IGNORE INTO user_profiles (user_id, university_id, program_id, onboarded) VALUES ('other', 'ru', 'bus-mkt', 1)").run();
     choose("other", "TSTA101");
     expect(classes("other")).toEqual(["TSTA101"]);
-    expect(classes()).toEqual(["TSTA101", "TSTC101"]);
+    expect(classes()).toEqual([]); // this student has still chosen nothing
+    choose(USER, "TSTC101");
+    expect(classes()).toEqual(["TSTC101"]);
+    expect(classes("other")).toEqual(["TSTA101"]);
   });
 });

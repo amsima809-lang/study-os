@@ -25,7 +25,7 @@ export default function Exams() {
       <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{t("exams.title")}</h1>
 
       {data.chosen === false ? (
-        <p className="text-sm" style={{ color: "var(--text-secondary)" }}>{t("exams.allOfMajor")}</p>
+        <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t("exams.chooseFirst")}</p>
       ) : data.clashes.length === 0 ? (
         <div className="rounded-xl text-sm px-4 py-2" style={{ backgroundColor: "var(--success-bg)", color: "var(--success)" }}>
           {t("exams.noClash")}
@@ -44,7 +44,7 @@ export default function Exams() {
         </div>
       )}
 
-      {data.exams.length === 0 && (data.facultyArranged?.length ?? 0) > 0 ? null : data.exams.length === 0 ? (
+      {data.chosen === false || (data.exams.length === 0 && (data.facultyArranged?.length ?? 0) > 0) ? null : data.exams.length === 0 ? (
         <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t("exams.empty")}</p>
       ) : (
         <ul className="wide-grid space-y-2">

@@ -33,7 +33,7 @@ export default function Week() {
       <h1 className="span-all text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{t("week.title")}</h1>
 
       {days.length === 0 ? (
-        <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t("week.empty")}</p>
+        <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t(data.chosen === false ? "week.chooseFirst" : "week.empty")}</p>
       ) : (
         days.map((wd) => (
           <Card key={wd}>

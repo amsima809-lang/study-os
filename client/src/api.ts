@@ -60,7 +60,7 @@ export type ClassSession = {
   room: string | null;
 };
 
-export type WeekData = { term: string; classes: ClassSession[] };
+export type WeekData = { term: string; classes: ClassSession[]; /** False until the student has chosen their courses for the term. */ chosen?: boolean };
 
 export type Exam = {
   course_code: string;
@@ -81,7 +81,7 @@ export type ExamsData = {
   clashes: Array<{ date: string; courses: string[] }>;
   /** Courses whose exam the faculty arranges itself: the university publishes no date. */
   facultyArranged?: { course_code: string; name_th: string; name_en: string | null; note: string }[];
-  /** False until the student has chosen their courses for the term: the list is then their whole major's. */
+  /** False until the student has chosen their courses for the term: nothing is listed until then. */
   chosen?: boolean;
 };
 

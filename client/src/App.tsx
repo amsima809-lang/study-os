@@ -11,6 +11,7 @@ import Icon from "./components/Icon.tsx";
 import Logo from "./components/Logo.tsx";
 import Login from "./screens/Login.tsx";
 import Onboarding from "./screens/Onboarding.tsx";
+import { JUST_ONBOARDED } from "./components/TermCourses.tsx";
 import More from "./screens/More.tsx";
 import { DESTINATIONS, destination, useNav, NAVIGATE_EVENT, type DestId } from "./destinations.tsx";
 import { useReminderAlerts } from "./reminderAlerts.ts";
@@ -600,7 +601,16 @@ function AuthGate() {
 
   if (user === undefined) return <div className="min-h-dvh" style={{ backgroundColor: "var(--bg-base)" }} />;
   if (!user) return <Login onAuthed={refreshUser} />;
-  if (!user.onboarded) return <Onboarding onDone={refreshUser} />;
+  if (!user.onboarded)
+    return (
+      <Onboarding
+        onDone={() => {
+          // Next step for a new student: choose this term's courses. Today opens the picker by itself.
+          try { sessionStorage.setItem(JUST_ONBOARDED, "1"); } catch { /* ok */ }
+          refreshUser();
+        }}
+      />
+    );
   return (
     <SubscriptionProvider>
       <Shell />
