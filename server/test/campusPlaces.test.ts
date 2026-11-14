@@ -5,13 +5,14 @@ import { nextClassDay } from "../src/api.js";
 // (Typed by hand: a type import would pull browser-only code into the server's typecheck.)
 type CampusId = "huamak" | "bangna";
 type Place = { lat: number; lon: number };
-const { placeOf, positionOf, positionOfRoom, directionsUrl, onDrawing } = (await import(
+const { placeOf, positionOf, positionOfRoom, directionsUrl, embedUrl, onDrawing } = (await import(
   new URL("../../client/src/maps/locate.ts", import.meta.url).href
 )) as {
   placeOf: (room: string | null) => { campus: CampusId; code: string } | null;
   positionOf: (campus: CampusId, code: string) => Place | null;
   positionOfRoom: (room: string | null) => Place | null;
   directionsUrl: (to: Place) => string;
+  embedUrl: (key: string, to: Place, from: Place | null, lang: "th" | "en") => string;
   onDrawing: (campus: CampusId, lat: number, lon: number, fixAccuracy?: number) => { x: number; y: number; radius: number; inside: boolean; metresAway: number };
 };
 const { CODES, PLACES, GROUND } = (await import(new URL("../../client/src/maps/places.ts", import.meta.url).href)) as {
@@ -102,6 +103,21 @@ describe("Phase 60 — walking directions and 'where am I'", () => {
     const url = new URL(directionsUrl(PLACES.bangna.KTB));
     expect(url.origin + url.pathname).toBe("https://www.google.com/maps/dir/");
     expect(Object.fromEntries(url.searchParams)).toEqual({ api: "1", destination: `${PLACES.bangna.KTB.lat},${PLACES.bangna.KTB.lon}`, travelmode: "walking" });
+  });
+
+  it("builds the Google map shown inside the app: the walking route from her position", () => {
+    const url = new URL(embedUrl("k&y=1", PLACES.bangna.KTB, { lat: 13.6664, lon: 100.6867 }, "th"));
+    expect(url.origin + url.pathname).toBe("https://www.google.com/maps/embed/v1/directions");
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      key: "k&y=1", // whatever the key holds, it stays one parameter
+      origin: "13.6664,100.6867", destination: `${PLACES.bangna.KTB.lat},${PLACES.bangna.KTB.lon}`, mode: "walking", language: "th", region: "TH",
+    });
+  });
+
+  it("shows the building alone when her position is not known: nothing about her in the address", () => {
+    const url = new URL(embedUrl("KEY", PLACES.huamak.SBB, null, "en"));
+    expect(url.origin + url.pathname).toBe("https://www.google.com/maps/embed/v1/place");
+    expect(Object.fromEntries(url.searchParams)).toEqual({ key: "KEY", q: `${PLACES.huamak.SBB.lat},${PLACES.huamak.SBB.lon}`, zoom: "18", language: "en", region: "TH" });
   });
 
   it("puts a position on the drawing near the building that stands there", () => {

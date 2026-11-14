@@ -17,7 +17,8 @@ import Icon from "../components/Icon.tsx";
 import huamak from "../maps/ru-huamak.svg?raw";
 import bangna from "../maps/ru-bangna.svg?raw";
 import "../maps/maps.css";
-import { directionsUrl, onDrawing, placeOf, positionOf, type CampusId } from "../maps/locate.ts";
+import { onDrawing, placeOf, positionOf, type CampusId } from "../maps/locate.ts";
+import { DirectionsButton } from "../components/Directions.tsx";
 import { GROUND } from "../maps/places.ts";
 
 const CAMPUSES: Record<CampusId, { svg: string; label: string }> = {
@@ -245,16 +246,15 @@ export default function CampusMap() {
                 {name ? <span className="font-normal" style={{ color: "var(--text-secondary)" }}> · {name}</span> : null}
               </p>
               {position && (
-                <a
-                  href={directionsUrl(position)}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <DirectionsButton
+                  to={position}
+                  label={selected ?? ""}
                   className="mt-2 inline-flex items-center gap-1.5 rounded-xl px-4 min-h-11 text-sm font-semibold"
                   style={{ backgroundColor: "var(--accent)", color: "#fff" }}
                 >
                   <Icon name="mapPin" size={15} />
                   {t("map.directions")}
-                </a>
+                </DirectionsButton>
               )}
               {here.length > 0 && (
                 <ul className="mt-2 space-y-1.5">

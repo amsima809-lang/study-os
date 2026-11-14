@@ -4,6 +4,7 @@
  */
 import { Router } from "express";
 import type { DB } from "./db.js";
+import { env } from "./env.js";
 import { itemsForToday, occurrencesInRange } from "./reminders.js";
 
 // ---------- date helpers (Asia/Bangkok) ----------
@@ -282,6 +283,11 @@ function dueFlashcardCount(db: DB, today: string, userId: string): number {
 // ---------- routes ----------
 export function createApiRouter(db: DB): Router {
   const router = Router();
+
+  // The Google Maps embed key, if the site has one (see env.googleMapsEmbedKey).
+  router.get("/maps/config", (_req, res) => {
+    res.json({ embedKey: env.googleMapsEmbedKey || null });
+  });
 
   router.get("/today", (req, res) => {
     const userId = req.user!.id;

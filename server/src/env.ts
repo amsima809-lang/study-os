@@ -50,6 +50,13 @@ export const env = {
   allowDevLogin: process.env.ALLOW_DEV_LOGIN === "true",
   /** With the dev login on: the access code a visitor must give to use it (a private trial site). */
   devLoginCode: process.env.DEV_LOGIN_CODE ?? "",
+  /**
+   * A Google Maps key for the Maps Embed API: with it, walking directions open on a Google map
+   * inside the app; without it they open in Google Maps. The key is sent to signed-in browsers
+   * (an embed key always is: it is part of the map's address), so restrict it at Google to the
+   * Maps Embed API and to this site's address.
+   */
+  googleMapsEmbedKey: process.env.GOOGLE_MAPS_EMBED_KEY ?? "",
 } as const;
 
 export const isProd = env.nodeEnv === "production";

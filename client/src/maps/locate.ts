@@ -38,11 +38,25 @@ export function positionOfRoom(room: string | null): Place | null {
 
 /**
  * Walking directions to a place in Google Maps, from wherever the student is. On a phone with
- * the Google Maps app this link opens the app. Only the destination is in the link: the app never
- * sends the student's own position anywhere.
+ * the Google Maps app this link opens the app. Only the destination is in the link; Google Maps
+ * works out where she is by itself.
  */
 export function directionsUrl(to: Place): string {
   return `https://www.google.com/maps/dir/?api=1&destination=${to.lat},${to.lon}&travelmode=walking`;
+}
+
+/**
+ * The address of a Google map to show inside the app (Maps Embed API). With `from` it is the
+ * walking route from there to the place; without, the place alone. `from` is the student's own
+ * position: it goes from her browser to Google as part of this address, and nowhere else.
+ */
+export function embedUrl(key: string, to: Place, from: Place | null, lang: "th" | "en"): string {
+  const q = new URLSearchParams({ key });
+  if (from) { q.set("origin", `${from.lat},${from.lon}`); q.set("destination", `${to.lat},${to.lon}`); q.set("mode", "walking"); }
+  else { q.set("q", `${to.lat},${to.lon}`); q.set("zoom", "18"); }
+  q.set("language", lang);
+  q.set("region", "TH");
+  return `https://www.google.com/maps/embed/v1/${from ? "directions" : "place"}?${q}`;
 }
 
 /**
