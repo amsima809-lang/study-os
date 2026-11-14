@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1088 632" role="img" aria-labelledby="map-title-bn">
+<title id="map-title-bn">Ramkhamhaeng University, Bang Na campus</title>
+<!-- A redrawing of the university's plan of the Bang Na campus. Same conventions as ru-huamak.svg. -->
+<style>
+  .outside { fill: var(--map-outside, #eef0f7); }
+  .road { fill: var(--map-road, #c6c9d6); }
+  .ground { fill: var(--map-ground, #ffffff); }
+  .green { fill: var(--map-green, #cfe8d3); }
+  .pitch { fill: none; stroke: var(--map-ground, #ffffff); stroke-width: 3; }
+  .water { fill: var(--map-water, #cfe5f6); }
+  .plaza { fill: var(--map-plaza, #fde9a8); stroke: var(--map-line, #8b80e3); stroke-width: 2; }
+  .site { fill: none; stroke: var(--map-line, #8b80e3); stroke-width: 2; stroke-dasharray: 7 6; }
+  .b { fill: var(--map-building, #dedaf8); stroke: var(--map-line, #8b80e3); stroke-width: 2; stroke-linejoin: round; }
+  .b.other { fill: var(--map-building-2, #eceaf6); }
+  .b.is-selected { fill: var(--map-highlight, #6d5cdf); stroke: var(--map-highlight-line, #4f3fd0); }
+  .b.is-selected ~ text { fill: var(--map-highlight-label, #ffffff); }
+  text { font-family: var(--map-font, "IBM Plex Sans Thai Looped", "IBM Plex Sans", system-ui, sans-serif); fill: var(--map-label, #1f1d33); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+  .code { font-size: 19px; font-weight: 700; }
+  .code.small { font-size: 14px; }
+  .note { font-size: 14px; font-weight: 500; fill: var(--map-label-soft, #5d5a78); }
+  .bus { fill: var(--map-ground, #ffffff); stroke: var(--map-line, #8b80e3); stroke-width: 2; }
+  .code { font-size: 17px; } .code.small { font-size: 12px; } .note { font-size: 12px; }
+</style>
+<rect class="outside" width="1088" height="632"/>
+<rect class="road" x="88" y="18" width="62" height="596" rx="4"/>
+<rect class="road" x="18" y="566" width="1010" height="46" rx="4"/>
+<rect class="ground" x="172" y="158" width="876" height="394" rx="14"/>
+<rect class="water" x="348" y="312" width="96" height="98" rx="22"/>
+<rect class="water" x="487" y="314" width="104" height="97" rx="22"/>
+<rect class="water" x="638" y="314" width="120" height="97" rx="22"/>
+<rect class="water" x="882" y="328" width="58" height="74" rx="22"/>
+<rect class="water" x="888" y="432" width="54" height="82" rx="22"/>
+<g id="BNB7" data-code="BNB7"><rect class="b" x="345" y="213" width="46" height="60" rx="10"/><text class="code small" x="368" y="243">BNB7</text></g>
+<g id="BNB8" data-code="BNB8"><rect class="b" x="396" y="213" width="46" height="60" rx="10"/><text class="code small" x="419" y="243">BNB8</text></g>
+<g id="BNB10" data-code="BNB10"><rect class="b" x="540" y="213" width="46" height="60" rx="10"/><text class="code small" x="563" y="243">BNB10</text></g>
+<g id="BNB11" data-code="BNB11"><rect class="b" x="650" y="213" width="48" height="60" rx="10"/><text class="code small" x="674" y="243">BNB11</text></g>
+<rect class="b other" x="703" y="213" width="46" height="60" rx="10"/>
+<g id="PRB" data-code="PRB"><title>PRB · พระมาส</title><rect class="b" x="810" y="210" width="64" height="82" rx="10"/><text class="code" x="842" y="251">PRB</text></g>
+<g id="KTB" data-code="KTB"><title>KTB · คณฑี</title><rect class="b" x="810" y="326" width="64" height="84" rx="10"/><text class="code" x="842" y="368">KTB</text></g>
+<g id="PBB" data-code="PBB"><title>PBB · พระบาง</title><rect class="b" x="810" y="436" width="64" height="86" rx="10"/><text class="code" x="842" y="479">PBB</text></g>
+<rect class="b other" x="345" y="452" width="46" height="62" rx="10"/>
+<rect class="b other" x="396" y="452" width="46" height="62" rx="10"/>
+<g id="SK2" data-code="SK2"><title>SK2 · สองแคว 2</title><rect class="b" x="545" y="455" width="66" height="60" rx="10"/><text class="code small" x="578" y="485">SK2</text></g>
+<g id="SK1" data-code="SK1"><title>SK1 · สองแคว 1</title><rect class="b" x="648" y="455" width="66" height="60" rx="10"/><text class="code small" x="681" y="485">SK1</text></g>
+<rect class="b other" x="734" y="450" width="38" height="64" rx="10"/><text class="note" x="753" y="482">Food</text>
+<g id="ADMIN" data-code="ADMIN"><title>อาคารอำนวยการ · Administration Building</title><rect class="b" x="178" y="312" width="88" height="86" rx="10"/><text class="code small" x="222" y="355">Admin</text></g>
+<g id="LIBBN" data-code="LIBBN"><title>ห้องสมุด วข. · Campus Library</title><rect class="b" x="184" y="486" width="78" height="46" rx="10"/><text class="code small" x="223" y="509">Library</text></g>
+<text class="note" x="212" y="282">Entrance →</text>
+<text class="note" x="212" y="462">← Exit</text>
+<text class="note" x="1012" y="300">Demonstration</text><text class="note" x="1012" y="316">School</text>
+<text class="note" x="968" y="540">Back gate</text>
+<text class="note" transform="translate(119 300) rotate(-90)">Chaloem Phrakiat Ratchakan Thi 9 Road</text>
+<text class="note" x="560" y="589">To Kanchanaphisek outer ring road · Prawet · On Nut →</text>
+</svg>
