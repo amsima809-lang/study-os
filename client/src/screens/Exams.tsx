@@ -10,11 +10,14 @@ export default function Exams() {
   const [data, setData] = useState<ExamsData | null>(null);
   const [error, setError] = useState(false);
 
-  useEffect(() => {
-    getJSON<ExamsData>("/api/exams").then(setData).catch(() => setError(true));
-  }, []);
+  const [attempt, setAttempt] = useState(0);
 
-  if (error) return <ErrorBox>{t("status.error")}</ErrorBox>;
+  useEffect(() => {
+    setError(false);
+    getJSON<ExamsData>("/api/exams").then(setData).catch(() => setError(true));
+  }, [attempt]);
+
+  if (error) return <ErrorBox onRetry={() => setAttempt((n) => n + 1)} />;
   if (!data) return <Loading>{t("status.connecting")}</Loading>;
 
   return (

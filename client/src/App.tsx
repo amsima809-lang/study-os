@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { LanguageProvider, LanguageToggle, useT } from "./i18n.tsx";
 import { getJSON, SIGNED_OUT } from "./api.ts";
 import { setDraftOwner } from "./noteDraft.ts";
-import { ThemeProvider, ThemeToggle } from "./components/ui.tsx";
+import { ThemeProvider, ThemeToggle, useOnline } from "./components/ui.tsx";
 import { SubscriptionProvider } from "./components/SubscriptionGate.tsx";
 import Icon from "./components/Icon.tsx";
 import Login from "./screens/Login.tsx";
@@ -80,6 +80,7 @@ function Shell() {
 
   const alerts = useReminderAlerts();
   const layout = useLayout();
+  const online = useOnline();
 
   // Screens can ask to open another screen (see navigateTo in destinations.tsx).
   useEffect(() => {
@@ -241,6 +242,18 @@ function Shell() {
               </div>
             </div>
           </header>
+        )}
+
+        {/* No connection: say so once, here, instead of every save failing without a reason. */}
+        {!online && (
+          <div
+            role="status"
+            className="sticky z-10 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-center"
+            style={{ top: layout === "phone" ? "calc(3.75rem + env(safe-area-inset-top))" : 0, backgroundColor: "var(--warning)", color: "#1f1300" }}
+          >
+            <Icon name="wifiOff" size={16} className="shrink-0" />
+            {t("status.offlineBanner")}
+          </div>
         )}
 
         {/* Screen content. Wide screens get more room; reading and form screens keep a reading width. */}

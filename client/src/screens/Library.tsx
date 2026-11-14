@@ -14,7 +14,7 @@ import {
   type ApiError,
 } from "../api.ts";
 import { useSubscription, handleSubscriptionError } from "../components/SubscriptionGate.tsx";
-import { AddButton, Card, ErrorBox, Loading } from "../components/ui.tsx";
+import { AddButton, Card, ConfirmDialog, ErrorBox, Loading } from "../components/ui.tsx";
 import { CourseChip } from "../components/CourseTitle.tsx";
 
 type View = "list" | "detail" | "pages" | "transcript";
@@ -39,7 +39,7 @@ export default function Library() {
       setMaterials(m.materials);
       setCourses(c.courses);
     } catch {
-      setError("โหลดข้อมูลไม่สำเร็จ");
+      setError(t("lib.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -340,23 +340,21 @@ function TranscriptView({ which, onDeleted }: { which: OpenTranscript; onDeleted
             {t("lib.watch")} ↗
           </a>
         )}
-        {!confirming ? (
-          <button onClick={() => setConfirming(true)} className="min-h-11 px-3 text-sm" style={{ color: "var(--danger)" }}>
-            {t("lib.deleteTranscript")}
-          </button>
-        ) : (
-          <>
-            <button
-              onClick={async () => { await deleteJSON(path); onDeleted(); }}
-              className="rounded-lg px-3 min-h-11 text-sm font-medium"
-              style={{ backgroundColor: "var(--danger)", color: "#fff" }}
-            >
-              {t("lib.deleteConfirm")}
-            </button>
-            <button onClick={() => setConfirming(false)} className="min-h-11 px-3 text-sm" style={{ color: "var(--text-secondary)" }}>
-              {t("nav.cancel")}
-            </button>
-          </>
+        <button onClick={() => setConfirming(true)} className="min-h-11 px-3 text-sm" style={{ color: "var(--danger)" }}>
+          {t("lib.deleteTranscript")}
+        </button>
+        {confirming && (
+          <ConfirmDialog
+            title={t("lib.deleteTranscriptTitle")}
+            message={t("confirm.cannotUndo")}
+            confirmLabel={t("confirm.delete")}
+            cancelLabel={t("nav.cancel")}
+            onConfirm={async () => {
+              try { await deleteJSON(path); onDeleted(); }
+              catch (e) { setConfirming(false); setError((e as ApiError)?.error ?? t("status.failed")); }
+            }}
+            onCancel={() => setConfirming(false)}
+          />
         )}
       </div>
     </div>
@@ -457,7 +455,7 @@ function UploadForm({ courses, onDone }: { courses: Course[]; onDone: () => void
       await postForm<{ id: number }>("/api/materials/upload", fd);
       onDone();
     } catch (e) {
-      setErr((e as ApiError)?.error ?? "อัปโหลดไม่สำเร็จ");
+      setErr((e as ApiError)?.error ?? t("lib.uploadFailed"));
     } finally {
       setUploading(false);
     }
@@ -506,7 +504,7 @@ function UploadForm({ courses, onDone }: { courses: Course[]; onDone: () => void
           className="w-full rounded-lg py-2 text-sm font-medium disabled:opacity-50 min-h-11"
           style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
         >
-          {uploading ? "กำลังอัปโหลด…" : t("lib.upload")}
+          {uploading ? t("lib.uploading") : t("lib.upload")}
         </button>
       </div>
     </Card>
@@ -548,7 +546,7 @@ function MaterialDetail({
       await postJSON(`/api/materials/${material.id}/process`, {});
       onReload();
     } catch (e) {
-      setErr((e as ApiError)?.error ?? "ผิดพลาด");
+      setErr((e as ApiError)?.error ?? t("status.failed"));
     } finally {
       setBusy("");
     }
@@ -563,20 +561,21 @@ function MaterialDetail({
     } catch (e) {
       const err2 = e as ApiError;
       if (handleSubscriptionError(err2, showPaywall)) { setBusy(""); return; }
-      setErr(err2?.error ?? "ผิดพลาด");
+      setErr(err2?.error ?? t("status.failed"));
     } finally {
       setBusy("");
     }
   }
 
+  const [confirmDelete, setConfirmDelete] = useState(false);
   async function handleDelete() {
-    if (!confirm("ลบเอกสารนี้?")) return;
+    setConfirmDelete(false);
     try {
       await deleteJSON(`/api/materials/${material.id}`);
       onReload();
       onBack();
     } catch (e) {
-      setErr((e as ApiError)?.error ?? "ลบไม่สำเร็จ");
+      setErr((e as ApiError)?.error ?? t("status.failed"));
     }
   }
 
@@ -644,8 +643,18 @@ function MaterialDetail({
             {busy === "parse" ? t("lib.parsing") : t("lib.parseExam")}
           </button>
         )}
+        {confirmDelete && (
+          <ConfirmDialog
+            title={t("lib.deleteDocTitle")}
+            message={t("lib.deleteDocMsg")}
+            confirmLabel={t("confirm.delete")}
+            cancelLabel={t("nav.cancel")}
+            onConfirm={handleDelete}
+            onCancel={() => setConfirmDelete(false)}
+          />
+        )}
         <button
-          onClick={handleDelete}
+          onClick={() => setConfirmDelete(true)}
           className="rounded-lg py-2 text-sm font-medium min-h-11"
           style={{ backgroundColor: "var(--danger-bg)", color: "var(--danger)" }}
         >
@@ -730,7 +739,7 @@ function PageViewer({ materialId, filename }: { materialId: number; filename: st
           ) : (
             <>
               <p className="text-sm whitespace-pre-wrap line-clamp-6" style={{ color: "var(--text-secondary)" }}>
-                {p.extracted_text || "(ไม่มีข้อความ)"}
+                {p.extracted_text || t("lib.noText")}
               </p>
               <button
                 onClick={() => { setEditing(p.page_num); setEditText(p.extracted_text ?? ""); }}
@@ -798,7 +807,9 @@ function ChapterManager({ courseCode, materialId }: { courseCode: string; materi
     await load();
   }
 
+  const [removing, setRemoving] = useState<{ id: number; name: string } | null>(null);
   async function deleteChapter(id: number) {
+    setRemoving(null);
     await deleteJSON(`/api/chapters/${id}`);
     await load();
   }
@@ -844,12 +855,27 @@ function ChapterManager({ courseCode, materialId }: { courseCode: string; materi
           {chapters.map((ch) => (
             <li key={ch.id} className="flex items-center justify-between text-sm">
               <span style={{ color: "var(--text-primary)" }}>{ch.name}</span>
-              <button onClick={() => deleteChapter(ch.id)} className="text-xs min-h-11" style={{ color: "var(--danger)" }}>
+              <button
+                onClick={() => setRemoving({ id: ch.id, name: ch.name })}
+                aria-label={`${t("confirm.delete")}: ${ch.name}`}
+                className="w-11 h-11 -mr-2 flex items-center justify-center text-lg"
+                style={{ color: "var(--danger)" }}
+              >
                 ×
               </button>
             </li>
           ))}
         </ul>
+        {removing && (
+          <ConfirmDialog
+            title={t("lib.deleteChapterTitle", { name: removing.name })}
+            message={t("confirm.cannotUndo")}
+            confirmLabel={t("confirm.delete")}
+            cancelLabel={t("nav.cancel")}
+            onConfirm={() => deleteChapter(removing.id)}
+            onCancel={() => setRemoving(null)}
+          />
+        )}
 
         <div className="flex gap-2">
           <input

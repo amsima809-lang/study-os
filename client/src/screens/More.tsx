@@ -85,7 +85,7 @@ export default function More({
               className="flex-1 min-w-0 flex items-center gap-3 pl-4 pr-2 py-3.5 text-left transition-all active:scale-[0.99] min-h-11"
             >
               <Icon name={it.icon} size={22} style={{ color: "var(--accent-2, var(--accent-text))" }} />
-              <span className="font-medium truncate" style={{ color: "var(--text-primary)" }}>
+              <span className="font-medium leading-snug" style={{ color: "var(--text-primary)" }}>
                 {t(it.label)}
               </span>
             </button>

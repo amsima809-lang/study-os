@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useT } from "../i18n.tsx";
 import { getJSON, postJSON, putJSON, deleteJSON, type ApiError, type ReminderRule } from "../api.ts";
+import { ConfirmDialog } from "./ui.tsx";
 import { formatDate, formatTime, timeRange } from "../format.ts";
 import { CourseChip } from "./CourseTitle.tsx";
 import Icon from "./Icon.tsx";
@@ -286,19 +287,21 @@ export function ReminderForm({ item, today, preset, onSaved, onCancel }: FormPro
         </button>
         {item && (
           <span className="ml-auto flex items-center gap-2">
-            {confirmDelete ? (
-              <button
-                type="button"
-                onClick={async () => { await deleteJSON(`/api/reminders/${item.id}`); announce(); onSaved(); }}
-                className="rounded-xl px-4 min-h-11 text-sm font-semibold"
-                style={{ backgroundColor: "var(--danger)", color: "#fff" }}
-              >
-                {t(item.repeat === "none" ? "rem.deleteConfirm" : "rem.deleteConfirmAll")}
-              </button>
-            ) : (
-              <button type="button" onClick={() => setConfirmDelete(true)} className="px-3 min-h-11 text-sm" style={{ color: "var(--danger)" }}>
-                {t("rem.delete")}
-              </button>
+            <button type="button" onClick={() => setConfirmDelete(true)} className="px-3 min-h-11 text-sm" style={{ color: "var(--danger)" }}>
+              {t("rem.delete")}
+            </button>
+            {confirmDelete && (
+              <ConfirmDialog
+                title={t("rem.deleteTitle")}
+                message={t(item.repeat === "none" ? "confirm.cannotUndo" : "rem.deleteAllMsg")}
+                confirmLabel={t(item.repeat === "none" ? "confirm.delete" : "rem.deleteConfirmAll")}
+                cancelLabel={t("nav.cancel")}
+                onConfirm={async () => {
+                  try { await deleteJSON(`/api/reminders/${item.id}`); announce(); onSaved(); }
+                  catch (e) { setConfirmDelete(false); setError((e as ApiError)?.error ?? t("status.failed")); }
+                }}
+                onCancel={() => setConfirmDelete(false)}
+              />
             )}
           </span>
         )}

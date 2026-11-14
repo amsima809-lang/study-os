@@ -58,7 +58,7 @@ Severity: **A** blocks a task or loses work, **B** slows a task, **C** cosmetic.
 
 ### 4. Readability
 
-**Status: 4.1 fixed 2026-11-14 (Phase 37).** No text below 12px on any screen except the "+N" badge in the week grid (11px).
+**Status: all fixed 2026-11-14 (4.1 in Phase 37; 4.2, 4.3, 4.4 in Phase 40).** No text below 12px on any screen except the "+N" badge in the week grid (11px).
 
 | # | Sev | Finding | Fix |
 |---|---|---|---|
@@ -79,6 +79,8 @@ Severity: **A** blocks a task or loses work, **B** slows a task, **C** cosmetic.
 | 5.4 | A | When a session has ended, the app does not notice: there is no handling of "not signed in" responses, so screens show a generic error instead of the login page. | Detect it once, centrally, and return to login (keeping the draft from 5.1). |
 
 ### 6. Feedback, errors and loading
+
+**Status: 6.1 and 6.3 fixed, 6.2 stopgap done, 2026-11-14 (Phase 40).** Failed loads on Today, Reminders, Week and Exams offer "try again" and say when the device is offline; an offline banner shows across the app; every delete uses the same in-page confirmation. Still open: offline use with sync (nothing is queued), and retry on the remaining screens' load errors.
 
 | # | Sev | Finding | Fix |
 |---|---|---|---|
@@ -111,6 +113,8 @@ Severity: **A** blocks a task or loses work, **B** slows a task, **C** cosmetic.
 | 9.3 | B | The only export is the study plan's calendar file. Notes cannot be exported. | Export a note as PDF or image. |
 
 ### 10. Accessibility
+
+**Status: 10.2 fixed (Phase 37), 10.3 fixed (Phase 40), 2026-11-14.** Calendar marks have a shape per kind, a legend, and spoken labels.
 
 | # | Sev | Finding | Fix |
 |---|---|---|---|

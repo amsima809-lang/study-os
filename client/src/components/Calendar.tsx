@@ -35,6 +35,26 @@ const DOT_COLORS: Record<DotType, string> = {
   todo: "#a855f7",
 };
 
+/**
+ * The mark under a day in the month grid. Each kind has its own SHAPE as well
+ * as its own colour, so the kinds can be told apart without seeing colour:
+ * class ●, exam ◆, study-plan task ■, e-Testing ▲, event ▬, reminder ○, to-do □.
+ */
+const DOT_ORDER: DotType[] = ["class", "exam", "task", "etesting", "event", "reminder", "todo"];
+function DotMark({ type, color }: { type: DotType; color: string }) {
+  const base = { display: "inline-block", width: 7, height: 7, flexShrink: 0 } as React.CSSProperties;
+  const shapes: Record<DotType, React.CSSProperties> = {
+    class: { ...base, borderRadius: "50%", backgroundColor: color },
+    exam: { ...base, backgroundColor: color, transform: "rotate(45deg) scale(0.85)" },
+    task: { ...base, backgroundColor: color, borderRadius: 1 },
+    etesting: { ...base, backgroundColor: color, clipPath: "polygon(50% 0, 100% 100%, 0 100%)" },
+    event: { ...base, width: 10, height: 4, borderRadius: 2, backgroundColor: color },
+    reminder: { ...base, borderRadius: "50%", border: `1.5px solid ${color}` },
+    todo: { ...base, borderRadius: 1, border: `1.5px solid ${color}` },
+  };
+  return <span aria-hidden="true" style={shapes[type]} />;
+}
+
 type View = "month" | "week" | "day";
 const VIEWS: View[] = ["month", "week", "day"];
 
@@ -152,6 +172,9 @@ export default function Calendar() {
     days.push({ date: `${month}-${String(d).padStart(2, "0")}`, day: d });
   }
 
+  // The kinds of item that appear somewhere in this month, for the legend.
+  const monthKinds = DOT_ORDER.filter((typ) => days.some((c) => c && data?.events[c.date]?.some((e) => e.type === typ)));
+
   const selectedEvents = selected && data?.events[selected] ? data.events[selected] : [];
 
   return (
@@ -267,6 +290,8 @@ export default function Calendar() {
               onClick={() => { setSelected(isSel ? null : date); setAnchor(date); }}
               // Double-click a day to add something on it straight away.
               onDoubleClick={() => { setSelected(date); setAnchor(date); setSheet({ date }); }}
+              aria-label={[String(day), ...DOT_ORDER.filter((typ) => types.has(typ)).map((typ) => t(`cal.kind.${typ}`))].join(", ")}
+              aria-pressed={isSel}
               className="flex flex-col items-center py-1 rounded-xl transition-all relative min-h-11"
               style={{
                 // White text needs the button shade (--accent), not the text shade.
@@ -284,22 +309,27 @@ export default function Calendar() {
             >
               <span className={`text-sm leading-6 ${isToday && !isSel ? "font-bold" : ""}`}>{day}</span>
               {/* Event dots */}
-              <div className="flex gap-0.5 h-1.5 mt-0.5">
-                {(["class", "exam", "task", "etesting", "event", "reminder", "todo"] as DotType[]).map(
-                  (typ) =>
-                    types.has(typ) && (
-                      <span
-                        key={typ}
-                        className="w-1.5 h-1.5 rounded-full"
-                        style={{ backgroundColor: isSel ? "rgba(255,255,255,0.7)" : DOT_COLORS[typ] }}
-                      />
-                    ),
+              <div className="flex items-center gap-0.5 h-2 mt-0.5">
+                {DOT_ORDER.map(
+                  (typ) => types.has(typ) && <DotMark key={typ} type={typ} color={isSel ? "rgba(255,255,255,0.85)" : DOT_COLORS[typ]} />,
                 )}
               </div>
             </button>
           );
         })}
       </div>
+
+      {/* What each mark means — only the kinds that appear this month */}
+      {monthKinds.length > 0 && (
+        <ul className="flex flex-wrap gap-x-3 gap-y-1 px-4 pb-3 text-xs" style={{ color: "var(--text-tertiary)" }}>
+          {monthKinds.map((typ) => (
+            <li key={typ} className="inline-flex items-center gap-1.5">
+              <DotMark type={typ} color={DOT_COLORS[typ]} />
+              {t(`cal.kind.${typ}`)}
+            </li>
+          ))}
+        </ul>
+      )}
 
       </>)}
 

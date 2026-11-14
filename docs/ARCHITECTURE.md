@@ -354,3 +354,9 @@ AI ช่วยเรา "ฝึก" ไม่ใช่ "ทำแทน" — �
 - **Formatting.** `formatTime("13:30")` → `13:30` or `1:30 PM`; `timeRange` collapses the period when both ends share it; `hourLabel(h)` labels the hour grid (its label column is 46px wide in AM/PM mode, 40px otherwise). Used by the timetable, exams-by-day lists, calendar day list, hour grid, reminders, due banners and device notifications, and the course picker. Tested in `server/test/clockFormat.test.ts`.
 - **Not affected:** stored values, the API, the `.ics` export, and `<input type="time">`, which the browser draws using the device's own setting.
 
+## Phase 40 — Honest errors and small fixes
+- **Retry.** `ErrorBox({ onRetry })` renders a "try again" button; with no children it shows `status.offline` when `navigator.onLine` is false, otherwise `status.error`. Screens that load one resource keep their loader as a `load()` they can call again.
+- **Offline banner.** `useOnline()` tracks the browser's online/offline events; the shell shows a sticky notice while offline. Requests made offline fail through `send()` with `code: "OFFLINE"`.
+- **One delete pattern.** `ConfirmDialog` everywhere: `NoteView`, `MaterialDetail`, `ChapterManager`, `TranscriptView` (all in `screens/`), and `ReminderForm`. A failed delete closes the dialog and shows the error in place.
+- **Calendar marks.** `DotMark` draws a shape per kind: class ●, exam ◆, study-plan task ■, e-Testing ▲, event ▬, reminder ○, to-do □. `monthKinds` drives the legend; day buttons carry `aria-label` such as "18, Class, Event, Reminder".
+

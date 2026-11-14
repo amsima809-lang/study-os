@@ -20,13 +20,13 @@ export default function Reminders() {
   const [notify, setNotify] = useState(notificationState());
 
   const load = useCallback(
-    () => getJSON<Data>("/api/reminders").then(setData).catch(() => setError(true)),
+    () => { setError(false); return getJSON<Data>("/api/reminders").then(setData).catch(() => setError(true)); },
     [],
   );
   useEffect(() => { load(); }, [load]);
   useRemindersChanged(load);
 
-  if (error) return <ErrorBox>{t("status.error")}</ErrorBox>;
+  if (error && !data) return <ErrorBox onRetry={load} />;
   if (!data) return <Loading>{t("status.connecting")}</Loading>;
   const { today, items, todayItems } = data;
 

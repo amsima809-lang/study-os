@@ -4,6 +4,7 @@ import {
   getJSON,
   postForm,
   postJSON,
+  deleteJSON,
   type Course,
   type NoteListItem,
   type NoteDetail,
@@ -352,13 +353,17 @@ function NoteView({ noteId, onBack, onDeleted }: { noteId: number; onBack: () =>
       .finally(() => setLoading(false));
   }, [noteId]);
 
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   async function handleDelete() {
-    if (!confirm(t("notes.deleteConfirm"))) return;
     setDeleting(true);
+    setDeleteError("");
     try {
-      await fetch(`/api/notes/${noteId}`, { method: "DELETE" });
+      await deleteJSON(`/api/notes/${noteId}`);
       onDeleted();
-    } catch {
+    } catch (e) {
+      setDeleteError((e as ApiError)?.error ?? t("status.failed"));
+      setConfirmDelete(false);
       setDeleting(false);
     }
   }
@@ -474,14 +479,26 @@ function NoteView({ noteId, onBack, onDeleted }: { noteId: number; onBack: () =>
         </Card>
       )}
 
+      {deleteError && <ErrorBox>{deleteError}</ErrorBox>}
       <button
-        onClick={handleDelete}
+        onClick={() => setConfirmDelete(true)}
         disabled={deleting}
         className="w-full text-sm font-medium py-3 rounded-lg border disabled:opacity-50 min-h-11"
         style={{ color: "var(--danger)", borderColor: "var(--danger-bg)" }}
       >
         {t("notes.delete")}
       </button>
+      {confirmDelete && (
+        <ConfirmDialog
+          title={t("notes.deleteTitle")}
+          message={t("confirm.cannotUndo")}
+          confirmLabel={t("confirm.delete")}
+          cancelLabel={t("nav.cancel")}
+          busy={deleting}
+          onConfirm={handleDelete}
+          onCancel={() => setConfirmDelete(false)}
+        />
+      )}
     </div>
   );
 }

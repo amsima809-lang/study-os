@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import Icon from "./Icon.tsx";
+import { useT } from "../i18n.tsx";
 import { applyColour, applyFont, forcedMode, DEFAULT_FONT, type Colour } from "../theme.ts";
 
 /* ── Theme context ── */
@@ -212,13 +213,47 @@ export function Loading({ children }: { children: ReactNode }) {
   );
 }
 
-export function ErrorBox({ children }: { children: ReactNode }) {
+/**
+ * Something failed. With no text of its own it says whether the device is
+ * offline or the server could not be reached; with `onRetry` it offers the
+ * way out — a "try again" button — instead of a dead end.
+ */
+export function ErrorBox({ children, onRetry }: { children?: ReactNode; onRetry?: () => void }) {
+  const { t } = useT();
+  const offline = typeof navigator !== "undefined" && navigator.onLine === false;
   return (
     <div
+      role="alert"
       className="rounded-2xl text-sm px-4 py-3 text-center"
       style={{ backgroundColor: "var(--danger-bg)", color: "var(--danger)" }}
     >
-      {children}
+      <p>{children ?? t(offline ? "status.offline" : "status.error")}</p>
+      {onRetry && (
+        <button
+          onClick={onRetry}
+          className="mt-2 inline-flex items-center gap-1.5 rounded-xl border px-4 min-h-11 font-semibold"
+          style={{ borderColor: "var(--danger)", color: "var(--danger)" }}
+        >
+          <Icon name="refresh" size={16} />
+          {t("status.retry")}
+        </button>
+      )}
     </div>
   );
+}
+
+/** True while the device has a connection. (It can still be true on a dead Wi-Fi; requests then fail and say so.) */
+export function useOnline(): boolean {
+  const [online, setOnline] = useState(() => typeof navigator === "undefined" || navigator.onLine !== false);
+  useEffect(() => {
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => {
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", off);
+    };
+  }, []);
+  return online;
 }

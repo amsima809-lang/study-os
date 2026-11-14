@@ -103,11 +103,14 @@ export default function Today() {
   const [error, setError] = useState(false);
   const [choosing, setChoosing] = useState(false);
 
-  const load = useCallback(() => getJSON<TodayData>("/api/today").then(setData).catch(() => setError(true)), []);
+  const load = useCallback(() => {
+    setError(false);
+    return getJSON<TodayData>("/api/today").then(setData).catch(() => setError(true));
+  }, []);
   useEffect(() => { load(); }, [load]);
   useRemindersChanged(load);
 
-  if (error) return <ErrorBox>{t("status.error")}</ErrorBox>;
+  if (error && !data) return <ErrorBox onRetry={load} />;
   if (!data) return <Loading>{t("status.connecting")}</Loading>;
 
   // Phone order: to-dos, calendar, the rest. On a wide window (see .today-grid
