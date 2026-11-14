@@ -1,12 +1,48 @@
 [
  {
+  "name": "Upleaf",
+  "thai": "",
+  "meaning": "a page lifting up, like the logo",
+  "verdict": "CAUTION",
+  "label": "In use elsewhere",
+  "pick": true,
+  "found": "No study or education product found. A posture-walking app, “Upleaf: Posture Walks” (Health &amp; Fitness), is on the App Store, and a web agency uses <a href=\"https://upleaf.com\">upleaf.com</a>. upleaf.app does not resolve."
+ },
+ {
+  "name": "Termwise",
+  "thai": "",
+  "meaning": "wise about the term",
+  "verdict": "TAKEN",
+  "label": "Used by a school app",
+  "pick": true,
+  "found": "An app named Termwise is on Google Play: school-management software for Nigerian schools (<a href=\"https://termwise.org\">termwise.org</a>, very few downloads). Not on the App Store in the US or Thailand. termwise.com is for sale; termwise.app is an unrelated browser extension."
+ },
+ {
+  "name": "Semstra",
+  "thai": "",
+  "meaning": "from “semester”",
+  "verdict": "CAUTION",
+  "label": "One letter from taken apps",
+  "pick": true,
+  "found": "Nothing found under this exact spelling (App Store US and Thailand, Google Play, semstra.com / .app / .co do not resolve). But <strong>Semestra</strong>, one letter longer and said the same way, is two Education apps on the App Store in Thailand and one on Google Play, all semester planners."
+ },
+ {
+  "name": "Semestra",
+  "thai": "",
+  "meaning": "coined English name",
+  "verdict": "TAKEN",
+  "label": "Used by a study app",
+  "pick": false,
+  "found": "Three semester-planner apps, one with quizzes and flashcards."
+ },
+ {
   "name": "Khuenjai",
   "thai": "ขึ้นใจ",
   "meaning": "know it by heart",
   "verdict": "CLEAR",
   "label": "No similar product found",
   "found": "Only other use found: a 2026 pop song of the same name. The simpler spelling Kuenjai is free as well.",
-  "pick": true
+  "pick": false
  },
  {
   "name": "ThamEng",
@@ -15,7 +51,7 @@
   "verdict": "CLEAR",
   "label": "No similar product found",
   "found": "Only use found: a small handmade-crafts Instagram account. Tutors use the phrase in passing.",
-  "pick": true
+  "pick": false
  },
  {
   "name": "Maenjai",
@@ -24,7 +60,7 @@
   "verdict": "CLEAR",
   "label": "No similar product found",
   "found": "No product found. The same sounds appear as a phrase in Isan song lyrics; worth asking Thai speakers how that lands.",
-  "pick": true
+  "pick": false
  },
  {
   "name": "Jammaen",
@@ -33,7 +69,7 @@
   "verdict": "CLEAR",
   "label": "No similar product found",
   "found": "No product carries the name, but it is a common descriptive phrase in tutoring adverts, so harder to own.",
-  "pick": true
+  "pick": false
  },
  {
   "name": "Nuekok",
@@ -171,30 +207,12 @@
   "pick": false
  },
  {
-  "name": "Termwise",
-  "thai": "",
-  "meaning": "coined English name",
-  "verdict": "TAKEN",
-  "label": "Used by a study app",
-  "found": "School-management software (<a href=\"https://termwise.org\">termwise.org</a>); small and outside Thailand, but ed-tech.",
-  "pick": false
- },
- {
   "name": "Retainly",
   "thai": "",
   "meaning": "coined English name",
   "verdict": "TAKEN",
   "label": "Used by a study app",
   "found": "A spaced-repetition app, a revision tracker and a UK flashcard company all use it.",
-  "pick": false
- },
- {
-  "name": "Semestra",
-  "thai": "",
-  "meaning": "coined English name",
-  "verdict": "TAKEN",
-  "label": "Used by a study app",
-  "found": "Three semester-planner apps, one with quizzes and flashcards.",
   "pick": false
  },
  {

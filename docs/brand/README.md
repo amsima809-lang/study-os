@@ -28,6 +28,18 @@ The other two marks are here as `mark-loop.svg` and `mark-cards.svg`, with app i
 
 Rules for the mark: one colour (it takes the theme's colour), never below 16 pixels, and the lifted page may take the theme's second colour.
 
+## English names in the running (14 November 2026)
+
+The owner asked for an English name and likes three. What quick checks of the App Store (US and Thailand), Google Play and domain records found:
+
+| Name | In the way | Risk |
+|---|---|---|
+| **Upleaf** | A posture-walking app on the App Store and a web agency at upleaf.com. Nothing in study or education. upleaf.app is free. | Lowest. It also describes the logo: a page lifting up. |
+| **Termwise** | An app with this exact name on Google Play: school-management software for Nigerian schools, very few downloads. termwise.com is for sale. | Medium. Same name, same broad field, on one of the two stores. |
+| **Semstra** | Nothing under this spelling. But Semestra, one letter longer and said the same way, is three semester-planner apps on both stores, including in Thailand. | Highest. Students searching by ear would find the others. |
+
+Logo-with-name files for all three are in `lockups/`.
+
 ## Names checked (14 November 2026)
 
 24 names were searched on the App Store, Google Play, the web, domain records and public LINE IDs. Full results with links: `names.json`, shown in `brand-board.html`.
