@@ -95,3 +95,4 @@ study-os/
 - [x] Phase 15 — Multi-User (users table, Google OAuth + dev login, per-user data isolation via user_id on all user-owned tables, per-user settings via user_settings table, legacy user migration)
 - [x] Phase 16 — Multi-Program Catalog + Onboarding (faculties, programs, program_credit_requirements, program_courses tables; onboarding flow with faculty/program/year/term; per-user program-based course filtering; dynamic credit requirements from DB)
 - [x] Phase 17 — Schedules + Exams for All BBA Programs (207 class sessions + 206 exam dates for semester 2/2569 from มร.30 and exam schedule PDFs; all 9 programs' courses with lecture times and exam dates)
+- [x] Phase 18 — E-Testing Data (etesting_courses + etesting_schedule tables; 134 courses available for e-Testing semester 2/2569; schedule with registration/exam dates, centers, time slots; /api/etesting endpoint filters by user's program)

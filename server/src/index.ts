@@ -52,7 +52,7 @@ app.use(passport.session());
 
 // --- public routes ---
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, app: "StudyOS", phase: 17, tz: env.tz, time: new Date().toISOString() });
+  res.json({ ok: true, app: "StudyOS", phase: 18, tz: env.tz, time: new Date().toISOString() });
 });
 app.use("/api", setupAuth(db));
 
@@ -103,6 +103,35 @@ app.get("/api/catalog/courses", (req, res) => {
      WHERE pc.program_id = ? ORDER BY pc.category, c.code`,
   ).all(programId);
   res.json(rows);
+});
+
+// --- e-Testing ---
+app.get("/api/etesting", (req, res) => {
+  const userId = req.user!.id;
+  const termId = (req.query.term_id as string | undefined) ?? "2/69";
+  const programId = (db.prepare("SELECT program_id FROM user_profiles WHERE user_id = ?").get(userId) as
+    { program_id: string | null } | undefined)?.program_id;
+
+  const schedule = db.prepare("SELECT * FROM etesting_schedule WHERE term_id = ?").get(termId);
+  const courses = programId
+    ? db.prepare(
+        `SELECT ec.course_code, ec.fee_central, ec.fee_regional, ec.has_essay,
+                c.name_th, c.name_en, c.credits
+         FROM etesting_courses ec
+         LEFT JOIN courses c ON c.code = ec.course_code
+         INNER JOIN program_courses pc ON pc.course_code = ec.course_code AND pc.program_id = ?
+         WHERE ec.term_id = ?
+         ORDER BY ec.course_code`,
+      ).all(programId, termId)
+    : db.prepare(
+        `SELECT ec.course_code, ec.fee_central, ec.fee_regional, ec.has_essay,
+                c.name_th, c.name_en, c.credits
+         FROM etesting_courses ec
+         LEFT JOIN courses c ON c.code = ec.course_code
+         WHERE ec.term_id = ?
+         ORDER BY ec.course_code`,
+      ).all(termId);
+  res.json({ schedule, courses });
 });
 
 // --- user profile ---
