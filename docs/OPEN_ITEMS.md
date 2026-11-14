@@ -1,6 +1,8 @@
 # Open items
 
-Last updated 14 November 2026, after Phase 51. Everything that could be built or checked on the development machine has been. Each item below is still open for a stated reason: it needs a **person's decision**, something only the **owner** holds, a **device**, or **data** that is not published. For each: what was tried, and the exact next step.
+Last updated 14 November 2026, after Phase 51. Everything that could be built or checked on the development machine has been. Each item below is **blocked**: it cannot be finished from the development machine, for the reason given. It needs a **person's decision**, something only the **owner** holds, a **device**, or **data** that is not published. For each: what was tried, why it stops there, and the exact next step.
+
+What the development machine does not have (re-checked 14 November 2026, after Phase 51): no Docker, Podman, Colima or Fly CLI; no Java runtime (so the Android SDK installer cannot add a system image); Xcode without any iOS simulator; one Android emulator image whose Chrome is a stub that cannot open a page; no Google sign-in keys and no Fly credentials; read-only access to the repository (pull, not push).
 
 ## Needs a decision
 
@@ -15,21 +17,22 @@ Last updated 14 November 2026, after Phase 51. Everything that could be built or
 
 | Item | What was tried | Next step |
 |---|---|---|
-| **Review and merge the pull request** | Opened from a fork (no write access to the repository). | Owner reviews amsima809-lang/study-os#1. |
+| **Review and merge the pull request** | Opened from a fork and kept up to date through Phase 51; it is open, mergeable, and has no review yet. Blocked: this account can only read the repository, and merging is the owner's call. | Owner reviews amsima809-lang/study-os#1. |
 | **A real deploy** | The branch was run the way the Dockerfile runs it, on a new database (Phase 48). No Docker, Podman, Colima or Fly CLI on the development machine, and no access to the Fly app. | `fly deploy`, after the settings below. |
 | **Google sign-in on the live site** | Exercised with a stand-in client: hand-off, return address and every failure path (Phase 48b). A successful sign-in needs a real client. | Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `APP_URL` (`DEPLOY.md`). Without them nobody can sign in. |
-| **Push contact address** | Placeholder in place. | Set `VAPID_SUBJECT`. |
+| **Push contact address** | Placeholder in place. Blocked: it must be an address the owner answers, and it is set on the live server. | Set `VAPID_SUBJECT`. |
 
 ## Needs a device or a person
 
 | Item | What was tried | Next step |
 |---|---|---|
 | **Notifications on a phone** | Proven end to end with desktop Chrome and Google's push service (`scripts/push-e2e.mjs`). The installed Android emulator has only a stub of Chrome; a Play Store image needs Java for the SDK installer; Xcode has no simulator runtime. | After the deploy: turn it on from a phone (on iPhone, add to Home Screen first) and use "send a test notification". |
-| **Touch, Apple Pencil, on-screen keyboard, share sheet** | All built and tested with simulated events only. | Try each on a phone and a tablet. |
-| **Screen readers; students using it** | Labels, roles and focus were audited by script. | A VoiceOver/TalkBack pass; watch three students. |
+| **Touch, Apple Pencil, on-screen keyboard, share sheet** | All built and tested with simulated events only. Blocked: no phone, tablet or working simulator here. | Try each on a phone and a tablet. |
+| **The new logo on a real home screen** | Checked in a clean browser: login page (amber top book with no university, white with one), phone header and desktop sidebar, light and dark. The home-screen icons were measured and cropped as a circle, a squircle and a rounded square: the mark stays inside the safe circle (it reaches 38.8% of the width from the centre; the limit is 40%). Blocked for the last step: installing to a home screen needs a phone and the HTTPS site. | After the deploy: add to Home Screen on an iPhone and an Android phone and look at the icon. |
+| **Screen readers; students using it** | Labels, roles and focus were audited by script. Blocked: needs a person listening to a screen reader, and real students. | A VoiceOver/TalkBack pass; watch three students. |
 | **The lecture-collector bookmark** | Its logic was run on the live lecture site; the bookmark itself cannot load from `http://localhost`. | Try it from the deployed HTTPS site. |
-| **Trademark clearance for "Termtrail"** | Nothing identical or similar found at the Thai, US, EU or Australian offices or in WIPO's database; small unregistered uses exist (`brand/trademark-brief.md`). TMview refuses automated access; ASEAN TMview refused connections; the UK office has a human-verification wall; the Swiss register was down. | Hand `brand/trademark-brief.md` to a trademark professional. |
-| **Domains** | `termtrail.com`, `termtrail.app` and `termtrail.co.th` were unregistered on 14 November 2026. Buying them needs the owner's account and payment. | Register them. |
+| **Trademark clearance for "Termtrail"** | Nothing identical or similar found at the Thai, US, EU or Australian offices or in WIPO's database; small unregistered uses exist (`brand/trademark-brief.md`). TMview refuses automated access; ASEAN TMview refused connections; the UK office has a human-verification wall; the Swiss register was down. Blocked: clearance is a legal opinion, and those walls are not to be worked around. | Hand `brand/trademark-brief.md` to a trademark professional. |
+| **Domains** | `termtrail.com`, `termtrail.app` and `termtrail.co.th` were still unregistered when re-checked on the evening of 14 November 2026. Blocked: buying them needs the owner's account and payment. | Register them. |
 
 ## Needs data that is not published
 
