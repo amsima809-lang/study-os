@@ -118,19 +118,31 @@ export const HandwritingPad = forwardRef<HandwritingHandle>((_props, ref) => {
     };
   }
 
+  // Palm rejection. A resting palm arrives as separate "touch" pointers while
+  // the pen is a "pen" pointer. Touch never starts a stroke, and once a stroke
+  // has started only the pointer that started it may extend or end it —
+  // otherwise the palm's own move/lift events drag the line to the palm or cut
+  // the stroke short.
+  const activePointer = useRef<number | null>(null);
+
   function down(e: React.PointerEvent) {
     if (e.pointerType === "touch") return;
+    if (activePointer.current !== null) return; // a stroke is already in progress
+    activePointer.current = e.pointerId;
     drawing.current = true;
     const p = toCanvas(e);
     const w = tool === "eraser" ? ERASER_WIDTH : tool === "highlighter" ? HL_WIDTH : width;
     const col = tool === "highlighter" ? hlColor : color;
     current.current = { tool, color: col, width: w, points: [p] };
     last.current = p;
-    canvasRef.current!.setPointerCapture(e.pointerId);
+    try {
+      canvasRef.current!.setPointerCapture(e.pointerId);
+    } catch { /* the pointer is already gone: draw without capture */ }
     // draw the initial dot live
     paintStroke(ctxOf(), current.current);
   }
   function move(e: React.PointerEvent) {
+    if (e.pointerId !== activePointer.current) return; // e.g. the palm moving
     if (!drawing.current || !current.current) return;
     const p = toCanvas(e);
     current.current.points.push(p);
@@ -149,7 +161,11 @@ export const HandwritingPad = forwardRef<HandwritingHandle>((_props, ref) => {
     ctx.restore();
     last.current = p;
   }
-  function up() {
+  // Also handles pointercancel: iPadOS can cancel the pen when the palm lands,
+  // and the stroke drawn so far should be kept, not left hanging.
+  function up(e: React.PointerEvent) {
+    if (e.pointerId !== activePointer.current) return; // e.g. the palm lifting
+    activePointer.current = null;
     if (!drawing.current || !current.current) return;
     drawing.current = false;
     const done = current.current;
@@ -320,8 +336,13 @@ export const HandwritingPad = forwardRef<HandwritingHandle>((_props, ref) => {
           onPointerMove={move}
           onPointerUp={up}
           onPointerLeave={up}
-          className="bg-white touch-none block"
+          onPointerCancel={up}
+          // A resting palm must not open the copy/selection menu or select text.
+          onContextMenu={(e) => e.preventDefault()}
+          className="bg-white touch-none block select-none"
           style={{
+            WebkitTouchCallout: "none",
+            WebkitUserSelect: "none",
             width: `${zoom * 100}%`,
             aspectRatio: `${CANVAS_W} / ${CANVAS_H * pages}`,
             touchAction: "none",

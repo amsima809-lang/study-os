@@ -22,7 +22,7 @@ function shiftMonth(month: string, delta: number): string {
 
 type DotType = "class" | "exam" | "task" | "etesting" | "custom";
 const DOT_COLORS: Record<DotType, string> = {
-  class: "var(--accent-text)",
+  class: "var(--accent-2, var(--accent-text))",
   exam: "#ef4444",
   task: "#22c55e",
   etesting: "#f59e0b",
@@ -198,7 +198,7 @@ export default function Calendar() {
               onClick={handleAdd}
               disabled={saving || !form.title || !form.date}
               className="flex-1 rounded-lg py-2 text-sm font-medium transition-colors disabled:opacity-50"
-              style={{ background: "var(--accent-text)", color: "#fff" }}
+              style={{ background: "var(--accent)", color: "#fff" }}
             >
               {saving ? "..." : t("cal.save")}
             </button>
@@ -239,8 +239,9 @@ export default function Calendar() {
               onClick={() => setSelected(isSel ? null : date)}
               className="flex flex-col items-center py-1 rounded-xl transition-all relative"
               style={{
+                // White text needs the button shade (--accent), not the text shade.
                 background: isSel
-                  ? "var(--accent-text)"
+                  ? "var(--accent)"
                   : isToday
                     ? "var(--bg-surface-hover)"
                     : "transparent",
@@ -292,7 +293,7 @@ export default function Calendar() {
               {selected === data?.today && (
                 <span
                   className="text-xs font-medium px-2 py-0.5 rounded-full"
-                  style={{ background: "var(--accent-text)", color: "#fff" }}
+                  style={{ background: "var(--accent)", color: "#fff" }}
                 >
                   {t("cal.today")}
                 </span>
@@ -338,7 +339,7 @@ function EventRow({
   onDelete?: () => void;
 }) {
   const tagColors: Record<string, { bg: string; text: string }> = {
-    class: { bg: "rgba(91,79,199,0.15)", text: "var(--accent-text)" },
+    class: { bg: "var(--accent-light)", text: "var(--accent-text)" },
     exam: { bg: "rgba(239,68,68,0.15)", text: "#ef4444" },
     task: { bg: "rgba(34,197,94,0.15)", text: "#22c55e" },
     etesting: { bg: "rgba(245,158,11,0.15)", text: "#f59e0b" },

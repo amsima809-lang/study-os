@@ -230,3 +230,55 @@ AI ช่วยเรา "ฝึก" ไม่ใช่ "ทำแทน" — �
 - **ฝั่งหน้าจอ**: `client/src/components/SubscriptionGate.tsx` — `SubscriptionProvider` + `useSubscription()` + `PaywallModal` (หน้าต่างสมัคร ฿99) + `handleSubscriptionError()`
 - **หน้าล็อกอิน** ใหม่: พื้นหลังไล่สี + วงแสงลอย + การ์ดกระจก, ปุ่ม Google ปุ่มเดียว, ล็อกอิน Dev ซ่อนไว้
 - ⚠️ ปุ่ม "สมัครสมาชิก" ตอนนี้ **ยังไม่มีระบบรับเงินจริง** (กดแล้วเปิดใช้ทันที 30 วัน) — ต้องต่อระบบชำระเงินก่อนเปิดให้คนอื่นใช้
+
+## Phase 21 — University login themes
+- `client/src/data/universities.ts`: 35 universities (names, colour names as the university states them, hex swatches with a `source` of official / converted / approximate, optional campus photo). Generated from the high-confidence entries in `docs/research/universities-*.json`.
+- `client/src/components/UniversityPicker.tsx`: `useUniversity()` (choice kept in localStorage `studyos.university`, because the login page is shown before sign-in) and the searchable bottom-sheet picker.
+- `client/src/screens/Login.tsx`: background, orbs, logo tile and button take the chosen colours; a campus photo (if any) sits under a dark tinted overlay with the author and licence shown on the page.
+- Photos: `client/public/campus/*.webp` (900×1600), credits in `docs/PHOTO_CREDITS.md`. No university logos or emblems are used.
+
+## Phase 22 — University at onboarding
+- Migration `022_university.sql` adds `user_profiles.university_id` (a slug from `client/src/data/universities.ts`).
+- `Onboarding.tsx` asks for the university first. Ramkhamhaeng (`ru`) continues to faculty + program; any other university saves without them and shows a notice that its curriculum is not available yet.
+- `hasCatalog(db, userId)` in `server/src/api.ts` gates the Ramkhamhaeng timetable, exams and study-plan courses, so students of other universities see none of them.
+- `/api/auth/me` includes `university_id`; `App.tsx` copies it to localStorage (`studyos.university`) so the login theme follows the account across devices.
+
+## Phase 23 — Timetable and exams by program
+- `programFilter(db, userId, column)` in `server/src/api.ts` returns a WHERE fragment that keeps only courses listed in `program_courses` for the student's program. Used by `weekClasses`, `termExams`, the study plan's course list and `/api/mock/available`.
+- Accounts with no program (never onboarded) are left unfiltered.
+
+## Phase 24 — Seeding a new database
+- Problem: startup seeded only when `courses` was empty, but migration 017 inserts courses, so a new database skipped the seed (no GE/CORE/Marketing courses, plan terms or settings; Marketing had no `program_courses`).
+- `needsSeed(db)` in `server/src/seed.ts` checks `plan_terms`, which only the seed fills.
+- `seedDatabase(db, { reset: false })` (used at startup) is additive: it deletes nothing, upserts the seed courses, fills room and teacher on the 2/69 classes migration 018 already holds instead of duplicating them, and maps the seed courses to Marketing (migration 016 ran before those courses existed).
+- `seedDatabase(db)` (default, used by `npm run seed` and tests) still clears and reloads the seed tables.
+- Migration `023_accounting_principles.sql` defines ACC1101 and ACC1102 (Principles of Accounting 1 and 2), which the Accounting program maps; source: RU admission guides 2566 and 2567.
+
+## Phase 25 — Custom main menu and theme selector
+- `client/src/destinations.tsx` lists every screen once (id, icon, short nav label, full label, component) and exports `useNav()`, which keeps the student's nav list in localStorage (`studyos.nav`, max 5 screens + More).
+- `App.tsx` (`Shell`) renders the nav from that list. `useLongPress` opens a sheet on press-and-hold (550 ms) or right-click, with "Move to More"; the click that ends a long press does not navigate.
+- `More.tsx` lists the screens that are not in the nav, each with a "+" to pin it (when the nav is full, "+" opens a sheet to pick the item to replace; it is portalled to `<body>` because the screen sits in an animated container that would trap a fixed overlay), and a Light/Dark/System theme selector (same setting as the header toggle).
+
+## Phase 26 — App colour themes
+- `client/src/theme.ts` defines the colour theme, which is independent of light/dark mode: `default`, `palette:<id>`, `school:<id>`, `hc:light`, `hc:dark` (localStorage `studyos-colour`).
+- `ThemeProvider` (`components/ui.tsx`) calls `applyColour(colour, mode)`, which sets CSS variables on `<html>` over the tokens in `index.css`, and re-runs when the mode or the device's light/dark setting changes.
+- Palette and school themes supply two base colours. `accentVars()` computes the real shades: `--accent` is darkened until white text on it reaches 4.5:1 (and lightened in dark mode until it stands 3:1 off the surface); `--accent-text` is shifted until it reaches 4.5:1 on cards, the page and the tint. So a yellow school gets an olive button in light mode and true yellow text in dark mode. All 42 themes pass in both modes.
+- `--brand-bar` (a 4px stripe at the top of the header and sidebar) shows the two base colours unmodified.
+- `--accent-2` is the second colour for graphics only (logo icon, active-tab marker, calendar class dots, More icons, progress-bar gradients), shifted to 3:1 against the backgrounds. It is not text-safe. It is unset when the second colour is white or grey, and for the default and high-contrast themes; use sites write `var(--accent-2, var(--accent-text))`.
+- High contrast replaces every colour token (text pairs 7:1 or better; white on the dark theme's accent button is 6.6:1) and fixes light or dark itself, so the mode selector is disabled while it is on.
+- The login-page university theme (`studyos.university`) is a separate setting and is unchanged.
+
+## Phase 27 — Tuned school colours and font choice
+- School swatches now have four sources: `official`, `converted`, `website` (the shade the university's own site uses, see `docs/research/colour-tuning.md`) and `approximate`.
+- Fonts: `FONTS` in `client/src/theme.ts` lists eight typefaces designed for Thai, five sans-serif and three serif. The default is IBM Plex Sans Thai Looped for both languages (its Latin letters are IBM Plex Sans): a looped face, because loops make long Thai text easier to read; it is the font loaded in `index.html` and named in `--font-sans`. `applyFont()` overrides `--font-sans` on `<html>` and adds a Google Fonts stylesheet for the chosen family; Only the default is in `index.html`. `loadFontPreviews()` fetches only the letters the picker shows (Google's `text=` subset), so every option is drawn in its own typeface without downloading six full fonts. Offline, the stack falls back to the device's Thai fonts.
+
+## Phase 28 — Course name repair
+- Migration 017 took course names from a PDF whose Thai font encodes tone marks and similar signs as private-use codes (U+F700 to U+F71A). No font draws those, so 133 names showed boxes or looked misspelled.
+- Migration `024_repair_course_names.sql` maps the codes back to Thai (U+F70A..F70E, F705..F709 and F713..F717 are the tone marks U+0E48..0E4C; F701..F704 the upper vowels; F710 mai han-akat; F712 mai taikhu; F718..F71A the lower vowels), joins split sara am, separates 15 English names that were stuck onto the Thai name, and removes 3 stray credit digits. Each UPDATE matches on the old broken name, so seed-owned courses are never touched.
+- Check: of the 137 courses that also appear in the RU admission guides 2566 and 2567, the repaired Thai name matches the guide in all but one (a spacing difference in the PDF).
+- Open data gap: 60 courses inserted by migration 017 have empty `name_th` and `name_en` (DBC, FIN, HOT, HRM, INB, LOG and MGT codes). They are not in the 2566 or 2567 guide; filling them needs the 2569 guide.
+
+## Phase 29 — Palm rejection in the drawing pad
+- The browser reports the Apple Pencil as a `pen` pointer and a resting palm as separate `touch` pointers, each with its own `pointerId`. `HandwritingPad` already refused to start a stroke from touch, but its move and up handlers accepted events from any pointer, so the palm shifting or lifting corrupted or ended the pen's stroke.
+- Now `activePointer` records the pointer that started the stroke, and `move` / `up` ignore every other pointer. `pointercancel` (iPadOS may cancel the pen when the palm lands) ends the stroke and keeps what was drawn. The canvas also disables the long-press callout and text selection.
+- Unchanged: touch never draws, so a finger cannot draw on a phone.

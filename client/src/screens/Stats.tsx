@@ -214,7 +214,7 @@ function CourseRow({ c }: { c: CourseAnalytics }) {
           <span>{t("an.hoursValue", { actual: c.actualWeeklyHours, target: c.targetWeeklyHours })}</span>
         </div>
         <div className="h-1.5 rounded-full overflow-hidden mt-1" style={{ backgroundColor: "var(--border-light)" }}>
-          <div className="h-full rounded-full" style={{ width: `${hoursPct}%`, backgroundColor: "var(--accent)" }} />
+          <div className="h-full rounded-full" style={{ width: `${hoursPct}%`, background: "linear-gradient(90deg, var(--accent), var(--accent-2, var(--accent)))" }} />
         </div>
       </div>
 

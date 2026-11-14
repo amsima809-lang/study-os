@@ -3,9 +3,27 @@ import { useT, LanguageToggle } from "../i18n.tsx";
 import { postJSON } from "../api.ts";
 import { ThemeToggle } from "../components/ui.tsx";
 import Icon from "../components/Icon.tsx";
+import UniversityPicker, { useUniversity } from "../components/UniversityPicker.tsx";
+
+const DARK = "#0b0b18";
+
+/** Blend a hex colour towards another (t = share of `to`), as an rgb() string. */
+function mix(from: string, to: string, t: number, alpha = 1): string {
+  const ch = (hex: string, i: number) => parseInt(hex.slice(1 + i * 2, 3 + i * 2), 16);
+  const v = [0, 1, 2].map((i) => Math.round(ch(from, i) * (1 - t) + ch(to, i) * t));
+  return `rgba(${v[0]},${v[1]},${v[2]},${alpha})`;
+}
 
 export default function Login({ onAuthed }: { onAuthed: () => void }) {
-  const { t } = useT();
+  const { t, lang } = useT();
+  const [uni, chooseUni] = useUniversity();
+  const [picking, setPicking] = useState(false);
+
+  // Theme colours: the chosen university's, or the default purple/blue/pink.
+  const primary = uni?.swatches[0].hex ?? "#7c3aed";
+  const secondary = uni?.swatches[1]?.hex ?? (uni ? primary : "#3b82f6");
+  const third = uni ? primary : "#ec4899";
+  const approx = uni?.swatches.some((s) => s.source !== "official") ?? false;
   const [showDev, setShowDev] = useState(false);
   const [devEmail, setDevEmail] = useState("");
   const [devName, setDevName] = useState("");
@@ -33,14 +51,33 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
       <div
         className="absolute inset-0"
         style={{
-          background: "linear-gradient(135deg, #0f0c29 0%, #302b63 40%, #24243e 100%)",
+          background: uni
+            ? `linear-gradient(135deg, ${mix(primary, DARK, 0.85)} 0%, ${mix(primary, DARK, 0.6)} 40%, ${mix(secondary, DARK, 0.8)} 100%)`
+            : "linear-gradient(135deg, #0f0c29 0%, #302b63 40%, #24243e 100%)",
         }}
       />
+      {/* Campus photo (only some universities have one) under a tinted dark overlay */}
+      {uni?.photo && (
+        <>
+          <div
+            key={uni.id}
+            className="absolute inset-0 bg-cover bg-center"
+            style={{ backgroundImage: `url(${uni.photo.src})` }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{
+              background: `linear-gradient(180deg, ${mix(primary, DARK, 0.92, 0.88)} 0%, ${mix(primary, DARK, 0.85, 0.74)} 45%, ${mix(primary, DARK, 0.95, 0.94)} 100%)`,
+            }}
+          />
+        </>
+      )}
       {/* Floating gradient orbs */}
       <div
         className="absolute w-[500px] h-[500px] rounded-full opacity-30 blur-[100px]"
         style={{
-          background: "radial-gradient(circle, #7c3aed 0%, transparent 70%)",
+          display: uni?.photo ? "none" : undefined,
+          background: `radial-gradient(circle, ${primary} 0%, transparent 70%)`,
           top: "-10%",
           right: "-10%",
           animation: "float 8s ease-in-out infinite",
@@ -49,7 +86,8 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
       <div
         className="absolute w-[400px] h-[400px] rounded-full opacity-20 blur-[80px]"
         style={{
-          background: "radial-gradient(circle, #3b82f6 0%, transparent 70%)",
+          display: uni?.photo ? "none" : undefined,
+          background: `radial-gradient(circle, ${secondary} 0%, transparent 70%)`,
           bottom: "-5%",
           left: "-10%",
           animation: "float 10s ease-in-out infinite reverse",
@@ -58,7 +96,8 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
       <div
         className="absolute w-[300px] h-[300px] rounded-full opacity-15 blur-[60px]"
         style={{
-          background: "radial-gradient(circle, #ec4899 0%, transparent 70%)",
+          display: uni?.photo ? "none" : undefined,
+          background: `radial-gradient(circle, ${third} 0%, transparent 70%)`,
           top: "40%",
           left: "50%",
           animation: "float 12s ease-in-out infinite",
@@ -89,10 +128,10 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
           <div
             className="inline-flex items-center justify-center w-20 h-20 rounded-3xl mb-5"
             style={{
-              background: "linear-gradient(135deg, rgba(139,92,246,0.3) 0%, rgba(59,130,246,0.2) 100%)",
+              background: `linear-gradient(135deg, ${mix(primary, "#ffffff", 0.15, 0.35)} 0%, ${mix(secondary, "#ffffff", 0.15, 0.22)} 100%)`,
               border: "1px solid rgba(255,255,255,0.1)",
               backdropFilter: "blur(20px)",
-              boxShadow: "0 8px 32px rgba(139,92,246,0.2)",
+              boxShadow: `0 8px 32px ${mix(primary, DARK, 0.2, 0.25)}`,
             }}
           >
             <Icon name="book" size={40} style={{ color: "rgba(255,255,255,0.9)" }} />
@@ -101,7 +140,7 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
             {t("app.name")}
           </h1>
           <p className="text-sm mt-2 font-medium" style={{ color: "rgba(255,255,255,0.45)" }}>
-            {t("app.tagline")}
+            {uni ? (lang === "th" ? uni.nameTh : uni.nameEn) : t("app.tagline")}
           </p>
         </div>
 
@@ -109,7 +148,7 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
         <div
           className="rounded-3xl px-7 py-7 border"
           style={{
-            background: "rgba(255,255,255,0.05)",
+            background: uni?.photo ? "rgba(11,11,24,0.45)" : "rgba(255,255,255,0.05)",
             backdropFilter: "blur(40px)",
             WebkitBackdropFilter: "blur(40px)",
             borderColor: "rgba(255,255,255,0.08)",
@@ -194,7 +233,7 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
                   disabled={busy || !devEmail}
                   className="w-full font-semibold rounded-xl py-3 disabled:opacity-40 transition-all active:scale-[0.98]"
                   style={{
-                    background: "linear-gradient(135deg, rgba(139,92,246,0.5) 0%, rgba(59,130,246,0.4) 100%)",
+                    background: `linear-gradient(135deg, ${mix(primary, "#ffffff", 0.1, 0.5)} 0%, ${mix(secondary, "#ffffff", 0.1, 0.4)} 100%)`,
                     border: "1px solid rgba(255,255,255,0.1)",
                     color: "#fff",
                   }}
@@ -206,11 +245,49 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
           </div>
         </div>
 
-        {/* Bottom text */}
-        <p className="text-center text-xs mt-6" style={{ color: "rgba(255,255,255,0.2)" }}>
-          Ramkhamhaeng University Study Assistant
-        </p>
+        {/* University theme picker */}
+        <button
+          type="button"
+          onClick={() => setPicking(true)}
+          className="w-full mt-4 flex items-center justify-center gap-2 text-sm py-3 rounded-2xl transition-all active:scale-[0.98]"
+          style={{
+            color: "rgba(255,255,255,0.75)",
+            border: "1px solid rgba(255,255,255,0.1)",
+            background: "rgba(255,255,255,0.05)",
+          }}
+        >
+          <Icon name="graduationCap" size={18} />
+          {uni ? t("uni.change") : t("uni.choose")}
+        </button>
+
+        {/* Bottom text: school colours (as the university names them) + photo credit */}
+        <div className="text-center text-xs mt-5 space-y-1" style={{ color: "rgba(255,255,255,0.4)" }}>
+          {uni ? (
+            <>
+              <p title={approx ? t("uni.approx") : undefined}>
+                {lang === "th" ? uni.colourTh : uni.colourEn}
+                {approx && " *"}
+              </p>
+              {approx && <p style={{ color: "rgba(255,255,255,0.28)" }}>* {t("uni.approx")}</p>}
+              {uni.photo && (
+                <p>
+                  {t("uni.photo_by")}{" "}
+                  <a href={uni.photo.page} target="_blank" rel="noreferrer" className="underline">
+                    {uni.photo.author}
+                  </a>
+                  , {uni.photo.licence} (Wikimedia Commons)
+                </p>
+              )}
+            </>
+          ) : (
+            <p>{t("uni.tagline")}</p>
+          )}
+        </div>
       </div>
+
+      {picking && (
+        <UniversityPicker current={uni} onPick={chooseUni} onClose={() => setPicking(false)} />
+      )}
 
       <style>{`
         @keyframes float {

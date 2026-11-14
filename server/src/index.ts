@@ -11,7 +11,7 @@ import passport from "passport";
 import { join } from "node:path";
 import { env, isProd } from "./env.js";
 import { openDb } from "./db.js";
-import { seedDatabase } from "./seed.js";
+import { seedDatabase, needsSeed } from "./seed.js";
 import { setupAuth, requireAuth } from "./auth.js";
 import { scheduleDailyBackups } from "./backup.js";
 import { createApiRouter } from "./api.js";
@@ -27,9 +27,9 @@ import { createStudyPlanRouter } from "./studyplan.js";
 const app = express();
 const db = openDb(env.dbPath);
 
-if ((db.prepare("SELECT COUNT(*) n FROM courses").get() as { n: number }).n === 0) {
-  seedDatabase(db);
-  console.log("[StudyOS] empty database — seeded curriculum data.");
+if (needsSeed(db)) {
+  seedDatabase(db, { reset: false });
+  console.log("[StudyOS] new database — seeded curriculum data.");
 }
 
 app.use(express.json({ limit: "50mb" }));
@@ -86,8 +86,8 @@ app.get("/api/catalog/faculties", (_req, res) => {
 app.get("/api/catalog/programs", (req, res) => {
   const facultyId = req.query.faculty_id as string | undefined;
   const rows = facultyId
-    ? db.prepare("SELECT id, faculty_id, code, name_th, name_en, degree, total_credits FROM programs WHERE faculty_id = ? ORDER BY name_th").all(facultyId)
-    : db.prepare("SELECT id, faculty_id, code, name_th, name_en, degree, total_credits FROM programs ORDER BY name_th").all();
+    ? db.prepare("SELECT id, faculty_id, code, name_th, name_en, degree, total_credits FROM programs WHERE faculty_id = ? ORDER BY rowid").all(facultyId)
+    : db.prepare("SELECT id, faculty_id, code, name_th, name_en, degree, total_credits FROM programs ORDER BY rowid").all();
   res.json(rows);
 });
 
@@ -150,15 +150,21 @@ app.get("/api/profile", (req, res) => {
 
 app.put("/api/profile", (req, res) => {
   const userId = req.user!.id;
-  const { faculty_id, program_id, entry_year, entry_term, target_years } = req.body as {
+  const { university_id, faculty_id, program_id, entry_year, entry_term, target_years } = req.body as {
+    university_id?: string;
     faculty_id?: string;
     program_id?: string;
     entry_year?: string;
     entry_term?: string;
     target_years?: number;
   };
+  // university_id is a short slug from the client's university list.
+  if (university_id !== undefined && !/^[a-z]{2,12}$/.test(university_id)) {
+    return res.status(400).json({ error: "Invalid university_id" });
+  }
   db.prepare(
     `UPDATE user_profiles SET
+       university_id = COALESCE(?, university_id),
        faculty_id = COALESCE(?, faculty_id),
        program_id = COALESCE(?, program_id),
        entry_year = COALESCE(?, entry_year),
@@ -166,7 +172,7 @@ app.put("/api/profile", (req, res) => {
        target_years = COALESCE(?, target_years),
        onboarded = 1
      WHERE user_id = ?`,
-  ).run(faculty_id ?? null, program_id ?? null, entry_year ?? null, entry_term ?? null, target_years ?? null, userId);
+  ).run(university_id ?? null, faculty_id ?? null, program_id ?? null, entry_year ?? null, entry_term ?? null, target_years ?? null, userId);
   res.json({ ok: true });
 });
 

@@ -201,14 +201,30 @@ const DEFAULT_SETTINGS: Array<[string, string]> = [
   ["weekly_target_hours", "36"],
 ];
 
-/** Insert every seed row. Idempotent: clears seed tables first, then re-inserts. */
-export function seedDatabase(db: DB): void {
+/**
+ * True when the seed data has never been loaded. `plan_terms` is the marker:
+ * only the seed fills it (migrations add courses, so "courses is empty" is NOT
+ * a safe test — migration 017 inserts courses on a brand-new database).
+ */
+export function needsSeed(db: DB): boolean {
+  return (db.prepare("SELECT COUNT(*) n FROM plan_terms").get() as { n: number }).n === 0;
+}
+
+/**
+ * Insert every seed row.
+ * - reset (default, `npm run seed` and tests): clears the seed tables first.
+ * - reset: false (first start of a new database): ADDS the seed data next to
+ *   what the migrations already inserted, deleting nothing. It then maps the
+ *   seed courses to Marketing, which migration 016 could not do because the
+ *   courses did not exist yet when it ran.
+ */
+export function seedDatabase(db: DB, { reset = true }: { reset?: boolean } = {}): void {
   db.pragma("foreign_keys = OFF");
   const tx = db.transaction(() => {
     const insSetting = db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)");
     for (const [k, v] of DEFAULT_SETTINGS) insSetting.run(k, v);
 
-    db.exec(`
+    if (reset) db.exec(`
       DELETE FROM exams;
       DELETE FROM class_sessions;
       DELETE FROM plan_items;
@@ -219,17 +235,23 @@ export function seedDatabase(db: DB): void {
     `);
 
     const insGroup = db.prepare(
-      "INSERT INTO course_groups (id, choose, required, note) VALUES (@id, @choose, @required, @note)",
+      "INSERT OR IGNORE INTO course_groups (id, choose, required, note) VALUES (@id, @choose, @required, @note)",
     );
     for (const g of GROUPS) {
       insGroup.run({ id: g.id, choose: g.choose, required: g.required ? 1 : 0, note: g.note ?? null });
     }
 
     const insCourse = db.prepare(
+      // The seed is the official record for its courses, so it wins over a
+      // same-code row a migration may already have inserted.
       `INSERT INTO courses (code, name_th, name_en, credits, category, difficulty, choose_group, notes)
-       VALUES (@code, @name_th, @name_en, @credits, @category, @difficulty, @choose_group, @notes)`,
+       VALUES (@code, @name_th, @name_en, @credits, @category, @difficulty, @choose_group, @notes)
+       ON CONFLICT(code) DO UPDATE SET
+         name_th = excluded.name_th, name_en = excluded.name_en, credits = excluded.credits,
+         category = excluded.category, difficulty = excluded.difficulty,
+         choose_group = excluded.choose_group, notes = excluded.notes`,
     );
-    const insPre = db.prepare("INSERT INTO prerequisites (course_code, requires_code) VALUES (?, ?)");
+    const insPre = db.prepare("INSERT OR IGNORE INTO prerequisites (course_code, requires_code) VALUES (?, ?)");
     for (const c of COURSES) {
       insCourse.run({
         code: c.code,
@@ -276,7 +298,18 @@ export function seedDatabase(db: DB): void {
       `INSERT INTO exams (course_code, term_id, datetime_start, datetime_end, slot, location)
        VALUES (@code, '2/69', @start, @end, @slot, @room)`,
     );
+    // Migration 018 may already hold this class/exam (without room or teacher).
+    const hasClass = db.prepare("SELECT id FROM class_sessions WHERE course_code = ? AND term_id = '2/69'");
+    const fillClass = db.prepare(
+      "UPDATE class_sessions SET room = COALESCE(room, ?), instructor = COALESCE(instructor, ?) WHERE id = ?",
+    );
+    const hasExam = db.prepare("SELECT id FROM exams WHERE course_code = ? AND term_id = '2/69'");
     for (const s of SCHEDULE_2_69) {
+      const existing = reset ? undefined : (hasClass.get(s.code) as { id: number } | undefined);
+      if (existing) {
+        fillClass.run(s.room, s.instructor, existing.id);
+        if (hasExam.get(s.code)) continue;
+      } else
       insClass.run({ code: s.code, weekday: s.weekday, start: s.start, end: s.end, room: s.room, instructor: s.instructor });
       const times = SLOT_TIMES[s.slot];
       insExam.run({
@@ -286,6 +319,13 @@ export function seedDatabase(db: DB): void {
         slot: s.slot,
         room: null,
       });
+    }
+
+    if (!reset) {
+      const mapToMarketing = db.prepare(
+        "INSERT OR IGNORE INTO program_courses (program_id, course_code, category) VALUES ('bus-mkt', ?, ?)",
+      );
+      for (const c of COURSES) mapToMarketing.run(c.code, c.category);
     }
   });
   tx();

@@ -124,16 +124,44 @@ type ClassRow = {
   room: string | null;
 };
 
-function weekClasses(db: DB, termId: string): ClassRow[] {
+/**
+ * The timetable and exam data belong to Ramkhamhaeng only. A student who chose
+ * another university at onboarding has no catalogue yet, so they get none of it.
+ * (university_id is null for accounts created before the university step.)
+ */
+export function hasCatalog(db: DB, userId: string): boolean {
+  const row = db.prepare("SELECT university_id FROM user_profiles WHERE user_id = ?").get(userId) as
+    { university_id: string | null } | undefined;
+  return !row?.university_id || row.university_id === "ru";
+}
+
+/**
+ * SQL filter that keeps only courses in the student's own program (major).
+ * Add `sql` to a WHERE clause and append `params` to the query's parameters.
+ * Accounts with no program yet (never onboarded) are left unfiltered.
+ */
+export function programFilter(db: DB, userId: string, column: string): { sql: string; params: string[] } {
+  const row = db.prepare("SELECT program_id FROM user_profiles WHERE user_id = ?").get(userId) as
+    { program_id: string | null } | undefined;
+  if (!row?.program_id) return { sql: "", params: [] };
+  return {
+    sql: ` AND ${column} IN (SELECT course_code FROM program_courses WHERE program_id = ?)`,
+    params: [row.program_id],
+  };
+}
+
+export function weekClasses(db: DB, termId: string, userId: string): ClassRow[] {
+  if (!hasCatalog(db, userId)) return [];
+  const mine = programFilter(db, userId, "cs.course_code");
   return db
     .prepare(
       `SELECT cs.course_code, c.name_th, c.name_en, cs.weekday, cs.start_time, cs.end_time, cs.room
        FROM class_sessions cs
        JOIN courses c ON c.code = cs.course_code
-       WHERE cs.term_id = ?
+       WHERE cs.term_id = ?${mine.sql}
        ORDER BY cs.weekday, cs.start_time`,
     )
-    .all(termId) as ClassRow[];
+    .all(termId, ...mine.params) as ClassRow[];
 }
 
 type ExamRow = {
@@ -146,16 +174,18 @@ type ExamRow = {
   location: string | null;
 };
 
-function termExams(db: DB, termId: string): ExamRow[] {
+export function termExams(db: DB, termId: string, userId: string): ExamRow[] {
+  if (!hasCatalog(db, userId)) return [];
+  const mine = programFilter(db, userId, "e.course_code");
   return db
     .prepare(
       `SELECT e.course_code, c.name_th, c.name_en, e.datetime_start, e.datetime_end, e.slot, e.location
        FROM exams e
        JOIN courses c ON c.code = e.course_code
-       WHERE e.term_id = ?
+       WHERE e.term_id = ?${mine.sql}
        ORDER BY e.datetime_start`,
     )
-    .all(termId) as ExamRow[];
+    .all(termId, ...mine.params) as ExamRow[];
 }
 
 /**
@@ -204,9 +234,9 @@ export function createApiRouter(db: DB): Router {
     const today = bangkokToday();
     const weekday = bangkokWeekday();
 
-    const todayClasses = weekClasses(db, term).filter((c) => c.weekday === weekday);
+    const todayClasses = weekClasses(db, term, userId).filter((c) => c.weekday === weekday);
 
-    const exams = termExams(db, term);
+    const exams = termExams(db, term, userId);
     const upcoming = exams
       .map((e) => ({ ...e, daysLeft: daysBetween(today, e.datetime_start.slice(0, 10)) }))
       .filter((e) => e.daysLeft >= 0)
@@ -233,9 +263,9 @@ export function createApiRouter(db: DB): Router {
     });
   });
 
-  router.get("/schedule/week", (_req, res) => {
+  router.get("/schedule/week", (req, res) => {
     const term = currentTermId(db);
-    res.json({ term, classes: weekClasses(db, term) });
+    res.json({ term, classes: weekClasses(db, term, req.user!.id) });
   });
 
   router.get("/calendar", (req, res) => {
@@ -248,8 +278,8 @@ export function createApiRouter(db: DB): Router {
     const firstDay = `${month}-01`;
     const lastDay = new Date(Date.UTC(year, mon, 0)).toISOString().slice(0, 10);
 
-    const classes = weekClasses(db, term);
-    const exams = termExams(db, term);
+    const classes = weekClasses(db, term, userId);
+    const exams = termExams(db, term, userId);
 
     // term date boundaries: classes run from start_date to day before first exam
     const termRow = db
@@ -403,10 +433,11 @@ export function createApiRouter(db: DB): Router {
     res.json({ month, term, today: bangkokToday(), events });
   });
 
-  router.get("/exams", (_req, res) => {
+  router.get("/exams", (req, res) => {
+    const userId = req.user!.id;
     const term = currentTermId(db);
     const today = bangkokToday();
-    const exams = termExams(db, term).map((e) => ({
+    const exams = termExams(db, term, userId).map((e) => ({
       course_code: e.course_code,
       name_th: e.name_th,
       name_en: e.name_en,
@@ -417,7 +448,7 @@ export function createApiRouter(db: DB): Router {
       location: e.location,
       daysLeft: daysBetween(today, e.datetime_start.slice(0, 10)),
     }));
-    res.json({ term, today, exams, clashes: findExamClashes(termExams(db, term)) });
+    res.json({ term, today, exams, clashes: findExamClashes(termExams(db, term, userId)) });
   });
 
   // ── Custom events CRUD ──

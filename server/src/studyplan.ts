@@ -6,7 +6,7 @@
  */
 import { Router } from "express";
 import type { DB } from "./db.js";
-import { bangkokToday, bangkokWeekday, daysBetween, addDaysISO, getSetting, setSetting } from "./api.js";
+import { bangkokToday, bangkokWeekday, daysBetween, addDaysISO, getSetting, setSetting, hasCatalog, programFilter } from "./api.js";
 
 // ---- types ----
 
@@ -81,15 +81,17 @@ function availableMinutes(dateStr: string, settings: PlanSettings): number {
 
 /** Get courses with upcoming exams and their chapters. */
 function getCoursesForPlanning(db: DB, today: string, userId: string): CourseExam[] {
+  if (!hasCatalog(db, userId)) return [];
+  const mine = programFilter(db, userId, "e.course_code");
   const exams = db.prepare(
     `SELECT e.course_code, c.name_th, c.name_en,
             DATE(e.datetime_start) AS exam_date
      FROM exams e
      JOIN courses c ON c.code = e.course_code
      JOIN plan_terms pt ON pt.term_id = e.term_id
-     WHERE DATE(e.datetime_start) > ?
+     WHERE DATE(e.datetime_start) > ?${mine.sql}
      ORDER BY e.datetime_start ASC`,
-  ).all(today) as Array<{ course_code: string; name_th: string; name_en: string | null; exam_date: string }>;
+  ).all(today, ...mine.params) as Array<{ course_code: string; name_th: string; name_en: string | null; exam_date: string }>;
 
   // Deduplicate by course (take earliest exam)
   const seen = new Set<string>();

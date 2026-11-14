@@ -5,7 +5,7 @@
  */
 import { Router } from "express";
 import type { DB } from "./db.js";
-import { bangkokToday, daysBetween, getSetting, setSetting } from "./api.js";
+import { bangkokToday, daysBetween, getSetting, setSetting, hasCatalog, programFilter } from "./api.js";
 
 export const MOCK_DEFAULT_COUNT = 40;
 export const MOCK_DEFAULT_DURATION_MIN = 90;
@@ -72,13 +72,17 @@ export function createMockRouter(db: DB): Router {
     const userId = req.user!.id;
     const term = currentTermId(db);
     const today = bangkokToday();
-    const rows = db
-      .prepare(
-        `SELECT e.course_code, c.name_th, c.name_en, MIN(e.datetime_start) AS d
-         FROM exams e JOIN courses c ON c.code = e.course_code
-         WHERE e.term_id = ? GROUP BY e.course_code`,
-      )
-      .all(term) as Array<{ course_code: string; name_th: string; name_en: string | null; d: string }>;
+    // Only the student's own program's exams (none for universities without a catalogue).
+    const mine = programFilter(db, userId, "e.course_code");
+    const rows = (hasCatalog(db, userId)
+      ? db
+          .prepare(
+            `SELECT e.course_code, c.name_th, c.name_en, MIN(e.datetime_start) AS d
+             FROM exams e JOIN courses c ON c.code = e.course_code
+             WHERE e.term_id = ?${mine.sql} GROUP BY e.course_code`,
+          )
+          .all(term, ...mine.params)
+      : []) as Array<{ course_code: string; name_th: string; name_en: string | null; d: string }>;
 
     const courses = rows.map((r) => {
       const daysToExam = daysBetween(today, r.d.slice(0, 10));

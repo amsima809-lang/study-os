@@ -1,39 +1,82 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import Icon from "./Icon.tsx";
+import { applyColour, applyFont, forcedMode, DEFAULT_FONT, type Colour } from "../theme.ts";
 
 /* ── Theme context ── */
 
 type Theme = "light" | "dark" | "system";
 
-const ThemeCtx = createContext<{ theme: Theme; setTheme: (t: Theme) => void }>({
+const ThemeCtx = createContext<{
+  theme: Theme;
+  setTheme: (t: Theme) => void;
+  /** Colour theme, see client/src/theme.ts ("default", "palette:ocean", "school:ru", "hc:dark"). */
+  colour: Colour;
+  setColour: (c: Colour) => void;
+  /** Font id, see FONTS in client/src/theme.ts. */
+  font: string;
+  setFont: (f: string) => void;
+}>({
   theme: "system",
   setTheme: () => {},
+  colour: "default",
+  setColour: () => {},
+  font: DEFAULT_FONT,
+  setFont: () => {},
 });
 
+function stored(key: string, fallback: string): string {
+  try {
+    return localStorage.getItem(key) || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(() => {
-    try {
-      return (localStorage.getItem("studyos-theme") as Theme) || "system";
-    } catch {
-      return "system";
-    }
-  });
+  const [theme, setThemeState] = useState<Theme>(() => stored("studyos-theme", "system") as Theme);
+  const [colour, setColourState] = useState<Colour>(() => stored("studyos-colour", "default"));
+  // What "system" currently means on this device.
+  const [systemDark, setSystemDark] = useState(() => window.matchMedia("(prefers-color-scheme: dark)").matches);
 
   function setTheme(t: Theme) {
     setThemeState(t);
     try { localStorage.setItem("studyos-theme", t); } catch {}
   }
 
+  const [font, setFontState] = useState(() => stored("studyos-font", DEFAULT_FONT));
+
+  function setFont(f: string) {
+    setFontState(f);
+    try { localStorage.setItem("studyos-font", f); } catch {}
+  }
+
+  useEffect(() => applyFont(font), [font]);
+
+  function setColour(c: Colour) {
+    setColourState(c);
+    try { localStorage.setItem("studyos-colour", c); } catch {}
+  }
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = () => setSystemDark(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
   useEffect(() => {
     const root = document.documentElement;
-    if (theme === "system") {
-      root.removeAttribute("data-theme");
-    } else {
-      root.setAttribute("data-theme", theme);
-    }
-  }, [theme]);
+    // A high-contrast theme decides light/dark itself.
+    const forced = forcedMode(colour);
+    const attr = forced ?? (theme === "system" ? null : theme);
+    if (attr) root.setAttribute("data-theme", attr);
+    else root.removeAttribute("data-theme");
+    applyColour(colour, forced ?? (theme === "system" ? (systemDark ? "dark" : "light") : theme));
+  }, [theme, colour, systemDark]);
 
-  return <ThemeCtx.Provider value={{ theme, setTheme }}>{children}</ThemeCtx.Provider>;
+  return (
+    <ThemeCtx.Provider value={{ theme, setTheme, colour, setColour, font, setFont }}>{children}</ThemeCtx.Provider>
+  );
 }
 
 export function useTheme() {

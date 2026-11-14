@@ -2,7 +2,7 @@
 
 /* ── Design tokens ── */
 :root {
-  --font-sans: "Sarabun", system-ui, -apple-system, "Segoe UI", "Noto Sans Thai", sans-serif;
+  --font-sans: "IBM Plex Sans Thai Looped", system-ui, -apple-system, "Segoe UI", "Noto Sans Thai", "Thonburi", sans-serif;
   --bg-base: #f8f7fc;
   --bg-surface: #ffffff;
   --bg-surface-hover: #f3f1f9;

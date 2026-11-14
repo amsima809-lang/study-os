@@ -1,0 +1,608 @@
+[
+  {
+    "id": "cmu",
+    "name_th": "มหาวิทยาลัยเชียงใหม่",
+    "name_en": "Chiang Mai University",
+    "abbreviation_th": "มช.",
+    "abbreviation_en": "CMU",
+    "type": "autonomous",
+    "province": "Chiang Mai",
+    "main_campus": "Suan Sak (main) campus, Huay Kaew Road, Suthep, Mueang Chiang Mai, at the foot of Doi Suthep",
+    "other_campuses": [
+      "Suan Dok campus (health sciences), Mueang Chiang Mai",
+      "Mae Hia campus, Mueang Chiang Mai",
+      "Hariphunchai Education Centre (ศูนย์การศึกษาหริภุญไชย), Lamphun province",
+      "Samut Sakhon Education Centre"
+    ],
+    "colours": [
+      {
+        "name_th": "สีม่วงดอกรัก",
+        "name_en": "Dok Rak purple (milkweed/crown-flower purple)",
+        "hex": "#9E76B4",
+        "hex_source": "official_rgb_converted"
+      },
+      {
+        "name_th": "สีเขียว (ขอบวงกลมของตรา)",
+        "name_en": "Viridian green (emblem ring only, not the university colour)",
+        "hex": "#286428",
+        "hex_source": "official_rgb_converted"
+      }
+    ],
+    "colour_statement_th": "สีประจำมหาวิทยาลัย คือ สีม่วงดอกรัก (CMYK M60 C40 / RGB R158 G118 B180); ขอบวงกลมของตราใช้สีเขียว (CMYK C83 M36 Y100 K29 / RGB R40 G100 B40)",
+    "colour_sources": [
+      "https://www.cmu.ac.th/th/cmu/symbol",
+      "https://www.cmu.ac.th/en/cmu/symbol"
+    ],
+    "landmarks": [
+      {
+        "name_th": "อ่างแก้ว",
+        "name_en": "Ang Kaew Reservoir (with Doi Suthep behind)"
+      },
+      {
+        "name_th": "ศาลาธรรม",
+        "name_en": "Sala Dhamma (Dharma Hall)"
+      },
+      {
+        "name_th": "หอนาฬิกา มหาวิทยาลัยเชียงใหม่",
+        "name_en": "CMU Clock Tower"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Ang Kaew Reservoir",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:Ang_Kaew_reservoir.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "Christophe95",
+        "note": "4032x3024 landscape, 2018"
+      },
+      {
+        "landmark": "Ang Kaew Reservoir",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:อ่างแก้ว_มหาวิทยาลัยเชียงใหม่_-_panoramio.jpg",
+        "licence": "CC BY-SA 3.0",
+        "author": "::::=UT=:::: (Panoramio import)",
+        "note": "4000x3000 landscape"
+      },
+      {
+        "landmark": "Sala Dhamma",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:Chiang_Mai_Thailand_Chiang-Mai-University_Dharma-Hall-01.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "CEphoto, Uwe Aranas",
+        "note": "6720x3780; author requests specific attribution wording, check file page"
+      },
+      {
+        "landmark": "Clock Tower",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:CMU_clock_tower.jpg",
+        "licence": "Public domain (released by author)",
+        "author": "Love Krittaya",
+        "note": "960x1280 portrait, low resolution"
+      },
+      {
+        "landmark": "University gate",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:Chiang_Mai_University_gate.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "Christophe95",
+        "note": "5184x3888; a gate, not confirmed to be the main Huay Kaew gate"
+      },
+      {
+        "landmark": "Hariphunchai Education Centre, Lamphun",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:CMU_lamphun.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "Pongsak ksm",
+        "note": "960x720, low resolution"
+      }
+    ],
+    "confidence": "high",
+    "notes": "Colour values are published on the university's own CI page as CMYK and RGB only; the hex values here are a straight conversion of the official RGB, not a hex printed by CMU. Thai Wikipedia uses the same #9E76B4. The CI page publishes official HEX codes for each faculty colour (not included here). Logo download is restricted to CMU staff and emblem use is regulated by a CMU announcement in the Royal Gazette (vol. 128, special part 146 ง, 2 Dec 2011)."
+  },
+  {
+    "id": "mju",
+    "name_th": "มหาวิทยาลัยแม่โจ้",
+    "name_en": "Maejo University",
+    "abbreviation_th": "มจ.",
+    "abbreviation_en": "MJU",
+    "type": "autonomous",
+    "province": "Chiang Mai",
+    "main_campus": "63 Moo 4, Chiang Mai-Phrao Road, Nong Han, San Sai district, Chiang Mai",
+    "other_campuses": [
+      "Maejo University Phrae Campus (แม่โจ้-แพร่ เฉลิมพระเกียรติ)",
+      "Maejo University Chumphon"
+    ],
+    "colours": [
+      {
+        "name_th": "สีเขียว",
+        "name_en": "Green",
+        "hex": "#017F3F",
+        "hex_source": "approximate"
+      },
+      {
+        "name_th": "สีขาว",
+        "name_en": "White",
+        "hex": "#FFFFFF",
+        "hex_source": "approximate"
+      },
+      {
+        "name_th": "สีเหลือง",
+        "name_en": "Yellow",
+        "hex": "#FFD100",
+        "hex_source": "approximate"
+      }
+    ],
+    "colour_statement_th": "เขียว-ขาว-เหลือง (สีของธงแม่โจ้)",
+    "colour_sources": [
+      "https://archives.mju.ac.th/?page_id=9794 (Maejo University Archives: refers to 'สีเขียว ขาว เหลือง ของธงแม่โจ้'; says the university fixed the emblem's colour intensity as a brand standard in 2013 but gives no codes)",
+      "https://th.wikipedia.org/wiki/มหาวิทยาลัยแม่โจ้ (Thai Wikipedia infobox (fallback, not official))"
+    ],
+    "landmarks": [
+      {
+        "name_th": "อนุสาวรีย์พระช่วงเกษตรศิลปการ (บิดาเกษตรแม่โจ้)",
+        "name_en": "Monument to Phra Chuang Kaset Silpakarn, founder of Maejo"
+      },
+      {
+        "name_th": "อาคารเพิ่มพูล",
+        "name_en": "Phoemphun Building, Faculty of Agricultural Production"
+      },
+      {
+        "name_th": "อาคารรัตนโกสินทร์ 200 ปี",
+        "name_en": "Rattanakosin 200 Years Building"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Founder monument",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:MG_9120_copy.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "Supong",
+        "note": "3888x2592, 2011"
+      },
+      {
+        "landmark": "Phoemphun Building",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:อาคารเพิ่มพูล.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "Natnayangkluk",
+        "note": "800x534, low resolution"
+      },
+      {
+        "landmark": "Rattanakosin 200 Years Building",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:อาคารรัตนโกสินทร์_200_ปี_คณะผลิตกรรมการเกษตร.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "Natnayangkluk",
+        "note": "800x534, low resolution"
+      }
+    ],
+    "confidence": "medium",
+    "notes": "Green-white-yellow is consistent across the university archives and Thai Wikipedia, but I could not reach a main-site page (mju.ac.th symbol/about pages returned empty stubs) that states 'สีประจำมหาวิทยาลัย' in so many words, and no official colour codes were found even though a 2013 brand standard is said to exist. The green hex is the value Thai Wikipedia uses, not an official code. Landmark names come from Commons captions, not from a university landmark list."
+  },
+  {
+    "id": "cmru",
+    "name_th": "มหาวิทยาลัยราชภัฏเชียงใหม่",
+    "name_en": "Chiang Mai Rajabhat University",
+    "abbreviation_th": "มร.ชม.",
+    "abbreviation_en": "CMRU",
+    "type": "Rajabhat",
+    "province": "Chiang Mai",
+    "main_campus": "Wiang Bua campus, 202 Chang Phueak Road, Chang Phueak, Mueang Chiang Mai",
+    "other_campuses": [
+      "Mae Rim centre (ศูนย์แม่ริม), Chiang Mai",
+      "Mae Hong Son centre"
+    ],
+    "colours": [
+      {
+        "name_th": "สีดำ",
+        "name_en": "Black",
+        "hex": "#000000",
+        "hex_source": "approximate"
+      },
+      {
+        "name_th": "สีเหลือง",
+        "name_en": "Yellow",
+        "hex": "#FFD400",
+        "hex_source": "approximate"
+      }
+    ],
+    "colour_statement_th": "สีดำและเหลือง เป็นสีประจำ (ใช้มาตั้งแต่สมัยโรงเรียนฝึกหัดครูเชียงใหม่ พ.ศ. 2490); ชาวดำ-เหลือง",
+    "colour_sources": [
+      "https://www.cmru.ac.th/เกี่ยวกับมหาวิทยาลัย",
+      "https://lib.cmru.ac.th/web62/index.php?gcode=1673852460&ge=view&lang= (library page: 'ดำ-เหลือง ซึ่งเป็นสีประจำมหาวิทยาลัย', as reported by search snippet)",
+      "https://th.wikipedia.org/wiki/มหาวิทยาลัยราชภัฏเชียงใหม่ (Thai Wikipedia infobox (fallback, not official))"
+    ],
+    "landmarks": [],
+    "photo_candidates": [
+      {
+        "landmark": null,
+        "commons_url": "https://commons.wikimedia.org/wiki/File:Chiang_Mai_Rajabhat_University.jpg",
+        "licence": "CC0 1.0",
+        "author": "Zhou Guanhuai",
+        "note": "2272x1704, 2024; file page does not say which building or view it shows, so inspect before use"
+      }
+    ],
+    "confidence": "medium",
+    "notes": "Colours are well attested on the university's own site (high confidence). No named landmark could be verified: searches for Wiang Bua landmarks returned nothing usable. The official history says the school adopted Ganesha (พระพิฆเนศวร์) as its symbol in 1947 and cast a statue, but I did not confirm a current shrine suitable for photography. The Rajabhat emblem is derived from the royal seal of King Rama IX and is shared by all Rajabhat universities."
+  },
+  {
+    "id": "rmutl",
+    "name_th": "มหาวิทยาลัยเทคโนโลยีราชมงคลล้านนา",
+    "name_en": "Rajamangala University of Technology Lanna",
+    "abbreviation_th": "มทร.ล้านนา (มทร.ล.)",
+    "abbreviation_en": "RMUTL",
+    "type": "Rajamangala",
+    "province": "Chiang Mai",
+    "main_campus": "128 Huay Kaew Road, Chang Phueak, Mueang Chiang Mai (Chiang Mai / Phak Phayap area, incl. Jed Lin and Jed Yod sites)",
+    "other_campuses": [
+      "Doi Saket and Chom Thong sites, Chiang Mai",
+      "Chiang Rai",
+      "Lampang",
+      "Tak",
+      "Nan",
+      "Phitsanulok"
+    ],
+    "colours": [
+      {
+        "name_th": "สีน้ำตาลทอง",
+        "name_en": "Golden brown",
+        "hex": "#9A6B2F",
+        "hex_source": "approximate"
+      }
+    ],
+    "colour_statement_th": "สีน้ำตาลทอง เป็นสีประจำของมหาวิทยาลัยเทคโนโลยีราชมงคลล้านนา อันหมายถึงความเจริญรุ่งเรืองที่ยั่งยืน",
+    "colour_sources": [
+      "https://www.rmutl.ac.th/page/emblem",
+      "https://th.wikipedia.org/wiki/มหาวิทยาลัยเทคโนโลยีราชมงคลล้านนา (Thai Wikipedia infobox (fallback, not official))"
+    ],
+    "landmarks": [
+      {
+        "name_th": "ศาลาราชมงคล",
+        "name_en": "Sala Ratchamongkhon (Rajamangala Pavilion)"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Sala Ratchamongkhon",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:ศาลาราชมงคล_มหาวิทยาลัยเทคโนโลยีราชมงคลล้านนา.jpg",
+        "licence": "CC BY-SA 3.0",
+        "author": null,
+        "note": "504x379, too small for a background; author field empty on Commons, check file page history"
+      }
+    ],
+    "confidence": "medium",
+    "notes": "Golden brown is the official university-wide colour. Conflict: individual campuses state their own colours (Thai Wikipedia gives grey for the Chiang Mai/Phak Phayap campus; the Tak campus site gives blue; the Nan campus site gives green-white-yellow). No official hex found. The emblem contains the royal seal and crown granted by King Rama IX, so do not reproduce it decoratively. Only one landmark verified, with a low-resolution photo."
+  },
+  {
+    "id": "payap",
+    "name_th": "มหาวิทยาลัยพายัพ",
+    "name_en": "Payap University",
+    "abbreviation_th": "มพย.",
+    "abbreviation_en": "PYU",
+    "type": "private",
+    "province": "Chiang Mai",
+    "main_campus": "Mae Khao campus, 272 Moo 2, San Phranet, San Sai district, Chiang Mai (Super Highway Chiang Mai-Lampang)",
+    "other_campuses": [
+      "Kaew Nawarat campus, 131 Kaew Nawarat Road, Wat Ket, Mueang Chiang Mai"
+    ],
+    "colours": [
+      {
+        "name_th": "สีฟ้า",
+        "name_en": "Sky blue",
+        "hex": "#87CEEB",
+        "hex_source": "approximate"
+      },
+      {
+        "name_th": "สีขาว",
+        "name_en": "White",
+        "hex": "#FFFFFF",
+        "hex_source": "approximate"
+      }
+    ],
+    "colour_statement_th": "สีฟ้า-ขาว (official English page: 'University Colors: Sky blue and white')",
+    "colour_sources": [
+      "https://www.payap.ac.th/site/?page_id=15369",
+      "https://th.wikipedia.org/wiki/มหาวิทยาลัยพายัพ (Thai Wikipedia infobox (fallback, not official))"
+    ],
+    "landmarks": [
+      {
+        "name_th": null,
+        "name_en": "Henry Luce Chapel (Mae Khao campus)"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Payap University campus (subject not identified)",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:Payap_University_60.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "Ryomaandres",
+        "note": "3240x4320 portrait, 2022; one of a 32-photo set (Payap University 45-76) in Category:Payap University, all captioned only 'Payap University', so pick visually"
+      }
+    ],
+    "confidence": "high",
+    "notes": "Colours confirmed on the university's official emblem page. The Henry Luce Chapel is described by secondary sources as the university's identifying structure; I did not confirm its Thai name and found no Commons file explicitly labelled as the chapel (it may be among the unlabelled Ryomaandres set). It is a Christian chapel, so treat as a religious building. Abbreviation taken from Thai Wikipedia."
+  },
+  {
+    "id": "ncu",
+    "name_th": "มหาวิทยาลัยนอร์ท-เชียงใหม่",
+    "name_en": "North-Chiang Mai University",
+    "abbreviation_th": "มนช.",
+    "abbreviation_en": "NCU",
+    "type": "private",
+    "province": "Chiang Mai",
+    "main_campus": null,
+    "other_campuses": [],
+    "colours": [
+      {
+        "name_th": "สีชมพู",
+        "name_en": "Pink",
+        "hex": "#FF69B4",
+        "hex_source": "approximate"
+      },
+      {
+        "name_th": "สีเหลือง",
+        "name_en": "Yellow",
+        "hex": "#FFD700",
+        "hex_source": "approximate"
+      }
+    ],
+    "colour_statement_th": "สีชมพู และ สีเหลือง (official English page: 'Official Color of NCU: Pink ... Yellow')",
+    "colour_sources": [
+      "https://northcm.ac.th/main/about_detail/3",
+      "https://th.wikipedia.org/wiki/มหาวิทยาลัยนอร์ท-เชียงใหม่ (Thai Wikipedia infobox (fallback, not official))"
+    ],
+    "landmarks": [],
+    "photo_candidates": [],
+    "confidence": "medium",
+    "notes": "Colours confirmed on the official 'University Symbol' page. Minor inconsistency in the stated rationale: the current page ties yellow to King Bhumibol (Rama IX), an older indexed version said King Rama IV. Campus address not verified in this session (left null). No landmark identified and no freely licensed campus photo found on Wikimedia Commons (only a logo file)."
+  },
+  {
+    "id": "feu",
+    "name_th": "มหาวิทยาลัยฟาร์อีสเทอร์น",
+    "name_en": "The Far Eastern University",
+    "abbreviation_th": "ม.ฟ.อ.",
+    "abbreviation_en": "FEU",
+    "type": "private",
+    "province": "Chiang Mai",
+    "main_campus": "120 Mahidol Road, Hai Ya, Mueang Chiang Mai",
+    "other_campuses": [],
+    "colours": [
+      {
+        "name_th": "สีกรมท่า",
+        "name_en": "Navy blue",
+        "hex": "#000080",
+        "hex_source": "approximate"
+      },
+      {
+        "name_th": "สีเหลือง",
+        "name_en": "Yellow",
+        "hex": "#FFD700",
+        "hex_source": "approximate"
+      }
+    ],
+    "colour_statement_th": "สีประจำมหาวิทยาลัย: สีกรมท่า หมายถึง ความสุขุมลุ่มลึกทางปัญญา; สีเหลือง หมายถึง ความมีคุณธรรม จริยธรรม และความเจริญรุ่งเรือง",
+    "colour_sources": [
+      "https://feu.ac.th/emblem.aspx",
+      "https://th.wikipedia.org/wiki/มหาวิทยาลัยฟาร์อีสเทอร์น (Thai Wikipedia infobox (fallback, not official))"
+    ],
+    "landmarks": [],
+    "photo_candidates": [],
+    "confidence": "medium",
+    "notes": "Colours confirmed on the official emblem page. Address is from Thai Wikipedia. No landmark identified and no Commons photo found. Not to be confused with Far Eastern University in Manila, which dominates image searches."
+  },
+  {
+    "id": "mcu-chiangmai",
+    "name_th": "มหาวิทยาลัยมหาจุฬาลงกรณราชวิทยาลัย วิทยาเขตเชียงใหม่",
+    "name_en": "Mahachulalongkornrajavidyalaya University, Chiang Mai Campus",
+    "abbreviation_th": "มจร",
+    "abbreviation_en": "MCU",
+    "type": "Buddhist (autonomous public)",
+    "province": "Chiang Mai",
+    "main_campus": "Wat Suan Dok, Suthep Road, Mueang Chiang Mai (parent university: Wang Noi, Ayutthaya)",
+    "other_campuses": [
+      "Lamphun Buddhist College (separate entry)"
+    ],
+    "colours": [
+      {
+        "name_th": "สีชมพู",
+        "name_en": "Pink",
+        "hex": "#FFC0CB",
+        "hex_source": "approximate"
+      }
+    ],
+    "colour_statement_th": "สีประจำมหาวิทยาลัย สีชมพู เป็นสีตามวันพระราชสมภพของพระบาทสมเด็จพระจุลจอมเกล้าเจ้าอยู่หัว รัชกาลที่ ๕",
+    "colour_sources": [
+      "https://www.mcu.ac.th/pages/Emblem",
+      "https://th.wikipedia.org/wiki/มหาวิทยาลัยมหาจุฬาลงกรณราชวิทยาลัย (Thai Wikipedia infobox (fallback, not official))"
+    ],
+    "landmarks": [
+      {
+        "name_th": "พระบรมธาตุเจดีย์ วัดสวนดอก",
+        "name_en": "Great chedi of Wat Suan Dok"
+      },
+      {
+        "name_th": "พระวิหารหลวง วัดสวนดอก",
+        "name_en": "Main viharn of Wat Suan Dok"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Wat Suan Dok gilded chedi",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:021_Gilded_Chedi_(9208033044).jpg",
+        "licence": "CC BY 2.0",
+        "author": "Photo Dharma from Sadao, Thailand",
+        "note": "2052x2736 portrait, 2011"
+      },
+      {
+        "landmark": "Wat Suan Dok",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:(2023)_วัดสวนดอก_อ.เมือง_จ.เชียงใหม่_(10).jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "กสิณธร ราชโอรส",
+        "note": "4592x3448, 2023; exact view not checked"
+      },
+      {
+        "landmark": "Wat Suan Dok main viharn",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:001_Main_Viharn_from_the_Front_(9208117742).jpg",
+        "licence": "CC BY 2.0",
+        "author": "Photo Dharma from Sadao, Thailand",
+        "note": "3576x2682, 2011"
+      }
+    ],
+    "confidence": "medium",
+    "notes": "Colour is the parent university's official colour; no campus-specific colour found. Campus location at Wat Suan Dok is from search snippets and general references, the campus's own site was not fetched. Sensitivity: the recognisable imagery is an active royal temple with a relic chedi and the royal cemetery of the Chiang Mai ruling family; use respectfully or prefer a plain colour theme."
+  },
+  {
+    "id": "mcu-lamphun",
+    "name_th": "วิทยาลัยสงฆ์ลำพูน มหาวิทยาลัยมหาจุฬาลงกรณราชวิทยาลัย",
+    "name_en": "Lamphun Buddhist College, Mahachulalongkornrajavidyalaya University",
+    "abbreviation_th": "มจร",
+    "abbreviation_en": "MCU",
+    "type": "Buddhist (autonomous public)",
+    "province": "Lamphun",
+    "main_campus": "192 Moo 2, Ton Thong, Mueang Lamphun (Lamphun-Pa Sang road); founded 1997 at Wat Phra That Hariphunchai, moved 2004",
+    "other_campuses": [],
+    "colours": [
+      {
+        "name_th": "สีชมพู",
+        "name_en": "Pink",
+        "hex": "#FFC0CB",
+        "hex_source": "approximate"
+      }
+    ],
+    "colour_statement_th": "สีประจำมหาวิทยาลัย สีชมพู (ของมหาวิทยาลัยแม่)",
+    "colour_sources": [
+      "https://www.mcu.ac.th/pages/Emblem",
+      "https://lpn.mcu.ac.th/?page_id=110 (history and address, via search snippet)"
+    ],
+    "landmarks": [],
+    "photo_candidates": [],
+    "confidence": "medium",
+    "notes": "Colour inherited from MCU. Address and history are from the college's own history page as returned by search; direct fetch of the page failed. No landmark or Commons photo identified for the current campus. Wat Phra That Hariphunchai is the founding site only, and is a major relic temple."
+  },
+  {
+    "id": "mbu-lanna",
+    "name_th": "มหาวิทยาลัยมหามกุฏราชวิทยาลัย วิทยาเขตล้านนา",
+    "name_en": "Mahamakut Buddhist University, Lanna Campus",
+    "abbreviation_th": "มมร",
+    "abbreviation_en": "MBU",
+    "type": "Buddhist (autonomous public)",
+    "province": "Chiang Mai",
+    "main_campus": "Wat Chedi Luang, 103 Phra Pok Klao Road, Phra Sing, Mueang Chiang Mai (parent university: Salaya, Nakhon Pathom)",
+    "other_campuses": [],
+    "colours": [
+      {
+        "name_th": "สีแสด (บางหน้าของมหาวิทยาลัยเขียนว่า สีส้ม)",
+        "name_en": "Orange",
+        "hex": "#FF7F00",
+        "hex_source": "approximate"
+      }
+    ],
+    "colour_statement_th": "สีประจำมหาวิทยาลัย : สีแสด หมายถึง สีประจำพระบาทสมเด็จพระจอมเกล้าเจ้าอยู่หัวซึ่งตรงกับวันพฤหัสบดี อันเป็นวันพระราชสมภพ",
+    "colour_sources": [
+      "https://www.mbu.ac.th/about/post-2616/",
+      "https://nbc.mbu.ac.th/about/691/ (uses 'สีส้ม')",
+      "https://th.wikipedia.org/wiki/มหาวิทยาลัยมหามกุฏราชวิทยาลัย (Thai Wikipedia infobox (fallback, not official))"
+    ],
+    "landmarks": [
+      {
+        "name_th": "พระธาตุเจดีย์หลวง วัดเจดีย์หลวงวรวิหาร",
+        "name_en": "Chedi Luang, Wat Chedi Luang"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Wat Chedi Luang",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:Chiang-Mai_Thailand_Wat-Chedi-Luang-01.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "CEphoto, Uwe Aranas",
+        "note": "5955x4480, 2017; author requests specific attribution wording"
+      },
+      {
+        "landmark": "Wat Chedi Luang",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:(2022)_วัดเจดีย์หลวงวรวิหาร_อ.เมือง_จ.เชียงใหม่,Wat_Chadeiluang_Worawiharn_(1).jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "กสิณธร ราชโอรส",
+        "note": "4592x3448, 2022; exact view not checked"
+      }
+    ],
+    "confidence": "medium",
+    "notes": "Naming conflict within MBU's own sites: the main site says สีแสด, some campus pages say สีส้ม (both orange, tied to King Rama IV). Campus address comes from a low-authority travel directory plus Thai Wikipedia; the campus site was not fetched. Sensitivity: Wat Chedi Luang is an active royal temple and also houses the Chiang Mai city pillar shrine."
+  },
+  {
+    "id": "tnsu-chiangmai",
+    "name_th": "มหาวิทยาลัยการกีฬาแห่งชาติ วิทยาเขตเชียงใหม่",
+    "name_en": "Thailand National Sports University, Chiang Mai Campus",
+    "abbreviation_th": "มกช.ชม.",
+    "abbreviation_en": "TNSU",
+    "type": "public (specialised, under the Ministry of Tourism and Sports)",
+    "province": "Chiang Mai",
+    "main_campus": "Sanam Kila Road, Si Phum, Mueang Chiang Mai (parent university head office: Chonburi)",
+    "other_campuses": [],
+    "colours": [],
+    "colour_statement_th": null,
+    "colour_sources": [
+      "https://th.wikipedia.org/wiki/มหาวิทยาลัยการกีฬาแห่งชาติ_วิทยาเขตเชียงใหม่ (infobox colour field is empty)",
+      "https://th.wikipedia.org/wiki/มหาวิทยาลัยการกีฬาแห่งชาติ (describes the three-ring student badge as green, white, yellow)"
+    ],
+    "landmarks": [],
+    "photo_candidates": [],
+    "confidence": "low",
+    "notes": "Official colours not verified: tnsu.ac.th did not resolve and the campus site returned HTTP 403. Thai Wikipedia describes the three-ring badge as green-white-yellow (the old Institute of Physical Education scheme) but does not state these as the university colours, and one TNSU news item mentions purple university shirts. Left null rather than guessed. Address and Thai abbreviation are from Thai Wikipedia."
+  },
+  {
+    "id": "ru-chiangmai",
+    "name_th": "มหาวิทยาลัยรามคำแหง สาขาวิทยบริการเฉลิมพระเกียรติ จังหวัดเชียงใหม่",
+    "name_en": "Ramkhamhaeng University, Chiang Mai Regional Campus in Honour of His Majesty the King",
+    "abbreviation_th": "มร.",
+    "abbreviation_en": "RU",
+    "type": "open (public)",
+    "province": "Chiang Mai",
+    "main_campus": "Maneenopparat Building, 1st floor, Sritana Commercial Technological College, 71 Huay Kaew Road, Suthep, Mueang Chiang Mai (parent university: Hua Mak, Bangkok)",
+    "other_campuses": [],
+    "colours": [
+      {
+        "name_th": "สีน้ำเงิน",
+        "name_en": "Blue",
+        "hex": "#191970",
+        "hex_source": "approximate"
+      },
+      {
+        "name_th": "สีทอง",
+        "name_en": "Gold",
+        "hex": "#DAA520",
+        "hex_source": "approximate"
+      }
+    ],
+    "colour_statement_th": "สีประจำมหาวิทยาลัยรามคำแหง : “สีน้ำเงิน-ทอง”",
+    "colour_sources": [
+      "http://www.oasc.ru.ac.th/index.php/keiyw-kab-mhawithyalay-laea-sanakngan/sample-article/kerd-na-ru-keiyw-kab-mhawithyalay",
+      "http://www.chiangmai.ru.ac.th/index.php/th/ (branch address)",
+      "https://th.wikipedia.org/wiki/มหาวิทยาลัยรามคำแหง (Thai Wikipedia infobox (fallback, not official), source of the approximate hex values)"
+    ],
+    "landmarks": [],
+    "photo_candidates": [],
+    "confidence": "medium",
+    "notes": "Colours are the parent university's and are confirmed on an RU site. The Chiang Mai branch operates from rented space inside a private college, so it has no landmark of its own; reuse the existing Ramkhamhaeng theme. The English name of the branch is my rendering of the Thai, not an official translation. The branch site writes both 'เฉลิมพระเกียรติ' and 'เฉลิมเกียรติ'."
+  },
+  {
+    "id": "tru-lamphun",
+    "name_th": "มหาวิทยาลัยธนบุรี วิทยาเขตภาคเหนือ (ลำพูน)",
+    "name_en": "Thonburi University, Northern Campus (Lamphun)",
+    "abbreviation_th": "มธร.",
+    "abbreviation_en": "TRU",
+    "type": "private",
+    "province": "Lamphun",
+    "main_campus": "Ban Thi district, Lamphun (parent university: Nong Khaem, Bangkok)",
+    "other_campuses": [],
+    "colours": [
+      {
+        "name_th": "สีเหลืองทอง",
+        "name_en": "Golden yellow",
+        "hex": "#F2B705",
+        "hex_source": "approximate"
+      }
+    ],
+    "colour_statement_th": "สีประจำมหาวิทยาลัยธนบุรี คือ สีเหลืองทอง",
+    "colour_sources": [
+      "https://www.thonburi-u.ac.th/tru/abouttru/color",
+      "https://th.wikipedia.org/wiki/มหาวิทยาลัยธนบุรี (Thai Wikipedia infobox (fallback, not official); states แดง-น้ำเงิน-เขียว-เหลือง)"
+    ],
+    "landmarks": [],
+    "photo_candidates": [],
+    "confidence": "low",
+    "notes": "Conflict: the official site says the university colour is golden yellow, while Thai Wikipedia lists red-blue-green-yellow (these are the emblem's component colours on the official page). The official site has a menu entry 'วิทยาเขตภาคเหนือ (ลำพูน)', but the Ban Thi location and current operating status come only from Thai Wikipedia. No landmark or photo found."
+  }
+]

@@ -2,6 +2,11 @@ import { useEffect, useState } from "react";
 import { useT } from "../i18n.tsx";
 import { getJSON, putJSON } from "../api.ts";
 import Icon from "../components/Icon.tsx";
+import { UNIVERSITIES } from "../data/universities.ts";
+import { useUniversity } from "../components/UniversityPicker.tsx";
+
+// Only this university has a course catalogue (faculties, programs, schedules).
+const CATALOG_UNIVERSITY = "ru";
 
 type Faculty = { id: string; code: string; name_th: string; name_en: string | null };
 type Program = {
@@ -16,6 +21,9 @@ type Program = {
 
 export default function Onboarding({ onDone }: { onDone: () => void }) {
   const { t, lang } = useT();
+  const [loginUni, rememberUni] = useUniversity();
+  const [universityId, setUniversityId] = useState(loginUni?.id ?? "");
+  const hasCatalog = universityId === CATALOG_UNIVERSITY;
   const [faculties, setFaculties] = useState<Faculty[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [facultyId, setFacultyId] = useState("");
@@ -25,7 +33,10 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    getJSON<Faculty[]>("/api/catalog/faculties").then(setFaculties);
+    getJSON<Faculty[]>("/api/catalog/faculties").then((f) => {
+      setFaculties(f);
+      if (f.length === 1) setFacultyId(f[0].id); // only one faculty so far
+    });
   }, []);
 
   useEffect(() => {
@@ -42,17 +53,22 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!facultyId || !programId) return;
+    if (!universityId || (hasCatalog && (!facultyId || !programId))) return;
     setBusy(true);
     await putJSON("/api/profile", {
-      faculty_id: facultyId,
-      program_id: programId,
+      university_id: universityId,
+      faculty_id: hasCatalog ? facultyId : undefined,
+      program_id: hasCatalog ? programId : undefined,
       entry_year: entryYear || undefined,
       entry_term: entryTerm,
     });
+    rememberUni(universityId);
     onDone();
   }
 
+  const universities = [...UNIVERSITIES].sort((a, b) =>
+    lang === "th" ? a.nameTh.localeCompare(b.nameTh, "th") : a.nameEn.localeCompare(b.nameEn, "en"),
+  );
   const name = (f: Faculty | Program) => (lang === "en" && f.name_en ? f.name_en : f.name_th);
 
   return (
@@ -71,6 +87,35 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
         </div>
 
         <form onSubmit={submit} className="space-y-5">
+          {/* University */}
+          <div>
+            <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>
+              {t("onboard.university")}
+            </label>
+            <select
+              value={universityId}
+              onChange={(e) => setUniversityId(e.target.value)}
+              required
+              className="w-full rounded-xl border px-4 py-3 text-sm appearance-none"
+              style={{
+                backgroundColor: "var(--bg-surface)",
+                borderColor: "var(--border-light)",
+                color: "var(--text-primary)",
+              }}
+            >
+              <option value="">{t("onboard.select_university")}</option>
+              {universities.map((u) => (
+                <option key={u.id} value={u.id}>{lang === "th" ? u.nameTh : u.nameEn}</option>
+              ))}
+            </select>
+            {universityId && !hasCatalog && (
+              <p className="text-sm mt-2 rounded-xl px-3 py-2" style={{ backgroundColor: "var(--bg-surface)", color: "var(--text-secondary)" }}>
+                {t("onboard.no_catalog")}
+              </p>
+            )}
+          </div>
+
+          {hasCatalog && (<>
           {/* Faculty */}
           <div>
             <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>
@@ -120,6 +165,8 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
             </select>
           </div>
 
+          </>)}
+
           {/* Entry year + term */}
           <div className="flex gap-3">
             <div className="flex-1">
@@ -164,7 +211,7 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
 
           <button
             type="submit"
-            disabled={busy || !facultyId || !programId}
+            disabled={busy || !universityId || (hasCatalog && (!facultyId || !programId))}
             className="w-full font-semibold rounded-xl py-3 transition-all active:scale-[0.98] disabled:opacity-40"
             style={{
               backgroundColor: "var(--accent)",

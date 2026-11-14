@@ -16,6 +16,7 @@ export interface AuthUser {
   avatar_url: string | null;
   plan: string;
   onboarded: number;
+  university_id: string | null;
 }
 
 declare global {
@@ -81,7 +82,7 @@ export function setupAuth(db: DB): Router {
     const user = db
       .prepare(
         `SELECT u.id, u.email, u.name, u.avatar_url, u.plan,
-                COALESCE(up.onboarded, 0) AS onboarded
+                COALESCE(up.onboarded, 0) AS onboarded, up.university_id
          FROM users u LEFT JOIN user_profiles up ON up.user_id = u.id
          WHERE u.id = ?`,
       )

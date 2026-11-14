@@ -83,7 +83,7 @@ function PaywallModal({ onClose, onActivated }: { onClose: () => void; onActivat
           <div
             className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4"
             style={{
-              background: "linear-gradient(135deg, var(--accent) 0%, #8b5cf6 100%)",
+              background: "linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%)",
             }}
           >
             <Icon name="sparkles" size={28} style={{ color: "#fff" }} />
@@ -123,7 +123,7 @@ function PaywallModal({ onClose, onActivated }: { onClose: () => void; onActivat
           disabled={busy}
           className="w-full py-3.5 rounded-2xl font-semibold text-white disabled:opacity-50 transition-all active:scale-[0.98]"
           style={{
-            background: "linear-gradient(135deg, var(--accent) 0%, #8b5cf6 100%)",
+            background: "linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%)",
             boxShadow: "0 4px 16px rgba(91,79,199,0.3)",
           }}
         >

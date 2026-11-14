@@ -43,7 +43,7 @@ export default function Review() {
           <div className="flex-1 rounded-full h-2" style={{ backgroundColor: "var(--border-light)" }}>
             <div
               className="rounded-full h-2 transition-all"
-              style={{ width: `${Math.min((idx / cards.length) * 100, 100)}%`, backgroundColor: "var(--accent)" }}
+              style={{ width: `${Math.min((idx / cards.length) * 100, 100)}%`, background: "linear-gradient(90deg, var(--accent), var(--accent-2, var(--accent)))" }}
             />
           </div>
           {totalDue > cards.length && (
