@@ -26,7 +26,6 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
   // With no university chosen, the page wears the brand's own indigo.
   const primary = uni?.swatches[0].hex ?? BRAND.primary;
   const secondary = uni?.swatches[1]?.hex ?? (uni ? primary : "#3b82f6");
-  const third = uni ? primary : "#fbbf24";
   const approx = uni?.swatches.some((s) => s.source !== "official") ?? false;
   const [showDev, setShowDev] = useState(false);
   // Which ways of signing in this server offers (dev login is off on a live site).
@@ -110,16 +109,6 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
           bottom: "-5%",
           left: "-10%",
           animation: "float 10s ease-in-out infinite reverse",
-        }}
-      />
-      <div
-        className="absolute w-[300px] h-[300px] rounded-full opacity-15 blur-[60px]"
-        style={{
-          display: uni?.photo ? "none" : undefined,
-          background: `radial-gradient(circle, ${third} 0%, transparent 70%)`,
-          top: "40%",
-          left: "50%",
-          animation: "float 12s ease-in-out infinite",
         }}
       />
 
