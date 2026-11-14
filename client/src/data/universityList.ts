@@ -20,22 +20,23 @@ export function myUniversityId(): string | null {
 
 /**
  * Universities in the order to show them: `mineId` first (when it is in the
- * results), then A to Z. `query` keeps only those whose Thai name, English name
- * or abbreviation contains it.
+ * results), then any `pinned` ones in the order given, then A to Z. `query`
+ * keeps only those whose Thai name, English name or abbreviation contains it.
  */
 export function listUniversities(
   lang: "th" | "en",
   mineId: string | null,
   query = "",
   all: readonly University[] = UNIVERSITIES,
+  pinned: readonly string[] = [],
 ): University[] {
+  // 0 for the student's own, then 1, 2, ... for pinned ones, then everyone else.
+  const rank = (u: University) => (u.id === mineId ? 0 : pinned.includes(u.id) ? 1 + pinned.indexOf(u.id) : 1 + pinned.length);
   const q = query.trim().toLowerCase();
   const matches = q
     ? all.filter((u) => u.nameTh.toLowerCase().includes(q) || u.nameEn.toLowerCase().includes(q) || u.abbr.toLowerCase().includes(q))
     : [...all];
-  return matches.sort((a, b) => {
-    if (a.id === mineId) return -1;
-    if (b.id === mineId) return 1;
-    return lang === "th" ? a.nameTh.localeCompare(b.nameTh, "th") : a.nameEn.localeCompare(b.nameEn, "en");
-  });
+  return matches.sort(
+    (a, b) => rank(a) - rank(b) || (lang === "th" ? a.nameTh.localeCompare(b.nameTh, "th") : a.nameEn.localeCompare(b.nameEn, "en")),
+  );
 }

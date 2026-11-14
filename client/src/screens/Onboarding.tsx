@@ -66,8 +66,9 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
     onDone();
   }
 
-  // The university already chosen on the login page comes first.
-  const universities = listUniversities(lang, loginUni?.id ?? null);
+  // The university already chosen on the login page comes first; then the one
+  // whose curriculum the app has (Ramkhamhaeng), so it is at the top for everyone else.
+  const universities = listUniversities(lang, loginUni?.id ?? null, "", undefined, [CATALOG_UNIVERSITY]);
   const name = (f: Faculty | Program) => (lang === "en" && f.name_en ? f.name_en : f.name_th);
 
   return (

@@ -444,5 +444,5 @@ AI ช่วยเรา "ฝึก" ไม่ใช่ "ทำแทน" — �
 ## Phase 53 — Your university first
 - `client/src/data/universityList.ts`: `listUniversities(lang, mineId, query = "")` filters by Thai name, English name or abbreviation and sorts with the student's own university first, then A to Z for the language. `myUniversityId()` reads `studyos.university` from this browser (written on the login page, at onboarding, and from the profile at sign-in in `App.tsx`).
 - `UniversityPicker` reads the student's university once when it opens and renders it above the "default theme" row with the caption `uni.yours`. It is separate from `current` (the theme now applied), because in More a student may be trying another school's colours.
-- `Onboarding` builds its `<select>` from the same function, with the university chosen on the login page first.
+- `Onboarding` builds its `<select>` from the same function, with the university chosen on the login page first. It also passes `pinned = [CATALOG_UNIVERSITY]`, so Ramkhamhaeng, the one university whose curriculum the app has, is at the top for a student who has not chosen yet (order: own, pinned, A to Z).
 - The own university is only moved, never added: a search it does not match does not show it.

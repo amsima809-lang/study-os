@@ -5,7 +5,7 @@ import { describe, it, expect } from "vitest";
 type Uni = { id: string; nameTh: string; nameEn: string; abbr: string };
 const { listUniversities } = (await import(
   new URL("../../client/src/data/universityList.ts", import.meta.url).href
-)) as { listUniversities: (lang: "th" | "en", mineId: string | null, query?: string, all?: readonly Uni[]) => Uni[] };
+)) as { listUniversities: (lang: "th" | "en", mineId: string | null, query?: string, all?: readonly Uni[], pinned?: readonly string[]) => Uni[] };
 
 const ids = (list: Uni[]) => list.map((u) => u.id);
 
@@ -45,6 +45,23 @@ describe("listing universities: the student's own comes first", () => {
     expect(ids(listUniversities("en", null, "RAMKHAM"))).toContain("ru");
     expect(ids(listUniversities("th", null, "รามคำแหง"))).toContain("ru");
     expect(ids(listUniversities("en", null, "  ru "))).toContain("ru");
+  });
+
+  it("can pin a university to the top for everyone (onboarding: the one with a curriculum)", () => {
+    const plain = listUniversities("en", null);
+    const pinned = listUniversities("en", null, "", undefined, ["ru"]);
+    expect(pinned[0].id).toBe("ru");
+    expect(ids(pinned.slice(1))).toEqual(ids(plain).filter((id) => id !== "ru"));
+    expect(listUniversities("th", null, "", undefined, ["ru"])[0].id).toBe("ru");
+  });
+
+  it("keeps the student's own university above a pinned one", () => {
+    const list = listUniversities("en", "tu", "", undefined, ["ru"]);
+    expect(ids(list.slice(0, 2))).toEqual(["tu", "ru"]);
+    // and when the pinned one IS the student's own, it appears once, first
+    const same = listUniversities("en", "ru", "", undefined, ["ru"]);
+    expect(same[0].id).toBe("ru");
+    expect(ids(same).filter((id) => id === "ru")).toHaveLength(1);
   });
 
   it("ignores a remembered university that is no longer in the list", () => {
