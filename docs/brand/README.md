@@ -60,6 +60,12 @@ A word-mark search of Thailand's DIP register and WIPO's Global Brand Database (
 
 The Indonesian record: https://branddb.wipo.int/en/similarname/brand/ID502023DID110042. Thai records open by number at `https://search.ipthailand.go.th/search?q=<number>&tab=trademark`.
 
+Registers that could not be searched, and why (tried again the same day, by direct request and in a browser):
+- **TMview** (tmdn.org) answers this machine with EUIPO's "Problem detected" / "Request Rejected" page, which is its automated-access protection. It has to be searched by a person in an ordinary browser: https://www.tmdn.org/tmview/#/tmview/results?page=1&pageSize=30&criteria=C&basicSearch=upleaf
+- **ASEAN TMview** (asean-tmview.org) refused every connection.
+
+The Thai-name search above was also partial at WIPO (it rate-limited). That was not taken further because the owner chose an English name.
+
 What a lawyer should look at for Upleaf: whether the Swiss UpLeap mark (same three classes, one letter different) or the Indonesian class 9 registration could be raised against it, and a proper search of TMview, which was not reachable here.
 
 ## If Upleaf has to change: checked English fallbacks

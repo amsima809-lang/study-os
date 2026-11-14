@@ -181,3 +181,20 @@ Still open as decisions, not fixes: full offline use with sync (6.2 is only the 
 - **"This draft could not be stored" warning.** Exercised by making the browser's storage fail on purpose, both ways: storage that refuses only the photos (the note says the photos are not kept) and storage that refuses everything (the note says nothing is kept). In both, the app asked before switching screens and before closing the page, and stopped asking once storage worked again.
 - **Pull to refresh.** The error seen in the earlier sweep (a touch that does not start on an element) was re-run after the fix: no error, and a normal pull still reloads.
 
+## Production-style run, 14 November 2026 (Phase 48)
+
+The committed code was exported to an empty folder and run the way the Dockerfile runs it (`npm ci`, build, `NODE_ENV=production`) on a brand-new database.
+
+Passed: the lockfile installs cleanly; all 30 migrations and the seed apply to a new database; the built app, its service worker, icons and deep links are served; signed-out requests get a clear "sign in" answer; a shared POST opens the app.
+
+Found and fixed, both already present on `main`:
+- **Nobody could stay signed in behind the host's HTTPS proxy.** The server did not trust the proxy, so it never sent the secure session cookie.
+- **Anyone could sign in as any email address in production** when Google sign-in was not configured, through the password-less dev login. It is now off in production unless switched on deliberately, and the server warns at start-up.
+
+### What could not be tested here, and exactly why
+
+- **A real deployment.** There is no Fly access and no Docker on this machine; the image's steps were followed on macOS, not Linux.
+- **Google sign-in.** It needs the owner's Google client ID and secret.
+- **Notifications on a phone.** Proven end to end with desktop Chrome and Google's push service. An Android emulator is installed here, but its system image has no real Chrome browser (only a stub with no screen to open), and there is no Xcode, so no iPhone simulator. It needs a real phone, or an emulator image with the Play Store.
+- **Touch, Apple Pencil, the on-screen keyboard, the phone share sheet, screen readers.** Simulated only, for the same reason.
+
