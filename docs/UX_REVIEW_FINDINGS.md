@@ -194,7 +194,7 @@ Found and fixed, both already present on `main`:
 ### What could not be tested here, and exactly why
 
 - **A real deployment.** There is no Fly access and no Docker on this machine; the image's steps were followed on macOS, not Linux.
-- **Google sign-in.** It needs the owner's Google client ID and secret.
-- **Notifications on a phone.** Proven end to end with desktop Chrome and Google's push service. An Android emulator is installed here, but its system image has no real Chrome browser (only a stub with no screen to open), and there is no Xcode, so no iPhone simulator. It needs a real phone, or an emulator image with the Play Store.
+- **A successful Google sign-in.** It needs the owner's Google client ID and secret. Everything up to and around it was exercised with a stand-in client: the hand-off to Google, its return address, and every failure path (Phase 48b).
+- **Notifications on a phone.** Proven end to end with desktop Chrome and Google's push service. What was tried for a phone: the installed Android emulator was booted (read-only), but its system image has only a stub of Chrome with no browser to open, and a Play Store image cannot be fetched because the SDK's installer needs Java, which is not installed. Xcode is installed but has no iPhone simulator runtime (a download of several gigabytes), and web push in the simulator is not something Apple documents as working. A real phone needs the app at an HTTPS address, which means a deploy or a public tunnel. So: a real phone and the owner's deploy.
 - **Touch, Apple Pencil, the on-screen keyboard, the phone share sheet, screen readers.** Simulated only, for the same reason.
 
