@@ -27,7 +27,8 @@ describe("Phase 24 — first start of a new database", () => {
   });
 
   it("adds the seed courses without deleting the migrations' courses", () => {
-    expect(count("SELECT COUNT(*) n FROM courses")).toBeGreaterThan(before.courses);
+    // (migration 033 already adds every course the majors name, so the seed adds none of its own)
+    expect(count("SELECT COUNT(*) n FROM courses")).toBeGreaterThanOrEqual(before.courses);
     expect(count("SELECT COUNT(*) n FROM courses WHERE category = 'GE'")).toBeGreaterThan(0);
     expect(count("SELECT COUNT(*) n FROM courses WHERE code LIKE 'MKT%'")).toBeGreaterThan(0);
     expect(count("SELECT COUNT(*) n FROM plan_terms")).toBeGreaterThan(0);
@@ -37,8 +38,10 @@ describe("Phase 24 — first start of a new database", () => {
   it("completes the timetable and exams for the courses the seed adds, with no duplicates", () => {
     // Migration 032 builds them for the courses that exist when it runs; the seed
     // then adds its courses and rebuilds from the same official record.
-    expect(count("SELECT COUNT(*) n FROM class_sessions")).toBeGreaterThan(before.classes);
-    expect(count("SELECT COUNT(*) n FROM exams")).toBeGreaterThan(before.exams);
+    // (since migration 033 the migrations add every course themselves, so the seed's rebuild finds nothing new)
+    expect(count("SELECT COUNT(*) n FROM class_sessions")).toBeGreaterThanOrEqual(before.classes);
+    expect(count("SELECT COUNT(*) n FROM exams")).toBeGreaterThanOrEqual(before.exams);
+    expect(before.classes).toBeGreaterThan(200);
     expect(count("SELECT COUNT(*) n FROM (SELECT course_code, weekday, start_time FROM class_sessions GROUP BY 1, 2, 3 HAVING COUNT(*) > 1)")).toBe(0);
     const ram = db.prepare("SELECT room FROM class_sessions WHERE course_code = 'RAM1111'").all() as { room: string | null }[];
     expect(ram).toHaveLength(1);
@@ -62,7 +65,8 @@ describe("Phase 24 — first start of a new database", () => {
     // TODO(data): migration 017 inserted 60 courses with no name. Migration 031
     // named the 19 found in the university's older guides; the other 41 are in
     // no official document, so they are left empty rather than guessed.
-    expect(rows.filter((r) => !r.name_th).length).toBe(41);
+    // Migration 033 rebuilt the majors from the curriculum; those 41 are in none and are gone.
+    expect(rows.filter((r) => !r.name_th).length).toBe(0);
   });
 
   it("gives Marketing its courses, so a Marketing student has a timetable", () => {

@@ -3367,7 +3367,7 @@ SELECT o.course_code, o.term_id, json_extract(s.value, '$.weekday'), json_extrac
        NULLIF(json_extract(s.value, '$.room'), ''), o.teachers, NULLIF(json_extract(s.value, '$.kind'), '')
 FROM term_offerings o, json_each(o.sessions) s
 WHERE o.term_id = '2/69' AND json_extract(s.value, '$.weekday') IS NOT NULL AND o.course_code IN (SELECT code FROM courses)
-ORDER BY o.course_code, s.key;
+ORDER BY o.term_id, o.course_code, s.key;
 INSERT INTO exams (course_code, term_id, datetime_start, datetime_end, slot, location)
 SELECT course_code, term_id,
        exam_date || CASE exam_slot WHEN 'A' THEN 'T09:30:00+07:00' ELSE 'T14:00:00+07:00' END,
@@ -3375,4 +3375,4 @@ SELECT course_code, term_id,
        exam_slot, NULL
 FROM term_offerings
 WHERE term_id = '2/69' AND exam_date IS NOT NULL AND course_code IN (SELECT code FROM courses)
-ORDER BY course_code;
+ORDER BY term_id, course_code;

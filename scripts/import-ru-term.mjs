@@ -15,6 +15,7 @@ import { createRequire } from "node:module";
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { basename } from "node:path";
+import { rebuildSql } from "./lib/term-rebuild-sql.mjs";
 
 const require = createRequire(process.cwd() + "/server/package.json");
 const pdfjs = await import(require.resolve("pdfjs-dist/legacy/build/pdf.mjs"));
@@ -45,9 +46,6 @@ async function lines(path) {
   return out;
 }
 
-// Clock times of exam periods A and B. The documents print only the letter; these are the
-// times the app's first author recorded (server/src/termSchedule.ts keeps the same pair).
-const PERIODS = { A: ["09:30", "12:00"], B: ["14:00", "16:30"] };
 const MONTHS = { JAN: 1, FEB: 2, MAR: 3, APR: 4, MAY: 5, JUN: 6, JUL: 7, AUG: 8, SEP: 9, OCT: 10, NOV: 11, DEC: 12 };
 const WEEKDAY = { M: 1, TU: 2, W: 3, TH: 4, F: 5, S: 6, SUN: 7 };
 const pad = (n) => String(n).padStart(2, "0");
@@ -222,23 +220,7 @@ WHERE code IN (SELECT o.course_code FROM term_offerings o WHERE o.term_id = ${q(
 
 -- Rebuild the timetable and exams of this term for the courses in the catalogue.
 -- (The same statements are in server/src/termSchedule.ts, which the seed runs again after it adds courses.)
-DELETE FROM class_sessions WHERE term_id = ${q(term)};
-DELETE FROM exams WHERE term_id = ${q(term)};
-INSERT INTO class_sessions (course_code, term_id, weekday, start_time, end_time, room, instructor, kind)
-SELECT o.course_code, o.term_id, json_extract(s.value, '$.weekday'), json_extract(s.value, '$.start'), json_extract(s.value, '$.end'),
-       NULLIF(json_extract(s.value, '$.room'), ''), o.teachers, NULLIF(json_extract(s.value, '$.kind'), '')
-FROM term_offerings o, json_each(o.sessions) s
-WHERE o.term_id = ${q(term)} AND json_extract(s.value, '$.weekday') IS NOT NULL AND o.course_code IN (SELECT code FROM courses)
-ORDER BY o.course_code, s.key;
-INSERT INTO exams (course_code, term_id, datetime_start, datetime_end, slot, location)
-SELECT course_code, term_id,
-       exam_date || CASE exam_slot WHEN 'A' THEN 'T${PERIODS.A[0]}:00+07:00' ELSE 'T${PERIODS.B[0]}:00+07:00' END,
-       exam_date || CASE exam_slot WHEN 'A' THEN 'T${PERIODS.A[1]}:00+07:00' ELSE 'T${PERIODS.B[1]}:00+07:00' END,
-       exam_slot, NULL
-FROM term_offerings
-WHERE term_id = ${q(term)} AND exam_date IS NOT NULL AND course_code IN (SELECT code FROM courses)
-ORDER BY course_code;
-`;
+${rebuildSql(`term_id = ${q(term)}`)}`;
 function chunks(list, size) { const out = []; for (let i = 0; i < list.length; i += size) out.push(list.slice(i, i + size)); return out; }
 writeFileSync(`server/migrations/${outName}`, sql);
 console.log(`server/migrations/${outName}: ${mr30.courses.size} courses, ${Object.keys(mr30.depts).length} headings, ${dated} dated exams (${(sql.length / 1024).toFixed(0)} KB)`);

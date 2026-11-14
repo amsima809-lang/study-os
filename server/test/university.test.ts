@@ -28,7 +28,7 @@ describe("Phase 22 — university at onboarding", () => {
 
   it("lists programs in the faculty's official order", () => {
     const codes = (db.prepare("SELECT code FROM programs ORDER BY rowid").all() as { code: string }[]).map((p) => p.code);
-    expect(codes).toEqual(["MKT", "MGT", "FIN", "HRM", "IB", "ADPR", "SBM", "TOUR", "ACC"]);
+    expect(codes).toEqual(["MKT", "MGT", "FIN", "HRM", "IB", "ADPR", "SBM", "TOUR", "ACC", "ACCFIN"]);
   });
 });
 

@@ -193,9 +193,7 @@ export function needsSeed(db: DB): boolean {
  * Insert every seed row.
  * - reset (default, `npm run seed` and tests): clears the seed tables first.
  * - reset: false (first start of a new database): ADDS the seed data next to
- *   what the migrations already inserted, deleting nothing. It then maps the
- *   seed courses to Marketing, which migration 016 could not do because the
- *   courses did not exist yet when it ran.
+ *   what the migrations already inserted, deleting nothing.
  */
 export function seedDatabase(db: DB, { reset = true }: { reset?: boolean } = {}): void {
   db.pragma("foreign_keys = OFF");
@@ -269,12 +267,8 @@ export function seedDatabase(db: DB, { reset = true }: { reset?: boolean } = {})
       insItem.run({ user_id: legacyId, term_id: p.term, course_code: null, placeholder_label: p.label });
     }
 
-    if (!reset) {
-      const mapToMarketing = db.prepare(
-        "INSERT OR IGNORE INTO program_courses (program_id, course_code, category) VALUES ('bus-mkt', ?, ?)",
-      );
-      for (const c of COURSES) mapToMarketing.run(c.code, c.category);
-    }
+    // Which courses belong to which major is NOT decided here any more: migration 033
+    // holds each major's official lists (and adds every course they name).
   });
   tx();
   db.pragma("foreign_keys = ON");

@@ -15,10 +15,11 @@ describe("course names (migration 031)", () => {
     expect(nameOf("MGT4004")).toEqual({ name_th: "การเป็นผู้ประกอบการ", name_en: "Entrepreneurship" });
   });
 
-  it("leaves exactly the 41 courses no official document names, and guesses nothing", () => {
-    expect(unnamed).toHaveLength(41);
-    expect(unnamed.some((c) => c.code === "MGT4005")).toBe(true);
-    expect(unnamed.some((c) => c.code.startsWith("INB") || c.code.startsWith("LOG"))).toBe(false);
+  it("no longer carries the 41 codes that no official document names (migration 033 removed them)", () => {
+    expect(unnamed).toHaveLength(0);
+    for (const code of ["MGT4005", "HRM3214", "HOT2203", "FIN4220", "DBC3107"]) {
+      expect(db.prepare("SELECT 1 FROM courses WHERE code = ?").get(code)).toBeUndefined();
+    }
   });
 
   it("has no unnamed course in the timetable or the exam list, so students never see a bare code there", () => {
