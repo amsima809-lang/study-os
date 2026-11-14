@@ -18,7 +18,13 @@ Names tried and dropped, and why:
 | Termwise | An app of this exact name on Google Play (school management, Nigeria); an identical mark pending in Spain for software. |
 | Termleaf | A live writing tool at termleaf.com ("Write. Nothing else."), and the same "leaf" association. |
 
-Being checked: **Astute** (the owner's idea: a student, a study, and the word's meaning), with **AstuteU** and **Termtrail** as alternatives. First look at Astute: about nine App Store apps carry the word, two of them in Education ("Astute BFSL", "Astutely"); an app named exactly "Astute" is on Google Play; astute.com is a B2B company, astute.app is for sale, astute.co.th is in use.
+In-depth check of the owner's idea and two alternatives (app stores, web, and the trademark registers of Thailand, the US, the EU, Australia and WIPO; not TMview, the UK or Switzerland):
+
+| Name | Result |
+|---|---|
+| **Astute** | Taken. An education app named exactly "Astute" is on Google Play (school management, 10K+ installs, listed in the Thai store). Several other education products use the word, and about 76 live ASTUTE marks sit in classes 9, 41 and 42 worldwide, including test-prep and tutoring marks in the US, Malaysia, India and the UK. Nothing educational in Thailand. astute.app is for sale at US$35,000. |
+| **AstuteU** | No product and no register hits, and all three domains are unregistered. But store search folds it into the "Astute" results, so it still looks derivative. |
+| **Termtrail** | The cleanest: no app, no register hits, domains unregistered. Small unrelated uses exist: an AI workspace for freelancers at termtrail.online (since Aug 2026), a dormant flashcards project on GitHub, and empty social handles. "Trail" is easy to mistype as "trial". |
 
 A first screen (app stores and domains only) of 25 more "term" and "semester" names found most taken or parked. No app and no .com or .app in use: Termtrail. No app, one domain in use: Termnest, Termrise, Termpath, Semwell, Semwise, Semly, Semnest. Already study apps: Termflow, Semora, Gradewise, Planwise.
 
