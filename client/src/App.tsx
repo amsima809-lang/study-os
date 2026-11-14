@@ -12,46 +12,15 @@ import Logo from "./components/Logo.tsx";
 import Login from "./screens/Login.tsx";
 import Onboarding from "./screens/Onboarding.tsx";
 import { JUST_ONBOARDED } from "./components/TermCourses.tsx";
-import More from "./screens/More.tsx";
-import { DESTINATIONS, destination, useNav, NAVIGATE_EVENT, type DestId } from "./destinations.tsx";
+import Settings from "./screens/Settings.tsx";
+import { SECTIONS, destination, sectionOf, pageNamed, NAVIGATE_EVENT, type DestId, type SectionId } from "./destinations.tsx";
 import { useReminderAlerts } from "./reminderAlerts.ts";
 import { setDone } from "./components/Reminders.tsx";
 import { CourseChip } from "./components/CourseTitle.tsx";
 import { formatTime } from "./format.ts";
 
-type Tab = DestId | "more";
-
-/**
- * Press-and-hold (or right-click) handlers for a nav item. `fired` tells the
- * click handler that the press was a long one, so it does not also navigate.
- */
-function useLongPress(onLongPress: (id: DestId) => void) {
-  const timer = useRef<number | undefined>(undefined);
-  const fired = useRef(false);
-  const cancel = () => window.clearTimeout(timer.current);
-  return {
-    fired,
-    handlers: (id: DestId) => ({
-      onPointerDown: () => {
-        fired.current = false;
-        cancel();
-        timer.current = window.setTimeout(() => {
-          fired.current = true;
-          onLongPress(id);
-        }, 550);
-      },
-      onPointerUp: cancel,
-      onPointerLeave: cancel,
-      onPointerCancel: cancel,
-      onContextMenu: (e: React.MouseEvent) => {
-        e.preventDefault();
-        cancel();
-        fired.current = true;
-        onLongPress(id);
-      },
-    }),
-  };
-}
+/** What the main area shows: one of the pages, or Settings. */
+type Tab = DestId | "settings";
 
 /**
  * Which frame the app wears. Chosen by HEIGHT as well as width, so a phone on
@@ -145,10 +114,9 @@ function usePullToRefresh(onRefresh: () => void) {
 
 function Shell() {
   const { t } = useT();
-  const { nav, canPin, pin, unpin, replace } = useNav();
-  const [tab, setTab] = useState<Tab>(nav[0] ?? "more");
-  const [holding, setHolding] = useState<DestId | null>(null);
-  const press = useLongPress(setHolding);
+  const [tab, setTab] = useState<Tab>("today");
+  // The page each section was last left on: coming back to a section returns there.
+  const [last, setLast] = useState<Partial<Record<SectionId, DestId>>>({});
 
   const alerts = useReminderAlerts();
   const layout = useLayout();
@@ -158,23 +126,21 @@ function Shell() {
   useEffect(() => {
     // (an unknown screen name is ignored rather than opening nothing and breaking the page)
     const onNavigate = (e: Event) => {
-      const id = (e as CustomEvent<DestId>).detail;
-      if (DESTINATIONS.some((d) => d.id === id)) open(id);
+      const id = pageNamed((e as CustomEvent).detail);
+      if (id) open(id);
     };
     window.addEventListener(NAVIGATE_EVENT, onNavigate);
     return () => window.removeEventListener(NAVIGATE_EVENT, onNavigate);
   }, []);
 
-  const tabIds: Tab[] = [...nav, "more"];
-  // The sidebar also lists the screens that are not in the student's own menu.
-  const others = DESTINATIONS.map((d) => d.id).filter((id) => !nav.includes(id));
-  // A screen opened from More, or by a link, is not in the nav: light up "More".
-  const activeTab: Tab = tab === "more" || nav.includes(tab) ? tab : "more";
-  // The sidebar shows every screen, so it can light up the real one.
-  const shown: Tab = layout === "sidebar" ? tab : activeTab;
-  const icon = (id: Tab) => (id === "more" ? "moreHorizontal" : destination(id).icon);
-  const label = (id: Tab) => t(id === "more" ? "nav.more" : destination(id).navLabel);
-  const Screen = tab === "more" ? null : destination(tab).Screen;
+  const section = tab === "settings" ? null : sectionOf(tab);
+  const Screen = tab === "settings" ? Settings : destination(tab).Screen;
+  useEffect(() => { if (section && tab !== "settings") setLast((l) => (l[section.id] === tab ? l : { ...l, [section.id]: tab })); }, [tab, section]);
+  // Opening a section goes back to the page it was left on; tapping the section you are in goes to its first page.
+  const openSection = (id: SectionId) => {
+    const s = SECTIONS.find((x) => x.id === id)!;
+    open(section?.id === id ? s.pages[0] : last[id] ?? s.pages[0]);
+  };
 
   // Keep this device's closed-app notifications tied to the account signed in now.
   useEffect(() => { void syncPush(); }, []);
@@ -224,40 +190,33 @@ function Shell() {
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, []);
 
-  function go(id: Tab) {
-    if (press.fired.current) {
-      press.fired.current = false; // this click ended a long press
-      return;
-    }
-    open(id);
-  }
-
-  function moveToMore(id: DestId) {
-    unpin(id);
-    if (tab === id) setTab("more");
-    setHolding(null);
-  }
-
-  // No text selection or iOS link preview while holding a nav item.
-  const noCallout = { WebkitTouchCallout: "none", userSelect: "none" } as React.CSSProperties;
-
-  // One nav item, drawn three ways: a row in the sidebar, an icon in the rail, a tab at the bottom.
-  const sideItem = (id: Tab, pinned: boolean) => (
+  // A row in the desktop sidebar: one page, or Settings.
+  const sideItem = (id: Tab) => (
     <button
       key={id}
-      onClick={() => go(id)}
-      {...(pinned && id !== "more" ? press.handlers(id) : {})}
-      aria-current={shown === id ? "page" : undefined}
+      onClick={() => open(id)}
+      aria-current={tab === id ? "page" : undefined}
       className="w-full flex items-center gap-3 px-3 py-1.5 rounded-xl text-sm font-medium transition-all min-h-11 text-left"
       style={{
-        ...noCallout,
-        backgroundColor: shown === id ? "var(--accent-light)" : "transparent",
-        color: shown === id ? "var(--accent-text)" : "var(--text-secondary)",
-        boxShadow: shown === id ? "inset 3px 0 0 var(--accent-2, var(--accent))" : "none",
+        backgroundColor: tab === id ? "var(--accent-light)" : "transparent",
+        color: tab === id ? "var(--accent-text)" : "var(--text-secondary)",
+        boxShadow: tab === id ? "inset 3px 0 0 var(--accent-2, var(--accent))" : "none",
       }}
     >
-      <Icon name={icon(id)} size={20} className="shrink-0" />
-      <span className="min-w-0 leading-snug">{t(id === "more" ? "nav.more" : pinned ? destination(id).navLabel : destination(id).label)}</span>
+      <Icon name={id === "settings" ? "settings" : destination(id).icon} size={20} className="shrink-0" />
+      <span className="min-w-0 leading-snug">{t(id === "settings" ? "nav.settings" : destination(id).label)}</span>
+    </button>
+  );
+  const gear = (
+    <button
+      onClick={() => open("settings")}
+      aria-label={t("nav.settings")}
+      title={t("nav.settings")}
+      aria-current={tab === "settings" ? "page" : undefined}
+      className="w-11 h-11 flex items-center justify-center rounded-full"
+      style={{ color: tab === "settings" ? "var(--accent-text)" : "var(--text-secondary)" }}
+    >
+      <Icon name="settings" size={20} />
     </button>
   );
 
@@ -281,16 +240,15 @@ function Shell() {
               {t("app.name")}
             </span>
           </div>
-          <nav className="flex-1 min-h-0 overflow-y-auto px-3 pb-3 space-y-1">
-            {nav.map((id) => sideItem(id, true))}
-            {others.length > 0 && (
-              <p className="px-3 pt-4 pb-1 text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>
-                {t("nav.otherScreens")}
-              </p>
-            )}
-            {others.map((id) => sideItem(id, false))}
-            <div className="pt-2 mt-2 border-t" style={{ borderColor: "var(--border-light)" }}>
-              {sideItem("more", true)}
+          <nav className="flex-1 min-h-0 overflow-y-auto px-3 pb-3">
+            {SECTIONS.map((s) => (
+              <div key={s.id} role="group" aria-label={t(s.label)} className="space-y-0.5">
+                <p className="px-3 pt-3 pb-1 text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>{t(s.label)}</p>
+                {s.pages.map((id) => sideItem(id))}
+              </div>
+            ))}
+            <div className="pt-2 mt-3 border-t" style={{ borderColor: "var(--border-light)" }}>
+              {sideItem("settings")}
             </div>
           </nav>
           <div className="px-4 py-2 border-t flex items-center justify-between" style={{ borderColor: "var(--border-light)" }}>
@@ -315,23 +273,23 @@ function Shell() {
         >
           <div style={{ height: 4, background: "var(--brand-bar, transparent)" }} />
           <nav className="flex-1 min-h-0 overflow-y-auto py-1 flex flex-col items-stretch">
-            {tabIds.map((id) => (
+            {SECTIONS.map((s) => (
               <button
-                key={id}
-                onClick={() => go(id)}
-                {...(id === "more" ? {} : press.handlers(id))}
-                aria-current={activeTab === id ? "page" : undefined}
+                key={s.id}
+                onClick={() => openSection(s.id)}
+                aria-current={section?.id === s.id ? "true" : undefined}
                 className="relative shrink-0 flex flex-col items-center justify-center gap-0.5 min-h-14 px-1 text-xs font-medium transition-colors"
-                style={{ ...noCallout, color: activeTab === id ? "var(--accent-text)" : "var(--text-tertiary)" }}
+                style={{ color: section?.id === s.id ? "var(--accent-text)" : "var(--text-tertiary)" }}
               >
-                {activeTab === id && (
+                {section?.id === s.id && (
                   <span className="absolute left-0 top-2 bottom-2 w-1 rounded-full" style={{ backgroundColor: "var(--accent-2, var(--accent))" }} />
                 )}
-                <Icon name={icon(id)} size={22} />
-                <span className="max-w-full truncate leading-[1.6]">{label(id)}</span>
+                <Icon name={s.icon} size={22} />
+                <span className="max-w-full truncate leading-[1.6]">{t(s.label)}</span>
               </button>
             ))}
             <div className="mt-auto pt-1 flex flex-col items-center">
+              {gear}
               <LanguageToggle />
               <ThemeToggle />
             </div>
@@ -361,6 +319,7 @@ function Shell() {
                 <span className="font-bold" style={{ color: "var(--accent-text)" }}>{t("app.name")}</span>
               </div>
               <div className="flex items-center">
+                {gear}
                 <ThemeToggle />
                 <LanguageToggle />
               </div>
@@ -383,13 +342,39 @@ function Shell() {
         {/* Screen content. Wide screens get more room; reading and form screens keep a reading width. */}
         <main
           className={`flex-1 px-5 py-5 w-full mx-auto ${layout === "phone" ? "pb-36" : ""} ${
-            layout === "sidebar" && !(tab !== "more" && destination(tab).narrow) ? "max-w-6xl" : "max-w-3xl"
+            layout === "sidebar" && !(tab === "settings" || destination(tab).narrow) ? "max-w-6xl" : "max-w-3xl"
           }`}
           style={{ paddingRight: "max(1.25rem, env(safe-area-inset-right))" }}
         >
           <LayoutContext.Provider value={layout}>
+            {/* The pages of this section, as tabs. (The desktop sidebar lists every page already.) */}
+            {layout !== "sidebar" && section && section.pages.length > 1 && (
+              <div
+                role="tablist"
+                aria-label={t(section.label)}
+                className="section-tabs flex gap-1 overflow-x-auto -mx-5 px-4 mb-4 border-b"
+                style={{ borderColor: "var(--border-light)", marginTop: "-0.75rem" }}
+              >
+                {section.pages.map((id) => (
+                  <button
+                    key={id}
+                    role="tab"
+                    aria-selected={tab === id}
+                    onClick={() => open(id)}
+                    className="shrink-0 px-3 min-h-11 text-sm whitespace-nowrap transition-colors"
+                    style={{
+                      color: tab === id ? "var(--accent-text)" : "var(--text-tertiary)",
+                      fontWeight: tab === id ? 600 : 500,
+                      boxShadow: tab === id ? "inset 0 -3px 0 var(--accent-2, var(--accent))" : "none",
+                    }}
+                  >
+                    {t(destination(id).label)}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="animate-fade-in">
-              {Screen ? <Screen key={`${tab}:${reloads}`} /> : <More nav={nav} canPin={canPin} onPin={pin} onReplace={replace} />}
+              <Screen key={`${tab}:${reloads}`} />
             </div>
           </LayoutContext.Provider>
         </main>
@@ -404,26 +389,19 @@ function Shell() {
               paddingBottom: "env(safe-area-inset-bottom)",
             }}
           >
-            {tabIds.map((id) => (
+            {SECTIONS.map((s) => (
               <button
-                key={id}
-                onClick={() => go(id)}
-                {...(id === "more" ? {} : press.handlers(id))}
-                aria-current={activeTab === id ? "page" : undefined}
+                key={s.id}
+                onClick={() => openSection(s.id)}
+                aria-current={section?.id === s.id ? "true" : undefined}
                 className="relative flex-1 min-w-0 flex flex-col items-center py-2 text-xs gap-0.5 min-h-12 justify-center font-medium transition-colors"
-                style={{
-                  ...noCallout,
-                  color: activeTab === id ? "var(--accent-text)" : "var(--text-tertiary)",
-                }}
+                style={{ color: section?.id === s.id ? "var(--accent-text)" : "var(--text-tertiary)" }}
               >
-                <Icon name={icon(id)} size={20} />
+                <Icon name={s.icon} size={20} />
                 {/* Taller line box: truncate clips Thai tone marks stacked above a vowel (นี้) at the default height. */}
-                <span className="max-w-full truncate px-0.5 leading-[1.6]">{label(id)}</span>
-                {activeTab === id && (
-                  <span
-                    className="absolute top-0 w-8 h-1 rounded-full"
-                    style={{ backgroundColor: "var(--accent-2, var(--accent))" }}
-                  />
+                <span className="max-w-full truncate px-0.5 leading-[1.6]">{t(s.label)}</span>
+                {section?.id === s.id && (
+                  <span className="absolute top-0 w-8 h-1 rounded-full" style={{ backgroundColor: "var(--accent-2, var(--accent))" }} />
                 )}
               </button>
             ))}
@@ -501,46 +479,6 @@ function Shell() {
         </div>
       )}
 
-      {/* Press-and-hold on a nav item: offer to move it back to More */}
-      {holding && (
-        <div
-          className="fixed inset-0 z-50 flex items-end md:items-center justify-center"
-          style={{ background: "rgba(0,0,0,0.5)" }}
-          onClick={() => setHolding(null)}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label={t(destination(holding).label)}
-            onClick={(e) => e.stopPropagation()}
-            className="w-full md:max-w-sm rounded-t-3xl md:rounded-3xl border p-5 space-y-3 animate-slide-up"
-            style={{
-              backgroundColor: "var(--bg-surface)",
-              borderColor: "var(--border-light)",
-              paddingBottom: "calc(1.25rem + env(safe-area-inset-bottom))",
-            }}
-          >
-            <div className="flex items-center gap-3" style={{ color: "var(--text-primary)" }}>
-              <Icon name={destination(holding).icon} size={22} style={{ color: "var(--accent-text)" }} />
-              <span className="font-semibold">{t(destination(holding).label)}</span>
-            </div>
-            <button
-              onClick={() => moveToMore(holding)}
-              className="w-full font-semibold rounded-xl py-3 transition-all active:scale-[0.98] min-h-11"
-              style={{ backgroundColor: "var(--accent)", color: "#fff" }}
-            >
-              {t("nav.move_to_more")}
-            </button>
-            <button
-              onClick={() => setHolding(null)}
-              className="w-full text-sm py-2 min-h-11"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              {t("nav.cancel")}
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

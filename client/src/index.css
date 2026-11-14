@@ -268,3 +268,7 @@ html.keyboard-open [role="alertdialog"] {
   max-height: calc(100dvh - var(--keyboard-inset, 0px) - 0.5rem) !important;
   overflow-y: auto;
 }
+
+/* The tabs of a section scroll sideways on a narrow phone, without a scrollbar. */
+.section-tabs { scrollbar-width: none; }
+.section-tabs::-webkit-scrollbar { display: none; }
