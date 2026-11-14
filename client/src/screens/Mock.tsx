@@ -74,7 +74,7 @@ export default function Mock() {
           <button
             key={tb}
             onClick={() => setTab(tb)}
-            className="flex-1 text-sm py-1.5 rounded-md font-medium transition-colors"
+            className="flex-1 text-sm py-1.5 rounded-md font-medium transition-colors min-h-11"
             style={{
               backgroundColor: tab === tb ? "var(--bg-surface)" : "transparent",
               color: tab === tb ? "var(--accent-text)" : "var(--text-tertiary)",
@@ -277,7 +277,7 @@ function CourseList({
             </div>
             <button
               onClick={() => resumeExam(ip.id)}
-              className="text-sm font-medium rounded-lg px-4 py-2"
+              className="text-sm font-medium rounded-lg px-4 py-2 min-h-11"
               style={{ backgroundColor: "var(--warning)", color: "var(--text-inverse)" }}
             >
               {t("mock.resume")}
@@ -301,7 +301,7 @@ function CourseList({
                   setExpanded(expanded === c.code ? null : c.code);
                   setSelectedChapters([]);
                 }}
-                className="text-xs underline"
+                className="text-xs underline min-h-11"
                 style={{ color: "var(--accent-text)" }}
               >
                 {t("mock.settings")}
@@ -316,7 +316,7 @@ function CourseList({
                         type="number" min={5} max={Math.min(c.bankCount, 200)}
                         value={questionCount}
                         onChange={(e) => setQuestionCount(Number(e.target.value) || 40)}
-                        className="w-full mt-0.5 rounded border px-2 py-1 text-sm"
+                        className="w-full mt-0.5 rounded border px-2 py-1 text-sm min-h-11"
                         style={inputStyle}
                       />
                     </label>
@@ -326,7 +326,7 @@ function CourseList({
                         type="number" min={5} max={300}
                         value={duration}
                         onChange={(e) => setDuration(Number(e.target.value) || 90)}
-                        className="w-full mt-0.5 rounded border px-2 py-1 text-sm"
+                        className="w-full mt-0.5 rounded border px-2 py-1 text-sm min-h-11"
                         style={inputStyle}
                       />
                     </label>
@@ -338,7 +338,7 @@ function CourseList({
                       <div className="flex flex-wrap gap-1.5 mt-1">
                         <button
                           onClick={() => setSelectedChapters([])}
-                          className="text-xs rounded-full px-2 py-0.5"
+                          className="text-xs rounded-full px-2 py-0.5 min-h-11"
                           style={{
                             backgroundColor: selectedChapters.length === 0 ? "var(--accent-light)" : "var(--bg-surface)",
                             color: selectedChapters.length === 0 ? "var(--accent-text)" : "var(--text-tertiary)",
@@ -350,7 +350,7 @@ function CourseList({
                           <button
                             key={ch.id}
                             onClick={() => toggleChapter(ch.id)}
-                            className="text-xs rounded-full px-2 py-0.5"
+                            className="text-xs rounded-full px-2 py-0.5 min-h-11"
                             style={{
                               backgroundColor: selectedChapters.includes(ch.id) ? "var(--accent-light)" : "var(--bg-surface)",
                               color: selectedChapters.includes(ch.id) ? "var(--accent-text)" : "var(--text-tertiary)",
@@ -367,7 +367,7 @@ function CourseList({
 
               <button
                 onClick={() => startExam(c.code)}
-                className="w-full text-sm font-medium rounded-lg py-2"
+                className="w-full text-sm font-medium rounded-lg py-2 min-h-11"
                 style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
               >
                 {t("mock.startExam")}
@@ -542,7 +542,7 @@ function Runner({
       >
         <button
           onClick={() => setShowGrid(!showGrid)}
-          className="text-xs font-medium px-2 py-1 rounded-lg"
+          className="text-xs font-medium px-2 py-1 rounded-lg min-h-11"
           style={{ backgroundColor: "var(--accent-light)", color: "var(--accent-text)" }}
         >
           {t("mock.grid")} {answeredCount}/{questions.length}
@@ -614,7 +614,7 @@ function Runner({
           </span>
           <button
             onClick={toggleFlag}
-            className="text-xs px-2 py-0.5 rounded-full"
+            className="text-xs px-2 py-0.5 rounded-full min-h-11"
             style={{
               backgroundColor: flags.has(idx) ? "var(--warning-bg)" : "var(--bg-surface-hover)",
               color: flags.has(idx) ? "var(--warning)" : "var(--text-tertiary)",
@@ -665,7 +665,7 @@ function Runner({
         <button
           onClick={() => goToQuestion(Math.max(0, idx - 1))}
           disabled={idx === 0}
-          className="flex-1 font-medium rounded-lg py-2 text-sm disabled:opacity-30"
+          className="flex-1 font-medium rounded-lg py-2 text-sm disabled:opacity-30 min-h-11"
           style={{ backgroundColor: "var(--bg-surface-hover)", color: "var(--text-secondary)" }}
         >
           ←
@@ -673,7 +673,7 @@ function Runner({
         {idx + 1 < questions.length ? (
           <button
             onClick={() => goToQuestion(idx + 1)}
-            className="flex-1 font-medium rounded-lg py-2 text-sm"
+            className="flex-1 font-medium rounded-lg py-2 text-sm min-h-11"
             style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
           >
             {t("mock.next")}
@@ -681,7 +681,7 @@ function Runner({
         ) : (
           <button
             onClick={handleSubmitClick}
-            className="flex-1 font-medium rounded-lg py-2 text-sm"
+            className="flex-1 font-medium rounded-lg py-2 text-sm min-h-11"
             style={{ backgroundColor: "var(--success)", color: "var(--text-inverse)" }}
           >
             {t("mock.submit")}
@@ -692,7 +692,7 @@ function Runner({
       {idx + 1 < questions.length && (
         <button
           onClick={handleSubmitClick}
-          className="w-full text-xs py-1 underline"
+          className="w-full text-xs py-1 underline min-h-11"
           style={{ color: "var(--text-tertiary)" }}
         >
           {t("mock.submit")}
@@ -719,7 +719,7 @@ function Runner({
             <div className="flex gap-2">
               <button
                 onClick={() => setShowConfirm(false)}
-                className="flex-1 font-medium rounded-lg py-2 text-sm"
+                className="flex-1 font-medium rounded-lg py-2 text-sm min-h-11"
                 style={{ backgroundColor: "var(--bg-surface-hover)", color: "var(--text-secondary)" }}
               >
                 {t("mock.cancel")}
@@ -729,7 +729,7 @@ function Runner({
                   setShowConfirm(false);
                   void doFinish();
                 }}
-                className="flex-1 font-medium rounded-lg py-2 text-sm"
+                className="flex-1 font-medium rounded-lg py-2 text-sm min-h-11"
                 style={{ backgroundColor: "var(--success)", color: "var(--text-inverse)" }}
               >
                 {t("mock.confirm")}
@@ -790,7 +790,7 @@ function ResultView({ result, onDone }: { result: MockResultData; onDone: () => 
                       style={{ width: `${Math.min(cs.pct, 100)}%`, backgroundColor: barColor }}
                     />
                   </div>
-                  <p className="text-[10px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                  <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>
                     {cs.score}/{cs.max} · {cs.count} ข้อ
                   </p>
                 </div>
@@ -820,7 +820,7 @@ function ResultView({ result, onDone }: { result: MockResultData; onDone: () => 
       <p className="text-xs text-center" style={{ color: "var(--warning)" }}>{t("mock.madeCards")}</p>
       <button
         onClick={onDone}
-        className="w-full font-medium rounded-lg py-2"
+        className="w-full font-medium rounded-lg py-2 min-h-11"
         style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
       >
         {t("mock.done")}
@@ -867,7 +867,7 @@ function HistoryTab() {
                   name_en={h.name_en}
                   className="font-medium text-sm"
                 />
-                <p className="text-[10px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>
                   {new Date(h.finished_at).toLocaleDateString("th-TH", {
                     day: "numeric",
                     month: "short",
@@ -970,7 +970,7 @@ function SettingsTab() {
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-medium" style={{ color: "var(--text-primary)" }}>{t("mock.cutoffs")}</h3>
         {!editing && (
-          <button onClick={startEdit} className="text-xs underline" style={{ color: "var(--accent-text)" }}>
+          <button onClick={startEdit} className="text-xs underline min-h-11" style={{ color: "var(--accent-text)" }}>
             {t("mock.editCutoffs")}
           </button>
         )}
@@ -988,7 +988,7 @@ function SettingsTab() {
                   next[i] = { ...c, label: e.target.value };
                   setDraft(next);
                 }}
-                className="w-16 rounded border px-2 py-1 text-sm text-center"
+                className="w-16 rounded border px-2 py-1 text-sm text-center min-h-11"
                 style={inputStyle}
               />
               <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>{t("mock.minPct")}</span>
@@ -1000,14 +1000,14 @@ function SettingsTab() {
                   next[i] = { ...c, min_pct: Number(e.target.value) || 0 };
                   setDraft(next);
                 }}
-                className="w-16 rounded border px-2 py-1 text-sm text-center"
+                className="w-16 rounded border px-2 py-1 text-sm text-center min-h-11"
                 style={inputStyle}
               />
             </div>
           ))}
           <button
             onClick={save}
-            className="w-full text-sm font-medium rounded-lg py-2 mt-2"
+            className="w-full text-sm font-medium rounded-lg py-2 mt-2 min-h-11"
             style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
           >
             {t("mock.saveCutoffs")}

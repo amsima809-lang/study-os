@@ -168,28 +168,28 @@ function Flashcard({ card, onRate }: { card: DueCard; onRate: (confidence: numbe
           <div className="grid grid-cols-4 gap-2">
             <button
               onClick={() => onRate(1)}
-              className="font-medium rounded-xl py-3 text-sm"
+              className="font-medium rounded-xl py-3 text-sm min-h-11"
               style={{ backgroundColor: "var(--danger-bg)", color: "var(--danger)" }}
             >
               {t("review.conf1")}
             </button>
             <button
               onClick={() => onRate(2)}
-              className="font-medium rounded-xl py-3 text-sm"
+              className="font-medium rounded-xl py-3 text-sm min-h-11"
               style={{ backgroundColor: "var(--warning-bg)", color: "var(--warning)" }}
             >
               {t("review.conf2")}
             </button>
             <button
               onClick={() => onRate(3)}
-              className="font-medium rounded-xl py-3 text-sm"
+              className="font-medium rounded-xl py-3 text-sm min-h-11"
               style={{ backgroundColor: "var(--warning-bg)", color: "var(--warning)" }}
             >
               {t("review.conf3")}
             </button>
             <button
               onClick={() => onRate(4)}
-              className="font-medium rounded-xl py-3 text-sm"
+              className="font-medium rounded-xl py-3 text-sm min-h-11"
               style={{ backgroundColor: "var(--success-bg)", color: "var(--success)" }}
             >
               {t("review.conf4")}

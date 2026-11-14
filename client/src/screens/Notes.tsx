@@ -73,7 +73,7 @@ export default function Notes() {
       {draft && view.screen !== "add" && (
         <button
           onClick={() => { setResult(null); setView({ screen: "add" }); }}
-          className="w-full flex items-center gap-3 rounded-2xl border px-4 py-3 text-left"
+          className="w-full flex items-center gap-3 rounded-2xl border px-4 py-3 text-left min-h-11"
           style={{ backgroundColor: "var(--accent-light)", borderColor: "var(--accent-text)", color: "var(--text-primary)" }}
         >
           <span className="flex-1 min-w-0">
@@ -166,7 +166,7 @@ function CourseList({ onSelectGroup }: { onSelectGroup: (g: CourseGroup) => void
         <li key={g.code ?? "__none__"}>
           <button
             onClick={() => onSelectGroup(g)}
-            className="w-full flex items-center gap-3 rounded-xl px-4 py-3 text-left"
+            className="w-full flex items-center gap-3 rounded-xl px-4 py-3 text-left min-h-11"
             style={{ backgroundColor: "var(--bg-surface)", boxShadow: "var(--shadow-sm)" }}
           >
             <Icon name="notebook" size={26} style={{ color: "var(--accent-text)" }} />
@@ -234,7 +234,7 @@ function CourseNotes({
   if (summary) {
     return (
       <div className="space-y-4">
-        <button onClick={() => setSummary(null)} className="text-sm" style={{ color: "var(--accent-text)" }}>
+        <button onClick={() => setSummary(null)} className="text-sm min-h-11" style={{ color: "var(--accent-text)" }}>
           {t("notes.backToCourse")}
         </button>
 
@@ -281,7 +281,7 @@ function CourseNotes({
 
         <button
           onClick={() => setSummary(null)}
-          className="w-full rounded-lg py-2 text-sm font-medium"
+          className="w-full rounded-lg py-2 text-sm font-medium min-h-11"
           style={{ backgroundColor: "var(--bg-surface-hover)", color: "var(--text-secondary)" }}
         >
           {t("notes.closeSummary")}
@@ -292,7 +292,7 @@ function CourseNotes({
 
   return (
     <div className="space-y-3">
-      <button onClick={onBack} className="text-sm" style={{ color: "var(--accent-text)" }}>
+      <button onClick={onBack} className="text-sm min-h-11" style={{ color: "var(--accent-text)" }}>
         {t("notes.backToCourse")}
       </button>
       <h2 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
@@ -307,7 +307,7 @@ function CourseNotes({
       {group.code && group.notes.length >= 2 && (
         <button
           onClick={handleSummarize}
-          className="w-full font-medium rounded-lg py-2.5 text-sm"
+          className="w-full font-medium rounded-lg py-2.5 text-sm min-h-11"
           style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
         >
           {t("notes.summarizeAll")}
@@ -321,7 +321,7 @@ function CourseNotes({
           <li key={n.id}>
             <button
               onClick={() => onSelectNote(n.id)}
-              className="w-full text-left rounded-xl px-4 py-3"
+              className="w-full text-left rounded-xl px-4 py-3 min-h-11"
               style={{ backgroundColor: "var(--bg-surface)", boxShadow: "var(--shadow-sm)" }}
             >
               <div className="font-medium" style={{ color: "var(--text-primary)" }}>
@@ -370,7 +370,7 @@ function NoteView({ noteId, onBack, onDeleted }: { noteId: number; onBack: () =>
 
   return (
     <div className="space-y-4">
-      <button onClick={onBack} className="text-sm" style={{ color: "var(--accent-text)" }}>
+      <button onClick={onBack} className="text-sm min-h-11" style={{ color: "var(--accent-text)" }}>
         {t("notes.backToCourse")}
       </button>
 
@@ -477,7 +477,7 @@ function NoteView({ noteId, onBack, onDeleted }: { noteId: number; onBack: () =>
       <button
         onClick={handleDelete}
         disabled={deleting}
-        className="w-full text-sm font-medium py-3 rounded-lg border disabled:opacity-50"
+        className="w-full text-sm font-medium py-3 rounded-lg border disabled:opacity-50 min-h-11"
         style={{ color: "var(--danger)", borderColor: "var(--danger-bg)" }}
       >
         {t("notes.delete")}
@@ -619,7 +619,7 @@ function AddNote({
     <Card>
       <div className="space-y-3">
         <div className="flex items-center gap-2">
-          <button onClick={onCancel} className="text-sm" style={{ color: "var(--accent-text)" }}>
+          <button onClick={onCancel} className="text-sm min-h-11" style={{ color: "var(--accent-text)" }}>
             {t("notes.backToCourse")}
           </button>
           <h2 className="font-semibold" style={{ color: "var(--text-primary)" }}>{t("notes.newTitle")}</h2>
@@ -645,7 +645,7 @@ function AddNote({
           <select
             value={courseCode}
             onChange={(e) => setCourseCode(e.target.value)}
-            className="mt-1 w-full rounded-lg border px-3 py-2"
+            className="mt-1 w-full rounded-lg border px-3 py-2 min-h-11"
             style={selectStyle}
           >
             <option value="">{t("notes.selectCourse")}</option>
@@ -661,7 +661,7 @@ function AddNote({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder={t("notes.noteTitle")}
-          className="w-full rounded-lg border px-3 py-2 text-sm"
+          className="w-full rounded-lg border px-3 py-2 text-sm min-h-11"
           style={inputStyle}
         />
 
@@ -670,7 +670,7 @@ function AddNote({
             <button
               key={m}
               onClick={() => setMode(m)}
-              className="flex-1 rounded-lg py-2 text-sm font-medium"
+              className="flex-1 rounded-lg py-2 text-sm font-medium min-h-11"
               style={{
                 backgroundColor: mode === m ? "var(--accent)" : "var(--bg-surface-hover)",
                 color: mode === m ? "var(--text-inverse)" : "var(--text-tertiary)",
@@ -722,14 +722,14 @@ function AddNote({
           />
           <button
             onClick={() => cameraRef.current?.click()}
-            className="flex-1 rounded-lg py-2 text-sm font-medium"
+            className="flex-1 rounded-lg py-2 text-sm font-medium min-h-11"
             style={{ backgroundColor: "var(--bg-surface-hover)", color: "var(--text-primary)" }}
           >
             {t("notes.camera")}
           </button>
           <button
             onClick={() => galleryRef.current?.click()}
-            className="flex-1 rounded-lg py-2 text-sm font-medium"
+            className="flex-1 rounded-lg py-2 text-sm font-medium min-h-11"
             style={{ backgroundColor: "var(--bg-surface-hover)", color: "var(--text-primary)" }}
           >
             {t("notes.gallery")}
@@ -750,7 +750,7 @@ function AddNote({
                   />
                   <button
                     onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))}
-                    className="absolute -top-1.5 -right-1.5 rounded-full w-5 h-5 text-xs leading-none"
+                    className="tap-area absolute -top-2 -right-2 rounded-full w-6 h-6 text-sm leading-none"
                     style={{ backgroundColor: "var(--danger)", color: "var(--text-inverse)" }}
                     aria-label={t("notes.removeImage")}
                   >
@@ -767,7 +767,7 @@ function AddNote({
         <div className="flex gap-2 pt-1">
           <button
             onClick={submit}
-            className="flex-1 font-medium rounded-lg py-2"
+            className="flex-1 font-medium rounded-lg py-2 min-h-11"
             style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
           >
             {t("notes.submit")}
@@ -811,7 +811,7 @@ function ResultView({ result, onDone }: { result: NoteLearning; onDone: () => vo
         </div>
         <button
           onClick={onDone}
-          className="w-full rounded-lg py-2"
+          className="w-full rounded-lg py-2 min-h-11"
           style={{ backgroundColor: "var(--bg-surface-hover)", color: "var(--text-secondary)" }}
         >
           {t("notes.back")}
@@ -876,7 +876,7 @@ function ResultView({ result, onDone }: { result: NoteLearning; onDone: () => vo
 
       <button
         onClick={onDone}
-        className="w-full rounded-lg py-2"
+        className="w-full rounded-lg py-2 min-h-11"
         style={{ backgroundColor: "var(--bg-surface-hover)", color: "var(--text-secondary)" }}
       >
         {t("notes.back")}

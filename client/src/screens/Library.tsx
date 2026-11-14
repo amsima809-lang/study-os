@@ -54,7 +54,7 @@ export default function Library() {
       {view !== "list" && (
         <button
           onClick={() => { setView("list"); setSelected(null); }}
-          className="text-sm"
+          className="text-sm min-h-11"
           style={{ color: "var(--accent-text)" }}
         >
           ← {t("lib.title")}
@@ -165,7 +165,7 @@ function LectureLinks({ onRead }: { onRead: (t: OpenTranscript) => void }) {
               <button
                 onClick={() => setOpen(isOpen ? null : c.code)}
                 aria-expanded={isOpen}
-                className="w-full flex items-center gap-2 px-3 py-3 text-left"
+                className="w-full flex items-center gap-2 px-3 py-3 text-left min-h-11"
               >
                 <span className="flex-1 min-w-0">
                   <span className="block text-sm font-medium" style={{ color: "var(--text-primary)" }}>
@@ -309,7 +309,7 @@ function TranscriptView({ which, onDeleted }: { which: OpenTranscript; onDeleted
         onChange={(e) => setQuery(e.target.value)}
         placeholder={t("lib.searchTranscript")}
         aria-label={t("lib.searchTranscript")}
-        className="w-full rounded-xl border px-4 py-3"
+        className="w-full rounded-xl border px-4 py-3 min-h-11"
         style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-light)", color: "var(--text-primary)" }}
       />
       <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
@@ -391,7 +391,7 @@ function MaterialList({
         <ul className="space-y-2">
           {materials.map((m) => (
             <li key={m.id}>
-              <button onClick={() => onSelect(m)} className="w-full text-left">
+              <button onClick={() => onSelect(m)} className="w-full text-left min-h-11">
                 <Card>
                   <div className="flex items-center gap-3">
                     <Icon name={m.file_type === "pdf" ? "fileText" : m.file_type === "image" ? "image" : "edit"} size={22} style={{ color: "var(--accent-text)" }} />
@@ -473,7 +473,7 @@ function UploadForm({ courses, onDone }: { courses: Course[]; onDone: () => void
         <select
           value={courseCode}
           onChange={(e) => setCourseCode(e.target.value)}
-          className="w-full rounded-lg border p-2 text-sm"
+          className="w-full rounded-lg border p-2 text-sm min-h-11"
           style={selectStyle}
         >
           <option value="">{t("lib.selectCourse")}</option>
@@ -486,7 +486,7 @@ function UploadForm({ courses, onDone }: { courses: Course[]; onDone: () => void
         <select
           value={kind}
           onChange={(e) => setKind(e.target.value)}
-          className="w-full rounded-lg border p-2 text-sm"
+          className="w-full rounded-lg border p-2 text-sm min-h-11"
           style={selectStyle}
         >
           {(["textbook", "past_exam", "notes", "other"] as const).map((k) => (
@@ -503,7 +503,7 @@ function UploadForm({ courses, onDone }: { courses: Course[]; onDone: () => void
         <button
           onClick={handleUpload}
           disabled={!courseCode || uploading}
-          className="w-full rounded-lg py-2 text-sm font-medium disabled:opacity-50"
+          className="w-full rounded-lg py-2 text-sm font-medium disabled:opacity-50 min-h-11"
           style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
         >
           {uploading ? "กำลังอัปโหลด…" : t("lib.upload")}
@@ -619,7 +619,7 @@ function MaterialDetail({
           <button
             onClick={handleExtract}
             disabled={!!busy}
-            className="rounded-lg py-2 text-sm font-medium disabled:opacity-50"
+            className="rounded-lg py-2 text-sm font-medium disabled:opacity-50 min-h-11"
             style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
           >
             {busy === "extract" ? t("lib.extracting") : t("lib.extract")}
@@ -628,7 +628,7 @@ function MaterialDetail({
         {material.upload_status === "done" && (
           <button
             onClick={onViewPages}
-            className="rounded-lg py-2 text-sm font-medium"
+            className="rounded-lg py-2 text-sm font-medium min-h-11"
             style={{ backgroundColor: "var(--bg-surface-hover)", color: "var(--text-primary)" }}
           >
             {t("lib.viewPages")}
@@ -638,7 +638,7 @@ function MaterialDetail({
           <button
             onClick={handleParseExam}
             disabled={!!busy}
-            className="rounded-lg py-2 text-sm font-medium disabled:opacity-50"
+            className="rounded-lg py-2 text-sm font-medium disabled:opacity-50 min-h-11"
             style={{ backgroundColor: "var(--warning)", color: "var(--text-inverse)" }}
           >
             {busy === "parse" ? t("lib.parsing") : t("lib.parseExam")}
@@ -646,7 +646,7 @@ function MaterialDetail({
         )}
         <button
           onClick={handleDelete}
-          className="rounded-lg py-2 text-sm font-medium"
+          className="rounded-lg py-2 text-sm font-medium min-h-11"
           style={{ backgroundColor: "var(--danger-bg)", color: "var(--danger)" }}
         >
           {t("lib.delete")}
@@ -717,12 +717,12 @@ function PageViewer({ materialId, filename }: { materialId: number; filename: st
               <div className="flex gap-2">
                 <button
                   onClick={() => saveEdit(p.page_num)}
-                  className="text-sm px-3 py-1 rounded-lg"
+                  className="text-sm px-3 py-1 rounded-lg min-h-11"
                   style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
                 >
                   {t("lib.saveText")}
                 </button>
-                <button onClick={() => setEditing(null)} className="text-sm" style={{ color: "var(--text-tertiary)" }}>
+                <button onClick={() => setEditing(null)} className="text-sm min-h-11" style={{ color: "var(--text-tertiary)" }}>
                   ยกเลิก
                 </button>
               </div>
@@ -734,7 +734,7 @@ function PageViewer({ materialId, filename }: { materialId: number; filename: st
               </p>
               <button
                 onClick={() => { setEditing(p.page_num); setEditText(p.extracted_text ?? ""); }}
-                className="text-xs mt-1"
+                className="text-xs mt-1 min-h-11"
                 style={{ color: "var(--accent-text)" }}
               >
                 {t("lib.editText")}
@@ -813,7 +813,7 @@ function ChapterManager({ courseCode, materialId }: { courseCode: string; materi
           <button
             onClick={suggestChapters}
             disabled={!!busy}
-            className="text-xs px-2 py-1 rounded-lg disabled:opacity-50"
+            className="text-xs px-2 py-1 rounded-lg disabled:opacity-50 min-h-11"
             style={{ backgroundColor: "var(--accent-light)", color: "var(--accent-text)" }}
           >
             {busy === "suggest" ? t("chap.suggesting") : t("chap.suggest")}
@@ -828,7 +828,7 @@ function ChapterManager({ courseCode, materialId }: { courseCode: string; materi
             <button
               onClick={addSuggested}
               disabled={busy === "add"}
-              className="text-sm px-3 py-1 rounded-lg mt-1"
+              className="text-sm px-3 py-1 rounded-lg mt-1 min-h-11"
               style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
             >
               {t("chap.addAll")}
@@ -844,7 +844,7 @@ function ChapterManager({ courseCode, materialId }: { courseCode: string; materi
           {chapters.map((ch) => (
             <li key={ch.id} className="flex items-center justify-between text-sm">
               <span style={{ color: "var(--text-primary)" }}>{ch.name}</span>
-              <button onClick={() => deleteChapter(ch.id)} className="text-xs" style={{ color: "var(--danger)" }}>
+              <button onClick={() => deleteChapter(ch.id)} className="text-xs min-h-11" style={{ color: "var(--danger)" }}>
                 ×
               </button>
             </li>
@@ -856,14 +856,14 @@ function ChapterManager({ courseCode, materialId }: { courseCode: string; materi
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             placeholder={t("chap.name")}
-            className="flex-1 border rounded-lg px-2 py-1 text-sm"
+            className="flex-1 border rounded-lg px-2 py-1 text-sm min-h-11"
             style={{ borderColor: "var(--border)", backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}
             onKeyDown={(e) => e.key === "Enter" && addManual()}
           />
           <button
             onClick={addManual}
             disabled={!newName.trim()}
-            className="text-sm px-3 py-1 rounded-lg disabled:opacity-50"
+            className="text-sm px-3 py-1 rounded-lg disabled:opacity-50 min-h-11"
             style={{ backgroundColor: "var(--bg-surface-hover)", color: "var(--text-primary)" }}
           >
             +

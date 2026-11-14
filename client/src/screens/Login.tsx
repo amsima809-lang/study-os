@@ -187,7 +187,7 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
               <button
                 type="button"
                 onClick={() => setShowDev(true)}
-                className="w-full text-center text-xs py-2.5 rounded-2xl transition-all"
+                className="w-full text-center text-xs py-2.5 rounded-2xl transition-all min-h-11"
                 style={{
                   color: "rgba(255,255,255,0.4)",
                   border: "1px solid rgba(255,255,255,0.06)",
@@ -206,7 +206,7 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
                   onChange={(e) => setDevEmail(e.target.value)}
                   placeholder="Email"
                   required
-                  className="w-full rounded-xl border px-4 py-3 text-sm placeholder:text-white/25"
+                  className="w-full rounded-xl border px-4 py-3 text-sm placeholder:text-white/25 min-h-11"
                   style={{
                     backgroundColor: "rgba(255,255,255,0.04)",
                     borderColor: "rgba(255,255,255,0.08)",
@@ -218,7 +218,7 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
                   value={devName}
                   onChange={(e) => setDevName(e.target.value)}
                   placeholder={t("auth.name_optional")}
-                  className="w-full rounded-xl border px-4 py-3 text-sm placeholder:text-white/25"
+                  className="w-full rounded-xl border px-4 py-3 text-sm placeholder:text-white/25 min-h-11"
                   style={{
                     backgroundColor: "rgba(255,255,255,0.04)",
                     borderColor: "rgba(255,255,255,0.08)",
@@ -231,7 +231,7 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
                 <button
                   type="submit"
                   disabled={busy || !devEmail}
-                  className="w-full font-semibold rounded-xl py-3 disabled:opacity-40 transition-all active:scale-[0.98]"
+                  className="w-full font-semibold rounded-xl py-3 disabled:opacity-40 transition-all active:scale-[0.98] min-h-11"
                   style={{
                     background: `linear-gradient(135deg, ${mix(primary, "#ffffff", 0.1, 0.5)} 0%, ${mix(secondary, "#ffffff", 0.1, 0.4)} 100%)`,
                     border: "1px solid rgba(255,255,255,0.1)",
@@ -249,7 +249,7 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
         <button
           type="button"
           onClick={() => setPicking(true)}
-          className="w-full mt-4 flex items-center justify-center gap-2 text-sm py-3 rounded-2xl transition-all active:scale-[0.98]"
+          className="w-full mt-4 flex items-center justify-center gap-2 text-sm py-3 rounded-2xl transition-all active:scale-[0.98] min-h-11"
           style={{
             color: "rgba(255,255,255,0.75)",
             border: "1px solid rgba(255,255,255,0.1)",

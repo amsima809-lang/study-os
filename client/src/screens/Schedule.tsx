@@ -15,7 +15,7 @@ export default function Schedule() {
           <button
             key={v}
             onClick={() => setView(v)}
-            className="flex-1 rounded-lg py-2 text-sm font-medium transition-colors"
+            className="flex-1 rounded-lg py-2 text-sm font-medium transition-colors min-h-11"
             style={{
               backgroundColor: view === v ? "var(--accent)" : "var(--bg-surface-hover)",
               color: view === v ? "var(--text-inverse)" : "var(--text-tertiary)",

@@ -73,7 +73,7 @@ function PaywallModal({ onClose, onActivated }: { onClose: () => void; onActivat
       >
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1 rounded-lg"
+          className="absolute top-2 right-2 w-11 h-11 flex items-center justify-center rounded-lg"
           style={{ color: "var(--text-tertiary)" }}
         >
           <Icon name="x" size={20} />
@@ -121,7 +121,7 @@ function PaywallModal({ onClose, onActivated }: { onClose: () => void; onActivat
         <button
           onClick={activate}
           disabled={busy}
-          className="w-full py-3.5 rounded-2xl font-semibold text-white disabled:opacity-50 transition-all active:scale-[0.98]"
+          className="w-full py-3.5 rounded-2xl font-semibold text-white disabled:opacity-50 transition-all active:scale-[0.98] min-h-11"
           style={{
             background: "linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%)",
             boxShadow: "0 4px 16px rgba(91,79,199,0.3)",

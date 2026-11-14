@@ -1366,7 +1366,7 @@ export function LanguageToggle() {
       aria-label={nextName}
       title={nextName}
       lang={next}
-      className="h-8 min-w-8 px-2 flex items-center justify-center rounded-lg text-sm font-semibold hover:bg-[var(--bg-surface-hover)] transition-colors"
+      className="h-11 min-w-11 px-2 flex items-center justify-center rounded-lg text-sm font-semibold hover:bg-[var(--bg-surface-hover)] transition-colors"
       style={{ color: "var(--text-secondary)" }}
     >
       <span lang={lang}>{t(`lang.${lang}`)}</span>

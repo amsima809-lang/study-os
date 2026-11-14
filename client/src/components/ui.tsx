@@ -92,7 +92,7 @@ export function ThemeToggle() {
   return (
     <button
       onClick={() => setTheme(next)}
-      className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--bg-surface-hover)] transition-colors"
+      className="w-11 h-11 flex items-center justify-center rounded-lg hover:bg-[var(--bg-surface-hover)] transition-colors"
       title={`Theme: ${theme}`}
       style={{ color: "var(--text-secondary)" }}
     >

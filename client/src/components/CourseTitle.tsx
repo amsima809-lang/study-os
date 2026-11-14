@@ -14,7 +14,7 @@ type Props = {
 export function CourseChip({ code, className = "" }: { code: string; className?: string }) {
   return (
     <span
-      className={`inline-block align-middle whitespace-nowrap rounded-md px-1.5 py-0.5 text-[0.8em] font-semibold leading-none ${className}`}
+      className={`inline-block align-middle whitespace-nowrap rounded-md px-1.5 py-0.5 text-[length:max(0.8em,12px)] font-semibold leading-none ${className}`}
       style={{ backgroundColor: "var(--accent-light)", color: "var(--accent-text)" }}
     >
       {code}

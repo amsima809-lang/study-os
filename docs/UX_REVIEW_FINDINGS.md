@@ -35,6 +35,8 @@ Severity: **A** blocks a task or loses work, **B** slows a task, **C** cosmetic.
 
 ### 2. Tap targets
 
+**Status: fixed 2026-11-14 (Phase 37).** All controls are at least 44px tall; re-audit at 375×812 finds none undersized on any screen, apart from the week view's seven day headers, which are 41px wide because seven columns must fit a 375px screen (58px tall).
+
 | # | Sev | Finding | Fix |
 |---|---|---|---|
 | 2.1 | B | On Today, 40 of 52 tappable controls on a phone are under 44 pixels (45 of 52 at the wider sizes). Calendar day cells and the previous/next arrows (30×30) are the bulk. | Day cells and arrows at 44 pixels minimum. |
@@ -53,6 +55,8 @@ Severity: **A** blocks a task or loses work, **B** slows a task, **C** cosmetic.
 | 3.5 | – | No screen scrolls sideways at any of the six sizes. Tablet landscape and desktop portrait have no layout problems beyond 3.1. | None needed. |
 
 ### 4. Readability
+
+**Status: 4.1 fixed 2026-11-14 (Phase 37).** No text below 12px on any screen except the "+N" badge in the week grid (11px).
 
 | # | Sev | Finding | Fix |
 |---|---|---|---|

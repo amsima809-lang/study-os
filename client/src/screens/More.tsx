@@ -50,7 +50,7 @@ export default function More({
       <div className="space-y-3">
         <button
           onClick={() => setSub(null)}
-          className="text-sm font-medium transition-colors"
+          className="text-sm font-medium transition-colors min-h-11"
           style={{ color: "var(--accent-text)" }}
         >
           ← {t("more.back")}
@@ -80,7 +80,7 @@ export default function More({
           >
             <button
               onClick={() => setSub(it.id)}
-              className="flex-1 min-w-0 flex items-center gap-3 pl-4 pr-2 py-3.5 text-left transition-all active:scale-[0.99]"
+              className="flex-1 min-w-0 flex items-center gap-3 pl-4 pr-2 py-3.5 text-left transition-all active:scale-[0.99] min-h-11"
             >
               <Icon name={it.icon} size={22} style={{ color: "var(--accent-2, var(--accent-text))" }} />
               <span className="font-medium truncate" style={{ color: "var(--text-primary)" }}>
@@ -91,7 +91,7 @@ export default function More({
               onClick={() => (canPin ? onPin(it.id) : setSwapIn(it.id))}
               aria-label={`${t("more.pin")}: ${t(it.label)}`}
               title={t("more.pin")}
-              className="w-12 shrink-0 flex items-center justify-center border-l transition-colors"
+              className="w-12 shrink-0 flex items-center justify-center border-l transition-colors min-h-11"
               style={{ borderColor: "var(--border-light)", color: "var(--accent-text)" }}
             >
               <Icon name="plus" size={20} />
@@ -141,7 +141,7 @@ export default function More({
                       onReplace(id, swapIn);
                       setSwapIn(null);
                     }}
-                    className="w-full flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all active:scale-[0.99]"
+                    className="w-full flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all active:scale-[0.99] min-h-11"
                     style={{ backgroundColor: "var(--bg-base)", borderColor: "var(--border-light)" }}
                   >
                     <Icon name={destination(id).icon} size={20} style={{ color: "var(--accent-text)" }} />
@@ -154,7 +154,7 @@ export default function More({
             </ul>
             <button
               onClick={() => setSwapIn(null)}
-              className="w-full text-sm py-2"
+              className="w-full text-sm py-2 min-h-11"
               style={{ color: "var(--text-secondary)" }}
             >
               {t("nav.cancel")}
@@ -190,7 +190,7 @@ export default function More({
                 aria-checked={theme === th.id}
                 disabled={highContrast}
                 onClick={() => setTheme(th.id)}
-                className="flex items-center justify-center gap-1.5 rounded-lg py-2.5 text-sm font-medium transition-colors"
+                className="flex items-center justify-center gap-1.5 rounded-lg py-2.5 text-sm font-medium transition-colors min-h-11"
                 style={{
                   backgroundColor: theme === th.id ? "var(--accent)" : "transparent",
                   color: theme === th.id ? "#fff" : "var(--text-secondary)",
@@ -220,7 +220,7 @@ export default function More({
                   role="radio"
                   aria-checked={on}
                   onClick={() => setColour(value)}
-                  className="flex flex-col items-center gap-1.5 rounded-xl border py-2.5 text-xs font-medium transition-colors"
+                  className="flex flex-col items-center gap-1.5 rounded-xl border py-2.5 text-xs font-medium transition-colors min-h-11"
                   style={{
                     borderColor: on ? "var(--accent-text)" : "var(--border-light)",
                     borderWidth: on ? 2 : 1,
@@ -245,7 +245,7 @@ export default function More({
           </h3>
           <button
             onClick={() => setPickingSchool(true)}
-            className="w-full flex items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm transition-all active:scale-[0.99]"
+            className="w-full flex items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm transition-all active:scale-[0.99] min-h-11"
             style={{
               borderColor: school ? "var(--accent-text)" : "var(--border-light)",
               borderWidth: school ? 2 : 1,
@@ -275,7 +275,7 @@ export default function More({
                   aria-checked={on}
                   aria-label={`${t("more.theme_hc")}: ${t(`more.theme_hc_${m}`)}`}
                   onClick={() => setColour(on ? "default" : `hc:${m}`)}
-                  className="flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold"
+                  className="flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold min-h-11"
                   style={{
                     // Each button previews its own theme.
                     backgroundColor: m === "light" ? "#ffffff" : "#000000",
@@ -309,7 +309,7 @@ export default function More({
                       role="radio"
                       aria-checked={on}
                       onClick={() => setFont(f.id)}
-                      className="flex items-center justify-between gap-3 rounded-xl border px-4 py-2.5 text-left transition-colors"
+                      className="flex items-center justify-between gap-3 rounded-xl border px-4 py-2.5 text-left transition-colors min-h-11"
                       style={{
                         // Each option is drawn in its own typeface.
                         fontFamily: fontStack(f.id),
@@ -356,7 +356,7 @@ export default function More({
           }
           window.location.reload();
         }}
-        className="w-full text-sm py-3 mt-2 transition-colors"
+        className="w-full text-sm py-3 mt-2 transition-colors min-h-11"
         style={{ color: "var(--text-tertiary)" }}
       >
         {t("auth.logout")}

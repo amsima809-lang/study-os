@@ -112,7 +112,7 @@ function Shell() {
               key={id}
               onClick={() => go(id)}
               {...(id === "more" ? {} : press.handlers(id))}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all min-h-11"
               style={{
                 ...noCallout,
                 backgroundColor: activeTab === id ? "var(--accent-light)" : "transparent",
@@ -259,14 +259,14 @@ function Shell() {
             </div>
             <button
               onClick={() => moveToMore(holding)}
-              className="w-full font-semibold rounded-xl py-3 transition-all active:scale-[0.98]"
+              className="w-full font-semibold rounded-xl py-3 transition-all active:scale-[0.98] min-h-11"
               style={{ backgroundColor: "var(--accent)", color: "#fff" }}
             >
               {t("nav.move_to_more")}
             </button>
             <button
               onClick={() => setHolding(null)}
-              className="w-full text-sm py-2"
+              className="w-full text-sm py-2 min-h-11"
               style={{ color: "var(--text-secondary)" }}
             >
               {t("nav.cancel")}

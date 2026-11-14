@@ -110,7 +110,7 @@ export default function TermCoursesPicker({ onClose }: { onClose: () => void }) 
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t("tc.search")}
             aria-label={t("tc.search")}
-            className="flex-1 min-w-0 rounded-xl border px-3 py-2.5"
+            className="flex-1 min-w-0 rounded-xl border px-3 py-2.5 min-h-11"
             style={{ backgroundColor: "var(--bg-base)", borderColor: "var(--border)", color: "var(--text-primary)" }}
           />
           <button
@@ -144,7 +144,7 @@ export default function TermCoursesPicker({ onClose }: { onClose: () => void }) 
                         role="checkbox"
                         aria-checked={on}
                         onClick={() => toggle(o.code)}
-                        className="w-full flex items-start gap-3 rounded-xl px-2 py-2.5 text-left"
+                        className="w-full flex items-start gap-3 rounded-xl px-2 py-2.5 text-left min-h-11"
                         style={{ backgroundColor: on ? "var(--accent-light)" : "transparent" }}
                       >
                         <span

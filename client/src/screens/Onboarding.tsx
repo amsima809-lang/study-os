@@ -96,7 +96,7 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
               value={universityId}
               onChange={(e) => setUniversityId(e.target.value)}
               required
-              className="w-full rounded-xl border px-4 py-3 text-sm appearance-none"
+              className="w-full rounded-xl border px-4 py-3 text-sm appearance-none min-h-11"
               style={{
                 backgroundColor: "var(--bg-surface)",
                 borderColor: "var(--border-light)",
@@ -125,7 +125,7 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
               value={facultyId}
               onChange={(e) => setFacultyId(e.target.value)}
               required
-              className="w-full rounded-xl border px-4 py-3 text-sm appearance-none"
+              className="w-full rounded-xl border px-4 py-3 text-sm appearance-none min-h-11"
               style={{
                 backgroundColor: "var(--bg-surface)",
                 borderColor: "var(--border-light)",
@@ -149,7 +149,7 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
               onChange={(e) => setProgramId(e.target.value)}
               required
               disabled={!facultyId}
-              className="w-full rounded-xl border px-4 py-3 text-sm appearance-none disabled:opacity-40"
+              className="w-full rounded-xl border px-4 py-3 text-sm appearance-none disabled:opacity-40 min-h-11"
               style={{
                 backgroundColor: "var(--bg-surface)",
                 borderColor: "var(--border-light)",
@@ -180,7 +180,7 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
                 placeholder={lang === "th" ? "เช่น 2569" : "e.g. 2569"}
                 inputMode="numeric"
                 maxLength={4}
-                className="w-full rounded-xl border px-4 py-3 text-sm"
+                className="w-full rounded-xl border px-4 py-3 text-sm min-h-11"
                 style={{
                   backgroundColor: "var(--bg-surface)",
                   borderColor: "var(--border-light)",
@@ -195,7 +195,7 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
               <select
                 value={entryTerm}
                 onChange={(e) => setEntryTerm(e.target.value)}
-                className="w-full rounded-xl border px-4 py-3 text-sm appearance-none"
+                className="w-full rounded-xl border px-4 py-3 text-sm appearance-none min-h-11"
                 style={{
                   backgroundColor: "var(--bg-surface)",
                   borderColor: "var(--border-light)",
@@ -212,7 +212,7 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
           <button
             type="submit"
             disabled={busy || !universityId || (hasCatalog && (!facultyId || !programId))}
-            className="w-full font-semibold rounded-xl py-3 transition-all active:scale-[0.98] disabled:opacity-40"
+            className="w-full font-semibold rounded-xl py-3 transition-all active:scale-[0.98] disabled:opacity-40 min-h-11"
             style={{
               backgroundColor: "var(--accent)",
               color: "#fff",

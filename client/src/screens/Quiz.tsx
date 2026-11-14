@@ -166,7 +166,7 @@ function Setup({
             <button
               key={m.id}
               onClick={() => setMode(m.id)}
-              className="flex-1 rounded-lg py-2 text-sm font-medium transition-colors"
+              className="flex-1 rounded-lg py-2 text-sm font-medium transition-colors min-h-11"
               style={{
                 backgroundColor: mode === m.id ? "var(--accent)" : "var(--bg-surface-hover)",
                 color: mode === m.id ? "var(--text-inverse)" : "var(--text-tertiary)",
@@ -181,7 +181,7 @@ function Setup({
           <select
             value={noteId}
             onChange={(e) => setNoteId(e.target.value)}
-            className="w-full rounded-lg border px-3 py-2 text-sm"
+            className="w-full rounded-lg border px-3 py-2 text-sm min-h-11"
             style={selectStyle}
           >
             <option value="">{t("quiz.selectNote")}</option>
@@ -197,7 +197,7 @@ function Setup({
           <select
             value={courseCode}
             onChange={(e) => setCourseCode(e.target.value)}
-            className="w-full rounded-lg border px-3 py-2 text-sm"
+            className="w-full rounded-lg border px-3 py-2 text-sm min-h-11"
             style={selectStyle}
           >
             <option value="">{t("quiz.selectCourse")}</option>
@@ -214,7 +214,7 @@ function Setup({
             <select
               value={matCourseCode}
               onChange={(e) => { setMatCourseCode(e.target.value); setChapterId(""); }}
-              className="w-full rounded-lg border px-3 py-2 text-sm"
+              className="w-full rounded-lg border px-3 py-2 text-sm min-h-11"
               style={selectStyle}
             >
               <option value="">{t("quiz.selectCourse")}</option>
@@ -226,7 +226,7 @@ function Setup({
               <select
                 value={chapterId}
                 onChange={(e) => setChapterId(e.target.value)}
-                className="w-full rounded-lg border px-3 py-2 text-sm"
+                className="w-full rounded-lg border px-3 py-2 text-sm min-h-11"
                 style={selectStyle}
               >
                 <option value="">{t("quiz.selectChapter")}</option>
@@ -238,7 +238,7 @@ function Setup({
             <div className="grid grid-cols-3 gap-2">
               <div>
                 <label className="text-xs" style={{ color: "var(--text-tertiary)" }}>{t("quiz.difficulty")}</label>
-                <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)} className="w-full rounded-lg border px-2 py-1 text-sm" style={selectStyle}>
+                <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)} className="w-full rounded-lg border px-2 py-1 text-sm min-h-11" style={selectStyle}>
                   <option value="0">ทุกระดับ</option>
                   <option value="1">{t("quiz.diff.1")}</option>
                   <option value="2">{t("quiz.diff.2")}</option>
@@ -247,7 +247,7 @@ function Setup({
               </div>
               <div>
                 <label className="text-xs" style={{ color: "var(--text-tertiary)" }}>{t("quiz.format")}</label>
-                <select value={qType} onChange={(e) => setQType(e.target.value)} className="w-full rounded-lg border px-2 py-1 text-sm" style={selectStyle}>
+                <select value={qType} onChange={(e) => setQType(e.target.value)} className="w-full rounded-lg border px-2 py-1 text-sm min-h-11" style={selectStyle}>
                   <option value="mixed">{t("quiz.format.mixed")}</option>
                   <option value="mcq">{t("quiz.format.mcq")}</option>
                   <option value="short">{t("quiz.format.short")}</option>
@@ -255,7 +255,7 @@ function Setup({
               </div>
               <div>
                 <label className="text-xs" style={{ color: "var(--text-tertiary)" }}>{t("quiz.count")}</label>
-                <select value={count} onChange={(e) => setCount(e.target.value)} className="w-full rounded-lg border px-2 py-1 text-sm" style={selectStyle}>
+                <select value={count} onChange={(e) => setCount(e.target.value)} className="w-full rounded-lg border px-2 py-1 text-sm min-h-11" style={selectStyle}>
                   {[5, 10, 15, 20].map((n) => (
                     <option key={n} value={n}>{n}</option>
                   ))}
@@ -269,7 +269,7 @@ function Setup({
 
         <button
           onClick={start}
-          className="w-full font-medium rounded-lg py-2"
+          className="w-full font-medium rounded-lg py-2 min-h-11"
           style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
         >
           {t("quiz.start")}
@@ -415,7 +415,7 @@ function Runner({
           <button
             onClick={submit}
             disabled={!canSubmit}
-            className="w-full font-medium rounded-lg py-2 disabled:opacity-40"
+            className="w-full font-medium rounded-lg py-2 disabled:opacity-40 min-h-11"
             style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
           >
             {t("quiz.submit")}
@@ -423,7 +423,7 @@ function Runner({
         ) : (
           <button
             onClick={next}
-            className="w-full font-medium rounded-lg py-2"
+            className="w-full font-medium rounded-lg py-2 min-h-11"
             style={{ backgroundColor: "var(--text-primary)", color: "var(--text-inverse)" }}
           >
             {idx + 1 >= questions.length ? t("quiz.finish") : t("quiz.next")}
@@ -469,7 +469,7 @@ function Summary({
         <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t("quiz.cardsMade", { n: cards })}</p>
         <button
           onClick={onAgain}
-          className="mt-3 font-medium rounded-lg py-2 px-6"
+          className="mt-3 font-medium rounded-lg py-2 px-6 min-h-11"
           style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
         >
           {t("quiz.again")}

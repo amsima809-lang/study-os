@@ -48,7 +48,7 @@ export default function Planner() {
           <button
             key={tb.id}
             onClick={() => setTab(tb.id)}
-            className="flex-1 text-sm rounded-md py-1.5 font-medium transition-colors"
+            className="flex-1 text-sm rounded-md py-1.5 font-medium transition-colors min-h-11"
             style={{
               backgroundColor: tab === tb.id ? "var(--bg-surface)" : "transparent",
               color: tab === tb.id ? "var(--accent-text)" : "var(--text-tertiary)",
@@ -254,7 +254,7 @@ function ItemRow({
         <select
           value={item.grade ?? ""}
           onChange={(e) => onSetStatus(item.course_code!, "PASSED", e.target.value || null)}
-          className="text-xs rounded border px-1 py-1 w-14"
+          className="text-xs rounded border px-1 py-1 w-14 min-h-11"
           style={selectStyle}
         >
           <option value="">{t("plan.selectGrade")}</option>
@@ -268,7 +268,7 @@ function ItemRow({
           const grade = newStatus === "PASSED" ? item.grade : null;
           onSetStatus(item.course_code!, newStatus, grade);
         }}
-        className="text-xs rounded border px-1.5 py-1"
+        className="text-xs rounded border px-1.5 py-1 min-h-11"
         style={selectStyle}
       >
         <option value="PLANNED">{t("plan.status.PLANNED")}</option>
@@ -320,20 +320,20 @@ function WhatIfTab({ gradeScale, currentGpa }: { gradeScale: PlanGradeScale[]; c
                 value={entry.course_code}
                 onChange={(e) => updateEntry(i, "course_code", e.target.value.toUpperCase())}
                 placeholder="MKT2101"
-                className="flex-1 text-sm border rounded px-2 py-1.5"
+                className="flex-1 text-sm border rounded px-2 py-1.5 min-h-11"
                 style={inputStyle}
               />
               <select
                 value={entry.grade}
                 onChange={(e) => updateEntry(i, "grade", e.target.value)}
-                className="text-sm border rounded px-2 py-1.5 w-16"
+                className="text-sm border rounded px-2 py-1.5 w-16 min-h-11"
                 style={inputStyle}
               >
                 <option value="">{t("plan.grade")}</option>
                 {gradeScale.map((g) => <option key={g.grade} value={g.grade}>{g.grade}</option>)}
               </select>
               {entries.length > 1 && (
-                <button onClick={() => removeEntry(i)} className="text-lg leading-none" style={{ color: "var(--text-tertiary)" }}>×</button>
+                <button onClick={() => removeEntry(i)} className="text-lg leading-none min-h-11" style={{ color: "var(--text-tertiary)" }}>×</button>
               )}
             </div>
           ))}
@@ -341,7 +341,7 @@ function WhatIfTab({ gradeScale, currentGpa }: { gradeScale: PlanGradeScale[]; c
         <div className="flex gap-2 mt-3">
           <button
             onClick={addEntry}
-            className="flex-1 text-sm border border-dashed rounded-lg py-1.5"
+            className="flex-1 text-sm border border-dashed rounded-lg py-1.5 min-h-11"
             style={{ borderColor: "var(--border)", color: "var(--text-tertiary)" }}
           >
             + {t("plan.whatIfAdd")}
@@ -349,7 +349,7 @@ function WhatIfTab({ gradeScale, currentGpa }: { gradeScale: PlanGradeScale[]; c
           <button
             onClick={calculate}
             disabled={loading}
-            className="flex-1 text-sm rounded-lg py-1.5 font-medium disabled:opacity-50"
+            className="flex-1 text-sm rounded-lg py-1.5 font-medium disabled:opacity-50 min-h-11"
             style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
           >
             {t("plan.whatIfCalc")}
@@ -414,13 +414,13 @@ function GradeScaleTab({ scale, onSaved }: { scale: PlanGradeScale[]; onSaved: (
       <div className="flex justify-between items-center mb-3">
         <h2 className="font-semibold" style={{ color: "var(--text-primary)" }}>{t("plan.gradeScale")}</h2>
         {!editing ? (
-          <button onClick={() => setEditing(true)} className="text-xs font-medium" style={{ color: "var(--accent-text)" }}>
+          <button onClick={() => setEditing(true)} className="text-xs font-medium min-h-11" style={{ color: "var(--accent-text)" }}>
             {t("plan.editScale")}
           </button>
         ) : (
           <button
             onClick={save} disabled={saving}
-            className="text-xs rounded px-3 py-1 font-medium disabled:opacity-50"
+            className="text-xs rounded px-3 py-1 font-medium disabled:opacity-50 min-h-11"
             style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
           >
             {t("plan.saveScale")}
@@ -435,7 +435,7 @@ function GradeScaleTab({ scale, onSaved }: { scale: PlanGradeScale[]; onSaved: (
               <input
                 type="number" step="0.5" min="0" max="4" value={g.points}
                 onChange={(e) => updateDraft(i, parseFloat(e.target.value) || 0)}
-                className="w-20 text-right border rounded px-2 py-1 text-sm"
+                className="w-20 text-right border rounded px-2 py-1 text-sm min-h-11"
                 style={{ borderColor: "var(--border)", backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}
               />
             ) : (

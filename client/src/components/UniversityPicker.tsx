@@ -108,7 +108,7 @@ export default function UniversityPicker({
             type="button"
             onClick={onClose}
             aria-label={t("uni.close")}
-            className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-white/10"
+            className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-white/10"
           >
             <Icon name="x" size={18} />
           </button>
@@ -121,7 +121,7 @@ export default function UniversityPicker({
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t("uni.search")}
             aria-label={t("uni.search")}
-            className="w-full rounded-xl border px-4 py-3 text-base placeholder:text-white/35"
+            className="w-full rounded-xl border px-4 py-3 text-base placeholder:text-white/35 min-h-11"
             style={{
               backgroundColor: "rgba(255,255,255,0.06)",
               borderColor: "rgba(255,255,255,0.1)",

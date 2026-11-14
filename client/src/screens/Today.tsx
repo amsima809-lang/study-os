@@ -80,7 +80,7 @@ function TodayTodos({ data }: { data: TodayData }) {
           maxLength={200}
           placeholder={t("today.quickAdd")}
           aria-label={t("today.quickAdd")}
-          className="flex-1 min-w-0 rounded-xl border px-3 py-2.5"
+          className="flex-1 min-w-0 rounded-xl border px-3 py-2.5 min-h-11"
           style={{ backgroundColor: "var(--bg-base)", borderColor: "var(--border)", color: "var(--text-primary)" }}
         />
         <button

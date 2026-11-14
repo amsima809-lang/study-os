@@ -102,7 +102,7 @@ function Pomodoro() {
       <select
         value={courseCode}
         onChange={(e) => setCourseCode(e.target.value)}
-        className="w-full rounded-lg border px-3 py-2 text-sm mb-3"
+        className="w-full rounded-lg border px-3 py-2 text-sm mb-3 min-h-11"
         style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border)", color: "var(--text-primary)" }}
       >
         <option value="">{t("pomo.selectCourse")}</option>
@@ -138,19 +138,19 @@ function Pomodoro() {
             setLogged(null);
             setRunning((r) => !r);
           }}
-          className="flex-1 font-medium rounded-lg py-2"
+          className="flex-1 font-medium rounded-lg py-2 min-h-11"
           style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
         >
           {running ? t("pomo.pause") : t("pomo.start")}
         </button>
         <button
           onClick={finishAndLog}
-          className="flex-1 font-medium rounded-lg py-2"
+          className="flex-1 font-medium rounded-lg py-2 min-h-11"
           style={{ backgroundColor: "var(--text-primary)", color: "var(--text-inverse)" }}
         >
           {t("pomo.finish")}
         </button>
-        <button onClick={reset} className="px-4 text-sm" style={{ color: "var(--text-tertiary)" }}>
+        <button onClick={reset} className="px-4 text-sm min-h-11" style={{ color: "var(--text-tertiary)" }}>
           {t("pomo.reset")}
         </button>
       </div>

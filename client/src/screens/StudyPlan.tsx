@@ -38,7 +38,7 @@ export default function StudyPlan() {
         {plan?.plan && (
           <button
             onClick={() => setView(view === "setup" ? "plan" : "setup")}
-            className="text-sm"
+            className="text-sm min-h-11"
             style={{ color: "var(--accent-text)" }}
           >
             {view === "setup" ? t("sp.viewPlan") : t("sp.settings")}
@@ -123,7 +123,7 @@ function Setup({ onGenerated, hasPlan }: { onGenerated: () => void; hasPlan: boo
               type="number" step="0.5" min="0.5" max="12"
               value={settings.weekday_hours}
               onChange={(e) => saveField("weekday_hours", Number(e.target.value))}
-              className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-lg border px-3 py-2 text-sm min-h-11"
               style={inputStyle}
             />
           </label>
@@ -133,7 +133,7 @@ function Setup({ onGenerated, hasPlan }: { onGenerated: () => void; hasPlan: boo
               type="number" step="0.5" min="0.5" max="16"
               value={settings.weekend_hours}
               onChange={(e) => saveField("weekend_hours", Number(e.target.value))}
-              className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-lg border px-3 py-2 text-sm min-h-11"
               style={inputStyle}
             />
           </label>
@@ -143,7 +143,7 @@ function Setup({ onGenerated, hasPlan }: { onGenerated: () => void; hasPlan: boo
               type="number" step="1" min="1" max="100"
               value={settings.reading_speed}
               onChange={(e) => saveField("reading_speed", Number(e.target.value))}
-              className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-lg border px-3 py-2 text-sm min-h-11"
               style={inputStyle}
             />
           </label>
@@ -175,7 +175,7 @@ function Setup({ onGenerated, hasPlan }: { onGenerated: () => void; hasPlan: boo
                         <input
                           type="number" min="1" value={ch.page_count}
                           onChange={(e) => updateChapterPages(ch.id, Number(e.target.value) || 1)}
-                          className="w-16 rounded border px-2 py-1 text-right text-xs"
+                          className="w-16 rounded border px-2 py-1 text-right text-xs min-h-11"
                           style={inputStyle}
                         />
                         <span className="w-6" style={{ color: "var(--text-tertiary)" }}>{t("sp.pg")}</span>
@@ -202,7 +202,7 @@ function Setup({ onGenerated, hasPlan }: { onGenerated: () => void; hasPlan: boo
         <button
           onClick={generate}
           disabled={generating}
-          className="w-full font-medium rounded-xl py-3 disabled:opacity-50"
+          className="w-full font-medium rounded-xl py-3 disabled:opacity-50 min-h-11"
           style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
         >
           {generating ? t("sp.generating") : hasPlan ? t("sp.regenerate") : t("sp.generate")}
@@ -306,7 +306,7 @@ function PlanView({ data, onRefresh }: { data: StudyPlanData; onRefresh: () => v
           <button
             onClick={reschedule}
             disabled={rescheduling}
-            className="text-sm px-3 py-1.5 rounded-lg disabled:opacity-50"
+            className="text-sm px-3 py-1.5 rounded-lg disabled:opacity-50 min-h-11"
             style={{ backgroundColor: "var(--warning)", color: "var(--text-inverse)" }}
           >
             {t("sp.reschedule")}
@@ -337,11 +337,11 @@ function PlanView({ data, onRefresh }: { data: StudyPlanData; onRefresh: () => v
             <button
               key={d}
               onClick={() => setSelectedDate(d)}
-              className="shrink-0 px-3 py-2 rounded-lg text-xs font-medium transition-colors"
+              className="shrink-0 px-3 py-2 rounded-lg text-xs font-medium transition-colors min-h-11"
               style={{ backgroundColor: bg, color: fg }}
             >
               <div>{formatShortDate(d)}</div>
-              {isToday && <div className="text-[10px] opacity-70">{t("sp.today")}</div>}
+              {isToday && <div className="text-xs opacity-70">{t("sp.today")}</div>}
             </button>
           );
         })}
@@ -378,7 +378,7 @@ function TaskRow({ task, onToggle }: { task: StudyTask; onToggle: (id: number) =
       <div className="flex items-start gap-3">
         <button
           onClick={() => onToggle(task.id)}
-          className="mt-0.5 w-5 h-5 rounded-md border-2 shrink-0 flex items-center justify-center"
+          className="tap-area mt-0.5 w-6 h-6 rounded-md border-2 shrink-0 flex items-center justify-center"
           style={task.done
             ? { backgroundColor: "var(--success)", borderColor: "var(--success)", color: "var(--text-inverse)" }
             : { borderColor: "var(--border)" }

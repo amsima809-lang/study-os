@@ -58,7 +58,7 @@ export default function Costs() {
           <button
             key={c}
             onClick={() => setCampus(c)}
-            className="flex-1 rounded-xl py-2.5 text-sm font-medium transition-all"
+            className="flex-1 rounded-xl py-2.5 text-sm font-medium transition-all min-h-11"
             style={{
               background: campus === c ? "var(--accent-text)" : "var(--bg-surface)",
               color: campus === c ? "#fff" : "var(--text-secondary)",
@@ -224,7 +224,7 @@ function SliderInput({
         max={max}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full accent-[var(--accent-text)]"
+        className="w-full h-11 accent-[var(--accent-text)]"
       />
     </div>
   );

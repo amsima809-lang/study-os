@@ -118,7 +118,7 @@ export default function TimeGrid({ dates, eventsOn, today, now, onPickDay, onTog
       {/* All-day row: things with no time */}
       {hasAllDay && (
         <div className="flex pr-1 py-1" style={{ borderTop: "1px solid var(--border-light)" }}>
-          <div className="w-10 shrink-0 text-[10px] text-right pr-1.5 pt-1" style={{ color: "var(--text-tertiary)" }}>
+          <div className="w-10 shrink-0 text-xs text-right pr-1.5 pt-1" style={{ color: "var(--text-tertiary)" }}>
             {t("cal.allDay")}
           </div>
           {days.map((d) => (
@@ -127,7 +127,7 @@ export default function TimeGrid({ dates, eventsOn, today, now, onPickDay, onTog
                 <AllDayChip key={i} ev={ev} week={week} onToggle={onToggle && ev.type !== "event" ? () => onToggle(ev, d.date) : undefined} />
               ))}
               {week && d.allDay.length > 2 && (
-                <button onClick={() => onPickDay?.(d.date)} className="w-full text-[10px] font-semibold" style={{ color: "var(--text-tertiary)" }}>
+                <button onClick={() => onPickDay?.(d.date)} className="w-full text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>
                   +{d.allDay.length - 2}
                 </button>
               )}
@@ -148,7 +148,7 @@ export default function TimeGrid({ dates, eventsOn, today, now, onPickDay, onTog
             {hours.map((h) => (
               <div
                 key={h}
-                className="absolute right-1.5 text-[10px] tabular-nums"
+                className="absolute right-1.5 text-xs tabular-nums"
                 style={{ top: y(h * 60) - 2, color: "var(--text-tertiary)" }}
               >
                 {String(h).padStart(2, "0")}:00
@@ -219,7 +219,7 @@ export default function TimeGrid({ dates, eventsOn, today, now, onPickDay, onTog
                   opacity: p.ev.done ? 0.55 : 1,
                   borderRadius: 6, // the theme's rounded-md (14px) is too round for a narrow block
                 };
-                const cls = `absolute overflow-hidden text-left leading-tight ${week ? "px-1 py-0.5 text-[10px]" : "px-2 py-1 text-xs"}`;
+                const cls = `absolute overflow-hidden text-left leading-tight ${week ? "px-1 py-0.5 text-xs" : "px-2 py-1 text-xs"}`;
                 return week || editable ? (
                   <button
                     key={i}
@@ -255,7 +255,7 @@ export default function TimeGrid({ dates, eventsOn, today, now, onPickDay, onTog
                 <button
                   key={`more-${i}`}
                   onClick={() => onPickDay?.(d.date)}
-                  className="absolute z-10 right-0.5 rounded-full px-1 text-[9px] font-bold leading-4"
+                  className="absolute z-10 right-0.5 rounded-full px-1 text-[11px] font-bold leading-4"
                   // On the second line, so it does not cover the course code.
                   style={{ top: y(o.start) + 22, backgroundColor: "var(--accent)", color: "#fff" }}
                   aria-label={t("cal.more", { n: o.count })}
@@ -288,7 +288,7 @@ function AllDayChip({ ev, week, onToggle }: { ev: CalEvent; week: boolean; onTog
     opacity: ev.done ? 0.55 : 1,
     textDecoration: ev.done ? "line-through" : undefined,
   };
-  const cls = `block w-full rounded-md truncate text-left ${week ? "px-1 text-[10px]" : "px-2 py-1.5 text-xs"}`;
+  const cls = `block w-full rounded-md truncate text-left ${week ? "px-1 text-xs" : "px-2 py-1.5 text-xs"}`;
   const label = (ev.course_code ? `${ev.course_code} ` : "") + ev.name_th;
   return tickable ? (
     <button className={cls} style={style} onClick={onToggle} role="checkbox" aria-checked={!!ev.done}>

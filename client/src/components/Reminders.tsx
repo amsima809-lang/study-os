@@ -92,7 +92,7 @@ export function ReminderRow({ item, on, done, overdue, today, hideDate, onToggle
         </span>
       </button>
       )}
-      <button onClick={onOpen} disabled={!onOpen} className="flex-1 min-w-0 text-left py-2.5">
+      <button onClick={onOpen} disabled={!onOpen} className="flex-1 min-w-0 text-left py-2.5 min-h-11">
         <span
           className="block"
           style={{ color: done ? "var(--text-tertiary)" : "var(--text-primary)", textDecoration: done ? "line-through" : "none" }}

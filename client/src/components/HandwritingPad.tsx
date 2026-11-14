@@ -219,7 +219,7 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
   }));
 
   const toolBtn = (active: boolean) =>
-    `px-2.5 py-1 rounded-md text-sm font-medium ${
+    `px-3 min-h-11 min-w-11 rounded-md text-sm font-medium ${
       active ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600"
     }`;
 
@@ -261,7 +261,7 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
                   }
                 }}
                 title={t("draw.color")}
-                className={`w-6 h-6 rounded-full border-2 ${active ? "border-slate-800" : "border-white"}`}
+                className={`tap-area w-8 h-8 rounded-full border-2 ${active ? "border-slate-800" : "border-white"}`}
                 style={{ backgroundColor: c }}
               />
             );
@@ -277,7 +277,7 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
                 setTool("pen");
               }}
               title={t(`draw.${w.key}`)}
-              className={`w-8 h-7 rounded-md flex items-center justify-center ${
+              className={`w-11 h-11 rounded-md flex items-center justify-center ${
                 width === w.val ? "bg-indigo-100" : "bg-slate-100"
               }`}
             >
@@ -316,7 +316,7 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
           </button>
 
           <button
-            className={`${toolBtn(false)} ml-auto`}
+            className={`${toolBtn(false)} ml-auto min-h-11`}
             onClick={() => setPages((p) => Math.max(1, p - 1))}
             disabled={pages <= 1}
             title={t("draw.removePage")}

@@ -333,3 +333,10 @@ AI ช่วยเรา "ฝึก" ไม่ใช่ "ทำแทน" — �
 - **Drawing pad.** `HandwritingPad` accepts `initial` (read once) and `onChange`, so its owner holds the strokes. Remount it with a new `key` to clear it.
 - **Confirm pattern.** `ConfirmDialog` (`components/ui.tsx`): portal dialog, Cancel focused first, red button named after the action, Escape or backdrop to cancel.
 
+## Phase 37 — Tap targets and small text
+- **44px everywhere.** Buttons, selects and text inputs carry `min-h-11`. Header theme and language buttons, calendar ticks, the drawing toolbar and the paywall's close button are 44×44.
+- **`.tap-area`** (`client/src/index.css`): for controls that stay visually small. A centred `::after` gives a touch area of at least 44×44 without changing the layout.
+- **Sliders** on the cost calculator are 44px tall (`h-11` on the range input).
+- **Text floor.** `CourseChip` uses `max(0.8em, 12px)`; `TimeGrid` labels are 12px (the "+N" badge 11px).
+- **Reduced motion.** One media query in `index.css` shortens every animation and transition to nothing when the device asks for less motion.
+

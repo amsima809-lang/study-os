@@ -61,7 +61,7 @@ export default function Weakness() {
         <Card>
           <h3 className="font-medium mb-2" style={{ color: "var(--text-primary)" }}>{t("weak.historyTitle")}</h3>
           <HistoryBars history={history} />
-          <div className="flex justify-between mt-1" style={{ fontSize: 10, color: "var(--text-tertiary)" }}>
+          <div className="flex justify-between mt-1" style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
             <span>{history[0]?.date.slice(5)}</span>
             <span>{history[history.length - 1]?.date.slice(5)}</span>
           </div>

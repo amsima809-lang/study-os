@@ -160,3 +160,26 @@ input {
 .animate-slide-up {
   animation: slideUp 350ms ease-out both;
 }
+
+/* A control that has to stay visually small (a colour dot, a tick box, an × on
+   a photo) still gets a 44px touch area around it. */
+.tap-area:not(.absolute) { position: relative; }
+.tap-area::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100%, 44px);
+  height: max(100%, 44px);
+  transform: translate(-50%, -50%);
+}
+
+/* Honour the device's "reduce motion" setting: no fades, slides or drifting shapes. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
