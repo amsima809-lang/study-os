@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useT } from "../i18n.tsx";
-import { getJSON, type CalendarData, type CalEvent } from "../api.ts";
+import { getJSON, postJSON, deleteJSON, type CalendarData, type CalEvent } from "../api.ts";
 import { CourseTitle } from "./CourseTitle.tsx";
 import { timeRange } from "../format.ts";
 import Icon from "./Icon.tsx";
@@ -20,33 +20,45 @@ function shiftMonth(month: string, delta: number): string {
   return d.toISOString().slice(0, 7);
 }
 
-type DotType = "class" | "exam" | "task";
+type DotType = "class" | "exam" | "task" | "etesting" | "custom";
 const DOT_COLORS: Record<DotType, string> = {
   class: "var(--accent-text)",
   exam: "#ef4444",
   task: "#22c55e",
+  etesting: "#f59e0b",
+  custom: "#6366f1",
+};
+
+type AddEventForm = {
+  title: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  note: string;
 };
 
 export default function Calendar() {
   const { t, lang } = useT();
-  const [month, setMonth] = useState(() => {
-    const now = new Date();
-    return now.toISOString().slice(0, 7);
-  });
+  const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [data, setData] = useState<CalendarData | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
+  const [form, setForm] = useState<AddEventForm>({ title: "", date: "", start_time: "", end_time: "", note: "" });
+  const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
+  const reload = (m: string) => {
     setLoading(true);
-    getJSON<CalendarData>(`/api/calendar?month=${month}`)
+    getJSON<CalendarData>(`/api/calendar?month=${m}`)
       .then((d) => {
         setData(d);
-        if (d.today.startsWith(month)) setSelected(d.today);
+        if (d.today.startsWith(m)) setSelected(d.today);
         else setSelected(null);
       })
       .finally(() => setLoading(false));
-  }, [month]);
+  };
+
+  useEffect(() => { reload(month); }, [month]);
 
   const year = Number(month.slice(0, 4));
   const mon = Number(month.slice(5, 7));
@@ -62,6 +74,30 @@ export default function Calendar() {
 
   const selectedEvents = selected && data?.events[selected] ? data.events[selected] : [];
 
+  const handleAdd = async () => {
+    if (!form.title || !form.date) return;
+    setSaving(true);
+    try {
+      await postJSON("/api/custom-events", {
+        title: form.title,
+        date: form.date,
+        start_time: form.start_time || undefined,
+        end_time: form.end_time || undefined,
+        note: form.note || undefined,
+      });
+      setForm({ title: "", date: "", start_time: "", end_time: "", note: "" });
+      setShowAdd(false);
+      reload(month);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (eventId: number) => {
+    await deleteJSON(`/api/custom-events/${eventId}`);
+    reload(month);
+  };
+
   return (
     <div
       className="rounded-2xl border overflow-hidden"
@@ -70,7 +106,7 @@ export default function Calendar() {
         borderColor: "var(--border-light)",
       }}
     >
-      {/* Header — month nav */}
+      {/* Header — month nav + add button */}
       <div
         className="flex items-center justify-between px-4 py-3"
         style={{ borderBottom: "1px solid var(--border-light)" }}
@@ -85,14 +121,97 @@ export default function Calendar() {
         <h2 className="text-sm font-semibold capitalize" style={{ color: "var(--text-primary)" }}>
           {monthLabel(month, lang)}
         </h2>
-        <button
-          onClick={() => setMonth((m) => shiftMonth(m, 1))}
-          className="p-1.5 rounded-lg transition-colors"
-          style={{ color: "var(--text-secondary)" }}
-        >
-          <Icon name="chevronRight" size={18} />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => {
+              setShowAdd(!showAdd);
+              if (!showAdd && selected) setForm((f) => ({ ...f, date: selected }));
+            }}
+            className="p-1.5 rounded-lg transition-colors"
+            style={{ color: "var(--accent-text)" }}
+            title={t("cal.addEvent")}
+          >
+            <Icon name="plus" size={18} />
+          </button>
+          <button
+            onClick={() => setMonth((m) => shiftMonth(m, 1))}
+            className="p-1.5 rounded-lg transition-colors"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            <Icon name="chevronRight" size={18} />
+          </button>
+        </div>
       </div>
+
+      {/* Add event form */}
+      {showAdd && (
+        <div
+          className="px-4 py-3 space-y-2"
+          style={{ borderBottom: "1px solid var(--border-light)", background: "var(--bg-surface-hover)" }}
+        >
+          <p className="text-xs font-semibold" style={{ color: "var(--accent-text)" }}>
+            {t("cal.addEvent")}
+          </p>
+          <input
+            type="text"
+            placeholder={t("cal.eventTitle")}
+            value={form.title}
+            onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+            className="w-full rounded-lg border px-3 py-2 text-sm"
+            style={{ borderColor: "var(--border-light)", background: "var(--bg-surface)", color: "var(--text-primary)" }}
+          />
+          <input
+            type="date"
+            value={form.date}
+            onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
+            className="w-full rounded-lg border px-3 py-2 text-sm"
+            style={{ borderColor: "var(--border-light)", background: "var(--bg-surface)", color: "var(--text-primary)" }}
+          />
+          <div className="flex gap-2">
+            <input
+              type="time"
+              value={form.start_time}
+              onChange={(e) => setForm((f) => ({ ...f, start_time: e.target.value }))}
+              className="flex-1 rounded-lg border px-3 py-2 text-sm"
+              style={{ borderColor: "var(--border-light)", background: "var(--bg-surface)", color: "var(--text-primary)" }}
+              placeholder={t("cal.startTime")}
+            />
+            <input
+              type="time"
+              value={form.end_time}
+              onChange={(e) => setForm((f) => ({ ...f, end_time: e.target.value }))}
+              className="flex-1 rounded-lg border px-3 py-2 text-sm"
+              style={{ borderColor: "var(--border-light)", background: "var(--bg-surface)", color: "var(--text-primary)" }}
+              placeholder={t("cal.endTime")}
+            />
+          </div>
+          <textarea
+            placeholder={t("cal.note")}
+            value={form.note}
+            onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
+            rows={2}
+            className="w-full rounded-lg border px-3 py-2 text-sm"
+            style={{ borderColor: "var(--border-light)", background: "var(--bg-surface)", color: "var(--text-primary)" }}
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={handleAdd}
+              disabled={saving || !form.title || !form.date}
+              className="flex-1 rounded-lg py-2 text-sm font-medium transition-colors disabled:opacity-50"
+              style={{ background: "var(--accent-text)", color: "#fff" }}
+            >
+              {saving ? "..." : t("cal.save")}
+            </button>
+            <button
+              onClick={() => setShowAdd(false)}
+              className="px-4 rounded-lg py-2 text-sm font-medium transition-colors"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              {t("cal.cancel")}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Weekday headers */}
       <div className="grid grid-cols-7 px-2 pt-2">
@@ -135,7 +254,7 @@ export default function Calendar() {
               <span className={`text-sm leading-6 ${isToday && !isSel ? "font-bold" : ""}`}>{day}</span>
               {/* Event dots */}
               <div className="flex gap-0.5 h-1.5 mt-0.5">
-                {(["class", "exam", "task"] as DotType[]).map(
+                {(["class", "exam", "task", "etesting", "custom"] as DotType[]).map(
                   (typ) =>
                     types.has(typ) && (
                       <span
@@ -169,14 +288,27 @@ export default function Calendar() {
                 timeZone: "UTC",
               }).format(new Date(`${selected}T00:00:00Z`))}
             </span>
-            {selected === data?.today && (
-              <span
-                className="text-xs font-medium px-2 py-0.5 rounded-full"
-                style={{ background: "var(--accent-text)", color: "#fff" }}
+            <div className="flex items-center gap-2">
+              {selected === data?.today && (
+                <span
+                  className="text-xs font-medium px-2 py-0.5 rounded-full"
+                  style={{ background: "var(--accent-text)", color: "#fff" }}
+                >
+                  {t("cal.today")}
+                </span>
+              )}
+              <button
+                onClick={() => {
+                  setForm((f) => ({ ...f, date: selected }));
+                  setShowAdd(true);
+                }}
+                className="p-1 rounded-lg"
+                style={{ color: "var(--accent-text)" }}
+                title={t("cal.addEvent")}
               >
-                {t("cal.today")}
-              </span>
-            )}
+                <Icon name="plus" size={16} />
+              </button>
+            </div>
           </div>
 
           {selectedEvents.length === 0 && !loading ? (
@@ -186,7 +318,7 @@ export default function Calendar() {
           ) : (
             <ul className="space-y-1.5">
               {selectedEvents.map((ev, i) => (
-                <EventRow key={i} ev={ev} t={t} />
+                <EventRow key={i} ev={ev} t={t} onDelete={ev.type === "custom" && ev.event_id ? () => handleDelete(ev.event_id!) : undefined} />
               ))}
             </ul>
           )}
@@ -196,14 +328,31 @@ export default function Calendar() {
   );
 }
 
-function EventRow({ ev, t }: { ev: CalEvent; t: (k: string, v?: Record<string, string | number>) => string }) {
+function EventRow({
+  ev,
+  t,
+  onDelete,
+}: {
+  ev: CalEvent;
+  t: (k: string, v?: Record<string, string | number>) => string;
+  onDelete?: () => void;
+}) {
   const tagColors: Record<string, { bg: string; text: string }> = {
     class: { bg: "rgba(91,79,199,0.15)", text: "var(--accent-text)" },
     exam: { bg: "rgba(239,68,68,0.15)", text: "#ef4444" },
     task: { bg: "rgba(34,197,94,0.15)", text: "#22c55e" },
+    etesting: { bg: "rgba(245,158,11,0.15)", text: "#f59e0b" },
+    custom: { bg: "rgba(99,102,241,0.15)", text: "#6366f1" },
   };
   const tag = tagColors[ev.type] ?? tagColors.class;
-  const label = ev.type === "class" ? t("cal.class") : ev.type === "exam" ? t("cal.exam") : t("cal.task");
+  const labelMap: Record<string, string> = {
+    class: t("cal.class"),
+    exam: t("cal.exam"),
+    task: t("cal.task"),
+    etesting: t("cal.etesting"),
+    custom: t("cal.custom"),
+  };
+  const label = labelMap[ev.type] ?? ev.type;
 
   return (
     <li
@@ -219,7 +368,13 @@ function EventRow({ ev, t }: { ev: CalEvent; t: (k: string, v?: Record<string, s
       </span>
 
       <div className="flex-1 min-w-0">
-        <CourseTitle code={ev.course_code} name_th={ev.name_th} name_en={ev.name_en} className="text-sm font-medium" />
+        {ev.course_code ? (
+          <CourseTitle code={ev.course_code} name_th={ev.name_th} name_en={ev.name_en} className="text-sm font-medium" />
+        ) : (
+          <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+            {ev.name_th}
+          </span>
+        )}
 
         <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
           {ev.start_time && ev.end_time && (
@@ -250,6 +405,12 @@ function EventRow({ ev, t }: { ev: CalEvent; t: (k: string, v?: Record<string, s
               {ev.description}
             </span>
           )}
+          {ev.note && (
+            <span className="text-xs flex items-center gap-1" style={{ color: "var(--text-tertiary)" }}>
+              <Icon name="notebook" size={12} />
+              {ev.note}
+            </span>
+          )}
           {ev.done && (
             <span className="text-xs flex items-center gap-0.5" style={{ color: "#22c55e" }}>
               <Icon name="checkCircle" size={12} />
@@ -258,6 +419,12 @@ function EventRow({ ev, t }: { ev: CalEvent; t: (k: string, v?: Record<string, s
           )}
         </div>
       </div>
+
+      {onDelete && (
+        <button onClick={onDelete} className="p-1 shrink-0 mt-0.5 rounded" style={{ color: "var(--text-tertiary)" }}>
+          <Icon name="x" size={14} />
+        </button>
+      )}
     </li>
   );
 }

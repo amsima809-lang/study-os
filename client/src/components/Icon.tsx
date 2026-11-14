@@ -106,6 +106,12 @@ const paths: Record<string, string> = {
   handwrite:
     "M15 3l4 4L7 19l-5 2 2-5L15 3zm-4 18h8",
 
+  // ── finance ──
+  wallet:
+    "M21 12V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h14a2 2 0 002-2v-1m0-4h-6a2 2 0 100 4h6m0-4a2 2 0 110 4",
+  coins:
+    "M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zm-1-14h2.5a1.5 1.5 0 010 3H11a1.5 1.5 0 000 3h2.5M12 7v1m0 8v1",
+
   // ── misc ──
   zap: "M13 2L3 14h9l-1 8 10-12h-9l1-8z",
   shield:

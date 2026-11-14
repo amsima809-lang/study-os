@@ -59,7 +59,7 @@ export type ExamsData = {
 
 // ---------- Calendar ----------
 export type CalEvent = {
-  type: "class" | "exam" | "task";
+  type: "class" | "exam" | "task" | "etesting" | "custom";
   course_code: string;
   name_th: string;
   name_en: string | null;
@@ -71,6 +71,8 @@ export type CalEvent = {
   task_type?: string;
   description?: string;
   done?: boolean;
+  note?: string | null;
+  event_id?: number;
 };
 
 export type CalendarData = {

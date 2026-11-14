@@ -9,8 +9,9 @@ import Mock from "./Mock.tsx";
 import Library from "./Library.tsx";
 import Weakness from "./Weakness.tsx";
 import StudyPlan from "./StudyPlan.tsx";
+import Costs from "./Costs.tsx";
 
-type Sub = "schedule" | "stats" | "planner" | "mock" | "library" | "weakness" | "studyplan";
+type Sub = "schedule" | "stats" | "planner" | "mock" | "library" | "weakness" | "studyplan" | "costs";
 
 export default function More() {
   const { t } = useT();
@@ -24,6 +25,7 @@ export default function More() {
     { id: "planner", icon: "graduationCap" },
     { id: "mock", icon: "fileEdit" },
     { id: "weakness", icon: "crosshair" },
+    { id: "costs", icon: "coins" },
   ];
 
   if (sub) {
@@ -43,6 +45,7 @@ export default function More() {
         {sub === "library" && <Library />}
         {sub === "weakness" && <Weakness />}
         {sub === "studyplan" && <StudyPlan />}
+        {sub === "costs" && <Costs />}
       </div>
     );
   }

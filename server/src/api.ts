@@ -259,7 +259,7 @@ export function createApiRouter(db: DB): Router {
     const firstExamDate = exams.length > 0 ? exams[0].datetime_start.slice(0, 10) : null;
 
     type CalEvent = {
-      type: "class" | "exam" | "task";
+      type: "class" | "exam" | "task" | "etesting" | "custom";
       course_code: string;
       name_th: string;
       name_en: string | null;
@@ -271,6 +271,8 @@ export function createApiRouter(db: DB): Router {
       task_type?: string;
       description?: string;
       done?: boolean;
+      note?: string | null;
+      event_id?: number;
     };
 
     const events: Record<string, CalEvent[]> = {};
@@ -353,6 +355,51 @@ export function createApiRouter(db: DB): Router {
       }
     }
 
+    // e-Testing exam period events
+    const etestingSched = db.prepare("SELECT * FROM etesting_schedule WHERE term_id = ?").get(term) as
+      { exam_start: string; exam_end: string } | undefined;
+    if (etestingSched) {
+      const eStart = etestingSched.exam_start;
+      const eEnd = etestingSched.exam_end;
+      if (eStart <= lastDay && eEnd >= firstDay) {
+        const regStart = eStart < firstDay ? firstDay : eStart;
+        const regEnd = eEnd > lastDay ? lastDay : eEnd;
+        const ed = new Date(`${regStart}T00:00:00Z`);
+        const regEndD = new Date(`${regEnd}T00:00:00Z`);
+        while (ed <= regEndD) {
+          const iso = ed.toISOString().slice(0, 10);
+          push(iso, {
+            type: "etesting",
+            course_code: "",
+            name_th: "ช่วงสอบ e-Testing",
+            name_en: "e-Testing exam period",
+            description: "09:00–20:30",
+          });
+          ed.setUTCDate(ed.getUTCDate() + 1);
+        }
+      }
+    }
+
+    // custom user events
+    const customEvts = db
+      .prepare("SELECT * FROM custom_events WHERE user_id = ? AND date >= ? AND date <= ? ORDER BY date, start_time")
+      .all(userId, firstDay, lastDay) as Array<{
+      id: number; title: string; date: string; start_time: string | null;
+      end_time: string | null; note: string | null; color: string;
+    }>;
+    for (const ce of customEvts) {
+      push(ce.date, {
+        type: "custom",
+        course_code: "",
+        name_th: ce.title,
+        name_en: null,
+        start_time: ce.start_time ?? undefined,
+        end_time: ce.end_time ?? undefined,
+        note: ce.note,
+        event_id: ce.id,
+      });
+    }
+
     res.json({ month, term, today: bangkokToday(), events });
   });
 
@@ -371,6 +418,107 @@ export function createApiRouter(db: DB): Router {
       daysLeft: daysBetween(today, e.datetime_start.slice(0, 10)),
     }));
     res.json({ term, today, exams, clashes: findExamClashes(termExams(db, term)) });
+  });
+
+  // ── Custom events CRUD ──
+  router.post("/custom-events", (req, res) => {
+    const userId = req.user!.id;
+    const { title, date, start_time, end_time, note, color } = req.body as {
+      title: string; date: string; start_time?: string; end_time?: string; note?: string; color?: string;
+    };
+    if (!title || !date) return res.status(400).json({ error: "title and date required" });
+    const r = db.prepare(
+      "INSERT INTO custom_events (user_id, title, date, start_time, end_time, note, color) VALUES (?,?,?,?,?,?,?)",
+    ).run(userId, title, date, start_time ?? null, end_time ?? null, note ?? null, color ?? "#6366f1");
+    res.json({ id: r.lastInsertRowid });
+  });
+
+  router.put("/custom-events/:id", (req, res) => {
+    const userId = req.user!.id;
+    const id = Number(req.params.id);
+    const { title, date, start_time, end_time, note, color } = req.body as {
+      title?: string; date?: string; start_time?: string; end_time?: string; note?: string; color?: string;
+    };
+    db.prepare(
+      `UPDATE custom_events SET
+         title = COALESCE(?, title), date = COALESCE(?, date),
+         start_time = COALESCE(?, start_time), end_time = COALESCE(?, end_time),
+         note = COALESCE(?, note), color = COALESCE(?, color)
+       WHERE id = ? AND user_id = ?`,
+    ).run(title ?? null, date ?? null, start_time ?? null, end_time ?? null, note ?? null, color ?? null, id, userId);
+    res.json({ ok: true });
+  });
+
+  router.delete("/custom-events/:id", (req, res) => {
+    const userId = req.user!.id;
+    const id = Number(req.params.id);
+    db.prepare("DELETE FROM custom_events WHERE id = ? AND user_id = ?").run(id, userId);
+    res.json({ ok: true });
+  });
+
+  // ── Fee structure + cost calculator ──
+  router.get("/fees", (_req, res) => {
+    const fees = db.prepare("SELECT * FROM fee_structure ORDER BY category, campus").all();
+    res.json(fees);
+  });
+
+  router.get("/cost-estimate", (req, res) => {
+    const userId = req.user!.id;
+    const campus = (req.query.campus as string) ?? "central";
+    const numCourses = Number(req.query.courses ?? 7);
+    const numEtesting = Number(req.query.etesting ?? 0);
+    const numRetake = Number(req.query.retake ?? 0);
+    const creditsPerCourse = Number(req.query.credits_per_course ?? 3);
+
+    const totalCredits = numCourses * creditsPerCourse;
+    const creditFee = campus === "regional" ? 50 : 25;
+    const termMaintenance = campus === "regional" ? 600 : 800;
+    const itFee = 100;
+    const examFee = campus === "regional" ? 60 * numCourses : 0;
+    const etestingFee = numEtesting * (campus === "regional" ? 300 : 200);
+    const retakeFee = numRetake * 60;
+
+    const semesterCost = totalCredits * creditFee + termMaintenance + itFee + examFee + etestingFee + retakeFee;
+
+    const profileRow = db.prepare("SELECT program_id FROM user_profiles WHERE user_id = ?").get(userId) as
+      { program_id: string | null } | undefined;
+    const programId = profileRow?.program_id;
+    let requiredCredits = 132;
+    if (programId) {
+      const req2 = db.prepare("SELECT SUM(required_credits) AS total FROM program_credit_requirements WHERE program_id = ?")
+        .get(programId) as { total: number | null } | undefined;
+      if (req2?.total) requiredCredits = req2.total;
+    }
+
+    const targetYearsRow = db.prepare("SELECT target_years FROM user_profiles WHERE user_id = ?").get(userId) as
+      { target_years: number | null } | undefined;
+    const targetYears = targetYearsRow?.target_years ?? 4;
+    const totalTerms = targetYears * 2;
+    const enrollmentFees = campus === "regional" ? 1700 : 2300;
+    const totalProjection = enrollmentFees + totalTerms * (termMaintenance + itFee);
+
+    res.json({
+      campus,
+      semester: {
+        courses: numCourses,
+        credits: totalCredits,
+        credit_fee: totalCredits * creditFee,
+        maintenance: termMaintenance,
+        it_fee: itFee,
+        exam_fee: examFee,
+        etesting_fee: etestingFee,
+        retake_fee: retakeFee,
+        total: semesterCost,
+      },
+      projection: {
+        required_credits: requiredCredits,
+        target_years: targetYears,
+        total_terms: totalTerms,
+        enrollment_fees: enrollmentFees,
+        term_fees_total: totalTerms * (termMaintenance + itFee),
+        total_estimate: totalProjection,
+      },
+    });
   });
 
   return router;
