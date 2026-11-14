@@ -6,7 +6,7 @@
   "verdict": "CAUTION",
   "label": "In use elsewhere",
   "pick": true,
-  "found": "No study or education product found. A posture-walking app, “Upleaf: Posture Walks” (Health &amp; Fitness), is on the App Store, and a web agency uses <a href=\"https://upleaf.com\">upleaf.com</a>. upleaf.app does not resolve."
+  "found": "No study or education product found. A posture-walking app, “Upleaf: Posture Walks” (Health &amp; Fitness), is on the App Store, and a web agency uses <a href=\"https://upleaf.com\">upleaf.com</a>. A wider check also reported an AI studio using the name at upleaf.io (that site would not load when checked directly). upleaf.app does not resolve."
  },
  {
   "name": "Termwise",
@@ -25,6 +25,60 @@
   "label": "One letter from taken apps",
   "pick": false,
   "found": "Nothing found under this exact spelling (App Store US and Thailand, Google Play, semstra.com / .app / .co do not resolve). But <strong>Semestra</strong>, one letter longer and said the same way, is two Education apps on the App Store in Thailand and one on Google Play, all semester planners."
+ },
+ {
+  "name": "Gradetick",
+  "thai": "",
+  "meaning": "grade + tick",
+  "verdict": "CLEAR",
+  "label": "No similar product found",
+  "found": "Nothing found anywhere; gradetick.com and .app unregistered. Leans towards grades rather than the whole app.",
+  "pick": false
+ },
+ {
+  "name": "Owntick",
+  "thai": "",
+  "meaning": "the tick is your own",
+  "verdict": "CLEAR",
+  "label": "No similar product found",
+  "found": "No exact use. Sound-alikes: OneTick (market data), Donetick (task app). owntick.com is held.",
+  "pick": false
+ },
+ {
+  "name": "Termtick",
+  "thai": "",
+  "meaning": "term + tick",
+  "verdict": "CLEAR",
+  "label": "No similar product found",
+  "found": "Only a hobby GitHub project of the same name. Sits near the TickTick brand.",
+  "pick": false
+ },
+ {
+  "name": "Heartpen",
+  "thai": "",
+  "meaning": "by heart, with your own pen",
+  "verdict": "CLEAR",
+  "label": "No similar product found",
+  "found": "Only personal social handles. heartpen.com is for sale.",
+  "pick": false
+ },
+ {
+  "name": "Acetick",
+  "thai": "",
+  "meaning": "ace it + tick",
+  "verdict": "CLEAR",
+  "label": "No similar product found",
+  "found": "Only one gamer's handle. Reads like “acetic”.",
+  "pick": false
+ },
+ {
+  "name": "Hearttick",
+  "thai": "",
+  "meaning": "know it by heart, earn the tick",
+  "verdict": "CLEAR",
+  "label": "No similar product found",
+  "found": "Only personal handles. Awkward double t; can read as medical.",
+  "pick": false
  },
  {
   "name": "Semestra",

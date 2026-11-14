@@ -48,6 +48,19 @@ The owner asked for an English name and likes three. What quick checks of the Ap
 
 Logo-with-name files for all three are in `lockups/`.
 
+## If Upleaf has to change: checked English fallbacks
+
+A wider check of 32 more English names (App Store US and Thailand, Google Play, web, domains; no trademark register) found none of the first twenty free. Among them: Flyleaf, Dogear, Recto, Byheart, Kenwise (a Thai exam-prep course), Swotly and Stickwise are all existing study or notes products. Six newly coined names had no similar product:
+
+1. **Gradetick** — nothing found anywhere; both domains unregistered.
+2. **Owntick** — fits "AI never does it for me"; sound-alikes OneTick and Donetick.
+3. **Termtick** — only a hobby GitHub project; close to the TickTick brand.
+4. **Heartpen** — only personal handles; the .com is for sale.
+5. **Acetick** — reads like "acetic".
+6. **Hearttick** — awkward double t.
+
+The same check rated Upleaf "in use elsewhere, not in education": the web agency, the posture-walking app, and an AI studio it reported at upleaf.io (that site would not load when checked directly, so this is unverified).
+
 ## Names checked (14 November 2026)
 
 24 names were searched on the App Store, Google Play, the web, domain records and public LINE IDs. Full results with links: `names.json`, shown in `brand-board.html`.
