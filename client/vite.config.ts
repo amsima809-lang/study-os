@@ -21,12 +21,20 @@ export default defineConfig({
         background_color: "#f8fafc",
         display: "standalone",
         start_url: "/",
-        // "Share → StudyOS" from other apps (installed app only): shared text and
-        // links start a new note. Handled in client/src/shareIntake.ts.
+        // "Share → StudyOS" from other apps (installed app only). Text, links,
+        // photos and documents arrive as a form POST to /share, which the service
+        // worker takes in (public/share-sw.js); client/src/shareIntake.ts then
+        // turns them into a new note or a Library upload.
         share_target: {
-          action: "/",
-          method: "GET",
-          params: { title: "share_title", text: "share_text", url: "share_url" },
+          action: "/share",
+          method: "POST",
+          enctype: "multipart/form-data",
+          params: {
+            title: "share_title",
+            text: "share_text",
+            url: "share_url",
+            files: [{ name: "files", accept: ["image/*", "application/pdf", "text/plain", ".pdf", ".txt"] }],
+          },
         },
         icons: [
           { src: "pwa-192x192.png", sizes: "192x192", type: "image/png", purpose: "any maskable" },
@@ -34,6 +42,7 @@ export default defineConfig({
         ],
       },
       workbox: {
+        importScripts: ["share-sw.js"], // receives "Share → StudyOS" (see share_target above)
         navigateFallback: "/index.html",
         // Show last-known data offline for the Today and Review screens.
         runtimeCaching: [

@@ -227,6 +227,10 @@ app.get("/api/ai/usage", (req, res) => {
 
 // --- production: serve the built client + SPA fallback ---
 if (isProd) {
+  // "Share → StudyOS" is normally taken by the service worker (client/public/share-sw.js).
+  // If it is not running yet, open the app instead of answering 404; the shared
+  // content is not read or stored here.
+  app.post("/share", (_req, res) => res.redirect(303, "/"));
   app.use(express.static(env.clientDist));
   app.use((req, res) => {
     if (req.method === "GET" && !req.path.startsWith("/api")) {

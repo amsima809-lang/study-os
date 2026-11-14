@@ -4,7 +4,7 @@ import { getJSON, SIGNED_OUT } from "./api.ts";
 import { setDraftOwner } from "./noteDraft.ts";
 import { ConfirmDialog, LayoutContext, ThemeProvider, ThemeToggle, useOnline, type Layout } from "./components/ui.tsx";
 import { unsavedReason } from "./unsaved.ts";
-import { addSharedToDraft, requestNoteForm, takeShared } from "./shareIntake.ts";
+import { addSharedToDraft, offerUpload, requestNoteForm, sortShared, takeShared, takeSharedFiles } from "./shareIntake.ts";
 import { SubscriptionProvider } from "./components/SubscriptionGate.tsx";
 import Icon from "./components/Icon.tsx";
 import Login from "./screens/Login.tsx";
@@ -173,11 +173,21 @@ function Shell() {
   useEffect(() => {
     const shared = takeShared();
     if (!shared) return;
-    void addSharedToDraft(shared).then(() => {
-      requestNoteForm();
-      setTab("notes");
-      setReloads((n) => n + 1); // if Notes is already open, show the form now
-    });
+    void (async () => {
+      const { photos, documents } = sortShared(shared.files ? await takeSharedFiles() : []);
+      const forNote = !!(shared.title || shared.text || shared.url || photos.length);
+      // Text, links and photos start a note (kept as its draft either way).
+      if (forNote) await addSharedToDraft(shared, photos);
+      if (documents.length > 0) {
+        // A document goes to the Library, which asks which course it is for.
+        offerUpload(documents[0]);
+        setTab("library");
+      } else if (forNote) {
+        requestNoteForm();
+        setTab("notes");
+      }
+      setReloads((n) => n + 1); // if that screen is already open, show the form now
+    })();
   }, []);
 
   // Pull down to reload the screen's data. Not while leaving would lose work.

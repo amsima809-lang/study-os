@@ -16,6 +16,7 @@ import {
 import { useSubscription, handleSubscriptionError } from "../components/SubscriptionGate.tsx";
 import { AddButton, Card, ConfirmDialog, ErrorBox, Loading } from "../components/ui.tsx";
 import { CourseChip } from "../components/CourseTitle.tsx";
+import { hasPendingUpload, takePendingUpload } from "../shareIntake.ts";
 
 type View = "list" | "detail" | "pages" | "transcript";
 
@@ -372,7 +373,8 @@ function MaterialList({
   onReload: () => void;
 }) {
   const { t } = useT();
-  const [showUpload, setShowUpload] = useState(false);
+  // Opens on the upload form when a document was just shared into the app.
+  const [showUpload, setShowUpload] = useState(hasPendingUpload);
 
   return (
     <>
@@ -442,6 +444,17 @@ function UploadForm({ courses, onDone }: { courses: Course[]; onDone: () => void
   const [uploading, setUploading] = useState(false);
   const [err, setErr] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // A document shared from another app: put it in the file field, ready to upload.
+  const [sharedName, setSharedName] = useState("");
+  useEffect(() => {
+    const file = takePendingUpload();
+    if (!file || !fileRef.current) return;
+    const one = new DataTransfer();
+    one.items.add(file);
+    fileRef.current.files = one.files;
+    setSharedName(file.name);
+  }, []);
 
   async function handleUpload() {
     const file = fileRef.current?.files?.[0];
@@ -529,6 +542,7 @@ function UploadForm({ courses, onDone }: { courses: Course[]; onDone: () => void
           className="w-full text-sm min-h-11"
           style={{ color: "var(--text-secondary)" }}
         />
+        {sharedName && <p role="status" className="text-sm" style={{ color: "var(--text-primary)" }}>{t("lib.sharedFile", { name: sharedName })}</p>}
         <p className="pointer-fine-only text-xs" style={{ color: "var(--text-tertiary)" }}>{t("lib.dropHint")}</p>
         <button
           onClick={handleUpload}

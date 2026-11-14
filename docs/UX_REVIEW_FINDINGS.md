@@ -108,7 +108,7 @@ Severity: **A** blocks a task or loses work, **B** slows a task, **C** cosmetic.
 
 ### 9. Content in and out
 
-**Status: 9.2 and 9.3 fixed, 9.1 partly, 2026-11-14 (Phase 41).** Notes can be searched and exported (print or PDF, and a text file); photos can be dropped or pasted into a note and a file dropped onto the Library upload. Phase 43 added sharing text and links into StudyOS from other apps once it is installed to the home screen; sharing photos or files in is not built (it needs a handler in the service worker and an installed app to test on).
+**Status: 9.2 and 9.3 fixed, 9.1 partly, 2026-11-14 (Phase 41).** Notes can be searched and exported (print or PDF, and a text file); photos can be dropped or pasted into a note and a file dropped onto the Library upload. Phases 43 and 44 added sharing into StudyOS from other apps once it is installed to the home screen: text, links and photos start a note; a PDF or text file opens the Library upload form with it chosen.
 
 | # | Sev | Finding | Fix |
 |---|---|---|---|
@@ -146,7 +146,6 @@ Needs a device, a person or a decision, so not done here:
 - **Decisions:** offline use with sync (6.2 is only a notice and clear errors); notifications when the app is closed (web push); the native wrapper with its in-app browser and share-from-other-apps (web app only for now); what AI may do with a lecture transcript.
 - **Data:** 60 course names that need the 2569 admission guide.
 - **Not verified:** the lecture-collector bookmark on a deployed HTTPS site.
-- **Not built:** sharing photos or files into StudyOS from other apps (text and links work).
 
 ## Third pass, 2026-11-14 (Phase 43)
 
@@ -158,7 +157,7 @@ Everything left on the list above that did not need a device, a decision or data
 - **Pull to refresh (8.1).** Pull down from the top of any screen to reload it; drafts are kept.
 - **Pen pressure (8.3).** A pressure-sensitive pen draws thinner or thicker lines.
 - **On-screen keyboard (7.1).** Sheets and dialogs lift above the keyboard where it covers the page, and the field being typed in is scrolled into view. Built from the specification; the keyboard itself could not be tested here.
-- **Share into StudyOS (9.1).** Text and links.
+- **Share into StudyOS (9.1).** Text and links (photos and files followed in Phase 44).
 - **Onboarding and paywall audit.** All five onboarding fields and the paywall were audited at phone size. Found and fixed: the onboarding labels were not connected to their fields; the paywall had no dialog role, an unlabelled close button and no Escape key.
 - **Field labels everywhere.** The same check, run on every screen and inner form, found 19 fields with no accessible name (quiz, planner, stats, costs, library, mock, study plan). All now have one.
 
@@ -175,3 +174,10 @@ Tested with simulated touch, pen and keyboard-size events in a desktop browser. 
 7. Small fixes that can ride along with any of the above: 4.2, 4.3, 4.4, 10.2, 10.3.
 
 Still open as decisions, not fixes: full offline use with sync (6.2 is only the stopgap).
+
+## Fourth pass, 2026-11-14 (Phase 44)
+
+- **Sharing photos and files in (9.1).** The service worker now receives a share that carries files. Photos are attached to a new note; a PDF or text file opens the Library upload form with it already chosen, since the Library needs to know the course. Checked two ways: the production build's real service worker took a real form submission with a photo and a PDF in a desktop browser, and the signed-in app then turned the same content into a note and an upload. Not checked: the phone's own share sheet, which needs the app installed on a phone.
+- **"This draft could not be stored" warning.** Exercised by making the browser's storage fail on purpose, both ways: storage that refuses only the photos (the note says the photos are not kept) and storage that refuses everything (the note says nothing is kept). In both, the app asked before switching screens and before closing the page, and stopped asking once storage worked again.
+- **Pull to refresh.** The error seen in the earlier sweep (a touch that does not start on an element) was re-run after the fix: no error, and a normal pull still reloads.
+
