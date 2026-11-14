@@ -263,7 +263,7 @@ function LectureLinks({ onRead }: { onRead: (t: OpenTranscript) => void }) {
                 className="inline-block rounded-lg px-2 py-1 font-medium cursor-grab"
                 style={{ backgroundColor: "var(--accent-light)", color: "var(--accent-text)" }}
               >
-                StudyOS: {t("lib.help.bookmark")}
+                {t("app.name")}: {t("lib.help.bookmark")}
               </a>
             </li>
             <li>{t("lib.help.step2")}</li>

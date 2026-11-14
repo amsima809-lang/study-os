@@ -10,9 +10,14 @@
  * A push must always end in a visible notification (browsers require it), so
  * when the details cannot be fetched a plain "something is due" is shown.
  */
+// The product's name. This file cannot import client/src/brand.ts, so the name is
+// repeated here; scripts/rename-app.mjs changes both together.
+const APP_NAME = "StudyOS"; // @app-name
+const APP_NAME_TH = "StudyOS"; // @app-name-th
+
 const WORDS = {
-  th: { due: "มีรายการถึงเวลาแล้ว เปิด StudyOS เพื่อดู", test: "การแจ้งเตือนทำงานแล้ว", signIn: "เข้าสู่ระบบ StudyOS เพื่อรับการแจ้งเตือนต่อ" },
-  en: { due: "Something is due. Open StudyOS to see it.", test: "Notifications are working.", signIn: "Sign in to StudyOS to keep getting notifications." },
+  th: { due: "มีรายการถึงเวลาแล้ว เปิด " + APP_NAME_TH + " เพื่อดู", test: "การแจ้งเตือนทำงานแล้ว", signIn: "เข้าสู่ระบบ " + APP_NAME_TH + " เพื่อรับการแจ้งเตือนต่อ" },
+  en: { due: "Something is due. Open " + APP_NAME + " to see it.", test: "Notifications are working.", signIn: "Sign in to " + APP_NAME + " to keep getting notifications." },
 };
 const ICON = "/pwa-192x192.png";
 
@@ -36,16 +41,16 @@ async function showWhatIsDue() {
   if (signedOut) {
     // Nobody is signed in here any more: stop the pushes for this device.
     if (subscription) await subscription.unsubscribe().catch(() => {});
-    return show("StudyOS", WORDS.th.signIn + " · " + WORDS.en.signIn, "studyos-signin");
+    return show(APP_NAME, WORDS.th.signIn + " · " + WORDS.en.signIn, "studyos-signin");
   }
 
   const words = WORDS[answer && answer.lang === "en" ? "en" : "th"];
   const items = (answer && answer.items) || [];
   const shown = [];
-  if (answer && answer.test) shown.push(show("StudyOS", words.test, "studyos-test"));
+  if (answer && answer.test) shown.push(show(APP_NAME, words.test, "studyos-test"));
   // The tag matches the in-app alert's, so an open app and a push never show the same item twice.
   for (const item of items) shown.push(show(item.title, item.body, "studyos-" + item.id + "-" + item.on));
-  if (shown.length === 0) shown.push(show("StudyOS", words.due, "studyos-due"));
+  if (shown.length === 0) shown.push(show(APP_NAME, words.due, "studyos-due"));
   return Promise.all(shown);
 }
 

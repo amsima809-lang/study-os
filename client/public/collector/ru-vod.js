@@ -145,13 +145,17 @@
   }
 
   // ── Bookmark mode: a small panel on the page, then a file download ──────────
+  // The product's name as the student sees it (these messages are in Thai). This file
+  // runs on the university's site and cannot import client/src/brand.ts, so the name
+  // is repeated here; scripts/rename-app.mjs changes it together with the others.
+  var APP_NAME_TH = "StudyOS"; // @app-name-th
   var TEXT = {
-    working: "StudyOS: กำลังเก็บคำบรรยาย",
-    done: "StudyOS: บันทึกไฟล์แล้ว นำเข้าได้ที่ คลังเอกสาร ใน StudyOS",
-    NOT_SIGNED_IN: "StudyOS: กรุณาเข้าสู่ระบบก่อน แล้วลองอีกครั้ง",
-    NOT_A_COURSE_PAGE: "StudyOS: เปิดหน้ารายวิชาหรือหน้าวิดีโอก่อน แล้วลองอีกครั้ง",
-    NO_SUBTITLES_FOUND: "StudyOS: ไม่พบคำบรรยายในรายวิชานี้",
-    other: "StudyOS: เก็บคำบรรยายไม่สำเร็จ",
+    working: APP_NAME_TH + ": กำลังเก็บคำบรรยาย",
+    done: APP_NAME_TH + ": บันทึกไฟล์แล้ว นำเข้าได้ที่ คลังเอกสาร ใน " + APP_NAME_TH,
+    NOT_SIGNED_IN: APP_NAME_TH + ": กรุณาเข้าสู่ระบบก่อน แล้วลองอีกครั้ง",
+    NOT_A_COURSE_PAGE: APP_NAME_TH + ": เปิดหน้ารายวิชาหรือหน้าวิดีโอก่อน แล้วลองอีกครั้ง",
+    NO_SUBTITLES_FOUND: APP_NAME_TH + ": ไม่พบคำบรรยายในรายวิชานี้",
+    other: APP_NAME_TH + ": เก็บคำบรรยายไม่สำเร็จ",
   };
 
   function runFromBookmark() {

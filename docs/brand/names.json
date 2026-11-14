@@ -1,0 +1,218 @@
+[
+ {
+  "name": "Khuenjai",
+  "thai": "ขึ้นใจ",
+  "meaning": "know it by heart",
+  "verdict": "CLEAR",
+  "label": "No similar product found",
+  "found": "Only other use found: a 2026 pop song of the same name. The simpler spelling Kuenjai is free as well.",
+  "pick": true
+ },
+ {
+  "name": "ThamEng",
+  "thai": "ทำเอง",
+  "meaning": "I do it myself",
+  "verdict": "CLEAR",
+  "label": "No similar product found",
+  "found": "Only use found: a small handmade-crafts Instagram account. Tutors use the phrase in passing.",
+  "pick": true
+ },
+ {
+  "name": "Maenjai",
+  "thai": "แม่นใจ",
+  "meaning": "coined: accurate + confident",
+  "verdict": "CLEAR",
+  "label": "No similar product found",
+  "found": "No product found. The same sounds appear as a phrase in Isan song lyrics; worth asking Thai speakers how that lands.",
+  "pick": true
+ },
+ {
+  "name": "Jammaen",
+  "thai": "จำแม่น",
+  "meaning": "remember accurately",
+  "verdict": "CLEAR",
+  "label": "No similar product found",
+  "found": "No product carries the name, but it is a common descriptive phrase in tutoring adverts, so harder to own.",
+  "pick": true
+ },
+ {
+  "name": "Nuekok",
+  "thai": "นึกออก",
+  "meaning": "it comes back to me",
+  "verdict": "CLEAR",
+  "label": "No similar product found",
+  "found": "Phrase use only. The romanised spelling is the hardest of the five for English speakers.",
+  "pick": false
+ },
+ {
+  "name": "RianRod",
+  "thai": "เรียนรอด",
+  "meaning": "survive your studies",
+  "verdict": "CLEAR",
+  "label": "No similar product found",
+  "found": "No product found. It means “just scrape through”, and also reads as the military cadet course (เรียน รด.).",
+  "pick": false
+ },
+ {
+  "name": "Thuanly",
+  "thai": "ทวน + ly",
+  "meaning": "review",
+  "verdict": "CLEAR",
+  "label": "No similar product found",
+  "found": "No product found, but “Thuan Ly” is a Vietnamese personal name.",
+  "pick": false
+ },
+ {
+  "name": "RooJing",
+  "thai": "รู้จริง",
+  "meaning": "truly know",
+  "verdict": "CAUTION",
+  "label": "In use elsewhere",
+  "found": "A registered company (supplements), a Chinese-teaching Facebook page and a YouTube show use it; a stock phrase in tutor adverts.",
+  "pick": false
+ },
+ {
+  "name": "Thuan",
+  "thai": "ทวน",
+  "meaning": "review",
+  "verdict": "CAUTION",
+  "label": "In use elsewhere",
+  "found": "A common Vietnamese name: store searches return dozens of unrelated apps.",
+  "pick": false
+ },
+ {
+  "name": "Jamdee",
+  "thai": "จำดี",
+  "meaning": "remember well",
+  "verdict": "CAUTION",
+  "label": "In use elsewhere",
+  "found": "A memory-training school uses the same words, and a reminder app is called จำดิ (Jumdi).",
+  "pick": false
+ },
+ {
+  "name": "Fuekfon",
+  "thai": "ฝึกฝน",
+  "meaning": "practise, train",
+  "verdict": "CAUTION",
+  "label": "In use elsewhere",
+  "found": "A practice-loop app carries “ฝึกฝน (Fuek Fon)” in its Thai App Store title; generic in every practice app’s description.",
+  "pick": false
+ },
+ {
+  "name": "Kati",
+  "thai": "หัวกะทิ",
+  "meaning": "top of the class",
+  "verdict": "CAUTION",
+  "label": "In use elsewhere",
+  "found": "หัวกะทิ is already a tutoring brand (about 28,000 Facebook followers) and a tutor centre; Kati alone is a fintech app.",
+  "pick": false
+ },
+ {
+  "name": "Koohoo",
+  "thai": "คู่หู",
+  "meaning": "sidekick",
+  "verdict": "CAUTION",
+  "label": "In use elsewhere",
+  "found": "An AI companion app at koohoo.app and a Thai “Koohoo AI” platform.",
+  "pick": false
+ },
+ {
+  "name": "Lapkom",
+  "thai": "ลับคม",
+  "meaning": "sharpen the blade",
+  "verdict": "CAUTION",
+  "label": "In use elsewhere",
+  "found": "A teacher-exam prep book and tutors use it; also the everyday term for knife sharpening.",
+  "pick": false
+ },
+ {
+  "name": "Kengkuen",
+  "thai": "เก่งขึ้น",
+  "meaning": "getting better",
+  "verdict": "CAUTION",
+  "label": "In use elsewhere",
+  "found": "Close to the online school เก่งได้ อะคาเดมี่; in most tutoring adverts.",
+  "pick": false
+ },
+ {
+  "name": "Jodjam",
+  "thai": "จดจำ",
+  "meaning": "note down and remember",
+  "verdict": "TAKEN",
+  "label": "Used by a study app",
+  "found": "A Thai notes and reminders app on both stores (<a href=\"https://apps.apple.com/th/app/id6778345889\">App Store</a>), and a LINE assistant at <a href=\"https://jodjam.com\">jodjam.com</a>.",
+  "pick": false
+ },
+ {
+  "name": "Tiwdee",
+  "thai": "ติวดี",
+  "meaning": "good tutoring",
+  "verdict": "TAKEN",
+  "label": "Used by a study app",
+  "found": "A paid test-practice product at <a href=\"https://tiwdee.app/\">tiwdee.app</a> and a free exam-practice site at <a href=\"https://www.tiudee.com\">www.tiudee.com</a>.",
+  "pick": false
+ },
+ {
+  "name": "PromSob",
+  "thai": "พร้อมสอบ",
+  "meaning": "exam-ready",
+  "verdict": "TAKEN",
+  "label": "Used by a study app",
+  "found": "An exam-practice site at <a href=\"https://promsob.com/th/\">promsob.com</a> and a series of apps branded พร้อมสอบ.",
+  "pick": false
+ },
+ {
+  "name": "Khaojai",
+  "thai": "เข้าใจ",
+  "meaning": "understand",
+  "verdict": "TAKEN",
+  "label": "Used by a study app",
+  "found": "Four products, including a Thai-learning app at <a href=\"https://khaojai.app/\">khaojai.app</a>.",
+  "pick": false
+ },
+ {
+  "name": "Termwise",
+  "thai": "",
+  "meaning": "coined English name",
+  "verdict": "TAKEN",
+  "label": "Used by a study app",
+  "found": "School-management software (<a href=\"https://termwise.org\">termwise.org</a>); small and outside Thailand, but ed-tech.",
+  "pick": false
+ },
+ {
+  "name": "Retainly",
+  "thai": "",
+  "meaning": "coined English name",
+  "verdict": "TAKEN",
+  "label": "Used by a study app",
+  "found": "A spaced-repetition app, a revision tracker and a UK flashcard company all use it.",
+  "pick": false
+ },
+ {
+  "name": "Semestra",
+  "thai": "",
+  "meaning": "coined English name",
+  "verdict": "TAKEN",
+  "label": "Used by a study app",
+  "found": "Three semester-planner apps, one with quizzes and flashcards.",
+  "pick": false
+ },
+ {
+  "name": "Loopwise",
+  "thai": "",
+  "meaning": "coined English name",
+  "verdict": "TAKEN",
+  "label": "Used by a study app",
+  "found": "An online course platform at <a href=\"https://loopwise.com/\">loopwise.com</a>.",
+  "pick": false
+ },
+ {
+  "name": "Recallo",
+  "thai": "",
+  "meaning": "coined English name",
+  "verdict": "TAKEN",
+  "label": "Used by a study app",
+  "found": "Several flashcard apps, plus a notes-to-quiz product at recallo.io.",
+  "pick": false
+ }
+]

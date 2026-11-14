@@ -2,19 +2,22 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
+import { APP_NAME } from "./src/brand.ts";
 
 // Client dev server runs on 5180 and proxies /api to the backend on 3100,
 // so both can run together with one `npm run dev`.
 export default defineConfig({
   plugins: [
+    // The page title and home-screen title take the product's name from src/brand.ts.
+    { name: "app-name", transformIndexHtml: (html: string) => html.replaceAll("%APP_NAME%", APP_NAME) },
     react(),
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["apple-touch-icon.png", "favicon-32x32.png"],
+      includeAssets: ["apple-touch-icon.png", "favicon-32x32.png", "favicon.svg"],
       manifest: {
-        name: "StudyOS",
-        short_name: "StudyOS",
+        name: APP_NAME,
+        short_name: APP_NAME,
         description: "ผู้ช่วยการเรียนส่วนตัว ม.รามคำแหง",
         lang: "th",
         theme_color: "#4f46e5",

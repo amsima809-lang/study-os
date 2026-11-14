@@ -8,6 +8,7 @@
  * from the database (Thai only for now) — never invented in English.
  */
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { appName } from "./brand.ts";
 
 export type Lang = "th" | "en";
 
@@ -16,7 +17,7 @@ type Dict = Record<string, string>;
 // One flat dictionary per language. Add keys as new phases add screens.
 const STRINGS: Record<Lang, Dict> = {
   th: {
-    "app.name": "StudyOS",
+    "app.name": "{app}",
     "app.tagline": "ผู้ช่วยการเรียนส่วนตัว",
     "lang.th": "ไทย",
     "lang.en": "EN",
@@ -174,10 +175,10 @@ const STRINGS: Record<Lang, Dict> = {
     "rem.notify.off": "ยังไม่ได้เปิดการแจ้งเตือนบนอุปกรณ์นี้",
     "rem.notify.blocked": "เบราว์เซอร์นี้บล็อกการแจ้งเตือนไว้ เปิดได้ในการตั้งค่าเว็บไซต์ของเบราว์เซอร์",
     "rem.notify.unsupported": "เบราว์เซอร์นี้ไม่รองรับการแจ้งเตือน",
-    "rem.notify.limit": "ตอนเปิด StudyOS ค้างไว้ จะมีแถบแจ้งในแอปเสมอ และแจ้งเตือนบนอุปกรณ์ถ้าเปิดไว้",
-    "rem.push.on": "แจ้งเตือนแม้ปิด StudyOS: เปิดอยู่บนอุปกรณ์นี้",
-    "rem.push.off": "แจ้งเตือนแม้ปิด StudyOS: ยังไม่ได้เปิดบนอุปกรณ์นี้",
-    "rem.push.needs-install": "บน iPhone และ iPad ต้องเพิ่ม StudyOS ไว้ที่หน้าจอโฮมก่อน (แชร์ → เพิ่มไปยังหน้าจอโฮม) แล้วเปิดแอปจากไอคอนนั้น จึงจะเปิดการแจ้งเตือนตอนปิดแอปได้",
+    "rem.notify.limit": "ตอนเปิด {app} ค้างไว้ จะมีแถบแจ้งในแอปเสมอ และแจ้งเตือนบนอุปกรณ์ถ้าเปิดไว้",
+    "rem.push.on": "แจ้งเตือนแม้ปิด {app}: เปิดอยู่บนอุปกรณ์นี้",
+    "rem.push.off": "แจ้งเตือนแม้ปิด {app}: ยังไม่ได้เปิดบนอุปกรณ์นี้",
+    "rem.push.needs-install": "บน iPhone และ iPad ต้องเพิ่ม {app} ไว้ที่หน้าจอโฮมก่อน (แชร์ → เพิ่มไปยังหน้าจอโฮม) แล้วเปิดแอปจากไอคอนนั้น จึงจะเปิดการแจ้งเตือนตอนปิดแอปได้",
     "rem.push.no-worker": "การแจ้งเตือนตอนปิดแอปใช้ได้ในแอปที่ใช้งานจริง ไม่ทำงานในหน้าทดสอบสำหรับนักพัฒนา",
     "rem.push.unsupported": "เบราว์เซอร์นี้แจ้งเตือนตอนปิดแอปไม่ได้",
     "rem.push.turnOn": "แจ้งเตือนแม้ปิดแอป",
@@ -308,7 +309,7 @@ const STRINGS: Record<Lang, Dict> = {
     "lib.importTranscripts": "นำเข้าไฟล์คำบรรยาย",
     "lib.importing": "กำลังนำเข้า…",
     "lib.importDone": "นำเข้าแล้ว {n} ครั้ง ({course})",
-    "lib.importBad": "อ่านไฟล์นี้ไม่ได้ ต้องเป็นไฟล์ .json จากตัวเก็บคำบรรยายของ StudyOS",
+    "lib.importBad": "อ่านไฟล์นี้ไม่ได้ ต้องเป็นไฟล์ .json จากตัวเก็บคำบรรยายของ {app}",
     "lib.howToGet": "วิธีเก็บคำบรรยาย",
     "lib.help.intro": "ทำบนคอมพิวเตอร์ ตัวเก็บคำบรรยายจะอ่านคำบรรยายจากหน้าเว็บของ ม.รามคำแหง ที่คุณเข้าสู่ระบบไว้เอง แล้วบันทึกเป็นไฟล์",
     "lib.help.step1": "ลากปุ่มนี้ไปไว้ที่แถบบุ๊กมาร์กของเบราว์เซอร์:",
@@ -316,7 +317,7 @@ const STRINGS: Record<Lang, Dict> = {
     "lib.help.step2": "เปิดวิดีโอคำบรรยายของวิชาที่ต้องการ (กด “ดูวิดีโอ”) แล้วเข้าสู่ระบบด้วยบัญชี e-service",
     "lib.help.step3": "กดบุ๊กมาร์กที่ลากไว้ รอจนขึ้นว่าบันทึกไฟล์แล้ว",
     "lib.help.step4": "กลับมาที่นี่ กด “นำเข้าไฟล์คำบรรยาย” แล้วเลือกไฟล์นั้น",
-    "lib.help.privacy": "StudyOS ไม่เห็นและไม่เก็บรหัสผ่านมหาวิทยาลัยของคุณ คำบรรยายที่นำเข้าเป็นของคุณคนเดียว",
+    "lib.help.privacy": "{app} ไม่เห็นและไม่เก็บรหัสผ่านมหาวิทยาลัยของคุณ คำบรรยายที่นำเข้าเป็นของคุณคนเดียว",
     "lib.searchTranscript": "ค้นหาในคำบรรยาย",
     "lib.matches": "พบ {n} ช่วง",
     "lib.noMatches": "ไม่พบคำที่ค้นหา",
@@ -743,7 +744,7 @@ const STRINGS: Record<Lang, Dict> = {
     "sub.free": "Free",
   },
   en: {
-    "app.name": "StudyOS",
+    "app.name": "{app}",
     "app.tagline": "Your personal study assistant",
     "lang.th": "ไทย",
     "lang.en": "EN",
@@ -900,10 +901,10 @@ const STRINGS: Record<Lang, Dict> = {
     "rem.notify.off": "Notifications are off on this device",
     "rem.notify.blocked": "This browser is blocking notifications. Allow them in the browser's site settings.",
     "rem.notify.unsupported": "This browser does not support notifications",
-    "rem.notify.limit": "While StudyOS is open you always get a banner in the app, and a device notification if they are on.",
-    "rem.push.on": "When StudyOS is closed: on for this device",
-    "rem.push.off": "When StudyOS is closed: not on for this device yet",
-    "rem.push.needs-install": "On iPhone and iPad, first add StudyOS to the Home Screen (Share → Add to Home Screen) and open it from that icon. Then you can turn on notifications for when the app is closed.",
+    "rem.notify.limit": "While {app} is open you always get a banner in the app, and a device notification if they are on.",
+    "rem.push.on": "When {app} is closed: on for this device",
+    "rem.push.off": "When {app} is closed: not on for this device yet",
+    "rem.push.needs-install": "On iPhone and iPad, first add {app} to the Home Screen (Share → Add to Home Screen) and open it from that icon. Then you can turn on notifications for when the app is closed.",
     "rem.push.no-worker": "Notifications with the app closed work in the live app, not in this developer preview.",
     "rem.push.unsupported": "This browser cannot notify you when the app is closed.",
     "rem.push.turnOn": "Notify me when the app is closed",
@@ -1032,7 +1033,7 @@ const STRINGS: Record<Lang, Dict> = {
     "lib.importTranscripts": "Import transcript file",
     "lib.importing": "Importing…",
     "lib.importDone": "Imported {n} lectures ({course})",
-    "lib.importBad": "This file can't be read. It must be a .json file from the StudyOS transcript collector.",
+    "lib.importBad": "This file can't be read. It must be a .json file from the {app} transcript collector.",
     "lib.howToGet": "How to get transcripts",
     "lib.help.intro": "Do this on a computer. The collector reads the subtitles from the Ramkhamhaeng page that you are signed in to yourself, and saves them as a file.",
     "lib.help.step1": "Drag this button to your browser's bookmarks bar:",
@@ -1040,7 +1041,7 @@ const STRINGS: Record<Lang, Dict> = {
     "lib.help.step2": "Open a lecture video for the course you want (use “Watch”) and sign in with your e-service account.",
     "lib.help.step3": "Click the bookmark you dragged. Wait until it says the file is saved.",
     "lib.help.step4": "Come back here, press “Import transcript file” and choose that file.",
-    "lib.help.privacy": "StudyOS never sees or stores your university password. Transcripts you import are yours alone.",
+    "lib.help.privacy": "{app} never sees or stores your university password. Transcripts you import are yours alone.",
     "lib.searchTranscript": "Search this transcript",
     "lib.matches": "{n} passages found",
     "lib.noMatches": "Nothing matches your search",
@@ -1481,6 +1482,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     document.documentElement.lang = lang;
+    document.title = appName(lang);
     try {
       localStorage.setItem(STORAGE_KEY, lang);
     } catch {
@@ -1496,7 +1498,8 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
           s = s.replace(`{${k}}`, String(val));
         }
       }
-      return s;
+      // The product's name is never typed into a string: {app} is filled in from brand.ts.
+      return s.includes("{app}") ? s.replaceAll("{app}", appName(lang)) : s;
     };
     return { lang, setLang: setLangState, t };
   }, [lang]);

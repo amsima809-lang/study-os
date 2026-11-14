@@ -4,6 +4,7 @@ import { postJSON } from "../api.ts";
 import { ThemeToggle } from "../components/ui.tsx";
 import Icon from "../components/Icon.tsx";
 import UniversityPicker, { useUniversity } from "../components/UniversityPicker.tsx";
+import Logo from "../components/Logo.tsx";
 
 const DARK = "#0b0b18";
 
@@ -134,7 +135,7 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
               boxShadow: `0 8px 32px ${mix(primary, DARK, 0.2, 0.25)}`,
             }}
           >
-            <Icon name="book" size={40} style={{ color: "rgba(255,255,255,0.9)" }} />
+            <Logo size={44} style={{ color: "rgba(255,255,255,0.95)" }} />
           </div>
           <h1 className="text-4xl font-extrabold tracking-tight" style={{ color: "#fff" }}>
             {t("app.name")}

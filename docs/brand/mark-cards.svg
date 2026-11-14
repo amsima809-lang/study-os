@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="currentColor" role="img" aria-label="Logo mark: two study cards, the front one ticked">
+  <defs>
+    <!-- The tick is cut OUT of the front card, so the mark works on any background. -->
+    <mask id="tick-cut">
+      <rect width="64" height="64" fill="#fff"/>
+      <path d="M18.500 37.500l6.200 6.300 12.300-13.600" fill="none" stroke="#000" stroke-width="5.500" stroke-linecap="round" stroke-linejoin="round"/>
+    </mask>
+  </defs>
+  <!-- Back card -->
+  <rect x="17" y="8" width="38" height="38" rx="9" opacity=".4"/>
+  <!-- Front card -->
+  <rect x="8" y="18" width="38" height="38" rx="9" mask="url(#tick-cut)"/>
+</svg>
