@@ -22,3 +22,8 @@
   --map-label-soft: var(--text-secondary);
 }
 .campus-map svg { display: block; width: 100%; height: auto; }
+
+/* "You are here": a soft disc as wide as the position is uncertain, and a dot at its centre. */
+.campus-map .me { pointer-events: none; }
+.campus-map .me-halo { fill: color-mix(in srgb, #2563eb 22%, transparent); stroke: color-mix(in srgb, #2563eb 55%, transparent); stroke-width: 2; }
+.campus-map .me-dot { fill: #2563eb; stroke: #fff; stroke-width: 4; }

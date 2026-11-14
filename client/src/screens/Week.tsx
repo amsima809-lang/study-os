@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { useT } from "../i18n.tsx";
 import { getJSON, type WeekData, type ClassSession } from "../api.ts";
-import { weekdayName, timeRange } from "../format.ts";
+import { weekdayName } from "../format.ts";
+import ClassRows from "../components/ClassRows.tsx";
 import { Card, ErrorBox, Loading } from "../components/ui.tsx";
-import { CourseTitle } from "../components/CourseTitle.tsx";
 
 export default function Week() {
   const { t, lang } = useT();
@@ -38,22 +38,7 @@ export default function Week() {
         days.map((wd) => (
           <Card key={wd}>
             <h2 className="font-semibold mb-2" style={{ color: "var(--accent-text)" }}>{weekdayName(wd, lang)}</h2>
-            <ul className="space-y-2">
-              {byDay.get(wd)!.map((c, i) => (
-                <li key={`${c.course_code}-${i}`} className="flex justify-between text-sm gap-2">
-                  <CourseTitle
-                    code={c.course_code}
-                    name_th={c.name_th}
-                    name_en={c.name_en}
-                    className="font-medium"
-                  />
-                  <span className="text-right whitespace-nowrap" style={{ color: "var(--text-tertiary)" }}>
-                    {timeRange(c.start_time, c.end_time)}
-                    {c.room ? ` · ${c.room}` : ""}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <ClassRows classes={byDay.get(wd)!} />
           </Card>
         ))
       )}

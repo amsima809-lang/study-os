@@ -1,7 +1,10 @@
 /**
  * The campus map: Ramkhamhaeng's two campuses, drawn in the app's own colours
  * (client/src/maps/). It shows where the student's classes are this term (a room
- * such as "KTB 201" is in building KTB), and names any building that is tapped.
+ * such as "KTB 201" is in building KTB), names any building that is tapped, gives walking
+ * directions to it, and can show roughly where the student is standing.
+ * Her position is read only when she asks, is used only in this browser to draw the mark,
+ * and is never sent to the server.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useT } from "../i18n.tsx";
@@ -14,8 +17,9 @@ import Icon from "../components/Icon.tsx";
 import huamak from "../maps/ru-huamak.svg?raw";
 import bangna from "../maps/ru-bangna.svg?raw";
 import "../maps/maps.css";
+import { directionsUrl, onDrawing, placeOf, positionOf, type CampusId } from "../maps/locate.ts";
+import { GROUND } from "../maps/places.ts";
 
-type CampusId = "huamak" | "bangna";
 const CAMPUSES: Record<CampusId, { svg: string; label: string }> = {
   huamak: { svg: huamak, label: "map.huamak" },
   bangna: { svg: bangna, label: "map.bangna" },
@@ -29,16 +33,8 @@ function buildingsOf(svg: string): Map<string, string> {
   return out;
 }
 const BUILDINGS: Record<CampusId, Map<string, string>> = { huamak: buildingsOf(huamak), bangna: buildingsOf(bangna) };
-/** "KTB 201" -> { campus: "bangna", code: "KTB" }; a room in no building on either map -> null. */
-function placeOf(room: string | null): { campus: CampusId; code: string } | null {
-  for (const m of (room ?? "").matchAll(/[A-Z]{2,4}\d?/g)) {
-    for (const campus of ["bangna", "huamak"] as CampusId[]) {
-      for (const code of [m[0], m[0].replace(/\d$/, "")]) if (BUILDINGS[campus].has(code)) return { campus, code };
-    }
-  }
-  return null;
-}
 const ZOOMS = [1, 1.8, 2.8];
+const GROUND_UNIT: Record<CampusId, number> = { huamak: GROUND.huamak.unit, bangna: GROUND.bangna.unit };
 
 export default function CampusMap() {
   const { t, lang } = useT();
@@ -48,6 +44,32 @@ export default function CampusMap() {
   // On a phone the whole campus at once is too small to read: start one step in.
   const [zoom, setZoom] = useState(() => (window.innerWidth < 700 ? 1 : 0));
   const holder = useRef<HTMLDivElement>(null);
+  // Where she is, once she has asked ("Where am I?"). Kept up to date while this screen is open.
+  const [me, setMe] = useState<{ lat: number; lon: number; accuracy: number } | null>(null);
+  const [locating, setLocating] = useState<"off" | "asking" | "on" | "failed">("off");
+  const watch = useRef<number | null>(null);
+  useEffect(() => () => { if (watch.current !== null) navigator.geolocation?.clearWatch(watch.current); }, []);
+  const whereAmI = () => {
+    if (!navigator.geolocation) return setLocating("failed");
+    if (watch.current !== null) navigator.geolocation.clearWatch(watch.current);
+    setLocating("asking");
+    let first = true;
+    watch.current = navigator.geolocation.watchPosition(
+      (pos) => {
+        const here = { lat: pos.coords.latitude, lon: pos.coords.longitude, accuracy: pos.coords.accuracy };
+        setMe(here);
+        setLocating("on");
+        if (first) {
+          // Show the campus she is standing on, if it is the other one.
+          first = false;
+          const on = (["huamak", "bangna"] as CampusId[]).find((c) => onDrawing(c, here.lat, here.lon).inside);
+          if (on) { setCampus(on); setSelected((cur) => (cur && !BUILDINGS[on].has(cur) ? null : cur)); }
+        }
+      },
+      () => setLocating((s) => (s === "on" ? s : "failed")),
+      { enableHighAccuracy: true, maximumAge: 10_000, timeout: 20_000 },
+    );
+  };
   const notRu = (() => { const u = myUniversityId(); return u !== null && u !== "ru"; })();
 
   // Where this term's classes are. Opens on the campus that has most of them.
@@ -87,6 +109,26 @@ export default function CampusMap() {
     }
   }, [selected, campus, mine, zoom]);
 
+  // Draw "you are here": a soft disc as wide as the mark is uncertain, with a dot in the middle.
+  const spot = me ? onDrawing(campus, me.lat, me.lon, me.accuracy) : null;
+  useEffect(() => {
+    const svg = holder.current?.querySelector("svg");
+    if (!svg) return;
+    svg.querySelector(".me")?.remove();
+    if (!spot?.inside) return;
+    const NS = "http://www.w3.org/2000/svg";
+    const g = document.createElementNS(NS, "g");
+    g.setAttribute("class", "me");
+    for (const [cls, r] of [["me-halo", spot.radius], ["me-dot", 9]] as const) {
+      const c = document.createElementNS(NS, "circle");
+      c.setAttribute("class", cls); c.setAttribute("cx", String(spot.x)); c.setAttribute("cy", String(spot.y)); c.setAttribute("r", String(r));
+      g.appendChild(c);
+    }
+    svg.appendChild(g);
+    if (locating === "on") g.scrollIntoView?.({ block: "nearest", inline: "center", behavior: "smooth" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [spot?.x, spot?.y, spot?.radius, spot?.inside, campus, zoom]);
+
   if (notRu) {
     return (
       <div className="space-y-4">
@@ -99,6 +141,7 @@ export default function CampusMap() {
   const pick = (c: CampusId, code: string | null) => { setCampus(c); setSelected(code); };
   const name = selected ? BUILDINGS[campus].get(selected) : null;
   const here = selected ? mine.find((m) => m.campus === campus && m.code === selected)?.classes ?? [] : [];
+  const position = selected ? positionOf(campus, selected) : null;
 
   return (
     <div className="space-y-4">
@@ -157,6 +200,16 @@ export default function CampusMap() {
           />
         </div>
         <div className="absolute right-2 bottom-2 flex flex-col gap-1.5">
+          <button
+            onClick={whereAmI}
+            aria-label={t("map.whereAmI")}
+            title={t("map.whereAmI")}
+            aria-pressed={locating === "on"}
+            className="w-11 h-11 rounded-full border flex items-center justify-center"
+            style={{ backgroundColor: locating === "on" ? "var(--accent)" : "var(--bg-surface)", borderColor: "var(--border)", color: locating === "on" ? "#fff" : "var(--text-primary)", boxShadow: "var(--shadow-md, 0 2px 8px rgba(0,0,0,.15))" }}
+          >
+            <Icon name="crosshair" size={18} className={locating === "asking" ? "animate-pulse" : ""} />
+          </button>
           {([["plus", 1, "map.zoomIn"], ["minus", -1, "map.zoomOut"]] as const).map(([icon, step, label]) => (
             <button
               key={icon}
@@ -172,6 +225,16 @@ export default function CampusMap() {
         </div>
       </Card>
 
+      {/* What "Where am I?" found */}
+      {locating === "failed" && <p role="status" className="text-sm" style={{ color: "var(--danger, #dc2626)" }}>{t("map.noLocation")}</p>}
+      {locating === "on" && spot && (
+        <p role="status" className="text-sm" style={{ color: "var(--text-secondary)" }}>
+          {spot.inside
+            ? t("map.meRough", { m: Math.round(spot.radius * GROUND_UNIT[campus] / 5) * 5 })
+            : t("map.notHere", { km: (spot.metresAway / 1000).toFixed(spot.metresAway < 10_000 ? 1 : 0) })}
+        </p>
+      )}
+
       {selected ? (
         <Card>
           <div className="flex items-start gap-3">
@@ -181,6 +244,18 @@ export default function CampusMap() {
                 {selected}
                 {name ? <span className="font-normal" style={{ color: "var(--text-secondary)" }}> · {name}</span> : null}
               </p>
+              {position && (
+                <a
+                  href={directionsUrl(position)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 inline-flex items-center gap-1.5 rounded-xl px-4 min-h-11 text-sm font-semibold"
+                  style={{ backgroundColor: "var(--accent)", color: "#fff" }}
+                >
+                  <Icon name="mapPin" size={15} />
+                  {t("map.directions")}
+                </a>
+              )}
               {here.length > 0 && (
                 <ul className="mt-2 space-y-1.5">
                   {here.map((c, i) => (
@@ -201,6 +276,10 @@ export default function CampusMap() {
         <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t("map.tapHint")}</p>
       )}
       {campus === "huamak" && <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{t("map.southUp")}</p>}
+      <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+        {t("map.osm")}{" "}
+        <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="tap-area underline">© OpenStreetMap</a>
+      </p>
     </div>
   );
 }

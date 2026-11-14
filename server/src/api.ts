@@ -26,6 +26,19 @@ export function bangkokWeekday(now = new Date()): number {
   return WD_SHORT[short] ?? 1;
 }
 
+/**
+ * The next day of the week (after `weekday`, 1 = Monday .. 7 = Sunday) that has classes, and
+ * those classes. Null when there are no classes on any other day.
+ */
+export function nextClassDay<T extends { weekday: number }>(classes: T[], weekday: number): { weekday: number; classes: T[] } | null {
+  for (let i = 1; i <= 6; i++) {
+    const day = ((weekday - 1 + i) % 7) + 1;
+    const onDay = classes.filter((c) => c.weekday === day);
+    if (onDay.length > 0) return { weekday: day, classes: onDay };
+  }
+  return null;
+}
+
 /** Whole days from date-only `from` to `to` (both "YYYY-MM-DD"). */
 export function daysBetween(from: string, to: string): number {
   const a = Date.parse(`${from}T00:00:00Z`);
@@ -276,7 +289,8 @@ export function createApiRouter(db: DB): Router {
     const today = bangkokToday();
     const weekday = bangkokWeekday();
 
-    const todayClasses = weekClasses(db, term, userId).filter((c) => c.weekday === weekday);
+    const allClasses = weekClasses(db, term, userId);
+    const todayClasses = allClasses.filter((c) => c.weekday === weekday);
 
     const exams = termExams(db, term, userId);
     const upcoming = exams
@@ -290,6 +304,8 @@ export function createApiRouter(db: DB): Router {
       today,
       weekday,
       classes: todayClasses,
+      // With no class today, the next day that has some: Today shows where to go next.
+      nextClasses: todayClasses.length === 0 ? nextClassDay(allClasses, weekday) : null,
       nextExam: nextExam
         ? {
             course_code: nextExam.course_code,

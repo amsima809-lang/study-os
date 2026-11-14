@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useT } from "../i18n.tsx";
 import { getJSON, type TodayData } from "../api.ts";
-import { formatDate, timeRange } from "../format.ts";
+import { formatDate, weekdayName } from "../format.ts";
+import ClassRows from "../components/ClassRows.tsx";
 import { Card, ErrorBox, Loading } from "../components/ui.tsx";
 import { CourseTitle } from "../components/CourseTitle.tsx";
 import Calendar from "../components/Calendar.tsx";
@@ -196,26 +197,15 @@ export default function Today() {
             </button>
           )}
         </div>
-        {data.classes.length === 0 ? (
+        {data.classes.length === 0 && (
           <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t("today.noClasses")}</p>
-        ) : (
-          <ul className="space-y-2">
-            {data.classes.map((c, i) => (
-              <li key={`${c.course_code}-${i}`} className="flex justify-between text-sm gap-2">
-                <CourseTitle
-                  code={c.course_code}
-                  name_th={c.name_th}
-                  name_en={c.name_en}
-                  className="font-medium"
-                />
-                <span className="text-right whitespace-nowrap" style={{ color: "var(--text-tertiary)" }}>
-                  {timeRange(c.start_time, c.end_time)}
-                  {c.room ? ` · ${c.room}` : ""}
-                </span>
-              </li>
-            ))}
-          </ul>
         )}
+        {data.classes.length === 0 && data.nextClasses && (
+          <p className="text-sm font-medium mt-3 mb-1" style={{ color: "var(--text-secondary)" }}>
+            {t("today.nextClasses", { day: weekdayName(data.nextClasses.weekday, lang) })}
+          </p>
+        )}
+        <ClassRows classes={data.classes.length > 0 ? data.classes : data.nextClasses?.classes ?? []} />
       </Card>
 
       <Card>

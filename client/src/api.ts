@@ -15,6 +15,8 @@ export type TodayData = {
   today: string;
   weekday: number;
   classes: ClassSession[];
+  /** With no class today: the next day of the week that has classes. */
+  nextClasses?: { weekday: number; classes: ClassSession[] } | null;
   nextExam: {
     course_code: string;
     name_th: string;
