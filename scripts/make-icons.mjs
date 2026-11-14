@@ -1,26 +1,42 @@
-// Build the PNG app icons from the logo mark.
+// Build the app icons from the logo mark.
 // Run from the repo root after changing the mark or its colours:  node scripts/make-icons.mjs
-// (favicon.svg is a copy of docs/brand/icon-book-warm.svg; the mark itself is client/src/components/Logo.tsx.)
+// The mark is drawn by docs/brand/tools/cairn-books.cjs, which writes docs/brand/mark-cairn.svg
+// (and -small.svg, the solid drawing for small sizes) and the paths the app uses.
 import { createRequire } from "node:module";
+import { readFileSync, writeFileSync } from "node:fs";
 const require = createRequire(process.cwd() + "/server/package.json");
 const sharp = require("sharp");
-// The icon colours (docs/brand/): indigo, and amber for the lifted page.
-const TILE = "#4f46e5", PAGE = "#fbbf24";
-const LEFT = "M8 21.5c0-1.9 1.6-3.3 3.5-3 6.3 1 11.8 3.4 16.5 7.3V53c-4.7-3.7-10.3-6-16.7-6.900C9.400 45.900 8 44.300 8 42.400z";
-const RIGHT = "M28 25.8 49.2 8.300c2.900-2.400 7.200 0.800 5.600 4.200L36.600 51.800c-1.500 3.200-5.600 4-8.600 1.200z";
+// The icon colours (docs/brand/): an indigo tile, white books, and amber for the top book.
+const TILE = "#4f46e5", BOOKS = "#ffffff", TOP = "#fbbf24";
+const mark = (file) =>
+  readFileSync(`docs/brand/${file}`, "utf8")
+    .replace(/^[\s\S]*?<svg[^>]*>\s*/, "").replace(/\s*<\/svg>\s*$/, "").replace(/<!--[\s\S]*?-->\s*/g, "")
+    .replace(/var\(--logo-accent, currentColor\)/g, TOP).replace(/currentColor/g, BOOKS);
+const FULL = mark("mark-cairn.svg"), SMALL = mark("mark-cairn-small.svg");
 // `scale` = how much of the square the 64-unit mark box fills. Home-screen icons are
 // cropped to circles and squircles by the system ("maskable"), so the mark stays
 // inside the safe middle (within the central 80% circle) and the colour runs to the edge.
-const svg = (scale, radius) => {
-  const box = 96 * scale, off = (96 - box) / 2, k = box / 64;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><rect width="96" height="96" rx="${radius}" fill="${TILE}"/>
-  <g transform="translate(${off + 1} ${off + 1}) scale(${k})"><path fill="#fff" opacity=".9" d="${LEFT}"/><path fill="${PAGE}" d="${RIGHT}"/></g></svg>`;
+// The stack sits a little low in its box, so it is lifted 2 units to look centred.
+const svg = (body, scale, radius, label = "") => {
+  const box = 96 * scale, off = (96 - box) / 2, k = box / 64, f = (v) => +v.toFixed(3);
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"${label ? ` role="img" aria-label="${label}"` : ""}>
+  <rect width="96" height="96" rx="${radius}" fill="${TILE}"/>
+  <g transform="translate(${f(off)} ${f(off - 2 * k)}) scale(${f(k)})">
+${body}
+  </g>
+</svg>
+`;
 };
-const out = async (file, size, scale, radius) => {
-  await sharp(Buffer.from(svg(scale, radius)), { density: 72 * (size / 96) * 2 }).resize(size, size).png().toFile(`client/public/${file}`);
+const png = async (file, size, body, scale, radius) => {
+  await sharp(Buffer.from(svg(body, scale, radius)), { density: 72 * (size / 96) * 2 }).resize(size, size).png().toFile(`client/public/${file}`);
   console.log(file, size);
 };
-await out("pwa-192x192.png", 192, 0.74, 0);
-await out("pwa-512x512.png", 512, 0.74, 0);
-await out("apple-touch-icon.png", 180, 0.78, 0);   // iOS rounds the corners itself
-await out("favicon-32x32.png", 32, 0.76, 22);       // small, so the mark fills more of it
+await png("pwa-192x192.png", 192, FULL, 0.74, 0);
+await png("pwa-512x512.png", 512, FULL, 0.74, 0);
+await png("apple-touch-icon.png", 180, FULL, 0.78, 0);    // iOS rounds the corners itself
+await png("favicon-32x32.png", 32, SMALL, 0.8, 22);        // small: solid books, filling more of the tile
+// Browser tabs show this at 16 to 32 pixels, so it uses the solid drawing too.
+writeFileSync("client/public/favicon.svg", svg(SMALL, 0.8, 22, "App icon"));
+// For documents and stores: the full drawing on the rounded tile.
+writeFileSync("docs/brand/icon-cairn.svg", svg(FULL, 0.76, 22, "App icon: a cairn of three books, the top one amber"));
+console.log("favicon.svg, docs/brand/icon-cairn.svg");

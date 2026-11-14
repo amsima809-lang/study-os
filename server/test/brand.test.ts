@@ -7,6 +7,32 @@ const read = (rel: string) => readFileSync(fileURLToPath(new URL(`../../${rel}`,
 // The product's name lives in client/src/brand.ts. Two plain-JS files cannot import it
 // and carry tagged copies; scripts/rename-app.mjs changes them together. This fails if
 // someone edits one by hand and forgets the others.
+// The logo is drawn once, by docs/brand/tools/cairn-books.cjs, which writes the brand SVGs
+// and the paths the app uses; scripts/make-icons.mjs builds the favicon from the SVGs.
+// This fails if one of them is edited by hand, or a script was not re-run.
+describe("the logo is the same drawing everywhere", () => {
+  const paths = (svg: string) => [...svg.matchAll(/ d="([^"]+)"/g)].map((m) => m[1]);
+  const app = read("client/src/components/logoPaths.ts");
+  const full = paths(read("docs/brand/mark-cairn.svg"));
+  const small = paths(read("docs/brand/mark-cairn-small.svg"));
+
+  it("in the app", () => {
+    expect(full.length).toBe(6); // three covers, three page blocks
+    expect(small.length).toBe(3); // three solid books
+    for (const d of [...full, ...small]) expect(app.includes(`"${d}"`)).toBe(true);
+  });
+
+  it("in the browser-tab icon and the brand's app icon", () => {
+    expect(paths(read("client/public/favicon.svg"))).toEqual(small);
+    expect(paths(read("docs/brand/icon-cairn.svg"))).toEqual(full);
+  });
+
+  it("and the top book is the one that takes the second colour", () => {
+    expect(read("docs/brand/mark-cairn.svg").match(/--logo-accent/g)?.length).toBe(1);
+    expect(app.match(/"accent": true/g)?.length).toBe(2); // once in each drawing
+  });
+});
+
 describe("the product's name is the same everywhere", () => {
   const brand = read("client/src/brand.ts");
   const name = /export const APP_NAME = "([^"]*)";/.exec(brand)![1];

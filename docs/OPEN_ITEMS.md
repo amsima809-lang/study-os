@@ -1,6 +1,6 @@
 # Open items
 
-Last updated 14 November 2026, after Phase 50. Everything that could be built or checked on the development machine has been. Each item below is still open for a stated reason: it needs a **person's decision**, something only the **owner** holds, a **device**, or **data** that is not published. For each: what was tried, and the exact next step.
+Last updated 14 November 2026, after Phase 51. Everything that could be built or checked on the development machine has been. Each item below is still open for a stated reason: it needs a **person's decision**, something only the **owner** holds, a **device**, or **data** that is not published. For each: what was tried, and the exact next step.
 
 ## Needs a decision
 

@@ -271,7 +271,7 @@ function Shell() {
           {/* Two-colour stripe of the chosen palette or school (absent otherwise) */}
           <div style={{ height: 4, background: "var(--brand-bar, transparent)" }} />
           <div className="px-5 py-4 flex items-center gap-2">
-            <Logo size={26} tick="var(--accent-2, var(--accent-text))" style={{ color: "var(--accent-text)" }} />
+            <Logo size={26} accent="var(--accent-2, var(--accent-text))" style={{ color: "var(--accent-text)" }} />
             <span className="font-bold text-lg" style={{ color: "var(--accent-text)" }}>
               {t("app.name")}
             </span>
@@ -352,7 +352,7 @@ function Shell() {
             <div style={{ height: 4, background: "var(--brand-bar, transparent)" }} />
             <div className="max-w-3xl mx-auto flex justify-between items-center pl-5 pr-3 py-1.5">
               <div className="flex items-center gap-2">
-                <Logo size={24} tick="var(--accent-2, var(--accent-text))" style={{ color: "var(--accent-text)" }} />
+                <Logo size={24} accent="var(--accent-2, var(--accent-text))" style={{ color: "var(--accent-text)" }} />
                 <span className="font-bold" style={{ color: "var(--accent-text)" }}>{t("app.name")}</span>
               </div>
               <div className="flex items-center">

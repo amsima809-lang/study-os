@@ -150,7 +150,7 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
               boxShadow: `0 8px 32px ${mix(primary, DARK, 0.2, 0.25)}`,
             }}
           >
-            <Logo size={44} style={{ color: "rgba(255,255,255,0.95)" }} />
+            <Logo size={44} accent={uni ? undefined : BRAND.secondary} style={{ color: "rgba(255,255,255,0.95)" }} />
           </div>
           <h1 className="text-4xl font-extrabold tracking-tight" style={{ color: "#fff" }}>
             {t("app.name")}

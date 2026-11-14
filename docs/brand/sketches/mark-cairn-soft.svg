@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Logo mark: the page block shown tone on tone">
+  <!-- A cairn marks the way on a trail and the top of the climb; here the stones are books -->
+  <g><path fill="currentColor" d="M10.4 43H56.05a1.95 1.95 0 0 1 0 3.9H11.7a1.2 1.2 0 0 0 -1.2 1.2V51.4a1.2 1.2 0 0 0 1.2 1.2H56.05a1.95 1.95 0 0 1 0 3.9H10.4a4.4 4.4 0 0 1 -4.4 -4.4V47.4a4.4 4.4 0 0 1 4.4 -4.4z"/><path class="pages" fill="currentColor" opacity="0.72" d="M10.5 46.9h43.5a1 1 0 0 1 1 1v3.7a1 1 0 0 1 -1 1h-43.5z"/></g>
+  <g transform="rotate(-2 32.5 34.3)"><path fill="currentColor" d="M46.6 27.7H15.95a1.95 1.95 0 0 0 0 3.9H45.3a1.2 1.2 0 0 1 1.2 1.2V35.8a1.2 1.2 0 0 1 -1.2 1.2H15.95a1.95 1.95 0 0 0 0 3.9H46.6a4.4 4.4 0 0 0 4.4 -4.4V32.1a4.4 4.4 0 0 0 -4.4 -4.4z"/><path class="pages" fill="currentColor" opacity="0.72" d="M46.5 31.6h-28.5a1 1 0 0 0 -1 1v3.4a1 1 0 0 0 1 1h28.5z"/></g>
+  <g transform="rotate(3.5 32 19.3)"><path fill="var(--logo-accent, currentColor)" d="M26.4 13.2H40.05a1.95 1.95 0 0 1 0 3.9H27.7a1.2 1.2 0 0 0 -1.2 1.2V20.3a1.2 1.2 0 0 0 1.2 1.2H40.05a1.95 1.95 0 0 1 0 3.9H26.4a4.4 4.4 0 0 1 -4.4 -4.4V17.6a4.4 4.4 0 0 1 4.4 -4.4z"/><path class="pages" fill="currentColor" opacity="0.72" d="M26.5 17.1h11.5a1 1 0 0 1 1 1v2.4a1 1 0 0 1 -1 1h-11.5z"/></g>
+</svg>

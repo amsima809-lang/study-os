@@ -1,17 +1,19 @@
 """Build brand-board.html from the mark SVGs, the lockups and names.json.
 Run from docs/brand:  python3 tools/build-board.py"""
 import json, re, html
-def inner(path, colour=None):
+def inner(path, colour=None, accent=None):
     src = open(path).read()
-    if colour: src = src.replace('currentColor', colour)
+    if colour: src = src.replace('var(--logo-accent, currentColor)', accent or colour).replace('currentColor', colour)
     return src
+CHOSEN = "cairn"
 marks = [
-    ("book",  "Book that becomes a tick", "An open book whose right page lifts into a tick: study that ends in “got it”. The most distinctive of the three, and it still reads at 16 pixels."),
+    ("cairn", "Cairn of books", "A cairn is the stack of stones that marks a trail and the top of a climb. Here the stones are books, rising to a small amber one: the term’s work, stacked up to a peak. Drawn after the name Termtrail was chosen, for what the name brings to mind: climbing, endurance, and the relief of getting there."),
+    ("book",  "Book that becomes a tick", "An open book whose right page lifts into a tick: study that ends in “got it”. The mark the app used before the name was chosen."),
     ("loop",  "Practice loop",           "A loop that closes with a tick: practise, repeat, know it. Clean and friendly, but check-in-a-circle marks are common in task apps."),
     ("cards", "Study cards",             "Two cards, the front one ticked: notes and flashcards done. Clear, but close to the standard “copy” and “checkbox” icons."),
 ]
 names = json.load(open('names.json'))
-chosen_icon = re.sub(r'<svg ', '<svg width="132" height="132" ', open('icon-book-warm.svg').read(), count=1)
+chosen_icon = re.sub(r'<svg ', '<svg width="132" height="132" ', open(f'icon-{CHOSEN}.svg').read(), count=1)
 def lockup(name, thai, dark=False):
     """The outlined logo-with-name files from docs/brand/lockups/, Latin then Thai."""
     slug = re.sub(r'[^a-z0-9]+', '-', name.lower())
@@ -23,11 +25,13 @@ def lockup(name, thai, dark=False):
 cols = []
 for key, title, why in marks:
     icon = re.sub(r'<svg ', '<svg width="132" height="132" ', open(f'icon-{key}.svg').read(), count=1)
-    light = re.sub(r'<svg ', '<svg width="88" height="88" ', inner(f'mark-{key}.svg', '#4f46e5'), count=1)
-    dark = re.sub(r'<svg ', '<svg width="88" height="88" ', inner(f'mark-{key}.svg', '#c7d2fe'), count=1)
-    sizes = ''.join(re.sub(r'<svg ', f'<svg width="{s}" height="{s}" ', inner(f'mark-{key}.svg', '#4f46e5'), count=1) for s in (48, 32, 24, 16))
+    light = re.sub(r'<svg ', '<svg width="88" height="88" ', inner(f'mark-{key}.svg', '#4f46e5', '#d97706'), count=1)
+    dark = re.sub(r'<svg ', '<svg width="88" height="88" ', inner(f'mark-{key}.svg', '#c7d2fe', '#fbbf24'), count=1)
+    # the cairn has a solid drawing for sizes under 24 pixels
+    small = lambda s: f'mark-{key}-small.svg' if key == CHOSEN and s < 24 else f'mark-{key}.svg'
+    sizes = ''.join(re.sub(r'<svg ', f'<svg width="{s}" height="{s}" ', inner(small(s), '#4f46e5', '#d97706'), count=1) for s in (48, 32, 24, 16))
     extra = re.sub(r'<svg ', '<svg width="132" height="132" ', open('icon-book-warm.svg').read(), count=1) if key == "book" else ''
-    cols.append(f'''<section class="concept{' wide' if key == 'book' else ''}"><h3>{html.escape(title)}{' <span class="rec">recommended</span>' if key == 'book' else ''}</h3>
+    cols.append(f'''<section class="concept{' wide' if key == CHOSEN else ''}"><h3>{html.escape(title)}{' <span class="rec">chosen</span>' if key == CHOSEN else ''}</h3>
 <div class="row">{icon}{extra}<div class="tile light">{light}</div><div class="tile dark">{dark}</div></div>
 <div class="sizes">{sizes}<span>48 · 32 · 24 · 16 px</span></div>
 <p>{html.escape(why)}</p></section>''')
@@ -65,7 +69,7 @@ tr:last-child td{{border-bottom:0}} .nm{{min-width:150px}} .th{{color:#55556c;ma
 @media (max-width:640px){{.pair{{grid-template-columns:1fr}} body{{padding:20px 14px 40px}}}}
 </style></head><body>
 <h1>Brand board</h1>
-<p class="lede"><strong>Chosen on 14 November 2026: the name Termtrail, the book-and-tick mark, and indigo with an amber page.</strong> Below: the brand as it is in the app, the three logo concepts as first explored, and every name that was checked, with why the others were dropped.</p>
+<p class="lede"><strong>Chosen on 14 November 2026: the name Termtrail, the cairn-of-books mark, and indigo with an amber top book.</strong> Below: the brand as it is in the app, the logo with the three concepts explored before the name, and every name that was checked, with why the others were dropped.</p>
 <div class="concept wide"><div class="row">{chosen_icon}</div><p>The app icon. Leaf green, tried for an earlier name, remains as a colour theme students can choose.</p></div>
 <h2>Logo marks</h2>
 <div class="grid">{''.join(cols)}</div>

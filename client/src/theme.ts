@@ -28,7 +28,7 @@ export const PALETTES = [
 ] as const;
 
 /**
- * The brand's colours (docs/brand/): indigo, and amber for the lifted page of
+ * The brand's colours (docs/brand/): indigo, and amber for the top book of
  * the logo. They are the default theme. The accent tokens in index.css are the
  * shades computed from these (so the first paint is already right); if these
  * change, recompute them — see the note above the tokens there.

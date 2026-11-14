@@ -1,19 +1,24 @@
 // Build logo-with-name files ("lockups") with the lettering converted to outlines.
-// Usage: node lockups.cjs <outDir> "Latin|ไทย" ["Latin|ไทย" ...]
+// Usage: MARK_SVG=/path/to/docs/brand/mark-cairn.svg node lockups.cjs <outDir> "Latin|ไทย" ["Latin|ไทย" ...]
+// (MARK_SVG may be left out when the script is run from docs/brand/tools itself.)
 const fs = require("node:fs");
 const path = require("node:path");
 const { outline } = require("./outline.cjs");
 
-const LEFT = "M8 21.5c0-1.9 1.6-3.3 3.5-3 6.3 1 11.8 3.400 16.500 7.300V53c-4.700-3.700-10.300-6-16.700-6.900C9.400 45.900 8 44.300 8 42.400z";
-const RIGHT = "M28 25.8 49.2 8.300c2.900-2.400 7.200 0.800 5.600 4.200L36.600 51.800c-1.500 3.200-5.600 4-8.600 1.200z";
-// Brand colours: the mark in indigo. Set BRAND=leaf for the leaf-green and lime exploration colours.
+// The mark is read from its own file, so the lockups always carry the current drawing.
+const MARK_SVG = fs.readFileSync(process.env.MARK_SVG || path.join(__dirname, "../mark-cairn.svg"), "utf8")
+  .replace(/^[\s\S]*?<svg[^>]*>\s*/, "").replace(/\s*<\/svg>\s*$/, "").replace(/<!--[\s\S]*?-->\s*/g, "");
+const mark = (t) => MARK_SVG.replace(/var\(--logo-accent, currentColor\)/g, t.accent).replace(/currentColor/g, t.mark);
+// Brand colours: the books in indigo, the top book in amber (a deeper amber on white, so it holds).
+// Set BRAND=leaf for the leaf-green and lime exploration colours.
 const THEMES = process.env.BRAND === "leaf"
-  ? { light: { page: "#15803d", tick: "#65a30d", text: "#16162a" }, dark: { page: "#bbf7d0", tick: "#a3e635", text: "#f4f4f8" } }
-  : { light: { page: "#4f46e5", tick: "#4f46e5", text: "#16162a" }, dark: { page: "#c7d2fe", tick: "#c7d2fe", text: "#f4f4f8" } };
+  ? { light: { mark: "#15803d", accent: "#65a30d", text: "#16162a" }, dark: { mark: "#bbf7d0", accent: "#a3e635", text: "#f4f4f8" } }
+  : { light: { mark: "#4f46e5", accent: "#d97706", text: "#16162a" }, dark: { mark: "#c7d2fe", accent: "#fbbf24", text: "#f4f4f8" } };
 const MARK = 56;          // drawn size of the mark's 64-unit box
 const SIZE = 40;          // lettering size
 const GAP = 12, PAD = 10;
-const BASELINE = 43;      // sits the lettering's body level with the middle of the mark
+const BASELINE = 43;
+const MARK_DY = -6.4;     // lifts the mark so the bottom book stands on the lettering's baseline
 
 async function lockup(text, theme) {
   const word = await outline(text, SIZE, 700);
@@ -23,7 +28,9 @@ async function lockup(text, theme) {
   const f = (n) => Number(n.toFixed(1));
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${f(width)} ${f(height)}" width="${f(width)}" height="${f(height)}" role="img" aria-label="${text}">
   <g transform="translate(${PAD} ${f(PAD - top)})">
-    <g transform="scale(${MARK / 64})"><path fill="${THEMES[theme].page}" opacity=".5" d="${LEFT}"/><path fill="${THEMES[theme].tick}" d="${RIGHT}"/></g>
+    <g transform="translate(0 ${MARK_DY}) scale(${MARK / 64})">
+${mark(THEMES[theme])}
+    </g>
     <path transform="translate(${MARK + GAP} ${BASELINE})" fill="${THEMES[theme].text}" d="${word.d}"/>
   </g>
 </svg>

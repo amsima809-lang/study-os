@@ -5,8 +5,8 @@
 ## The brand (chosen 14 November 2026)
 
 - **Name: Termtrail.** English; the same in the Thai interface. "เทอม" (term) is the everyday Thai word for semester.
-- **Logo: the book that becomes a tick** (`mark-book.svg`).
-- **Colours: indigo with an amber page on the logo** (`BRAND` in `client/src/theme.ts`; the icon tile is `#4f46e5`, the page `#fbbf24`). Leaf green is offered as the "Forest" colour theme.
+- **Logo: a cairn of books** (`mark-cairn.svg`). A cairn is the stack of stones that marks a trail and the top of a climb; here the stones are three books, rising to a small amber one.
+- **Colours: indigo with an amber top book on the logo** (`BRAND` in `client/src/theme.ts`; the icon tile is `#4f46e5`, the top book `#fbbf24`). Leaf green is offered as the "Forest" colour theme.
 
 Still to do for the name: a trademark professional's opinion (`trademark-brief.md` is ready to hand over) and the domains (`termtrail.com` and `termtrail.app` were unregistered on the day).
 
@@ -30,7 +30,7 @@ In-depth check of the owner's idea and two alternatives (app stores, web, and th
 
 A first screen (app stores and domains only) of 25 more "term" and "semester" names found most taken or parked. No app and no .com or .app in use: Termtrail. No app, one domain in use: Termnest, Termrise, Termpath, Semwell, Semwise, Semly, Semnest. Already study apps: Termflow, Semora, Gradewise, Planwise.
 
-Where the brand lives: `client/src/brand.ts` (name), `client/src/components/Logo.tsx` (mark, follows the theme), `client/public/favicon.svg` and the PNG icons (built by `node scripts/make-icons.mjs`), `lockups/` (logo with a name, lettering outlined).
+Where the brand lives: `client/src/brand.ts` (name), `client/src/components/Logo.tsx` (mark, follows the theme; its paths come from the generated `logoPaths.ts`), `client/public/favicon.svg` and the PNG icons (built by `node scripts/make-icons.mjs`), `lockups/` (logo with a name, lettering outlined).
 
 Internal names stay `studyos` whatever the brand becomes: storage keys, notification tags, log prefixes, the repository and the Fly app.
 
@@ -50,11 +50,32 @@ Before a name goes public: search the Thai trademark office (DIP) and register t
 
 `lockups/` holds the mark with the name beside it for each shortlisted name and for the current placeholder: `<name>-light.svg`, `<name>-dark.svg`, and `<name>-th-light.svg` / `<name>-th-dark.svg` for the Thai form. The lettering is converted to outlines, so the files need no font. How they are made: `tools/README.md`.
 
-## Changing the logo
+## The logo
 
-The other two marks are here as `mark-loop.svg` and `mark-cards.svg`, with app icons. To switch: replace the two paths in `Logo.tsx`, copy the matching icon over `client/public/favicon.svg`, put the new paths in `scripts/make-icons.mjs` and run it.
+The first mark, a book whose page lifts into a tick (`mark-book.svg`), was drawn before the name existed. Termtrail brought other things to mind: climbing, endurance, obstacles, being outdoors, and the relief of reaching the end of a trail. The mark was redrawn for that on 14 November 2026.
 
-Rules for the mark: one colour (it takes the theme's colour), never below 16 pixels, and the lifted page may take the theme's second colour.
+What was tried, in order (all in `sketches/`, with the comparison sheets):
+
+- Dots on a page, a dotted trail to a tick or a flag: too close to a dice face, or too thin.
+- A mountain with a trail and a summit flag: reads as a tent, a sailboat, or the standard "image" icon.
+- A cairn of three rounded slabs (`mark-cairn-pills.svg`): the owner's pick for its simplicity, but it looked like the Towers of Hanoi puzzle.
+- The same cairn as books: solid slabs, pages tone on tone, pages shown. The owner chose the books with pages showing, then asked for a smaller top book so the stack rises to a peak (`mark-cairn-top-18.svg`, `mark-cairn-top-21.svg`, and the tapered stack that was chosen).
+
+The amber top book is the goal: the last stone, placed when you get there.
+
+Rules for the mark: it takes the theme's colour, and the top book may take the theme's second colour. Under 24 pixels use the solid drawing (`mark-cairn-small.svg`); never below 16 pixels.
+
+### Changing the logo
+
+```bash
+node docs/brand/tools/cairn-books.cjs   # after editing the stack in that script
+node scripts/make-icons.mjs             # favicon and PNG icons
+npm test && npm run build
+```
+
+The script writes the brand SVGs and `client/src/components/logoPaths.ts`, which `Logo.tsx` draws from. Do not edit those by hand; a test compares them. The logo-with-name files and the board are rebuilt as `tools/README.md` describes.
+
+The marks explored before the name are still here as `mark-book.svg`, `mark-loop.svg` and `mark-cards.svg`, with app icons.
 
 ## English names in the running (14 November 2026)
 
@@ -129,4 +150,4 @@ Records can be opened by number at `https://search.ipthailand.go.th/search?q=<nu
 
 ## Changing the colours
 
-Change `BRAND` in `client/src/theme.ts`, recompute the accent tokens in `client/src/index.css` (the note above them says how), update `TILE` and `PAGE` in `scripts/make-icons.mjs` and run it, copy the new icon over `client/public/favicon.svg`, and set `theme-color` in `client/index.html` and `theme_color` in `client/vite.config.ts`.
+Change `BRAND` in `client/src/theme.ts`, recompute the accent tokens in `client/src/index.css` (the note above them says how), update `TILE`, `BOOKS` and `TOP` in `scripts/make-icons.mjs` and run it (it rewrites the favicon too), and set `theme-color` in `client/index.html` and `theme_color` in `client/vite.config.ts`.
