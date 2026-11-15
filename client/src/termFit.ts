@@ -208,3 +208,20 @@ export function blocksByDay(blocks: { start: string; end: string }[], dates: str
   }
   return out;
 }
+
+type Windows = { term_start: string | null; finals: { from: string; to: string } | null; etesting: { registration_start: string; exam_end: string } | null };
+/** The teaching weeks: the first day of classes to the day before the finals begin. */
+export function teachingSpanOf(w: Windows): { from: string | null; to: string | null } {
+  return { from: w.term_start, to: w.finals ? addDays(w.finals.from, -1) : null };
+}
+/**
+ * The term's first and last calendar item: the first day of classes (or the e-Testing
+ * registration, if earlier) to the last final (or the last e-Testing day, if later). The term
+ * preview's week and month arrows stop here.
+ */
+export function termBoundsOf(w: Windows): { from: string | null; to: string | null } {
+  const span = teachingSpanOf(w), et = w.etesting;
+  const starts = [span.from, et?.registration_start].filter((d): d is string => !!d).sort();
+  const ends = [w.finals?.to, et?.exam_end, span.to].filter((d): d is string => !!d).sort();
+  return { from: starts[0] ?? null, to: ends.at(-1) ?? null };
+}

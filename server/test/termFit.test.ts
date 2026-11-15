@@ -195,3 +195,20 @@ describe("busy times from her own calendar", () => {
     expect(more.finalsInBusyTime(f, (d) => (d === "2027-03-11" ? [{ time: "12:00", end_time: "13:00" }] : []))).toEqual([]);
   });
 });
+
+describe("the term's bounds (the preview's arrows stop there)", () => {
+  const b = fit as unknown as {
+    teachingSpanOf: (w: unknown) => { from: string | null; to: string | null };
+    termBoundsOf: (w: unknown) => { from: string | null; to: string | null };
+  };
+  const w = { term_start: "2026-11-16", finals: { from: "2027-03-09", to: "2027-03-22" }, etesting: { registration_start: "2026-12-21", exam_end: "2027-03-07" } };
+  it("teaches from the first day of classes to the day before the finals", () => {
+    expect(b.teachingSpanOf(w)).toEqual({ from: "2026-11-16", to: "2027-03-08" });
+  });
+  it("runs from the first class to the last final (2/2569: 16 Nov 2569 to 22 Mar 2570)", () => {
+    expect(b.termBoundsOf(w)).toEqual({ from: "2026-11-16", to: "2027-03-22" });
+  });
+  it("stretches to e-Testing when it starts earlier or ends later", () => {
+    expect(b.termBoundsOf({ ...w, etesting: { registration_start: "2026-11-10", exam_end: "2027-03-30" } })).toEqual({ from: "2026-11-10", to: "2027-03-30" });
+  });
+});

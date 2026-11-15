@@ -16,9 +16,10 @@ import { useT } from "../i18n.tsx";
 import { deleteJSON, getJSON, putJSON, type ApiError, type CalEvent } from "../api.ts";
 import { formatDate, timeRange } from "../format.ts";
 import { bangkokTime } from "../reminderAlerts.ts";
-import { EXAM_PERIODS, addDays, examFit, finalsInBusyTime, weekFit, weekOf, type Commitment, type FitCourse } from "../termFit.ts";
+import { EXAM_PERIODS, addDays, examFit, finalsInBusyTime, teachingSpanOf, termBoundsOf, weekFit, weekOf, type Commitment, type FitCourse } from "../termFit.ts";
 import { blocksByDay, busyBetween, chosenSource, prepareGoogle, reconnectGoogle, CHANGED as BUSY_CHANGED, type BusyResult } from "../busyTimes.ts";
 import TimeGrid from "./TimeGrid.tsx";
+import { DotMark } from "./Calendar.tsx";
 import Icon from "./Icon.tsx";
 import { ConfirmDialog, isTopDialog } from "./ui.tsx";
 import { RU_LINKS } from "../ruLinks.ts";
@@ -44,10 +45,9 @@ export type ExamWindows = {
 const bangkokToday = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok" }).format(new Date());
 
 /** The week to show first: this week, or the first week of classes if they have not started. */
-/** The teaching weeks: the first day of classes to the day before the finals begin. */
-export function teachingSpan(windows: ExamWindows): { from: string | null; to: string | null } {
-  return { from: windows.term_start, to: windows.finals ? addDays(windows.finals.from, -1) : null };
-}
+/** The teaching weeks, and the term's first and last calendar item (termFit.ts). */
+export const teachingSpan = (windows: ExamWindows) => teachingSpanOf(windows);
+export const termBounds = (windows: ExamWindows) => termBoundsOf(windows);
 /** The week to show first: this week, kept inside the teaching weeks. */
 function firstWeek(windows: ExamWindows): string {
   const today = bangkokToday(), span = teachingSpan(windows);
@@ -360,12 +360,105 @@ function EtestingBookings({ courses, canBook }: { courses: FitCourse[]; canBook:
   );
 }
 
+/**
+ * The term a month at a time: on each day, a mark for classes (inside the teaching weeks), her
+ * finals (red when two fall in one period or one falls in her busy time), the e-Testing days, and
+ * her busy time (her own events and her calendar's). Overlaps of a class with something of hers
+ * ring the day. A tap opens that day in the week view.
+ */
+function MonthView({ courses, windows, month, onMonth, onPickDay }: {
+  courses: FitCourse[]; windows: ExamWindows; month: string; onMonth: (m: string) => void; onPickDay: (date: string) => void;
+}) {
+  const { t, lang } = useT();
+  const first = `${month}-01`;
+  const [y, m] = month.split("-").map(Number);
+  const daysIn = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const dates = useMemo(() => Array.from({ length: daysIn }, (_, i) => `${month}-${String(i + 1).padStart(2, "0")}`), [month, daysIn]);
+  const commitments = useCommitments(dates);
+  const busy = useBusy(dates);
+  const span = teachingSpan(windows);
+  const week = useMemo(() => weekFit(courses, dates, (d) => [...(commitments?.[d] ?? []), ...busy.asCommitments(d)], span), [courses, dates, commitments, busy.byDay]); // eslint-disable-line react-hooks/exhaustive-deps
+  const exams = useMemo(() => examFit(courses, windows.finals), [courses, windows]);
+  const problems = useMemo(() => {
+    const out = new Set(exams.clashes.map((c) => c.date));
+    for (const c of finalsInBusyTime(exams, (d) => busy.byDay[d] ?? [])) out.add(c.date);
+    return out;
+  }, [exams, busy.byDay]);
+  const et = windows.etesting;
+  const etClosed = (iso: string) => !!et && et.central_closed.some(([a, b]) => iso >= a && iso <= b);
+  const overlapDays = new Set(week.overlaps.map((o) => o.date));
+  // The months the term runs across: from its first calendar item to its last (termBounds).
+  const bounds = termBounds(windows);
+  const lastMonth = (bounds.to ?? first).slice(0, 7), firstMonth = (bounds.from ?? first).slice(0, 7);
+  const shift = (n: number) => { const d = new Date(Date.UTC(y, m - 1 + n, 1)); return d.toISOString().slice(0, 7); };
+  const lead = (new Date(`${first}T00:00:00Z`).getUTCDay() + 6) % 7; // Monday first
+  const title = new Intl.DateTimeFormat(lang === "th" ? "th-TH-u-ca-buddhist" : "en-GB", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${first}T00:00:00Z`));
+  const kinds = new Set<string>();
+  const cells = dates.map((date) => {
+    const day = week.days.find((d) => d.date === date)!;
+    const fin = exams.days.find((d) => d.date === date);
+    const marks: { type: Parameters<typeof DotMark>[0]["type"]; color: string; key: string }[] = [];
+    if (day.classes.length || day.choices.length) marks.push({ type: "class", color: "var(--accent-2, var(--accent-text))", key: "class" });
+    if (fin && fin.A.length + fin.B.length > 0) marks.push(problems.has(date) ? { type: "exam", color: "var(--danger)", key: "problem" } : { type: "exam", color: "var(--accent)", key: "final" });
+    if (et && date >= et.registration_start && date <= et.registration_end) marks.push({ type: "etesting", color: "#d97706", key: "etreg" });
+    else if (et && date >= et.exam_start && date <= et.exam_end && !etClosed(date)) marks.push({ type: "etwindow", color: "#d97706", key: "etdays" });
+    if (day.commitments.length) marks.push({ type: "event", color: "var(--text-tertiary)", key: "busy" });
+    for (const k of marks) kinds.add(k.key);
+    return { date, marks, ring: overlapDays.has(date) };
+  });
+  const LEGEND: Record<string, { type: Parameters<typeof DotMark>[0]["type"]; color: string; label: string }> = {
+    class: { type: "class", color: "var(--accent-2, var(--accent-text))", label: t("fit.mClass") },
+    final: { type: "exam", color: "var(--accent)", label: t("fit.legendFinal") },
+    problem: { type: "exam", color: "var(--danger)", label: t("fit.legendProblem") },
+    etreg: { type: "etesting", color: "#d97706", label: t("cal.kind.etesting") },
+    etdays: { type: "etwindow", color: "#d97706", label: t("cal.kind.etwindow") },
+    busy: { type: "event", color: "var(--text-tertiary)", label: t("fit.mBusy") },
+  };
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <button onClick={() => onMonth(shift(-1))} disabled={month <= firstMonth} aria-label={t("fit.prevMonth")} className="w-11 h-11 rounded-full flex items-center justify-center disabled:opacity-30" style={{ color: "var(--text-secondary)" }}>‹</button>
+        <p className="flex-1 text-center text-sm font-medium" style={{ color: "var(--text-primary)" }}>{title}</p>
+        <button onClick={() => onMonth(shift(1))} disabled={month >= lastMonth} aria-label={t("fit.nextMonth")} className="w-11 h-11 rounded-full flex items-center justify-center disabled:opacity-30" style={{ color: "var(--text-secondary)" }}>›</button>
+      </div>
+      <div className="grid grid-cols-7 gap-1 text-center text-xs" style={{ color: "var(--text-tertiary)" }}>
+        {[1, 2, 3, 4, 5, 6, 7].map((d) => <div key={d}>{t(`fit.dow${d}`)}</div>)}
+      </div>
+      <div className="grid grid-cols-7 gap-1">
+        {Array.from({ length: lead }, (_, i) => <div key={`x${i}`} />)}
+        {cells.map((c) => (
+          <button
+            key={c.date}
+            onClick={() => onPickDay(c.date)}
+            aria-label={[formatDate(c.date, lang), ...c.marks.map((k) => LEGEND[k.key].label), c.ring ? t("fit.mOverlap") : ""].filter(Boolean).join(", ")}
+            className="rounded-lg min-h-11 py-1 flex flex-col items-center gap-1"
+            style={{ backgroundColor: "var(--bg-base)", outline: c.ring ? "2px solid var(--warning, var(--danger))" : "none", outlineOffset: -2 }}
+          >
+            <span className="text-xs" style={{ color: "var(--text-primary)" }}>{Number(c.date.slice(8))}</span>
+            <span className="flex gap-0.5 items-center min-h-2">{c.marks.map((k) => <DotMark key={k.key} type={k.type} color={k.color} />)}</span>
+          </button>
+        ))}
+      </div>
+      <p className="text-xs flex flex-wrap gap-x-3 gap-y-1" style={{ color: "var(--text-tertiary)" }}>
+        {Object.entries(LEGEND).filter(([k]) => kinds.has(k)).map(([k, v]) => (
+          <span key={k} className="inline-flex items-center gap-1"><DotMark type={v.type} color={v.color} />{v.label}</span>
+        ))}
+        {overlapDays.size > 0 && <span className="inline-flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ outline: "2px solid var(--warning, var(--danger))", outlineOffset: -2 }} />{t("fit.mOverlap")}</span>}
+      </p>
+      <BusyNote busy={busy} />
+    </div>
+  );
+}
+
 export default function TermPreview({ courses, windows, onClose, canBook = false }: { courses: FitCourse[]; windows: ExamWindows; onClose: () => void; /** The courses are registered: e-Testing bookings can be recorded. */ canBook?: boolean }) {
   const { t, lang } = useT();
   const span = useSpan();
-  const [tab, setTab] = useState<"week" | "exams">("week");
+  const [tab, setTab] = useState<"week" | "month" | "exams">("week");
   const [anchor, setAnchor] = useState(() => firstWeek(windows));
   const [day, setDay] = useState<string | null>(null);
+  const bounds = termBounds(windows);
+  // The month shown in the Month tab: the one of the week shown first.
+  const [month, setMonth] = useState(() => firstWeek(windows).slice(0, 7));
   const sheet = useRef<HTMLDivElement>(null);
   const dates = useMemo(() => weekOf(anchor), [anchor]);
   const commitments = useCommitments(dates);
@@ -427,7 +520,7 @@ export default function TermPreview({ courses, windows, onClose, canBook = false
         </div>
 
         <div className="px-5 pt-3 flex gap-1.5" role="tablist">
-          {(["week", "exams"] as const).map((id) => (
+          {(["week", "month", "exams"] as const).map((id) => (
             <button
               key={id}
               role="tab"
@@ -436,20 +529,28 @@ export default function TermPreview({ courses, windows, onClose, canBook = false
               className="rounded-full px-4 min-h-11 text-sm font-semibold"
               style={{ backgroundColor: tab === id ? "var(--accent)" : "var(--bg-base)", color: tab === id ? "#fff" : "var(--text-secondary)" }}
             >
-              {t(id === "week" ? "fit.tabWeek" : "fit.tabExams")}
+              {t(id === "week" ? "fit.tabWeek" : id === "month" ? "fit.tabMonth" : "fit.tabExams")}
             </button>
           ))}
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-3 space-y-3">
-          {tab === "week" ? (
+          {tab === "month" ? (
+            <MonthView
+              courses={courses}
+              windows={windows}
+              month={month}
+              onMonth={setMonth}
+              onPickDay={(d) => { setAnchor(d); setDay(d); setTab("week"); }}
+            />
+          ) : tab === "week" ? (
             <>
               <div className="flex items-center gap-2">
-                <button onClick={() => { setDay(null); setAnchor(addDays(dates[0], -7)); }} aria-label={t("fit.prevWeek")} className="w-11 h-11 rounded-full flex items-center justify-center" style={{ color: "var(--text-secondary)" }}>‹</button>
+                <button onClick={() => { setDay(null); setAnchor(addDays(dates[0], -7)); }} disabled={!!bounds.from && dates[0] <= bounds.from} aria-label={t("fit.prevWeek")} className="w-11 h-11 rounded-full flex items-center justify-center disabled:opacity-30" style={{ color: "var(--text-secondary)" }}>‹</button>
                 <p className="flex-1 text-center text-sm font-medium" style={{ color: "var(--text-primary)" }}>
                   {day ? formatDate(day, lang) : span(dates[0], dates[6])}
                 </p>
-                <button onClick={() => { setDay(null); setAnchor(addDays(dates[0], 7)); }} aria-label={t("fit.nextWeek")} className="w-11 h-11 rounded-full flex items-center justify-center" style={{ color: "var(--text-secondary)" }}>›</button>
+                <button onClick={() => { setDay(null); setAnchor(addDays(dates[0], 7)); }} disabled={!!bounds.to && dates[6] >= bounds.to} aria-label={t("fit.nextWeek")} className="w-11 h-11 rounded-full flex items-center justify-center disabled:opacity-30" style={{ color: "var(--text-secondary)" }}>›</button>
               </div>
               <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
                 {t("fit.classDays", { n: week.classDays, h: week.hours })}

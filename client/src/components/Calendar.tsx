@@ -24,7 +24,7 @@ function shiftMonth(month: string, delta: number): string {
   return d.toISOString().slice(0, 7);
 }
 
-type DotType = "class" | "exam" | "task" | "etesting" | "etwindow" | "etbooked" | "reminder" | "todo" | "event";
+export type DotType = "class" | "exam" | "task" | "etesting" | "etwindow" | "etbooked" | "reminder" | "todo" | "event";
 const DOT_COLORS: Record<DotType, string> = {
   class: "var(--accent-2, var(--accent-text))",
   exam: "#ef4444",
@@ -46,7 +46,7 @@ const DOT_COLORS: Record<DotType, string> = {
 const DOT_ORDER: DotType[] = ["class", "exam", "task", "etbooked", "etesting", "etwindow", "event", "reminder", "todo"];
 /** The dot for an item: e-Testing testing days get their own, quieter mark. */
 const dotOf = (e: { type: CalEvent["type"]; etesting_kind?: string }): DotType => (e.type === "etesting" && e.etesting_kind === "testing" ? "etwindow" : e.type);
-function DotMark({ type, color }: { type: DotType; color: string }) {
+export function DotMark({ type, color }: { type: DotType; color: string }) {
   const base = { display: "inline-block", width: 7, height: 7, flexShrink: 0 } as React.CSSProperties;
   const shapes: Record<DotType, React.CSSProperties> = {
     class: { ...base, borderRadius: "50%", backgroundColor: color },
