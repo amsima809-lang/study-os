@@ -53,9 +53,10 @@ later). A tester must first be a user of the App Store Connect account
 (Users and Access → +, Developer role, access to Termtrail only: the form ticks every app by
 default) and **must accept that invitation** before the group's "Add Testers" list shows them.
 
-The repository owner was added that way on 2026-11-15 and is the group's one tester (status
-"Invited": TestFlight has emailed them; they install the TestFlight app on the iPhone and
-accept there).
+The group has two testers since 2026-11-15, the owner and the repository owner (status
+"Invited": TestFlight has emailed each; they install the TestFlight app on the iPhone, signed in
+with that same Apple ID, and accept there). Being the account holder does not make someone a
+tester: they must be added to the group like anyone else.
 
 Xcode refuses to sign when the account has an updated Program License Agreement waiting
 ("PLA Update available"). Only the account holder can accept it, at developer.apple.com/account.
