@@ -408,7 +408,7 @@ function MonthView({ courses, windows, month, onMonth, onPickDay }: {
       booked.has(date) ? { type: "etbooked", label: t("cal.kind.etbooked") } : null,
       et && date >= et.registration_start && date <= et.registration_end ? { type: "etesting", label: t("cal.kind.etesting") }
         : et && date >= et.exam_start && date <= et.exam_end && !etClosed(date) && !booked.has(date) ? { type: "etwindow", label: t("cal.kind.etwindow") } : null,
-      finalHere ? (problems.has(date) ? { type: "exam", color: "var(--danger)", label: t("fit.legendProblem") } : { type: "exam", color: "var(--accent-text)", label: t("fit.legendFinal") })
+      finalHere ? (problems.has(date) ? { type: "exam", color: "var(--danger)", label: t("fit.legendProblem") } : { type: "exam", label: t("fit.legendFinal") })
         : day.classes.length || day.choices.length ? { type: "class", label: t("fit.mClass") } : null,
       day.commitments.some((c) => c.kind !== "busy") ? { type: "event", label: t("fit.mBusy") }
         : day.commitments.some((c) => c.kind === "busy") ? { type: "busy", label: t("cal.kind.busy") } : null,

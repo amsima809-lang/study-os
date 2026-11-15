@@ -27,7 +27,7 @@
   --warning: #f59e0b;
   --amber-text: #b45309; /* e-Testing text: 5.0:1 on white */
   --mark-class: #a16207; /* calendar: a class (yellow), 4.9:1 on white */
-  --mark-booked: #be123c; /* calendar: a booked e-Testing exam (rose: an exam, "attention" not "error"), 6.3:1 on white */
+  --mark-exam: #be123c; /* calendar: an exam, a final (circled) or a booked e-Test (rose: "attention", not the error red), 6.3:1 on white */
   --mark-study: #0f766e; /* calendar: a study-plan task (teal), 5.5:1 on white */
   --mark-window: var(--text-tertiary); /* calendar: a day she could e-Test (grey, faded) */
   --mark-window-opacity: 0.7;
@@ -65,7 +65,7 @@
     --warning: #fbbf24;
     --amber-text: #fbbf24;
     --mark-class: #facc15;
-    --mark-booked: #fb7185;
+    --mark-exam: #fb7185;
     --mark-study: #2dd4bf;
     --mark-window: #e7e5e4; /* off-white: grey was hard to read on dark */
     --mark-window-opacity: 1;
@@ -99,7 +99,7 @@
   --warning: #fbbf24;
   --amber-text: #fbbf24;
   --mark-class: #facc15;
-  --mark-booked: #fb7185;
+  --mark-exam: #fb7185;
   --mark-study: #2dd4bf;
   --mark-window: #e7e5e4;
   --mark-window-opacity: 1;
