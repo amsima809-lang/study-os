@@ -43,9 +43,13 @@ On the developer account (2026-11-15), all made by Xcode's automatic signing:
   is Apple's cloud-managed certificate, so there is no distribution key to keep;
 - the development Mac, registered as a test device (so the app can run on it).
 
-**Not there yet: the app in App Store Connect**, and so no upload. Until that record exists the
-bundle identifier can still be changed (in `capacitor.config.json` and twice in
-`project.pbxproj`); once it exists it is permanent.
+In App Store Connect (2026-11-15): the app **Termtrail**, Apple ID `6835044878`, iOS, primary
+language Thai, SKU `termtrail-ios`, all users of the account have access. The bundle identifier
+is therefore **permanent**. The first build, `0.1.0 (202611150853)`, is uploaded to TestFlight.
+
+Still the owner's to do there: make an internal testing group and add the testers (each must
+first be a user of the App Store Connect account), and answer the export-compliance question if
+it is asked (the app declares `ITSAppUsesNonExemptEncryption = false`).
 
 Xcode refuses to sign when the account has an updated Program License Agreement waiting
 ("PLA Update available"). Only the account holder can accept it, at developer.apple.com/account.
@@ -123,8 +127,8 @@ in the wrapper bundle that App Store iPhone apps use on a Mac.
 - The built app carries the right identifier, version, name, permission texts and config.
 - The "cannot connect" page, in a desktop browser at phone size: it renders, and "Try again"
   returns to the site.
-- Signing: the archive signs for development, and exports signed for the App Store (build
-  `202611150759`, not uploaded).
+- Signing and upload: the archive signs for development, exports signed for the App Store, and
+  `testflight.sh` uploaded build `202611150853`, which App Store Connect lists under TestFlight.
 - On the development Mac (`run-on-mac.sh`): the app starts and stays running, with no crash
   report.
 - **Not checked: what the app shows.** Nobody has looked at its window yet, so sign-in, the
