@@ -47,13 +47,15 @@ const RIDGES: { fill: string; opacity: number; rim?: boolean; points: [number, n
 ];
 /** The summit's cap, in the brand's amber: the top book of the cairn. */
 const CAP: [number, number][] = [[720, 20], [694, 52], [710, 47], [721, 60], [733, 45], [748, 52]];
+/** How much wider than tall (in grid units) the mountain must stay, however narrow the window. */
+const MIN_SPREAD = 1.25;
 /** Where the trail ends: the middle of the cap's lower edge, so the amber cap sits above it. */
 const CAP_BASE: [number, number] = [721, 58];
 /** The trail's switchbacks up the mountain, from its foot to the summit (same grid). */
 const CLIMB: [number, number][] = [[770, 400], [610, 330], [800, 250], [655, 170], [745, 95]];
 
 export function TrailPath({ root, faint = false }: { root: RefObject<HTMLDivElement | null>; /** A campus photo is behind: keep the mountain light. */ faint?: boolean }) {
-  const [shape, setShape] = useState<{ w: number; h: number; trail: string; ridges: string[]; cap: string } | null>(null);
+  const [shape, setShape] = useState<{ w: number; h: number; trail: string; ridges: string[]; rim: string; cap: string } | null>(null);
 
   // After the page is in place: the page's own reference (the parent's ref) is only attached
   // once its children's layout effects have run.
@@ -78,12 +80,18 @@ export function TrailPath({ root, faint = false }: { root: RefObject<HTMLDivElem
         const card = at(summit.getBoundingClientRect(), 0.5, 1);
         const foot = hero.bottom - box.top;
         const peak = { x: card.x, y: Math.min(card.y + 28, foot - 180) };
-        const kx = Math.max(peak.x, W - peak.x) / SUMMIT.x;
         const ky = (foot - peak.y) / (420 - SUMMIT.y);
+        // Wide enough to reach both edges of the page, but never narrower than its own
+        // proportions allow: on a narrow window the mountain keeps its shape and its sides run
+        // off the page, instead of squeezing into a needle.
+        const kx = Math.max(Math.max(peak.x, W - peak.x) / SUMMIT.x, ky * MIN_SPREAD);
         const place = ([x, y]: [number, number]): Pt => ({ x: peak.x + (x - SUMMIT.x) * kx, y: peak.y + (y - SUMMIT.y) * ky });
         const poly = (pts: [number, number][]) => pts.map(place).map((p) => `${Math.round(p.x)},${Math.round(p.y)}`).join(" ");
         // A little past the foot, so no sliver of sky shows where the first screen ends.
         const ridges = RIDGES.map((r) => poly([[0, 428], ...r.points, [1440, 428]]));
+        // The light along the summit ridge's top edge only (stroking the whole shape would also
+        // draw its bottom edge, a line where the first screen ends).
+        const rim = poly(RIDGES.find((r) => r.rim)!.points);
 
         // The trail, top down: the summit, the switchbacks, then each marker and out to its
         // side and down past its section, and last the trailhead.
@@ -99,7 +107,7 @@ export function TrailPath({ root, faint = false }: { root: RefObject<HTMLDivElem
           pts.push({ x: side, y: row.bottom - box.top - Math.min(40, row.height * 0.1) });
         });
         pts.push(at(start.getBoundingClientRect(), 0.5, 0));
-        setShape({ w: W, h: H, trail: smoothPath(pts), ridges, cap: poly(CAP) });
+        setShape({ w: W, h: H, trail: smoothPath(pts), ridges, rim, cap: poly(CAP) });
       });
     };
     measure();
@@ -122,16 +130,11 @@ export function TrailPath({ root, faint = false }: { root: RefObject<HTMLDivElem
     >
       <g opacity={faint ? 0.75 : 1}>
         {shape.ridges.map((points, i) => (
-          <polygon
-            key={i}
-            points={points}
-            fill={RIDGES[i].fill}
-            fillOpacity={RIDGES[i].opacity}
-            // The summit's ridge catches the light along its edge, so its slopes read against the sky.
-            stroke={RIDGES[i].rim ? "rgba(196,187,255,0.28)" : undefined}
-            strokeWidth={RIDGES[i].rim ? 1.5 : undefined}
-            strokeLinejoin="round"
-          />
+          <g key={i}>
+            <polygon points={points} fill={RIDGES[i].fill} fillOpacity={RIDGES[i].opacity} />
+            {/* The summit's ridge catches the light along its top edge, so its slopes read against the sky. */}
+            {RIDGES[i].rim && <polyline points={shape.rim} fill="none" stroke="rgba(196,187,255,0.28)" strokeWidth={1.5} strokeLinejoin="round" />}
+          </g>
         ))}
         <polygon points={shape.cap} fill="#fbbf24" fillOpacity={0.6} />
       </g>
