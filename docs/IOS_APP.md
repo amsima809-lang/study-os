@@ -16,6 +16,7 @@ browser). Capacitor's native code comes in through Swift Package Manager, so no 
 | `native/www/` | The only page inside the app itself: "cannot connect", with a try-again button. Shown when the site cannot be reached. Plain HTML, no build. |
 | `native/ios/App/` | The Xcode project (committed). `App/Info.plist` has the permission texts; `App/Assets.xcassets` the icon and launch screen. |
 | `native/scripts/testflight.sh` | Build, sign and upload to TestFlight. |
+| `native/scripts/run-on-mac.sh` | Build a signed Debug copy and open it on an Apple silicon Mac. |
 | `native/scripts/ExportOptions.plist` | Upload settings. Builds are marked **internal testers only**. |
 
 Generated, do not edit by hand: the icon and launch images (`node scripts/make-icons.mjs`, from
@@ -34,9 +35,20 @@ The app's name is kept in step with the web app by `node scripts/rename-app.mjs`
 | Version | `0.1.0`; the build number is the upload time, set by the script |
 | Runs on | iPhone and iPad, iOS 15 or later |
 
-The bundle identifier is **not registered with Apple yet** and can still be changed (in
-`capacitor.config.json` and twice in `project.pbxproj`). Once the app exists in App Store Connect
-it is permanent.
+On the developer account (2026-11-15), all made by Xcode's automatic signing:
+
+- an **Apple Development** certificate, in the development machine's keychain;
+- the bundle identifier `com.patrick.termtrail`, registered as an App ID, with its App Store
+  profile ("iOS Team Store Provisioning Profile: com.patrick.termtrail"). Distribution signing
+  is Apple's cloud-managed certificate, so there is no distribution key to keep;
+- the development Mac, registered as a test device (so the app can run on it).
+
+**Not there yet: the app in App Store Connect**, and so no upload. Until that record exists the
+bundle identifier can still be changed (in `capacitor.config.json` and twice in
+`project.pbxproj`); once it exists it is permanent.
+
+Xcode refuses to sign when the account has an updated Program License Agreement waiting
+("PLA Update available"). Only the account holder can accept it, at developer.apple.com/account.
 
 ## What the first version does and does not do
 
@@ -90,10 +102,20 @@ To sign and upload (`--no-upload` stops after signing):
 bash native/scripts/testflight.sh
 ```
 
-The first signed build makes a signing certificate and registers the bundle identifier on the
-developer account, using the Apple account that Xcode is signed in to. The upload needs the app
-to exist in App Store Connect first (My Apps → + → New App: iOS, the name, the bundle
-identifier, an SKU).
+Signing uses the Apple account that Xcode is signed in to. The archive is signed for
+development with the team's wildcard profile; the export step re-signs it for the App Store
+with the app's own profile. The upload needs the app to exist in App Store Connect first
+(My Apps → + → New App: iOS, name "Termtrail", primary language Thai, bundle identifier
+`com.patrick.termtrail`, SKU `termtrail-ios`).
+
+To run it on an Apple silicon Mac, with no simulator and no phone:
+
+```bash
+bash native/scripts/run-on-mac.sh
+```
+
+An iOS app does not open on a Mac by itself ("incorrect executable format"); the script puts it
+in the wrapper bundle that App Store iPhone apps use on a Mac.
 
 ## What has been checked
 
@@ -101,5 +123,10 @@ identifier, an SKU).
 - The built app carries the right identifier, version, name, permission texts and config.
 - The "cannot connect" page, in a desktop browser at phone size: it renders, and "Try again"
   returns to the site.
-- **Not checked: the app running.** The development machine has no iOS simulator and no phone
-  attached, and running it needs a signed build.
+- Signing: the archive signs for development, and exports signed for the App Store (build
+  `202611150759`, not uploaded).
+- On the development Mac (`run-on-mac.sh`): the app starts and stays running, with no crash
+  report.
+- **Not checked: what the app shows.** Nobody has looked at its window yet, so sign-in, the
+  links that leave the app, the camera and location prompts, and the "cannot connect" page
+  inside the real app are all untested. Nor has it run on a phone.
