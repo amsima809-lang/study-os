@@ -26,12 +26,12 @@ function shiftMonth(month: string, delta: number): string {
 
 export type DotType = "class" | "exam" | "task" | "etesting" | "etwindow" | "etbooked" | "reminder" | "todo" | "event" | "busy";
 const DOT_COLORS: Record<DotType, string> = {
-  class: "var(--accent-text)",
+  class: "var(--mark-class)", // yellow
   exam: "#ef4444",
   task: "#22c55e",
   etesting: "#d97706",
-  etwindow: "var(--text-tertiary)",
-  etbooked: "#d97706",
+  etwindow: "var(--mark-window)", // grey; off-white in dark mode
+  etbooked: "var(--mark-booked)", // green
   event: "#6366f1",
   reminder: "#0ea5e9",
   todo: "#a855f7",
@@ -46,44 +46,51 @@ const DOT_COLORS: Record<DotType, string> = {
  * event, a calendar; a reminder, a bell; a to-do, a box; busy time from her calendar, a clock.
  * Different shapes as well as colours, so they are told apart without seeing colour.
  */
-const DOT_ORDER: DotType[] = ["exam", "etbooked", "class", "task", "etesting", "etwindow", "event", "busy", "reminder", "todo"];
+const DOT_ORDER: DotType[] = ["etbooked", "etesting", "etwindow", "exam", "class", "event", "busy", "reminder", "todo", "task"];
+/**
+ * The four places under a day, always in this order (owner, 2026-11-15): a booked e-Testing exam;
+ * an e-Testing day (registration first); a class (in the finals fortnight, when there are no
+ * classes, an exam takes this place); her own (an event, else busy time, a reminder, a to-do, a
+ * study-plan task). Missing kinds take no room: the icons a day has close up, in this order.
+ */
+export const SLOTS: DotType[][] = [["etbooked"], ["etesting", "etwindow"], ["exam", "class"], ["event", "busy", "reminder", "todo", "task"]];
+export const slotsOf = (types: Set<DotType>): (DotType | null)[] => SLOTS.map((s) => s.find((k) => types.has(k)) ?? null);
 const DOT_ICON: Record<DotType, string> = {
   class: "bookOpen", exam: "fileEdit", task: "calendarCheck", etesting: "pen", etwindow: "fileEdit", etbooked: "fileEdit",
   event: "calendar", reminder: "bell", todo: "square", busy: "clock",
 };
 /** The dot for an item: e-Testing testing days get their own, quieter mark. */
 const dotOf = (e: { type: CalEvent["type"]; etesting_kind?: string }): DotType => (e.type === "etesting" && e.etesting_kind === "testing" ? "etwindow" : e.type);
-export function DotMark({ type, color, label }: { type: DotType; color?: string; /** shown on hover */ label?: string }) {
+export function DotMark({ type, color, label, size = 13 }: { type: DotType; color?: string; /** shown on hover */ label?: string; size?: number }) {
   return (
-    <span title={label} className="inline-flex" style={{ opacity: type === "etwindow" ? 0.7 : 1 }}>
-      <Icon name={DOT_ICON[type]} size={13} style={{ color: color ?? DOT_COLORS[type], strokeWidth: 2.2 } as React.CSSProperties} />
+    <span title={label} className="inline-flex" style={{ opacity: type === "etwindow" ? "var(--mark-window-opacity)" : 1 }}>
+      <Icon name={DOT_ICON[type]} size={size} style={{ color: color ?? DOT_COLORS[type], strokeWidth: 2.2 } as React.CSSProperties} />
     </span>
   );
 }
-/** At most this many marks under a day; the rest as "+n" (the day's list shows everything). */
-export const MAX_MARKS = 3;
+/** A day's marks in SLOTS order, side by side; a missing kind leaves no gap. */
+export const SLOT_ICON = 11;
+export function SlotMarks({ slots }: { slots: ({ type: DotType; color?: string; label: string } | null)[] }) {
+  return (
+    <span className="flex items-center gap-px" aria-hidden="true">
+      {slots.map((m, i) => m && <DotMark key={i} type={m.type} color={m.color} label={m.label} size={SLOT_ICON} />)}
+    </span>
+  );
+}
 
 /**
- * The key to the icons: open the first time, and once she hides it, a small "Key" link for the
- * rest of the session (sessionStorage), so it is there to check but not in the way. Lists only
- * the kinds this month shows (`items`), plus anything extra the caller explains (`extra`).
+ * The key to the icons, under the month: only the kinds the month shows (`items`, in the order of
+ * the places under a day), plus anything extra the caller explains (`extra`). A line of space
+ * above it sets it apart from the last row of days.
  */
-const KEY_HIDDEN = "studyos.calKeyHidden";
 export function MarkKey({ items, extra }: { items: { type: DotType; color?: string; label: string }[]; extra?: React.ReactNode }) {
-  const { t } = useT();
-  const [hidden, setHidden] = useState(() => { try { return sessionStorage.getItem(KEY_HIDDEN) === "1"; } catch { return false; } });
-  const toggle = (h: boolean) => { setHidden(h); try { if (h) sessionStorage.setItem(KEY_HIDDEN, "1"); else sessionStorage.removeItem(KEY_HIDDEN); } catch { /* ok */ } };
   if (items.length === 0 && !extra) return null;
-  if (hidden) {
-    return <button onClick={() => toggle(false)} className="tap-area text-xs" style={{ color: "var(--text-tertiary)" }}>{t("cal.keyShow")}</button>;
-  }
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs" style={{ color: "var(--text-tertiary)" }}>
+    <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs" style={{ color: "var(--text-tertiary)" }}>
       {items.map((it) => (
         <span key={it.type + it.label} className="inline-flex items-center gap-1"><DotMark type={it.type} color={it.color} />{it.label}</span>
       ))}
       {extra}
-      <button onClick={() => toggle(true)} className="tap-area underline" style={{ color: "var(--text-tertiary)" }}>{t("cal.keyHide")}</button>
     </div>
   );
 }
@@ -375,13 +382,8 @@ export default function Calendar() {
                 {day}
               </span>
               {/* What is on the day, as icons (no key needed); the most important first. */}
-              <div className="flex items-center gap-px h-3.5 mt-0.5" aria-hidden="true">
-                {(() => { const shown = DOT_ORDER.filter((typ) => types.has(typ)); return (
-                  <>
-                    {shown.slice(0, MAX_MARKS).map((typ) => <DotMark key={typ} type={typ} label={t(`cal.kind.${typ}`)} />)}
-                    {shown.length > MAX_MARKS && <span className="text-xs leading-none" style={{ color: "var(--text-tertiary)" }}>+{shown.length - MAX_MARKS}</span>}
-                  </>
-                ); })()}
+              <div className="h-3 mt-0.5">
+                <SlotMarks slots={slotsOf(types).map((typ) => (typ ? { type: typ, label: t(`cal.kind.${typ}`) } : null))} />
               </div>
             </button>
           );

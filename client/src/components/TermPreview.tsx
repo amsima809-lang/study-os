@@ -19,7 +19,7 @@ import { bangkokTime } from "../reminderAlerts.ts";
 import { EXAM_PERIODS, addDays, examFit, finalsInBusyTime, teachingSpanOf, termBoundsOf, weekFit, weekOf, type Commitment, type FitCourse } from "../termFit.ts";
 import { blocksByDay, busyBetween, chosenSource, prepareGoogle, reconnectGoogle, CHANGED as BUSY_CHANGED, type BusyResult } from "../busyTimes.ts";
 import TimeGrid from "./TimeGrid.tsx";
-import { DotMark, MAX_MARKS, MarkKey } from "./Calendar.tsx";
+import { DotMark, MarkKey, SlotMarks } from "./Calendar.tsx";
 import Icon from "./Icon.tsx";
 import { ConfirmDialog, isTopDialog } from "./ui.tsx";
 import { RU_LINKS } from "../ruLinks.ts";
@@ -400,15 +400,18 @@ function MonthView({ courses, windows, month, onMonth, onPickDay }: {
   const cells = dates.map((date) => {
     const day = week.days.find((d) => d.date === date)!;
     const fin = exams.days.find((d) => d.date === date);
-    const marks: Mark[] = [];
-    // The most important first: a final (red when it clashes or falls in busy time), a booked e-Testing exam.
-    if (fin && fin.A.length + fin.B.length > 0) marks.push(problems.has(date) ? { type: "exam", color: "var(--danger)", label: t("fit.legendProblem") } : { type: "exam", color: "var(--accent-text)", label: t("fit.legendFinal") });
-    if (booked.has(date)) marks.push({ type: "etbooked", label: t("cal.kind.etbooked") });
-    if (day.classes.length || day.choices.length) marks.push({ type: "class", label: t("fit.mClass") });
-    if (et && date >= et.registration_start && date <= et.registration_end) marks.push({ type: "etesting", label: t("cal.kind.etesting") });
-    else if (et && date >= et.exam_start && date <= et.exam_end && !etClosed(date) && !booked.has(date)) marks.push({ type: "etwindow", label: t("cal.kind.etwindow") });
-    if (day.commitments.some((c) => c.kind === "busy")) marks.push({ type: "busy", label: t("cal.kind.busy") });
-    if (day.commitments.some((c) => c.kind !== "busy")) marks.push({ type: "event", label: t("fit.mBusy") });
+    // The four places, always in this order (Calendar.tsx SLOTS): booked e-Testing; an e-Testing
+    // day; a class (a final takes its place in the finals: red when it clashes or is in busy time); hers.
+    const finalHere = !!fin && fin.A.length + fin.B.length > 0;
+    const marks: (Mark | null)[] = [
+      booked.has(date) ? { type: "etbooked", label: t("cal.kind.etbooked") } : null,
+      et && date >= et.registration_start && date <= et.registration_end ? { type: "etesting", label: t("cal.kind.etesting") }
+        : et && date >= et.exam_start && date <= et.exam_end && !etClosed(date) && !booked.has(date) ? { type: "etwindow", label: t("cal.kind.etwindow") } : null,
+      finalHere ? (problems.has(date) ? { type: "exam", color: "var(--danger)", label: t("fit.legendProblem") } : { type: "exam", color: "var(--accent-text)", label: t("fit.legendFinal") })
+        : day.classes.length || day.choices.length ? { type: "class", label: t("fit.mClass") } : null,
+      day.commitments.some((c) => c.kind !== "busy") ? { type: "event", label: t("fit.mBusy") }
+        : day.commitments.some((c) => c.kind === "busy") ? { type: "busy", label: t("cal.kind.busy") } : null,
+    ];
     return { date, marks, ring: overlapDays.has(date) };
   });
   return (
@@ -427,15 +430,12 @@ function MonthView({ courses, windows, month, onMonth, onPickDay }: {
           <button
             key={c.date}
             onClick={() => onPickDay(c.date)}
-            aria-label={[formatDate(c.date, lang), ...c.marks.map((k) => k.label), c.ring ? t("fit.mOverlap") : ""].filter(Boolean).join(", ")}
+            aria-label={[formatDate(c.date, lang), ...c.marks.filter((k): k is Mark => !!k).map((k) => k.label), c.ring ? t("fit.mOverlap") : ""].filter(Boolean).join(", ")}
             className="rounded-lg min-h-11 py-1 flex flex-col items-center gap-1"
             style={{ backgroundColor: "var(--bg-base)", outline: c.ring ? "2px solid var(--warning, var(--danger))" : "none", outlineOffset: -2 }}
           >
             <span className="text-xs" style={{ color: "var(--text-primary)" }}>{Number(c.date.slice(8))}</span>
-            <span className="flex gap-px items-center min-h-3" aria-hidden="true">
-              {c.marks.slice(0, MAX_MARKS).map((k) => <DotMark key={k.type} type={k.type} color={k.color} label={k.label} />)}
-              {c.marks.length > MAX_MARKS && <span className="text-xs leading-none" style={{ color: "var(--text-tertiary)" }}>+{c.marks.length - MAX_MARKS}</span>}
-            </span>
+            <span className="min-h-3"><SlotMarks slots={c.marks} /></span>
           </button>
         ))}
       </div>
@@ -443,7 +443,8 @@ function MonthView({ courses, windows, month, onMonth, onPickDay }: {
       <MarkKey
         items={(() => {
           const seen = new Map<string, { type: Parameters<typeof DotMark>[0]["type"]; color?: string; label: string }>();
-          for (const c of cells) for (const k of c.marks) if (!seen.has(k.label)) seen.set(k.label, { type: k.type, color: k.color, label: k.label });
+          // In the same order as the places under a day.
+          for (let i = 0; i < 4; i++) for (const c of cells) { const k = c.marks[i]; if (k && !seen.has(k.label)) seen.set(k.label, { type: k.type, color: k.color, label: k.label }); }
           return [...seen.values()];
         })()}
         extra={overlapDays.size > 0 ? (
