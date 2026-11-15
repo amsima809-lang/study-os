@@ -54,6 +54,17 @@ export function SlotMarks({ slots }: { slots: ({ type: DotType; color?: string; 
 }
 
 /**
+ * What the key lists: the kinds the month shows, with "e-Testing booked" and "Final" side by side
+ * (the same rose icon; a final's date is ringed) and "e-Testing booked" always shown when a final
+ * is, so the difference is learnt even before anything is booked (owner 2026-11-16).
+ */
+export function keyItems(present: DotType[], t: (k: string) => string): { type: DotType; label: string }[] {
+  const kinds = present.includes("exam") && !present.includes("etbooked") ? ["etbooked" as DotType, ...present] : present;
+  const order: DotType[] = ["etbooked", "exam", ...DOT_ORDER.filter((k) => k !== "etbooked" && k !== "exam")];
+  return order.filter((k) => kinds.includes(k)).map((k) => ({ type: k, label: t(`cal.kind.${k}`) }));
+}
+
+/**
  * The key to the icons, under the month: only the kinds the month shows (`items`, in the order of
  * the places under a day), plus anything extra the caller explains (`extra`). A line of space
  * above it sets it apart from the last row of days.
@@ -372,7 +383,7 @@ export default function Calendar() {
       </div>
       {/* The key: only the kinds this month shows; hidden for the session once she hides it. */}
       <div className="px-4 pb-3">
-        <MarkKey items={DOT_ORDER.filter((typ) => days.some((c) => c && data?.events[c.date]?.some((e) => dotOf(e) === typ))).map((typ) => ({ type: typ, label: t(`cal.kind.${typ}`) }))} />
+        <MarkKey items={keyItems(DOT_ORDER.filter((typ) => days.some((c) => c && data?.events[c.date]?.some((e) => dotOf(e) === typ))), t)} />
       </div>
 
 

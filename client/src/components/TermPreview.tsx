@@ -448,7 +448,16 @@ function MonthView({ courses, windows, month, onMonth, onPickDay }: {
           const seen = new Map<string, { type: Parameters<typeof DotMark>[0]["type"]; color?: string; label: string }>();
           // In the same order as the places under a day.
           for (let i = 0; i < 4; i++) for (const c of cells) { const k = c.marks[i]; if (k && !seen.has(k.label)) seen.set(k.label, { type: k.type, color: k.color, label: k.label }); }
-          return [...seen.values()];
+          // "e-Testing booked" beside "Final" (same rose icon; a final's date is ringed), always
+          // when a final shows.
+          const list = [...seen.values()];
+          const fin = list.findIndex((k) => k.type === "exam");
+          if (fin >= 0) {
+            const booked = list.findIndex((k) => k.type === "etbooked");
+            const item = booked >= 0 ? list.splice(booked, 1)[0] : { type: "etbooked" as const, label: t("cal.kind.etbooked") };
+            list.splice(list.findIndex((k) => k.type === "exam"), 0, item);
+          }
+          return list;
         })()}
         extra={overlapDays.size > 0 ? (
           <span className="inline-flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ outline: "2px solid var(--warning, var(--danger))", outlineOffset: -2 }} />{t("fit.mOverlap")}</span>
