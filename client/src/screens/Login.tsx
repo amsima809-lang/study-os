@@ -31,6 +31,27 @@ function GoogleMark() {
   );
 }
 
+/**
+ * Scroll slowly (about 1.6 s, easing in and out) until the mountain's peak, which stands just under
+ * the sign-in card, is near the top edge of the screen. With reduced motion: straight there.
+ */
+function scrollToMountain() {
+  const card = document.querySelector("[data-trail-summit]");
+  if (!card) return;
+  const peak = card.getBoundingClientRect().bottom + window.scrollY + 28; // TrailPath puts the peak 28 px under the card
+  const target = Math.max(0, peak - 24);
+  const from = window.scrollY;
+  if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) { window.scrollTo(0, target); return; }
+  const duration = 1600, start = performance.now();
+  const ease = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+  const step = (now: number) => {
+    const k = Math.min(1, (now - start) / duration);
+    window.scrollTo(0, from + (target - from) * ease(k));
+    if (k < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
 export default function Login({ onAuthed }: { onAuthed: () => void }) {
   const { t, lang } = useT();
   const [uni, chooseUni] = useUniversity();
@@ -361,9 +382,12 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
         {/* The iPhone app, and the way down to what the app does. */}
         <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
           <AppStoreButton compact />
-          <a href="#features" className="inline-flex items-center gap-1 rounded-xl px-3 min-h-11 text-sm font-medium" style={{ color: "rgba(255,255,255,0.8)" }}>
-            {t("land.seeFeatures")} ↓
-          </a>
+          {/* Not a jump: the page glides down until the top of the mountain is near the top of the
+              screen, so she sees where the trail begins (owner 2026-11-16). */}
+          <button onClick={scrollToMountain} className="inline-flex items-center gap-1.5 rounded-xl px-3 min-h-11 text-sm font-medium" style={{ color: "rgba(255,255,255,0.8)" }}>
+            {t("land.scrollDown")}
+            <Icon name="chevronDown" size={16} />
+          </button>
         </div>
 
         {/* Bottom text: school colours (as the university names them) + photo credit */}

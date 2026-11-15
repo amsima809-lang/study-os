@@ -134,6 +134,7 @@ const paths: Record<string, string> = {
   repeat: "M17 1l4 4-4 4M3 11V9a4 4 0 014-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 01-4 4H3",
   x: "M18 6L6 18M6 6l12 12",
   chevronLeft: "M15 18l-6-6 6-6",
+  chevronDown: "M6 9l6 6 6-6",
   chevronRight: "M9 18l6-6-6-6",
   mapPin: "M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0zm-9 3a3 3 0 100-6 3 3 0 000 6z",
   clock: "M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zm0-14v6l4 2",

@@ -18,7 +18,7 @@ type Dict = Record<string, string>;
 const STRINGS: Record<Lang, Dict> = {
   th: {
     "app.name": "{app}",
-    "app.tagline": "ผู้ช่วยการเรียนส่วนตัว",
+    "app.tagline": "เส้นทางสู่ปริญญาที่นำทางให้คุณ",
     "lang.th": "ไทย",
     "lang.en": "EN",
     "status.connecting": "กำลังเชื่อมต่อ…",
@@ -87,6 +87,7 @@ const STRINGS: Record<Lang, Dict> = {
     "land.register": "สร้างบัญชีด้วย Google",
     "land.registerNote": "บัญชี Google ของคุณคือบัญชี {app} ไม่ต้องตั้งรหัสผ่านใหม่",
     "land.seeFeatures": "ดูว่า {app} ช่วยอะไรได้บ้าง",
+    "land.scrollDown": "เลื่อนลง",
     "land.featuresTitle": "ทุกอย่างของเทอมนี้ ในที่เดียว",
     "land.featuresIntro": "ทำมาสำหรับนักศึกษามหาวิทยาลัยรามคำแหง ตอนนี้มีหลักสูตรของคณะบริหารธุรกิจ",
     "land.f.timetable": "ตารางเรียน",
@@ -135,7 +136,7 @@ const STRINGS: Record<Lang, Dict> = {
     "uni.close": "ปิด",
     "uni.approx": "เฉดสีโดยประมาณ ไม่ใช่ค่าสีทางการ",
     "uni.photo_by": "ภาพ:",
-    "uni.tagline": "ผู้ช่วยการเรียนสำหรับนักศึกษา",
+    "uni.tagline": "เส้นทางสู่ปริญญาที่นำทางให้คุณ",
     // bottom navigation
     "nav.today": "วันนี้",
     "nav.progress": "ความคืบหน้า",
@@ -1037,7 +1038,7 @@ const STRINGS: Record<Lang, Dict> = {
   },
   en: {
     "app.name": "{app}",
-    "app.tagline": "Your personal study assistant",
+    "app.tagline": "Your guided path to a degree",
     "lang.th": "ไทย",
     "lang.en": "EN",
     "status.connecting": "Connecting…",
@@ -1106,6 +1107,7 @@ const STRINGS: Record<Lang, Dict> = {
     "land.register": "Create an account with Google",
     "land.registerNote": "Your Google account is your {app} account: no new password.",
     "land.seeFeatures": "See what {app} does",
+    "land.scrollDown": "Scroll down",
     "land.featuresTitle": "Your whole term, in one place",
     "land.featuresIntro": "Made for Ramkhamhaeng University students. For now it covers the Faculty of Business Administration's programmes.",
     "land.f.timetable": "Timetable",
@@ -1154,7 +1156,7 @@ const STRINGS: Record<Lang, Dict> = {
     "uni.close": "Close",
     "uni.approx": "Approximate shade, not an official colour value",
     "uni.photo_by": "Photo:",
-    "uni.tagline": "Study assistant for university students",
+    "uni.tagline": "Your guided path to a degree",
     "nav.today": "Today",
     "nav.progress": "Progress",
     "progress.title": "Progress",

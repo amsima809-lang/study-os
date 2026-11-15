@@ -24,7 +24,7 @@ export default defineConfig({
       manifest: {
         name: APP_NAME,
         short_name: APP_NAME,
-        description: "ผู้ช่วยการเรียนส่วนตัว ม.รามคำแหง",
+        description: "เส้นทางสู่ปริญญาที่นำทางให้คุณ ม.รามคำแหง",
         lang: "th",
         theme_color: "#4f46e5",
         background_color: "#f8fafc",
