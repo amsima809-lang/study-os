@@ -177,7 +177,7 @@ export default function Exams() {
               {mine.get(e.course_code)?.booking && (() => {
                 const b = mine.get(e.course_code)!.booking!;
                 return (
-                  <p className="text-sm mt-1" style={{ color: "var(--amber-text)" }}>
+                  <p className="text-sm mt-1" style={{ color: "var(--mark-booked)" }}>
                     {t("exams.booked", { date: formatDate(b.date, lang), n: b.period, time: timeRange(b.start, b.end) })}
                   </p>
                 );

@@ -20,7 +20,7 @@ const COLORS: Record<CalEvent["type"], string> = {
   exam: "#ef4444",
   task: "var(--mark-study)",
   etesting: "#f59e0b",
-  etbooked: "#d97706",
+  etbooked: "var(--mark-booked)",
   event: "#6366f1",
   reminder: "#0ea5e9",
   todo: "#a855f7",

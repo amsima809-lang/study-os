@@ -10,10 +10,10 @@ export type DotType = "class" | "exam" | "task" | "etesting" | "etwindow" | "etb
 export const DOT_COLORS: Record<DotType, string> = {
   class: "var(--mark-class)", // yellow
   exam: "#ef4444",
-  task: "var(--mark-study)", // teal: apart from classes (yellow) and booked e-Testing (green)
+  task: "var(--mark-study)", // teal: apart from classes (yellow) and booked e-Testing (rose)
   etesting: "#d97706",
   etwindow: "var(--mark-window)", // grey; off-white in dark mode
-  etbooked: "var(--mark-booked)", // green
+  etbooked: "var(--mark-booked)", // rose (owner 2026-11-16: green was too close to study teal)
   event: "#6366f1",
   reminder: "#0ea5e9",
   todo: "#a855f7",
