@@ -5,7 +5,7 @@ import { formatDate, timeRange, weekdayName } from "../format.ts";
 import ClassRows from "../components/ClassRows.tsx";
 import { Card, ErrorBox, Loading } from "../components/ui.tsx";
 import { CourseTitle } from "../components/CourseTitle.tsx";
-import Calendar from "../components/Calendar.tsx";
+import Calendar, { DotMark } from "../components/Calendar.tsx";
 import Icon from "../components/Icon.tsx";
 import { ReminderRow, setDone, useRemindersChanged } from "../components/Reminders.tsx";
 import { postJSON } from "../api.ts";
@@ -145,7 +145,10 @@ function StudyTodayCard({ data, onChanged }: { data: TodayData["studyToday"]; on
   return (
     <Card>
       <div className="flex justify-between items-baseline mb-1 gap-2">
-        <h2 className="font-semibold" style={{ color: "var(--text-primary)" }}>{t("today.study")}</h2>
+        <h2 className="font-semibold flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
+          <DotMark type="task" size={16} />
+          {t("today.study")}
+        </h2>
         <button onClick={() => navigateTo("studyplan")} className="text-sm min-h-11" style={{ color: "var(--accent-text)" }}>
           {t(data.hasPlan ? "today.studyOpen" : "today.studyMake")} ›
         </button>
@@ -215,7 +218,11 @@ export default function Today() {
 
       <div className="today-rest space-y-4">
       <Card>
-        <h2 className="font-semibold mb-1" style={{ color: "var(--text-primary)" }}>{t("today.nextExam")}</h2>
+        {/* The same mark as the calendar's: a booked e-Test is the green exam icon, a final the red one. */}
+        <h2 className="font-semibold mb-1 flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
+          <DotMark type={data.nextExam?.kind === "etesting" ? "etbooked" : "exam"} size={16} />
+          {t("today.nextExam")}
+        </h2>
         {data.nextExam ? (
           <div className="flex items-center justify-between">
             <div>
@@ -245,7 +252,10 @@ export default function Today() {
 
       <Card>
         {/* Editing this term's courses is on the trail screen, where the plan re-shapes around them. */}
-        <h2 className="font-semibold mb-1" style={{ color: "var(--text-primary)" }}>{t("today.classes")}</h2>
+        <h2 className="font-semibold mb-1 flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
+          <DotMark type="class" size={16} />
+          {t("today.classes")}
+        </h2>
         {data.classes.length === 0 && (
           <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t("today.noClasses")}</p>
         )}
@@ -259,8 +269,12 @@ export default function Today() {
 
       <Card>
         <div className="flex justify-between items-center">
-          <h2 className="font-semibold" style={{ color: "var(--text-primary)" }}>{t("today.review")}</h2>
-          <span className="font-semibold" style={{ color: "var(--accent-text)" }}>
+          {/* Reviewing cards is studying: the study mark (open book, teal), like the study plan. */}
+          <h2 className="font-semibold flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
+            <DotMark type="task" size={16} />
+            {t("today.review")}
+          </h2>
+          <span className="font-semibold" style={{ color: "var(--mark-study)" }}>
             {t("today.cards", { n: data.dueFlashcards })}
           </span>
         </div>
