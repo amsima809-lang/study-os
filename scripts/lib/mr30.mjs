@@ -43,10 +43,10 @@ export function examOf(text) {
 }
 
 /**
- * The two day groups a summer term is taught in: three days a week, every other day. As the
- * registrar's office (สวป.) answers on its own Q&A board, question 28288 (2 Mar 2561): "TTS คือ
- * เรียนวันอังคาร พฤหัสบดี และเสาร์ … MWF คือ เรียนวันจันทร์ พุธ และศุกร์"
- * (http://www.question.ru.ac.th/regis/question/28288).
+ * The two day groups a summer term is taught in: three days a week, every other day.
+ * "MWF = Monday, Wednesday, Friday; TTS = Tuesday, Thursday, Saturday": the 2569 admission
+ * guide's key to abbreviations (printed page 32, https://www.ru.ac.th/th/Center_study_plan/21/02_69.pdf),
+ * and the registrar's office on its Q&A board, question 28288 (2 Mar 2561).
  */
 const DAY_GROUPS = { MWF: [1, 3, 5], TTS: [2, 4, 6] };
 

@@ -9,9 +9,10 @@
 import type { DB } from "./db.js";
 
 /**
- * Clock times of the university's two exam periods. The registrar's documents
- * print only "A" or "B"; these are the times the app's first author, a student
- * there, recorded. (Migration 018 had used 09:00-12:00 and 13:30-16:30.)
+ * Clock times of the university's exam periods at the central campus. The ม.ร.30 and the exam
+ * list print only "A" or "B"; the 2569 admission guide's key to abbreviations (printed page 32,
+ * https://www.ru.ac.th/th/Center_study_plan/21/02_69.pdf) gives A = 0930-1200, B = 1400-1630,
+ * and C = 1700-1930 (not used in 2/69). Regional exam centres keep other times.
  * scripts/import-ru-term.mjs writes the same pair into each term's migration.
  */
 export const EXAM_PERIODS = { A: { start: "09:30", end: "12:00" }, B: { start: "14:00", end: "16:30" } } as const;
