@@ -52,7 +52,8 @@ function withCourses(View: ComponentType): ComponentType {
     const [version, setVersion] = useState(0); // bumped after courses are chosen, to load the view again
     return (
       <div className="space-y-4">
-        <ChooseCoursesCard showLink onChanged={() => setVersion((n) => n + 1)} />
+        {/* Only while nothing is chosen: changing the choice is on the trail screen. */}
+        <ChooseCoursesCard onChanged={() => setVersion((n) => n + 1)} />
         <View key={version} />
       </div>
     );

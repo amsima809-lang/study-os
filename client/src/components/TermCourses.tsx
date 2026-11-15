@@ -41,8 +41,8 @@ const PROMPTED = "studyos.coursesPrompted";
 /**
  * The call to choose courses. It asks the server itself, and shows:
  * nothing if the student cannot choose (no catalogue for their university);
- * a card with one button while nothing is chosen; and after that, with
- * `showLink`, a small "N courses this term" link to change the choice.
+ * a card with one button while nothing is chosen; and after that nothing:
+ * changing the choice is on the trail screen only ("This term", Edit courses).
  * `onChanged` runs after the picker closes, so the screen can reload.
  */
 /**
@@ -63,7 +63,7 @@ export function EditCoursesButton({ count, onClick }: { count: number; onClick: 
   );
 }
 
-export function ChooseCoursesCard({ onChanged, showLink = false, onTrail = false }: { onChanged?: () => void; showLink?: boolean; /** On the trail screen itself: no prompt or button, since the screen has its own "this term" card; only the new-term question. */ onTrail?: boolean }) {
+export function ChooseCoursesCard({ onChanged, onTrail = false }: { onChanged?: () => void; /** On the trail screen itself: no prompt or button, since the screen has its own "this term" card; only the new-term question. */ onTrail?: boolean }) {
   const { t, lang } = useT();
   const [state, setState] = useState<{ chosen: number; options: number } | null>(null);
   const [choosing, setChoosing] = useState(false);
@@ -179,10 +179,6 @@ export function ChooseCoursesCard({ onChanged, showLink = false, onTrail = false
             </div>
           </div>
         </Card>
-      ) : showLink ? (
-        <div className="flex justify-end">
-          <EditCoursesButton count={state.chosen} onClick={() => setChoosing(true)} />
-        </div>
       ) : null}
       {choosing && (
         <TermCoursesPicker
