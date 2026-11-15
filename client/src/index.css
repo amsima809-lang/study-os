@@ -295,3 +295,9 @@ html.keyboard-open [role="alertdialog"] {
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent-light) 40%, transparent);
 }
+
+/* The front page's trail (components/Trail.tsx): its dots creep slowly up towards the sign-in
+   card. Still for anyone who asks for less motion. */
+.trail-path .trail-steps { animation: trail-climb 2.4s linear infinite; }
+@keyframes trail-climb { to { stroke-dashoffset: 11.1; } }
+@media (prefers-reduced-motion: reduce) { .trail-path .trail-steps { animation: none; } }

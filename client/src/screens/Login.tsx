@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useT, LanguageToggle } from "../i18n.tsx";
 import { getJSON, postJSON } from "../api.ts";
 import { ThemeToggle } from "../components/ui.tsx";
@@ -8,6 +8,8 @@ import Logo from "../components/Logo.tsx";
 import { BRAND } from "../theme.ts";
 import { withBase } from "../base.ts";
 import { inNativeApp, canGoogleSignInInApp, googleSignInInApp } from "../native.ts";
+import LandingMore, { AppStoreButton, PhoneShot } from "../components/Landing.tsx";
+import { TrailPath } from "../components/Trail.tsx";
 
 const DARK = "#0b0b18";
 
@@ -59,6 +61,8 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
     return failed;
   });
   const [busy, setBusy] = useState(false);
+  // The whole front page, which the trail is measured against.
+  const landing = useRef<HTMLDivElement>(null);
   // In the iPhone app Google sign-in goes through the system's sign-in sheet (native.ts).
   // A copy of the app from before it could do that cannot sign in with Google at all.
   const inApp = inNativeApp();
@@ -101,7 +105,12 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
   }
 
   return (
-    <div className="min-h-dvh flex flex-col items-center justify-center px-6 relative overflow-hidden">
+    <div ref={landing} className="relative">
+    {/* The mountain under the sign-in card, and the trail that winds up the whole page to its summit (Trail.tsx). */}
+    <TrailPath root={landing} faint={!!uni?.photo} />
+    {/* The first screen, the summit: signing in or creating an account, with room below it for
+        the mountain (pb-56), so the mountain never sits behind the text. Below, what the app does (Landing.tsx). */}
+    <section id="top" className="min-h-dvh flex flex-col items-center justify-center px-6 pt-10 pb-56 relative overflow-hidden">
       {/* Modern animated gradient background */}
       <div
         className="absolute inset-0"
@@ -167,7 +176,9 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
         <LanguageToggle />
       </div>
 
-      <div className="relative z-10 w-full max-w-sm animate-slide-up">
+      {/* On a wide screen a phone stands beside the card, showing the app. */}
+      <div className="relative z-10 w-full max-w-5xl flex items-center justify-center gap-16">
+      <div data-trail-summit className="w-full max-w-sm animate-slide-up">
         {/* Logo and branding */}
         <div className="text-center mb-8">
           <div
@@ -211,6 +222,26 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
                 <GoogleMark />
                 {t("auth.google")}
               </button>
+            )}
+            {/* New here: a first Google sign-in creates the account, so this is the same step, said for a newcomer. */}
+            {methods?.google && (!inApp || appCanGoogle) && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.08)" }} />
+                  <span className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>{t("land.newHere")}</span>
+                  <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.08)" }} />
+                </div>
+                {inApp ? (
+                  <button type="button" onClick={googleInApp} disabled={busy} className="w-full rounded-2xl border min-h-12 font-semibold disabled:opacity-60" style={{ borderColor: "rgba(255,255,255,0.22)", color: "#fff" }}>
+                    {t("land.register")}
+                  </button>
+                ) : (
+                  <a href={withBase("/api/auth/google")} className="w-full rounded-2xl border min-h-12 font-semibold flex items-center justify-center" style={{ borderColor: "rgba(255,255,255,0.22)", color: "#fff" }}>
+                    {t("land.register")}
+                  </a>
+                )}
+                <p className="text-xs text-center" style={{ color: "rgba(255,255,255,0.45)" }}>{t("land.registerNote")}</p>
+              </div>
             )}
             {methods?.google && inApp && !appCanGoogle && (
               <p role="alert" className="text-sm text-center" style={{ color: "rgba(255,255,255,0.75)" }}>{t("auth.appTooOld")}</p>
@@ -326,6 +357,14 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
           {uni ? t("uni.change") : t("uni.choose")}
         </button>
 
+        {/* The iPhone app, and the way down to what the app does. */}
+        <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+          <AppStoreButton compact />
+          <a href="#features" className="inline-flex items-center gap-1 rounded-xl px-3 min-h-11 text-sm font-medium" style={{ color: "rgba(255,255,255,0.8)" }}>
+            {t("land.seeFeatures")} ↓
+          </a>
+        </div>
+
         {/* Bottom text: school colours (as the university names them) + photo credit */}
         <div className="text-center text-xs mt-5 space-y-1" style={{ color: "rgba(255,255,255,0.4)" }}>
           {uni ? (
@@ -350,6 +389,12 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
           )}
         </div>
       </div>
+      <PhoneShot shot="today" className="hidden md:block w-[270px] shrink-0 animate-slide-up" />
+      </div>
+
+    </section>
+
+      <LandingMore onSignIn={() => document.getElementById("top")?.scrollIntoView({ behavior: "smooth" })} />
 
       {picking && (
         <UniversityPicker current={uni} onPick={chooseUni} onClose={() => setPicking(false)} />

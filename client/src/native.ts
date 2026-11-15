@@ -4,6 +4,13 @@
  * The iOS app shows the same web app from the same server, so almost nothing needs to know;
  * use this only for what a web view cannot do (for now: notifications when the app is closed).
  */
+/**
+ * The iPhone app's page in the App Store, once it is released there. Until then this is null
+ * and the front page's App Store button says "coming soon". The app's Apple ID is 6835044878,
+ * so on release this becomes "https://apps.apple.com/app/id6835044878".
+ */
+export const APP_STORE_URL: string | null = null;
+
 export function inNativeApp(): boolean {
   try {
     return (window as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.() === true;

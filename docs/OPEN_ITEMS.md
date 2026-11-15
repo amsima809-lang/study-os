@@ -1,6 +1,6 @@
 # Open items
 
-Last updated 15 November 2026, after Phase 66. Everything that could be built or checked on the development machine has been. Each item below is **blocked**: it cannot be finished from the development machine, for the reason given. It needs a **person's decision**, something only the **owner** holds, a **device**, or **data** that is not published. For each: what was tried, why it stops there, and the exact next step.
+Last updated 15 November 2026, after Phase 67. Everything that could be built or checked on the development machine has been. Each item below is **blocked**: it cannot be finished from the development machine, for the reason given. It needs a **person's decision**, something only the **owner** holds, a **device**, or **data** that is not published. For each: what was tried, why it stops there, and the exact next step.
 
 What the development machine does not have (re-checked 14 November 2026, after Phase 51): no Docker, Podman, Colima or Fly CLI; no Java runtime (so the Android SDK installer cannot add a system image); Xcode without any iOS simulator (`simctl` lists no runtimes and no devices, and the app's simulator tool also needs an administrator password to select Xcode); one Android emulator image whose Chrome is a stub that cannot open a page; no Google sign-in keys and no Fly credentials; read-only access to the repository (pull, not push).
 
