@@ -47,9 +47,11 @@ In App Store Connect (2026-11-15): the app **Termtrail**, Apple ID `6835044878`,
 language Thai, SKU `termtrail-ios`, all users of the account have access. The bundle identifier
 is therefore **permanent**. The first build, `0.1.0 (202611150853)`, is uploaded to TestFlight.
 
-Still the owner's to do there: make an internal testing group and add the testers (each must
-first be a user of the App Store Connect account), and answer the export-compliance question if
-it is asked (the app declares `ITSAppUsesNonExemptEncryption = false`).
+TestFlight has one internal group, **Termtrail team**, with automatic distribution on (every
+build `testflight.sh` uploads goes to the group by itself; Apple does not let that be changed
+later). It has no testers yet. A tester must first be a user of the App Store Connect account
+(Users and Access; the account's other invitations use the Developer role, limited to one app),
+and is then added to the group.
 
 Xcode refuses to sign when the account has an updated Program License Agreement waiting
 ("PLA Update available"). Only the account holder can accept it, at developer.apple.com/account.
