@@ -49,12 +49,13 @@ const PROMPTED = "studyos.coursesPrompted";
  * The button that opens this term's course list again, to add or take away courses.
  * It used to be a quiet "8 courses this term ›" link, which the owner did not find.
  */
-export function EditCoursesButton({ count, onClick }: { count: number; onClick: () => void }) {
+export function EditCoursesButton({ count, onClick, disabled = false }: { count: number; onClick: () => void; disabled?: boolean }) {
   const { t } = useT();
   return (
     <button
       onClick={onClick}
-      className="inline-flex items-center gap-1.5 rounded-full border px-3 min-h-11 text-sm font-semibold"
+      disabled={disabled}
+      className="inline-flex items-center gap-1.5 rounded-full border px-3 min-h-11 text-sm font-semibold disabled:opacity-50"
       style={{ borderColor: "var(--accent-text)", color: "var(--accent-text)" }}
     >
       <Icon name="edit" size={15} />

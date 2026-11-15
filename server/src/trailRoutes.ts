@@ -20,14 +20,19 @@ type Profile = { program_id: string | null; entry_year: string | null; target_ye
 export function trailGoal(db: DB, userId: string): { target: string; summers: boolean; maxPerTerm: number; isDefault: boolean } {
   const p = db.prepare("SELECT program_id, entry_year, target_years, trail_target, trail_summers, trail_max FROM user_profiles WHERE user_id = ?").get(userId) as Profile | undefined;
   const now = currentTerm(db);
-  let target = p?.trail_target ?? null;
+  // A target that is no longer in the future (the term has moved on) counts as not set.
+  let target = p?.trail_target && termIndex(p.trail_target) > termIndex(now) ? p.trail_target : null;
   if (!target) {
     // Entry year 67 and a four-year plan end with the second term of year 70.
     const entry = /^\d{2}$/.test(p?.entry_year ?? "") ? +p!.entry_year! : null;
     const guess = entry === null ? null : `2/${entry + Math.ceil(p?.target_years ?? 4) - 1}`;
     target = guess && termIndex(guess) > termIndex(now) ? guess : nextTerm(nextTerm(now, false), false);
   }
-  return { target, summers: !!p?.trail_summers, maxPerTerm: p?.trail_max ?? CREDIT_LIMITS.regular, isDefault: !p?.trail_target };
+  // A ceiling saved under the old rules (3 to 24) is read as one the menu offers today: a
+  // multiple of 3 from 9, or the limit (22).
+  const stored = p?.trail_max ?? CREDIT_LIMITS.regular;
+  const max = stored >= CREDIT_LIMITS.regular ? CREDIT_LIMITS.regular : Math.max(CREDIT_LIMITS.regularMin, Math.floor(stored / 3) * 3);
+  return { target, summers: !!p?.trail_summers, maxPerTerm: max, isDefault: target !== p?.trail_target };
 }
 
 /**
@@ -80,6 +85,55 @@ export function loadTrailInput(db: DB, userId: string, { ignoreChosen = false } 
     passed: passed.filter((c) => inMajor.has(c)), current: current.filter((c) => inMajor.has(c)), otherCredits,
     currentTerm: now, targetTerm: goal.target, summers: goal.summers, maxPerTerm: goal.maxPerTerm,
   };
+}
+
+/**
+ * The same plan with summer terms the other way round, so the screen can say what switching
+ * them changes ("without summers the earliest is …").
+ */
+export function otherSummers(input: TrailInput): { summers: boolean; achievable: boolean; earliestTerm: string | null } {
+  const summers = !input.summers;
+  // A plan that starts next term starts in the summer straight after this term when summers are on.
+  const firstTerm = input.firstTerm === input.currentTerm ? input.firstTerm : nextTerm(input.currentTerm, summers);
+  const t = buildTrail({ ...input, summers, firstTerm });
+  return { summers, achievable: t.achievable, earliestTerm: t.earliestTerm };
+}
+
+export type LastRun = {
+  /** The past summer it ran in, e.g. "S/68". */
+  term: string;
+  /** Its classes then: days (1 = Monday … 7 = Sunday), times and room; `text` when no day was printed ("ไม่มีบรรยาย"). */
+  classes: Array<{ days: number[]; start: string | null; end: string | null; room: string; kind: string; text: string }>;
+  exam_date: string | null;
+  exam_slot: string | null;
+  exam_note: string | null;
+};
+
+/**
+ * How each course ran in the latest past summer on record (the registrar's ม.ร.30, migration
+ * 039). A future summer's own list is published only shortly before it, so this is the best
+ * guide to its days and times. Courses that ran in no recorded summer are left out.
+ */
+export function lastSummer(db: DB, codes: string[], now: string): Record<string, LastRun> {
+  if (codes.length === 0) return {};
+  const rows = db.prepare(
+    `SELECT term_id, course_code, sessions, exam_date, exam_slot, exam_note FROM term_offerings
+     WHERE term_id LIKE 'S/%' AND course_code IN (${codes.map(() => "?").join(",")})`,
+  ).all(...codes) as { term_id: string; course_code: string; sessions: string; exam_date: string | null; exam_slot: string | null; exam_note: string | null }[];
+  const out: Record<string, LastRun> = {};
+  for (const r of rows) {
+    if (termIndex(r.term_id) > termIndex(now)) continue; // only summers that have happened
+    if (out[r.course_code] && termIndex(out[r.course_code].term) >= termIndex(r.term_id)) continue;
+    // One line per class as printed: "MWF 0830-1020" became three sessions, one a day.
+    const byLine = new Map<string, LastRun["classes"][number]>();
+    for (const x of JSON.parse(r.sessions) as { kind: string; text: string; weekday: number | null; start: string | null; end: string | null; room: string }[]) {
+      const key = `${x.kind}|${x.text}|${x.room}`;
+      const line = byLine.get(key) ?? byLine.set(key, { days: [], start: x.start, end: x.end, room: x.room, kind: x.kind, text: x.text }).get(key)!;
+      if (x.weekday) line.days.push(x.weekday);
+    }
+    out[r.course_code] = { term: r.term_id, classes: [...byLine.values()], exam_date: r.exam_date, exam_slot: r.exam_slot, exam_note: r.exam_note };
+  }
+  return out;
 }
 
 /**
@@ -162,38 +216,47 @@ const TERM = /^[12S]\/\d{2}$/;
 const goalSchema = z.object({
   target: z.string().regex(TERM),
   summers: z.boolean(),
-  maxPerTerm: z.number().int().min(3).max(CREDIT_LIMITS.regular).refine((n) => n % 3 === 0, "a multiple of 3"),
+  // A multiple of 3 (most courses are 3 credits), or the university's limit itself.
+  maxPerTerm: z.number().int().min(CREDIT_LIMITS.regularMin).max(CREDIT_LIMITS.regular).refine((n) => n % 3 === 0 || n === CREDIT_LIMITS.regular, "a multiple of 3, or the limit"),
 });
 const passedSchema = z.object({ codes: z.array(z.string().regex(/^[A-Z]{3}\d{4}$/)).max(200) });
+
+/**
+ * Everything the trail screen shows: the goal, the plan, this term's courses and what switching
+ * summers would change. Sent by GET /trail and, after a change, by PUT /trail/goal itself, so the
+ * screen never depends on a second request to see what it just saved.
+ */
+export function trailPayload(db: DB, userId: string) {
+  const input = loadTrailInput(db, userId);
+  if (!input) return { available: false as const };
+  const goal = trailGoal(db, userId);
+  const trail = buildTrail(input);
+  const thisTerm = thisTermCourses(db, userId);
+  // Terms she may aim for: every regular term from the next one, eight years on.
+  const targets: string[] = [];
+  for (let t = nextTerm(input.currentTerm, false), i = 0; i < 16; i++, t = nextTerm(t, false)) targets.push(t);
+  if (!targets.includes(goal.target) && parseTerm(goal.target).kind !== "S") targets.push(goal.target);
+  // Names for every course the plan mentions.
+  const codes = [...new Set(trail.terms.flatMap((t) => t.items.flatMap((i) => [i.code, ...(i.alternatives ?? [])])).filter((c): c is string => !!c))];
+  const names = codes.length === 0 ? [] : db.prepare(`SELECT code, name_th, name_en FROM courses WHERE code IN (${codes.map(() => "?").join(",")})`).all(...codes);
+  const summerCodes = [...new Set(trail.terms.filter((t) => t.kind === "S").flatMap((t) => t.items.map((i) => i.code)).filter((c): c is string => !!c))];
+  return {
+    available: true as const, currentTerm: input.currentTerm, goal, targets, limits: CREDIT_LIMITS, trail, names,
+    otherSummers: otherSummers(input), lastSummer: lastSummer(db, summerCodes, input.currentTerm),
+    history: [...input.historyTerms].sort((a, b) => termIndex(a) - termIndex(b)),
+    chosenThisTerm: input.current.length, passedCount: input.passed.length, thisTerm,
+    // Credits passed in each part of the curriculum (the bars the degree planner used to show).
+    categories: (() => {
+      const done = passedCreditsByCategory(db, userId);
+      return (["GE", "CORE", "MAJOR_REQ", "MAJOR_ELEC", "FREE"] as Category[]).filter((c) => input.required[c] > 0).map((c) => ({ category: c, required: input.required[c], passed: Math.min(done[c] ?? 0, input.required[c]) }));
+    })(),
+  };
+}
 
 export function createTrailRouter(db: DB): Router {
   const router = Router();
 
-  router.get("/trail", (req, res) => {
-    const userId = req.user!.id;
-    const input = loadTrailInput(db, userId);
-    if (!input) return res.json({ available: false });
-    const goal = trailGoal(db, userId);
-    const trail = buildTrail(input);
-    const thisTerm = thisTermCourses(db, userId);
-    // Terms she may aim for: every regular term from the next one, eight years on.
-    const targets: string[] = [];
-    for (let t = nextTerm(input.currentTerm, false), i = 0; i < 16; i++, t = nextTerm(t, false)) targets.push(t);
-    if (!targets.includes(goal.target) && parseTerm(goal.target).kind !== "S") targets.push(goal.target);
-    // Names for every course the plan mentions.
-    const codes = [...new Set(trail.terms.flatMap((t) => t.items.flatMap((i) => [i.code, ...(i.alternatives ?? [])])).filter((c): c is string => !!c))];
-    const names = codes.length === 0 ? [] : db.prepare(`SELECT code, name_th, name_en FROM courses WHERE code IN (${codes.map(() => "?").join(",")})`).all(...codes);
-    res.json({
-      available: true, currentTerm: input.currentTerm, goal, targets, limits: CREDIT_LIMITS, trail, names,
-      history: [...input.historyTerms].sort((a, b) => termIndex(a) - termIndex(b)),
-      chosenThisTerm: input.current.length, passedCount: input.passed.length, thisTerm,
-      // Credits passed in each part of the curriculum (the bars the degree planner used to show).
-      categories: (() => {
-        const done = passedCreditsByCategory(db, userId);
-        return (["GE", "CORE", "MAJOR_REQ", "MAJOR_ELEC", "FREE"] as Category[]).filter((c) => input.required[c] > 0).map((c) => ({ category: c, required: input.required[c], passed: Math.min(done[c] ?? 0, input.required[c]) }));
-      })(),
-    });
-  });
+  router.get("/trail", (req, res) => res.json(trailPayload(db, req.user!.id)));
 
   router.get("/trail/suggested", (req, res) => res.json(suggestedCourses(db, req.user!.id)));
 
@@ -212,7 +275,8 @@ export function createTrailRouter(db: DB): Router {
     const { target, summers, maxPerTerm } = parsed.data;
     if (termIndex(target) <= termIndex(currentTerm(db))) return res.status(400).json({ error: "เลือกภาคเรียนในอนาคต", code: "BAD_GOAL" });
     db.prepare("UPDATE user_profiles SET trail_target = ?, trail_summers = ?, trail_max = ? WHERE user_id = ?").run(target, summers ? 1 : 0, maxPerTerm, req.user!.id);
-    res.json({ ok: true });
+    // The plan as it is now, so the screen shows the change straight from this answer.
+    res.json({ ok: true, ...trailPayload(db, req.user!.id) });
   });
 
   // The major's courses, with the ones the student has passed ticked.

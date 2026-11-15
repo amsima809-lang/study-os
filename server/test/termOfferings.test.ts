@@ -25,8 +25,8 @@ describe("the official record of term 2/69", () => {
   it("holds every course the university offers: 2,762, the total both documents print", () => {
     expect(count("SELECT COUNT(*) n FROM term_offerings WHERE term_id = '2/69'")).toBe(2762);
     expect(count("SELECT COUNT(*) n FROM term_offerings WHERE name_en = '' OR credits IS NULL")).toBe(0);
-    expect(count("SELECT COUNT(*) n FROM term_offerings WHERE exam_date IS NOT NULL")).toBe(1303);
-    expect(count("SELECT COUNT(*) n FROM term_offerings WHERE exam_date IS NULL AND exam_note = 'คณะจัดสอบเอง'")).toBe(1458);
+    expect(count("SELECT COUNT(*) n FROM term_offerings WHERE term_id = '2/69' AND exam_date IS NOT NULL")).toBe(1303);
+    expect(count("SELECT COUNT(*) n FROM term_offerings WHERE term_id = '2/69' AND exam_date IS NULL AND exam_note = 'คณะจัดสอบเอง'")).toBe(1458);
     expect(count("SELECT COUNT(*) n FROM term_offerings WHERE (exam_date IS NULL) <> (exam_slot IS NULL)")).toBe(0);
   });
 

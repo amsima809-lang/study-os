@@ -66,8 +66,12 @@ app.use(passport.session());
 
 // --- public routes ---
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, app: "StudyOS", phase: 68, tz: env.tz, time: new Date().toISOString() });
+  res.json({ ok: true, app: "StudyOS", phase: 69, tz: env.tz, time: new Date().toISOString() });
 });
+// Every answer from the API is about now: never kept by a browser or the iOS app's web view, so
+// a screen that saves and then asks again (the trail after a change to its goal) gets the new answer.
+// (Uploaded note photos and documents never change once stored, so they may be kept.)
+app.use("/api", (req, res, next) => { if (!req.path.startsWith("/uploads/")) res.set("Cache-Control", "no-store"); next(); });
 app.use("/api", setupAuth(db));
 
 // --- everything else under /api needs auth ---

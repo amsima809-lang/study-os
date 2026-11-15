@@ -135,7 +135,8 @@ async function send(url: string, init?: RequestInit): Promise<Response> {
 }
 
 export async function getJSON<T>(url: string): Promise<T> {
-  const r = await send(url);
+  // Never an answer kept from before (the server also says no-store): screens re-read after a save.
+  const r = await send(url, { cache: "no-store" });
   if (!r.ok) throw new Error(`${r.status} ${url}`);
   return (await r.json()) as T;
 }

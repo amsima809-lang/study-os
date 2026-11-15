@@ -4,9 +4,10 @@
  * there. The planning is done on the server (server/src/trail.ts) from the
  * curriculum and from which terms each course has been offered in before.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useT } from "../i18n.tsx";
 import { getJSON, putJSON } from "../api.ts";
+import { formatDate, timeRange, weekdayName } from "../format.ts";
 import { Card, ErrorBox, Loading } from "../components/ui.tsx";
 import { CourseChip } from "../components/CourseTitle.tsx";
 import TermCoursesPicker, { ChooseCoursesCard, EditCoursesButton } from "../components/TermCourses.tsx";
@@ -33,7 +34,7 @@ type TrailData =
       currentTerm: string;
       goal: { target: string; summers: boolean; maxPerTerm: number; isDefault: boolean };
       targets: string[];
-      limits: { regular: number; summer: number };
+      limits: { regular: number; summer: number; regularMin: number };
       trail: {
         achievable: boolean;
         finishTerm: string | null;
@@ -52,13 +53,28 @@ type TrailData =
       /** This term: what she registered for, and what the trail would have her take. */
       thisTerm: { term: string; courses: { code: string; name_th: string; name_en: string | null; credits: number; category: string | null; registered: boolean; suggested: boolean }[] };
       categories: { category: string; required: number; passed: number }[];
+      /** The same plan with summer terms switched the other way. */
+      otherSummers: { summers: boolean; achievable: boolean; earliestTerm: string | null };
+      /** For courses in a summer term of the plan: how each ran in the latest past summer. */
+      lastSummer: Record<string, LastRun>;
     };
+type LastRun = {
+  term: string;
+  classes: { days: number[]; start: string | null; end: string | null; room: string; kind: string; text: string }[];
+  exam_date: string | null;
+  exam_slot: string | null;
+  exam_note: string | null;
+};
 
 export default function Trail() {
   const { t, lang } = useT();
   const [data, setData] = useState<TrailData | null>(null);
   const [error, setError] = useState(false);
   const [saving, setSaving] = useState(false);
+  // A goal change shows at once (the switch moves, the menu shows the new choice) while the plan
+  // is worked out again; a save that fails is said in the goal card and the old goal comes back.
+  const [pendingGoal, setPendingGoal] = useState<Partial<{ target: string; summers: boolean; maxPerTerm: number }> | null>(null);
+  const [goalFailed, setGoalFailed] = useState(false);
   const [picking, setPicking] = useState(false);
   // This term's courses: the full list ("Edit courses"), and a tick being saved.
   const [editing, setEditing] = useState(false);
@@ -72,10 +88,24 @@ export default function Trail() {
   // A save that failed: said inside the card, not by blanking the whole screen.
   const [tickFailed, setTickFailed] = useState(false);
 
-  const load = useCallback(() => {
-    setError(false);
-    return getJSON<TrailData>("/api/trail").then(setData).catch(() => setError(true));
+  // Every request for the plan takes a number; only the latest one's answer is shown, so a slow
+  // answer can never put an older plan back on screen after a newer one. `inflight` is the newest
+  // request: a save waits for it (not just its own), so the screen is never unlocked on old data.
+  const latest = useRef(0);
+  const inflight = useRef<Promise<unknown>>(Promise.resolve());
+  /** Ask for the plan. `inline`: a failure is reported by the caller (inside its card), not by blanking the screen. */
+  const load = useCallback((inline = false): Promise<boolean> => {
+    const n = ++latest.current;
+    if (!inline) setError(false);
+    const p = getJSON<TrailData>("/api/trail").then(
+      (d) => { if (n === latest.current) setData(d); return true; },
+      () => { if (n === latest.current && !inline) setError(true); return false; },
+    );
+    inflight.current = p;
+    return p;
   }, []);
+  /** Wait until the newest request for the plan, whichever started it, has answered. */
+  const settled = async () => { let p; do { p = inflight.current; await p; } while (p !== inflight.current); };
   useEffect(() => { load(); }, [load]);
 
   /** "2/72" -> "Term 2/2572"; "S/71" -> "Summer 2571". */
@@ -92,7 +122,7 @@ export default function Trail() {
     return n ? (lang === "en" && n.name_en ? n.name_en : n.name_th) : "";
   };
 
-  if (error) return <ErrorBox onRetry={load} />;
+  if (error) return <ErrorBox onRetry={() => load()} />;
   if (!data) return <Loading>{t("status.connecting")}</Loading>;
   if (!data.available) {
     return (
@@ -103,21 +133,36 @@ export default function Trail() {
     );
   }
 
-  const { trail, goal } = data;
-  async function setGoal(next: Partial<typeof goal>) {
+  const { trail } = data;
+  // What the controls show: the saved goal, with a change being saved on top.
+  const goal = { ...data.goal, ...pendingGoal };
+  async function setGoal(next: Partial<{ target: string; summers: boolean; maxPerTerm: number }>) {
+    if (!data || !data.available || saving || ticking) return;
+    const n = ++latest.current;
+    const wanted = { target: goal.target, summers: goal.summers, maxPerTerm: goal.maxPerTerm, ...next };
+    setPendingGoal(next);
+    setGoalFailed(false);
     setSaving(true);
     try {
-      await putJSON("/api/trail/goal", { target: goal.target, summers: goal.summers, maxPerTerm: goal.maxPerTerm, ...next });
-      await load();
+      // The answer IS the new plan: shown straight from it, not from a second request.
+      const fresh = await putJSON<TrailData & { ok: true }>("/api/trail/goal", wanted);
+      // Shown unless another request for the plan started meanwhile: then ask again, after both.
+      if (fresh && fresh.available && n === latest.current) setData(fresh);
+      else if (!(await load(true))) setGoalFailed(true);
     } catch {
-      setError(true);
+      setGoalFailed(true);
+      // It may have been saved before the answer was lost, and an earlier request's answer was
+      // set aside for this one: show what the server holds now.
+      await load(true);
     } finally {
+      await settled();
+      setPendingGoal(null);
       setSaving(false);
     }
   }
   /** Tick or untick one of this term's courses: saved at once, and the plan re-made around it. */
   async function toggleThisTerm(code: string) {
-    if (!data || !data.available || ticking) return;
+    if (!data || !data.available || ticking || saving) return;
     const mine = new Set(nowCourses.filter((c) => c.on).map((c) => c.code));
     const row = nowCourses.find((c) => c.code === code);
     const on = !mine.has(code);
@@ -130,7 +175,8 @@ export default function Trail() {
       // Today, the timetable and the exams listen for this and reload.
       window.dispatchEvent(new Event(REMINDERS_CHANGED));
       if (row) setDropped((d) => { const n = { ...d }; if (on) delete n[code]; else n[code] = { ...row, registered: false }; return n; });
-      await load();
+      if (!(await load(true))) setTickFailed(true);
+      await settled();
       setTicked({});
     } catch {
       setTicked((m) => { const n = { ...m }; delete n[code]; return n; });
@@ -139,6 +185,8 @@ export default function Trail() {
       setTicking(null);
     }
   }
+  // A goal change and a tick are never saved at the same time: each waits for the other.
+  const busy = saving || !!ticking;
   const listed = new Set(data.thisTerm.courses.map((c) => c.code));
   const nowCourses = [...data.thisTerm.courses, ...Object.values(dropped).filter((c) => !listed.has(c.code))]
     .sort((a, b) => a.code.localeCompare(b.code))
@@ -154,6 +202,25 @@ export default function Trail() {
   /** The later term the plan now puts a course in, if any. */
   const plannedFor = (code: string) => laterTerms.find((x) => x.items.some((i) => i.code === code))?.term ?? null;
 
+  /** Order of terms: 2/69 < S/69 < 1/70. */
+  const ord = (id: string) => { const [k, yy] = id.split("/"); return +yy * 10 + (k === "1" ? 1 : k === "2" ? 2 : 3); };
+  // "Aim for": the earliest finish, or (a summer is not a graduation target here) the first target after it.
+  const aimTerm = trail.earliestTerm ? data.targets.find((x) => ord(x) >= ord(trail.earliestTerm!)) ?? null : null;
+  const other = data.otherSummers;
+  const summerLine = !other.earliestTerm
+    ? null
+    : !trail.earliestTerm
+      ? t(other.summers ? "trail.withSummers" : "trail.withoutSummers", { term: termName(other.earliestTerm) })
+      : other.earliestTerm === trail.earliestTerm
+      ? t("trail.summersSame")
+      : t(other.summers ? "trail.withSummers" : "trail.withoutSummers", { term: termName(other.earliestTerm) });
+  // Multiples of 3 from the university's minimum, and its limit itself (22).
+  const maxChoices = [...new Set([...Array.from({ length: 8 }, (_, i) => data.limits.regularMin + i * 3).filter((n) => n < data.limits.regular), data.limits.regular])];
+  /** "Mon, Wed, Fri 08:30–10:20 · KTB 301" for a class as it ran in a past summer. */
+  const classLine = (c: LastRun["classes"][number]) =>
+    c.days.length > 0 && c.start && c.end
+      ? `${c.days.map((d) => weekdayName(d, lang).slice(0, lang === "en" ? 3 : undefined)).join(lang === "en" ? ", " : " ")} ${timeRange(c.start, c.end)}${c.kind ? ` (${c.kind.replace(/\.$/, "")})` : ""}${c.room ? ` · ${c.room}` : ""}`
+      : c.text;
   const kindName = (k: "1" | "2" | "S") => t(k === "S" ? "trail.kindS" : k === "1" ? "trail.kind1" : "trail.kind2");
   const pct = (n: number) => `${Math.round((n / Math.max(1, trail.credits.total)) * 100)}%`;
   const fieldStyle = { backgroundColor: "var(--bg-base)", borderColor: "var(--border)", color: "var(--text-primary)" };
@@ -163,7 +230,7 @@ export default function Trail() {
       <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{t("trail.title")}</h1>
 
       {/* The plan counts this term's courses as done: ask for them if they are not chosen. */}
-      <ChooseCoursesCard onChanged={load} onTrail />
+      <ChooseCoursesCard onChanged={() => load()} onTrail />
 
       {/* The goal */}
       <Card>
@@ -172,7 +239,7 @@ export default function Trail() {
             <span className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>{t("trail.goal")}</span>
             <select
               value={goal.target}
-              disabled={saving}
+              disabled={busy}
               onChange={(e) => setGoal({ target: e.target.value })}
               className="w-full rounded-xl border px-3 min-h-11"
               style={fieldStyle}
@@ -184,12 +251,12 @@ export default function Trail() {
             <span className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>{t("trail.maxPerTerm")}</span>
             <select
               value={goal.maxPerTerm}
-              disabled={saving}
+              disabled={busy}
               onChange={(e) => setGoal({ maxPerTerm: Number(e.target.value) })}
               className="w-full rounded-xl border px-3 min-h-11"
               style={fieldStyle}
             >
-              {[9, 12, 15, 18, 21, 24].filter((n) => n <= data.limits.regular).map((n) => (
+              {maxChoices.map((n) => (
                 <option key={n} value={n}>{n === data.limits.regular ? t("trail.maxLimit", { n }) : t("trail.credits", { n })}</option>
               ))}
             </select>
@@ -199,7 +266,7 @@ export default function Trail() {
             <button
               role="switch"
               aria-checked={goal.summers}
-              disabled={saving}
+              disabled={busy}
               onClick={() => setGoal({ summers: !goal.summers })}
               className="flex items-center gap-2 min-h-11"
               style={{ color: "var(--text-primary)" }}
@@ -211,7 +278,13 @@ export default function Trail() {
             </button>
           </div>
         </div>
+        {/* Said while the plan is worked out again, and if the change could not be saved. */}
+        <p className="text-sm mt-2 min-h-5" aria-live="polite" style={{ color: goalFailed ? "var(--danger)" : "var(--text-tertiary)" }}>
+          {saving ? t("trail.replanning") : goalFailed ? t("trail.goalFailed") : ""}
+        </p>
       </Card>
+
+      <div className="space-y-4 transition-opacity" style={{ opacity: saving ? 0.55 : 1 }} aria-busy={saving}>
 
       {/* The verdict */}
       {trail.credits.left === 0 ? (
@@ -228,18 +301,18 @@ export default function Trail() {
         </div>
       ) : (
         <div className="rounded-xl px-4 py-3 space-y-2" style={{ backgroundColor: "var(--warning-bg, var(--danger-bg))", color: "var(--warning, var(--danger))" }}>
-          <p className="font-semibold">{t("trail.notBy", { term: termName(goal.target) })}</p>
+          <p className="font-semibold">{t("trail.notBy", { term: termName(trail.target) })}</p>
           {trail.earliestTerm ? (
             <>
-              <p className="text-sm">{t("trail.earliest", { term: termName(trail.earliestTerm), n: Math.min(goal.maxPerTerm, data.limits.regular) })}</p>
-              {data.targets.includes(trail.earliestTerm) && (
+              <p className="text-sm">{t("trail.earliest", { term: termName(trail.earliestTerm), n: Math.min(data.goal.maxPerTerm, data.limits.regular) })}</p>
+              {aimTerm && (
                 <button
-                  onClick={() => setGoal({ target: trail.earliestTerm! })}
-                  disabled={saving}
+                  onClick={() => setGoal({ target: aimTerm })}
+                  disabled={busy}
                   className="rounded-xl px-4 min-h-11 text-sm font-semibold"
                   style={{ backgroundColor: "var(--accent)", color: "#fff" }}
                 >
-                  {t("trail.aimFor", { term: termName(trail.earliestTerm) })}
+                  {t("trail.aimFor", { term: termName(aimTerm) })}
                 </button>
               )}
             </>
@@ -248,11 +321,18 @@ export default function Trail() {
           )}
         </div>
       )}
+      {/* What summer terms change, both ways, so switching them always shows its effect. */}
+      {trail.credits.left > 0 && summerLine && (
+        <p className="text-sm flex gap-2" style={{ color: "var(--text-secondary)" }}>
+          <Icon name="sun" size={16} style={{ marginTop: 2, flexShrink: 0, color: "var(--accent-2, var(--accent-text))" }} />
+          <span>{summerLine}</span>
+        </p>
+      )}
       {trail.unplaced.length > 0 && (
         <div className="rounded-xl px-4 py-3 text-sm" style={{ backgroundColor: "var(--danger-bg)", color: "var(--danger)" }}>
           <p className="font-semibold">{t("trail.unplacedTitle")}</p>
           <p className="mt-0.5">
-            {trail.unplaced.map((u) => u.code ?? t(`cat.${u.category}`)).join(", ")}. {t(goal.summers ? "trail.unplacedHint" : "trail.unplacedHintSummer")}
+            {trail.unplaced.map((u) => u.code ?? t(`cat.${u.category}`)).join(", ")}. {t(data.goal.summers ? "trail.unplacedHint" : "trail.unplacedHintSummer")}
           </p>
         </div>
       )}
@@ -266,7 +346,7 @@ export default function Trail() {
         <p className="text-sm mt-2" style={{ color: "var(--text-secondary)" }}>
           {t("trail.progress", { done: trail.credits.done, now: trail.credits.thisTerm, left: trail.credits.left, total: trail.credits.total })}
         </p>
-        <button onClick={() => setPicking(true)} className="tap-area text-sm font-medium mt-1" style={{ color: "var(--accent-text)" }}>
+        <button onClick={() => setPicking(true)} disabled={busy} className="tap-area text-sm font-medium mt-1 disabled:opacity-50" style={{ color: "var(--accent-text)" }}>
           {t("trail.passedLink", { n: data.passedCount })} ›
         </button>
         {/* Passed credits in each part of the curriculum */}
@@ -307,7 +387,7 @@ export default function Trail() {
           <ul className="pick-list" aria-busy={!!ticking}>
             {nowCourses.map((c) => (
               <li key={c.code}>
-                <button role="checkbox" aria-checked={c.on} disabled={!!ticking} onClick={() => toggleThisTerm(c.code)} className="pick-row disabled:opacity-70">
+                <button role="checkbox" aria-checked={c.on} disabled={busy} onClick={() => toggleThisTerm(c.code)} className="pick-row disabled:opacity-70">
                   <span
                     className="mt-0.5 w-6 h-6 shrink-0 rounded-md flex items-center justify-center"
                     style={{ border: `2px solid ${c.on ? "var(--accent)" : "var(--text-tertiary)"}`, backgroundColor: c.on ? "var(--accent)" : "transparent", color: "#fff" }}
@@ -349,7 +429,7 @@ export default function Trail() {
           </ul>
         )}
         <div className="mt-3 flex justify-end">
-          <EditCoursesButton count={nowCourses.filter((c) => c.on).length} onClick={() => setEditing(true)} />
+          <EditCoursesButton count={nowCourses.filter((c) => c.on).length} onClick={() => setEditing(true)} disabled={busy} />
         </div>
       </Card>
 
@@ -357,9 +437,16 @@ export default function Trail() {
       {laterTerms.map((term) => (
         <Card key={term.term}>
           <div className="flex items-baseline justify-between gap-2 mb-2">
-            <h2 className="font-semibold" style={{ color: "var(--accent-text)" }}>{termName(term.term)}</h2>
+            <h2 className="font-semibold flex items-center gap-1.5" style={{ color: "var(--accent-text)" }}>
+              {term.kind === "S" && <Icon name="sun" size={16} style={{ color: "var(--accent-2, var(--accent-text))" }} />}
+              {termName(term.term)}
+            </h2>
             <span className="text-sm whitespace-nowrap" style={{ color: "var(--text-tertiary)" }}>{t("trail.credits", { n: term.credits })}</span>
           </div>
+          {/* A summer, as the university's regulation sets it (server/src/trail.ts, CREDIT_LIMITS). */}
+          {term.kind === "S" && (
+            <p className="text-xs -mt-1 mb-2.5" style={{ color: "var(--text-tertiary)" }}>{t("trail.summerFacts", { n: data.limits.summer })}</p>
+          )}
           <ul className="space-y-2.5">
             {term.items.map((item, i) => (
               <li key={`${item.code ?? item.category}-${i}`}>
@@ -386,6 +473,19 @@ export default function Trail() {
                     </span>
                   )}
                 </div>
+                {/* In a summer: how it ran last summer, for a guide to days and times (that summer's own list is not out yet). */}
+                {term.kind === "S" && item.code && data.lastSummer[item.code] && (() => {
+                  const run = data.lastSummer[item.code];
+                  return (
+                    <div className="text-xs mt-1 rounded-lg px-2.5 py-1.5" style={{ backgroundColor: "var(--bg-surface-hover)", color: "var(--text-secondary)" }}>
+                      <span className="font-medium">{t("trail.lastSummer", { term: termName(run.term) })}</span>{" "}
+                      {run.classes.map(classLine).join(" · ")}
+                      {run.exam_date
+                        ? ` · ${t("trail.lastSummerExam", { date: formatDate(run.exam_date, lang), slot: run.exam_slot ?? "" })}`
+                        : run.exam_note ? ` · ${run.exam_note === "คณะจัดสอบเอง" ? t("exams.facultyTitle") : run.exam_note}` : ""}
+                    </div>
+                  );
+                })()}
                 {item.type === "choice" && (item.alternatives?.length ?? 0) > 0 && (
                   <details className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>
                     <summary className="tap-area cursor-pointer" style={{ color: "var(--accent-text)" }}>
@@ -403,6 +503,7 @@ export default function Trail() {
           </ul>
         </Card>
       ))}
+      </div>
 
       {/* What it is based on, and what it cannot know */}
       <p className="text-xs flex gap-2" style={{ color: "var(--text-tertiary)" }}>

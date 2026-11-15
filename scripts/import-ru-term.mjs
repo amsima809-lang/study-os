@@ -15,7 +15,7 @@ import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { basename } from "node:path";
 import { rebuildSql } from "./lib/term-rebuild-sql.mjs";
-import { lines, examOf, readMr30 } from "./lib/mr30.mjs";
+import { lines, examOf, readMr30, offeringRow, q } from "./lib/mr30.mjs";
 
 
 const [mr30Path, examPath, term, outName] = process.argv.slice(2);
@@ -72,21 +72,8 @@ if (problems.length) {
 }
 
 // ---------- write the migration ----------
-const q = (v) => (v === null || v === undefined || v === "" ? "NULL" : `'${String(v).replace(/'/g, "''")}'`);
 const sha = (p) => createHash("sha256").update(readFileSync(p)).digest("hex");
-const rows = [...mr30.courses.values()].map((c) => {
-  // "(AC101)PRINCIPLES OF ACCOUNTING 1": the bracket is the course's code in an older curriculum.
-  const full = c.name.join(" ").replace(/\s+/g, " ").trim();
-  const old = /^\(([^)]*)\)\s*(.*)$/.exec(full);
-  // extra room lines ("ห้องปฏิบัติการ / คอมพิวเตอร์ / VKB ชั้น 2") continue the room of a course with one class
-  const sessions = c.sessions.map((s) => ({ ...s }));
-  if (c.roomExtra.length && new Set(sessions.map((s) => s.text)).size === 1) for (const s of sessions) s.room = [s.room, ...c.roomExtra].filter(Boolean).join(" ");
-  const exam = c.exam ?? { date: null, slot: null, note: null };
-  return `(${[
-    q(term), q(c.code), c.credits, q(old ? old[2] : full), q(old ? old[1].replace(/[\u0E00-\u0E7F]/g, "").trim() : null), q(c.dept), q(mr30.depts[c.dept]),
-    q(c.notes.join("\n")), q(JSON.stringify(sessions)), q([...new Set(c.teachers)].join(", ")), q(exam.date), q(exam.slot), q(exam.note), c.page,
-  ].join(", ")})`;
-});
+const rows = [...mr30.courses.values()].map((c) => offeringRow(term, c, mr30.depts));
 const dated = [...mr30.courses.values()].filter((c) => c.exam?.date).length;
 const SCHEMA = `CREATE TABLE IF NOT EXISTS term_offerings (
   term_id     TEXT NOT NULL,

@@ -56,7 +56,7 @@ describe("the trail planner", () => {
     expect(t.finishTerm).toBe("2/70");
     expect(t.pace).toBe(15);
     expect(t.terms.map((x) => [x.term, x.credits])).toEqual([["1/70", 15], ["2/70", 15]]);
-    expect(t.earliestTerm).toBe("2/70"); // 24 + 6 at full load still needs two terms
+    expect(t.earliestTerm).toBe("2/70"); // 30 credits at full load (22) still need two terms
   });
 
   it("takes courses in the order the faculty plans them", () => {
@@ -68,11 +68,13 @@ describe("the trail planner", () => {
   });
 
   it("says a goal is NOT achievable and gives the earliest term that is", () => {
-    const t = buildTrail(base({ targetTerm: "1/70" })); // 30 credits cannot fit in one term of 24
+    const t = buildTrail(base({ targetTerm: "1/70" })); // 30 credits cannot fit in one term of 22
     expect(t.achievable).toBe(false);
     expect(t.earliestTerm).toBe("2/70");
     expect(t.finishTerm).toBe("2/70");
-    expect(t.terms[0].credits).toBe(CREDIT_LIMITS.regular); // shown at full pace, since the goal cannot be met anyway
+    // Shown at full pace, since the goal cannot be met anyway: seven 3-credit courses, 21 of the 22 allowed.
+    expect(t.pace).toBe(CREDIT_LIMITS.regular);
+    expect(t.terms[0].credits).toBe(21);
   });
 
   it("does not ask for what is already passed or being taken this term", () => {

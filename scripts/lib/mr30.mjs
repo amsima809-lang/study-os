@@ -42,12 +42,21 @@ export function examOf(text) {
   return { date, slot: m[5], note: null };
 }
 
-/** "TH 0830-1100" -> one session; "M-F 0930-1630" -> five; anything else has no weekday. */
+/**
+ * The two day groups a summer term is taught in: three days a week, every other day. As the
+ * registrar's office (สวป.) answers on its own Q&A board, question 28288 (2 Mar 2561): "TTS คือ
+ * เรียนวันอังคาร พฤหัสบดี และเสาร์ … MWF คือ เรียนวันจันทร์ พุธ และศุกร์"
+ * (http://www.question.ru.ac.th/regis/question/28288).
+ */
+const DAY_GROUPS = { MWF: [1, 3, 5], TTS: [2, 4, 6] };
+
+/** "TH 0830-1100" -> one session; "M-F 0930-1630" -> five; "MWF 0830-1020" -> three; anything else has no weekday. */
 function sessionsOf(kind, text, room) {
   const m = /^([A-Z]+)(?:-([A-Z]+))? (\d{2})(\d{2})-(\d{2})(\d{2})$/.exec(text);
-  if (!m || !WEEKDAY[m[1]] || (m[2] && !WEEKDAY[m[2]])) return [{ kind, text, weekday: null, start: null, end: null, room }];
-  const days = [];
-  for (let d = WEEKDAY[m[1]]; d <= WEEKDAY[m[2] ?? m[1]]; d++) days.push(d);
+  const group = m && !m[2] ? DAY_GROUPS[m[1]] : undefined;
+  if (!m || (!group && (!WEEKDAY[m[1]] || (m[2] && !WEEKDAY[m[2]])))) return [{ kind, text, weekday: null, start: null, end: null, room }];
+  const days = group ? [...group] : [];
+  if (!group) for (let d = WEEKDAY[m[1]]; d <= WEEKDAY[m[2] ?? m[1]]; d++) days.push(d);
   return days.map((weekday) => ({ kind, text, weekday, start: `${m[3]}:${m[4]}`, end: `${m[5]}:${m[6]}`, room }));
 }
 
@@ -55,13 +64,19 @@ function sessionsOf(kind, text, room) {
 export async function readMr30(path) {
   const courses = new Map(), depts = {};
   let dept = null, cur = null, printedTotal = null;
-  for (const line of await lines(path)) {
+  const all = await lines(path);
+  const isColumnHeader = (l) => l.items.map((i) => i.s).join("").replace(/\s+/g, "").includes("วิชา(CR)"); // S/67 prints it spaced out
+  // Each page starts with the date, "Page n of N" and on the first page the title, above the
+  // page's first column header. Editions differ in page size, so that line is found per page.
+  const headerY = new Map();
+  for (const l of all) if (isColumnHeader(l) && !headerY.has(l.page)) headerY.set(l.page, l.y);
+  for (const line of all) {
     const text = line.items.map((i) => i.s).join(" ");
     const total = /^รวม ([\d,]+) กระบวนวิชา$/.exec(text);
     if (total) { printedTotal = +total[1].replace(/,/g, ""); continue; }
-    if (line.y > 760 || text.includes("วิชา(CR)") || text.includes("ประกาศกระบวนวิชา")) continue; // page header, column header, title
     const head = line.items.length === 1 && line.items[0].x > 90 ? /^([A-Z]{3})\s*:\s*(.+)$/.exec(line.items[0].s) : null;
     if (head) { dept = head[1]; depts[dept] = head[2].trim(); cur = null; continue; }
+    if (isColumnHeader(line) || line.y > (headerY.get(line.page) ?? Infinity) || text.includes("ประกาศกระบวนวิชา")) continue; // column header, page header, title
     const col = { code: [], name: [], kind: [], time: [], room: [], teacher: [], exam: [] };
     for (const i of line.items) {
       const k = i.x < 55 ? "code" : i.x < 240 ? "name" : i.x < 280 ? "kind" : i.x < 340 ? "time" : i.x < 392 ? "room" : i.x < 505 ? "teacher" : "exam";
@@ -119,4 +134,26 @@ export async function readOffered(path) {
     }
   }
   return { term, courses, printedTotal };
+}
+
+// ---------- writing term_offerings rows ----------
+/** A value as SQL: NULL for nothing, otherwise a quoted string (numbers stay numbers). */
+export const q = (v) => (v === null || v === undefined || v === "" ? "NULL" : `'${String(v).replace(/'/g, "''")}'`);
+
+/**
+ * One course read by `readMr30`, as the VALUES of a term_offerings row (migration 032's
+ * columns, in order). Shared by import-ru-term.mjs and import-ru-past-term.mjs.
+ */
+export function offeringRow(term, c, depts) {
+  // "(AC101)PRINCIPLES OF ACCOUNTING 1": the bracket is the course's code in an older curriculum.
+  const full = c.name.join(" ").replace(/\s+/g, " ").trim();
+  const old = /^\(([^)]*)\)\s*(.*)$/.exec(full);
+  // extra room lines ("ห้องปฏิบัติการ / คอมพิวเตอร์ / VKB ชั้น 2") continue the room of a course with one class
+  const sessions = c.sessions.map((s) => ({ ...s }));
+  if (c.roomExtra.length && new Set(sessions.map((s) => s.text)).size === 1) for (const s of sessions) s.room = [s.room, ...c.roomExtra].filter(Boolean).join(" ");
+  const exam = c.exam ?? { date: null, slot: null, note: null };
+  return `(${[
+    q(term), q(c.code), c.credits, q(old ? old[2] : full), q(old ? old[1].replace(/[฀-๿]/g, "").trim() : null), q(c.dept), q(depts[c.dept]),
+    q(c.notes.join("\n")), q(JSON.stringify(sessions)), q([...new Set(c.teachers)].join(", ")), q(exam.date), q(exam.slot), q(exam.note), c.page,
+  ].join(", ")})`;
 }

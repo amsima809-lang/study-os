@@ -368,9 +368,10 @@ WHERE (name_th IS NULL OR name_th = '')
   AND code NOT IN (SELECT course_code FROM program_courses)
 ${REFERRING.map((t) => `  AND code NOT IN (SELECT ${t.includes(".") ? t.split(".")[1] : "course_code"} FROM ${t.split(".")[0]} WHERE ${t.includes(".") ? t.split(".")[1] : "course_code"} IS NOT NULL)`).join("\n")};
 
--- The catalogue has gained courses, so the timetable and exams of every term on record are
--- rebuilt: the new courses get the class times and exam dates the registrar published.
-${rebuildSql("term_id IN (SELECT DISTINCT term_id FROM term_offerings)")}`);
+-- The catalogue has gained courses, so the timetable and exams of every term the app plans
+-- (plan_terms) are rebuilt: the new courses get the class times and exam dates the registrar
+-- published. Past terms kept only as reference (S/67, S/68, migration 039) get no timetable.
+${rebuildSql("term_id IN (SELECT DISTINCT o.term_id FROM term_offerings o JOIN plan_terms p ON p.term_id = o.term_id)")}`);
 console.log(`server/migrations/${outName}: ${programs.length} majors, ${all.length} courses, ${programs.reduce((n, P) => n + P.courses.length, 0)} placements`);
 
 // ---------- the recommended order, as its own migration ----------

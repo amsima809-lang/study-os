@@ -35,11 +35,16 @@ export function nextTerm(id: string, summers: boolean): string {
 }
 
 /**
- * The university's limit on credits a student may register for in one term
- * (Ramkhamhaeng's admission guide: 24 in a regular term, 12 in a summer term).
- * A student in their final term may ask the faculty for more; that is not assumed.
+ * The university's limits on credits a student may register for in one term: at least 9 and at
+ * most 22 in a regular term, at most 9 in a summer term. Regulation of Ramkhamhaeng University
+ * on Bachelor's Degree Study B.E. 2560 (ข้อบังคับมหาวิทยาลัยรามคำแหง ว่าด้วยการศึกษาระดับปริญญาตรี
+ * พ.ศ. 2560), clause 13.4, http://www.oasc.ru.ac.th/images/doc/post/study2560.pdf; repeated in the
+ * registrar's 2569 handbook (http://www.regis.ru.ac.th/campus/Ca69/Campus_p0369.pdf, p. 6).
+ * (24 and 12 were the limits before 2560.) A student graduating that term may be allowed more
+ * by the dean; that is not assumed. Clause 15.1: a summer is 8 weeks, 7 of classes and 1 of
+ * exams, and is optional.
  */
-export const CREDIT_LIMITS = { regular: 24, summer: 12 } as const;
+export const CREDIT_LIMITS = { regular: 22, summer: 9, regularMin: 9 } as const;
 
 export type TrailCourse = {
   code: string;
