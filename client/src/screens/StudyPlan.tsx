@@ -8,6 +8,7 @@ import {
 import { Card, ErrorBox, Loading } from "../components/ui.tsx";
 import { withBase } from "../base.ts";
 import { ChooseCoursesCard } from "../components/TermCourses.tsx";
+import { formatDate } from "../format.ts";
 
 type View = "setup" | "plan";
 
@@ -65,7 +66,10 @@ export default function StudyPlan() {
 }
 
 function Setup({ onGenerated, hasPlan }: { onGenerated: () => void; hasPlan: boolean }) {
-  const { t } = useT();
+  const { t, lang } = useT();
+  const [dayOff, setDayOff] = useState("");
+  const [chapterCounts, setChapterCounts] = useState<Record<string, string>>({});
+  const loadCourses = () => getJSON<{ courses: PlanCourse[] }>("/api/studyplan/courses").then((c) => setCourses(c.courses));
   const [settings, setSettings] = useState<PlanSettings | null>(null);
   const [courses, setCourses] = useState<PlanCourse[]>([]);
   const [saving, setSaving] = useState(false);
@@ -84,6 +88,19 @@ function Setup({ onGenerated, hasPlan }: { onGenerated: () => void; hasPlan: boo
 
   if (!settings) return <Loading>{t("status.connecting")}</Loading>;
 
+  const saveDaysOff = (dates: string[]) => {
+    setSettings({ ...settings, blocked_dates: dates });
+    setSaving(true);
+    putJSON("/api/studyplan/settings", { blocked_dates: dates }).finally(() => setSaving(false));
+  };
+  /** No document uploaded for a course: she says how many chapters, and the plan can read them. */
+  const addChapters = async (code: string) => {
+    const n = Math.min(40, Math.max(1, Math.round(Number(chapterCounts[code]) || 0)));
+    if (!n) return;
+    await postJSON("/api/chapters", { course_code: code, chapters: Array.from({ length: n }, (_, i) => ({ name: t("sp.chapterN", { n: i + 1 }) })) });
+    setChapterCounts((prev) => ({ ...prev, [code]: "" }));
+    await loadCourses();
+  };
   const saveField = (field: keyof PlanSettings, value: number) => {
     const updated = { ...settings, [field]: value };
     setSettings(updated);
@@ -154,6 +171,43 @@ function Setup({ onGenerated, hasPlan }: { onGenerated: () => void; hasPlan: boo
               style={inputStyle}
             />
           </label>
+          <label className="text-sm col-span-2" style={{ color: "var(--text-tertiary)" }}>
+            {t("sp.workdayHours")}
+            <input
+              type="number" step="0.5" min="0" max="12"
+              value={settings.workday_hours}
+              onChange={(e) => saveField("workday_hours", Number(e.target.value))}
+              className="mt-1 w-full rounded-lg border px-3 py-2 text-sm min-h-11"
+              style={inputStyle}
+            />
+            <span className="block text-xs mt-1">{t("sp.workdayHint")}</span>
+          </label>
+        </div>
+        {/* Days off: no study planned (a trip, a family day). */}
+        <div className="mt-4">
+          <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t("sp.daysOff")}</p>
+          <div className="flex gap-2 mt-1">
+            <input type="date" aria-label={t("sp.daysOff")} value={dayOff} onChange={(e) => setDayOff(e.target.value)}
+              className="flex-1 rounded-lg border px-3 py-2 text-sm min-h-11" style={inputStyle} />
+            <button
+              onClick={() => { if (dayOff && !settings.blocked_dates.includes(dayOff)) saveDaysOff([...settings.blocked_dates, dayOff].sort()); setDayOff(""); }}
+              disabled={!dayOff}
+              className="px-4 rounded-lg text-sm min-h-11 disabled:opacity-50"
+              style={{ backgroundColor: "var(--bg-surface-hover)", color: "var(--text-primary)" }}
+            >{t("sp.addDayOff")}</button>
+          </div>
+          {settings.blocked_dates.length > 0 && (
+            <ul className="flex flex-wrap gap-2 mt-2">
+              {settings.blocked_dates.map((d) => (
+                <li key={d} className="inline-flex items-center gap-1 rounded-full pl-3 text-sm" style={{ backgroundColor: "var(--bg-surface-hover)", color: "var(--text-secondary)" }}>
+                  {formatDate(d, lang)}
+                  <button onClick={() => saveDaysOff(settings.blocked_dates.filter((x) => x !== d))} className="tap-area px-2" aria-label={t("sp.removeDayOff", { date: formatDate(d, lang) })}>
+                    <Icon name="x" size={14} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </Card>
 
@@ -169,11 +223,27 @@ function Setup({ onGenerated, hasPlan }: { onGenerated: () => void; hasPlan: boo
               >
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{c.course_code} {c.name_th}</span>
-                  <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>{t("sp.examDate")}: {c.exam_date}</span>
+                  <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+                    {t(c.exam_kind === "etesting" ? "sp.examEtesting" : c.exam_kind === "own" ? "sp.examOwn" : "sp.examDate")}: {formatDate(c.exam_date, lang)}
+                  </span>
                 </div>
-                <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>
-                  {c.chapters.length} {t("sp.chapters")} · {c.total_pages} {t("sp.pages")}
-                </p>
+                {c.chapters.length > 0 ? (
+                  <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>
+                    {c.chapters.length} {t("sp.chapters")} · {c.total_pages} {t("sp.pages")}
+                  </p>
+                ) : (
+                  // Nothing uploaded for it: the number of chapters is enough to plan the reading.
+                  <div className="flex items-center gap-2 mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>
+                    <label htmlFor={`chapters-${c.course_code}`} className="flex-1">{t("sp.howManyChapters")}</label>
+                    <input id={`chapters-${c.course_code}`} type="number" min="1" max="40" inputMode="numeric"
+                      value={chapterCounts[c.course_code] ?? ""}
+                      onChange={(e) => setChapterCounts((prev) => ({ ...prev, [c.course_code]: e.target.value }))}
+                      className="w-16 rounded border px-2 py-1 text-right text-sm min-h-11" style={inputStyle} />
+                    <button onClick={() => void addChapters(c.course_code)} disabled={!Number(chapterCounts[c.course_code])}
+                      className="px-3 rounded-lg text-sm min-h-11 disabled:opacity-50"
+                      style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}>{t("sp.addChapters")}</button>
+                  </div>
+                )}
                 {c.chapters.length > 0 && (
                   <ul className="mt-2 space-y-1">
                     {c.chapters.map((ch) => (
@@ -243,6 +313,13 @@ function PlanView({ data, onRefresh }: { data: StudyPlanData; onRefresh: () => v
   const [tasks, setTasks] = useState(data.tasks);
   const [selectedDate, setSelectedDate] = useState(data.today);
   const [rescheduling, setRescheduling] = useState(false);
+  const [noTime, setNoTime] = useState<string[]>([]);
+  const [updating, setUpdating] = useState(false);
+  /** Make the plan again from what has changed; ticked tasks are kept (the server carries them over). */
+  const update = async () => {
+    setUpdating(true);
+    try { await postJSON("/api/studyplan/generate", {}); onRefresh(); } finally { setUpdating(false); }
+  };
 
   const tasksByDate: Record<string, StudyTask[]> = {};
   for (const task of tasks) {
@@ -268,8 +345,9 @@ function PlanView({ data, onRefresh }: { data: StudyPlanData; onRefresh: () => v
   const reschedule = async () => {
     setRescheduling(true);
     try {
-      await postJSON("/api/studyplan/reschedule", {});
-      onRefresh();
+      const r = await postJSON<{ rescheduled: number; noTime: string[] }>("/api/studyplan/reschedule", {});
+      setNoTime(r.noTime ?? []);
+      if (r.rescheduled > 0) onRefresh();
     } finally {
       setRescheduling(false);
     }
@@ -279,6 +357,15 @@ function PlanView({ data, onRefresh }: { data: StudyPlanData; onRefresh: () => v
 
   return (
     <div className="space-y-4">
+      {data.plan?.stale && (
+        <div className="rounded-xl px-4 py-3 flex items-center justify-between gap-3" style={{ backgroundColor: "var(--bg-accent)" }}>
+          <p className="text-sm" style={{ color: "var(--text-primary)" }}>{t("sp.stale")}</p>
+          <button onClick={() => void update()} disabled={updating} className="text-sm px-3 rounded-lg min-h-11 whitespace-nowrap disabled:opacity-50"
+            style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}>
+            {updating ? t("sp.generating") : t("sp.update")}
+          </button>
+        </div>
+      )}
       {data.plan && data.plan.feasibility !== "ok" && (
         <div
           className="rounded-xl px-4 py-3 text-sm"
@@ -319,6 +406,9 @@ function PlanView({ data, onRefresh }: { data: StudyPlanData; onRefresh: () => v
             {t("sp.reschedule")}
           </button>
         </div>
+      )}
+      {noTime.length > 0 && (
+        <p className="text-sm" style={{ color: "var(--text-secondary)" }} aria-live="polite">{t("sp.noTimeLeft", { codes: noTime.join(", ") })}</p>
       )}
 
       <div className="flex gap-1 overflow-x-auto pb-1 -mx-4 px-4">

@@ -1,14 +1,8 @@
 import { withBase } from "./base.ts";
 /** Client-side fetch helpers + shared types for the Phase 2 screens. */
 
-export type StudyTarget = {
-  code: string;
-  name_th: string;
-  name_en: string | null;
-  difficulty: number;
-  weeklyHours: number;
-  dailyHours: number;
-};
+/** A study task of today, from her active plan. */
+export type TodayStudyTask = { id: number; course_code: string; name_th: string; name_en: string | null; task_type: "read" | "quiz" | "review" | "mock"; description: string; minutes: number; done: number };
 
 export type TodayData = {
   term: string;
@@ -23,13 +17,19 @@ export type TodayData = {
     name_en: string | null;
     date: string;
     slot: string | null;
+    /** A booked e-Test (before the final), the final, or a faculty-arranged exam she dated. */
+    kind: "etesting" | "final" | "own";
+    start: string | null;
+    end: string | null;
+    /** Her room and seat, as she copied them from e-Service. */
+    seat: string | null;
     daysLeft: number;
   } | null;
   dueFlashcards: number;
   reminders: ReminderOccurrence[];
   chosenCourses: number;
   canChooseCourses: boolean;
-  studyTargets: { weeklyTarget: number; totalPoints: number; courses: StudyTarget[] };
+  studyToday: { hasPlan: boolean; tasks: TodayStudyTask[]; overdue: number };
 };
 
 export type ReminderRule = {
@@ -359,7 +359,8 @@ export type CourseAnalytics = {
   name_th: string;
   name_en: string | null;
   difficulty: number;
-  targetWeeklyHours: number;
+  /** What her study plan gives it this week; null with no plan. */
+  targetWeeklyHours: number | null;
   actualWeeklyHours: number;
   quizAverage: number | null;
   attempts: number;
@@ -372,7 +373,7 @@ export type CourseAnalytics = {
 export type AnalyticsData = {
   term: string;
   weekStart: string;
-  weeklyTarget: number;
+  weeklyTarget: number | null;
   courses: CourseAnalytics[];
 };
 
@@ -442,6 +443,8 @@ export type PlanSettings = {
   weekend_hours: number;
   reading_speed: number;
   blocked_dates: string[];
+  /** Hours on a long day (6 h or more of her own events, such as a work shift). */
+  workday_hours: number;
 };
 
 export type PlanChapter = {
@@ -458,6 +461,8 @@ export type PlanCourse = {
   name_th: string;
   name_en: string | null;
   exam_date: string;
+  /** What the plan prepares for: a booked e-Test, the final, or a date she entered. */
+  exam_kind: "etesting" | "final" | "own";
   chapters: PlanChapter[];
   total_pages: number;
 };
@@ -500,6 +505,8 @@ export type StudyPlanData = {
     generated_at: string;
     feasibility: "ok" | "tight" | "impossible";
     warnings: string[];
+    /** Her courses, exams, chapters, hours or shifts changed since it was made. */
+    stale: boolean;
   } | null;
   tasks: StudyTask[];
   statuses: CourseStatus[];

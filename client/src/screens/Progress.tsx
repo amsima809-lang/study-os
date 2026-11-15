@@ -279,7 +279,9 @@ function Pomodoro() {
 
 function CourseRow({ c, mastery }: { c: CourseAnalytics; mastery: number | null }) {
   const { t } = useT();
-  const hoursPct = c.targetWeeklyHours > 0 ? Math.min((c.actualWeeklyHours / c.targetWeeklyHours) * 100, 100) : 0;
+  // The target is what her study plan gives this course this week; with no plan, hours only.
+  const target = c.targetWeeklyHours;
+  const hoursPct = target ? Math.min((c.actualWeeklyHours / target) * 100, 100) : 0;
 
   const riskStyle: Record<string, { bg: string; text: string }> = {
     green: { bg: "var(--success-bg)", text: "var(--success)" },
@@ -300,11 +302,13 @@ function CourseRow({ c, mastery }: { c: CourseAnalytics; mastery: number | null 
       <div className="mt-2">
         <div className="flex justify-between text-xs" style={{ color: "var(--text-tertiary)" }}>
           <span>{t("an.hours")}</span>
-          <span>{t("an.hoursValue", { actual: c.actualWeeklyHours, target: c.targetWeeklyHours })}</span>
+          <span>{target ? t("an.hoursValue", { actual: c.actualWeeklyHours, target }) : t("an.hoursOnly", { actual: c.actualWeeklyHours })}</span>
         </div>
-        <div className="h-1.5 rounded-full overflow-hidden mt-1" style={{ backgroundColor: "var(--border-light)" }}>
-          <div className="h-full rounded-full" style={{ width: `${hoursPct}%`, background: "linear-gradient(90deg, var(--accent), var(--accent-2, var(--accent)))" }} />
-        </div>
+        {target ? (
+          <div className="h-1.5 rounded-full overflow-hidden mt-1" style={{ backgroundColor: "var(--border-light)" }}>
+            <div className="h-full rounded-full" style={{ width: `${hoursPct}%`, background: "linear-gradient(90deg, var(--accent), var(--accent-2, var(--accent)))" }} />
+          </div>
+        ) : null}
       </div>
 
       <div className="flex flex-wrap justify-between gap-x-3 gap-y-1 text-xs mt-2" style={{ color: "var(--text-tertiary)" }}>

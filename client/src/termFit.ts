@@ -162,13 +162,21 @@ export function examFit(courses: FitCourse[], finals: { from: string; to: string
   };
 }
 
-export type FinalClash = { code: string; date: string; slot: "A" | "B"; from: string; to: string; busy: { time: string; end_time: string } };
+export type BusySpan = { time: string; end_time: string; /** her own event's name; calendar busy times have none */ title?: string };
+export type FinalClash = { code: string; date: string; slot: "A" | "B"; from: string; to: string; busy: BusySpan };
 /**
- * Finals that fall in her busy time (from her own calendar: busyTimes.ts), period by period.
+ * Her own events in this app (work shifts entered as events, as the preview advises) as busy
+ * spans: timed events with an end only. Reminders and to-dos are not time she is taken.
+ */
+export function ownBusy(commitments: Commitment[] | undefined): BusySpan[] {
+  return (commitments ?? []).filter((c) => c.kind === "event" && c.time && c.end_time).map((c) => ({ time: c.time!, end_time: c.end_time!, title: c.title }));
+}
+/**
+ * Finals that fall in her busy time (her own events in this app, and her own calendar: busyTimes.ts), period by period.
  * Unlike a class, a final cannot be skipped or watched later: these are the clashes she has to
  * solve (time off; or e-Testing, if the course has it).
  */
-export function finalsInBusyTime(fit: ExamFit, busyOn: (date: string) => { time: string; end_time: string }[]): FinalClash[] {
+export function finalsInBusyTime(fit: ExamFit, busyOn: (date: string) => BusySpan[]): FinalClash[] {
   const out: FinalClash[] = [];
   for (const d of fit.days) {
     for (const slot of ["A", "B"] as const) {

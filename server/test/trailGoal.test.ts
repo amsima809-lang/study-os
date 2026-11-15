@@ -335,3 +335,58 @@ describe("every goal, for every kind of student", () => {
     }, 60_000);
   }
 });
+
+describe("the starting goal (owner 2026-11-15: a new student must not see 'not on track' on day one)", () => {
+  it("reads the entry year however it was typed", async () => {
+    const { entryYearOf } = await import("../src/trailRoutes.js");
+    expect(entryYearOf("69")).toBe("69");
+    expect(entryYearOf("2569")).toBe("69");
+    expect(entryYearOf(" 2567 ")).toBe("67");
+    expect(entryYearOf("๒๕๖๙")).toBe("69");
+    expect(entryYearOf("2026")).toBe("69");
+    expect(entryYearOf("")).toBeNull();
+    expect(entryYearOf("abc")).toBeNull();
+    expect(entryYearOf(null)).toBeNull();
+  });
+
+  it("is a goal the plan meets, whether the entry year is two digits, four digits or blank", async () => {
+    for (const entry of ["69", "2569", null, "x"]) {
+      const u = student(`start-${entry}@example.com`);
+      db.prepare("UPDATE user_profiles SET entry_year = ? WHERE user_id = ?").run(entry, u);
+      const goal = trailGoal(db, u);
+      expect(goal.isDefault, String(entry)).toBe(true);
+      expect(termIndex(goal.target), String(entry)).toBeGreaterThan(termIndex(NOW));
+      const shown = await get(u);
+      expect(shown.goal.target, String(entry)).toBe(goal.target);
+      expect(shown.trail.achievable, String(entry)).toBe(true);
+      expect(shown.targets, String(entry)).toContain(goal.target);
+    }
+    // Two and four digits mean the same student: the same goal.
+    const a = student("start-a@example.com"), b = student("start-b@example.com");
+    db.prepare("UPDATE user_profiles SET entry_year = '2569' WHERE user_id = ?").run(b);
+    expect(trailGoal(db, b).target).toBe(trailGoal(db, a).target);
+  });
+
+  it("falls back to the faculty's pace, never sooner than she can finish, when four years from entry cannot be met", async () => {
+    // Entered in 66 with nothing passed: four years from entry (2/69) is now, so it cannot be met.
+    const u = student("start-late@example.com");
+    db.prepare("UPDATE user_profiles SET entry_year = '66' WHERE user_id = ?").run(u);
+    const shown = await get(u);
+    expect(shown.goal.isDefault).toBe(true);
+    expect(shown.trail.achievable).toBe(true);
+    expect(termIndex(shown.goal.target)).toBeGreaterThanOrEqual(termIndex(shown.trail.earliestTerm));
+    // 132 credits at the faculty's pace (about 17 a term) takes eight regular terms from this one.
+    expect(shown.goal.target).toBe("1/73");
+    // A lower ceiling she chose stretches it.
+    db.prepare("UPDATE user_profiles SET trail_max = 12 WHERE user_id = ?").run(u);
+    const slower = await get(u);
+    expect(termIndex(slower.goal.target)).toBeGreaterThan(termIndex("1/73"));
+    expect(slower.trail.achievable).toBe(true);
+  });
+
+  it("stays what she set once she sets a goal", async () => {
+    const u = student("start-set@example.com");
+    const r = await put(u, { target: "1/71", summers: false, maxPerTerm: 22 });
+    expect(r.body.goal).toMatchObject({ target: "1/71", isDefault: false });
+  });
+});

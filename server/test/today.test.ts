@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { openDb, type DB } from "../src/db.js";
 import { seedDatabase } from "../src/seed.js";
-import { studyTargets, findExamClashes, daysBetween, bangkokWeekday } from "../src/api.js";
+import { studyTargets, findExamClashes, daysBetween, bangkokWeekday, bangkokToday, addDaysISO } from "../src/api.js";
 
 let db: DB;
 beforeAll(() => {
@@ -9,21 +9,27 @@ beforeAll(() => {
   seedDatabase(db);
 });
 
-describe("Phase 2 — study targets", () => {
-  it("splits the 36h weekly target across 2/69 courses by difficulty points", () => {
+describe("study targets come from her own study plan (no hidden 36 hours)", () => {
+  it("has no target without a plan, so nothing looks behind", () => {
     const t = studyTargets(db, "2/69", "legacy-user-0001");
-    expect(t.totalPoints).toBeGreaterThan(0);
     expect(t.courses.length).toBeGreaterThan(0);
-
-    const total = t.courses.reduce((s, c) => s + c.weeklyHours, 0);
-    expect(total).toBeCloseTo(36, 0);
-
-    // A difficulty-2 course gets 2 * (36/totalPoints) weekly hours.
-    const eng = t.courses.find((c) => c.code === "RAM1111")!; // difficulty 2
-    expect(eng.weeklyHours).toBeCloseTo(36 / t.totalPoints * 2, 1);
-    // A difficulty-1 course gets 1 * (36/totalPoints) weekly hours.
-    const ram = t.courses.find((c) => c.code === "RAM1301")!; // difficulty 1
-    expect(ram.weeklyHours).toBeCloseTo(36 / t.totalPoints, 1);
+    expect(t.weeklyTarget).toBeNull();
+    expect(t.courses.every((c) => c.weeklyHours === null)).toBe(true);
+  });
+  it("is what the active plan gives each course this week", () => {
+    const user = "legacy-user-0001";
+    const code = studyTargets(db, "2/69", user).courses[0].code;
+    const plan = Number(db.prepare("INSERT INTO study_plans (user_id, status, generated_at, settings_json, feasibility, warnings_json) VALUES (?, 'active', ?, '{}', 'ok', '[]')").run(user, bangkokToday()).lastInsertRowid);
+    const add = db.prepare("INSERT INTO study_tasks (plan_id, course_code, date, task_type, description, minutes, sort_order) VALUES (?, ?, ?, 'read', 'x', ?, 0)");
+    add.run(plan, code, bangkokToday(), 90);
+    add.run(plan, code, addDaysISO(bangkokToday(), -(bangkokWeekday() - 1)), 30); // Monday
+    add.run(plan, code, addDaysISO(bangkokToday(), 8 - bangkokWeekday()), 600); // next Monday: not this week
+    const t = studyTargets(db, "2/69", user);
+    expect(t.courses.find((c) => c.code === code)!.weeklyHours).toBe(bangkokWeekday() === 1 ? 2 : 2);
+    expect(t.weeklyTarget).toBe(2);
+    expect(t.courses.filter((c) => c.code !== code).every((c) => c.weeklyHours === 0)).toBe(true);
+    db.prepare("DELETE FROM study_tasks WHERE plan_id = ?").run(plan);
+    db.prepare("DELETE FROM study_plans WHERE id = ?").run(plan);
   });
 });
 

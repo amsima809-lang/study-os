@@ -7,6 +7,7 @@ import type { DB } from "./db.js";
 import { env } from "./env.js";
 import { itemsForToday, occurrencesInRange } from "./reminders.js";
 import { courseExams, termExamWindows } from "./termExams.js";
+import { myExams } from "./myExams.js";
 import { ETESTING_PERIODS } from "./etestingBookings.js";
 
 // ---------- date helpers (Asia/Bangkok) ----------
@@ -83,7 +84,7 @@ export function setSetting(db: DB, key: string, value: string, userId?: string):
   }
 }
 
-function currentTermId(db: DB): string {
+export function currentTermId(db: DB): string {
   return getSetting(db, "current_term_id", "2/69");
 }
 
@@ -104,31 +105,44 @@ function currentTermCourses(db: DB, termId: string, userId: string): CourseRow[]
 }
 
 /**
- * Weekly + daily study-hour target per course, using the points system:
- * difficulty 3=3pts, 2=2pts, 1=1pt. weekly_target_hours / total points =
- * hours per point; a course's weekly hours = its points × hours-per-point.
+ * This week's study hours per course: what her active study plan gives each course from Monday to
+ * Sunday (owner 2026-11-15: no hidden target — this used to split an unseen, unchangeable 36 hours
+ * a week by difficulty). With no plan there is no target (null), and nothing is called behind.
  */
 export function studyTargets(db: DB, termId: string, userId: string) {
   const courses = currentTermCourses(db, termId, userId);
-  const weeklyTarget = Number(getSetting(db, "weekly_target_hours", "36", userId));
-  const totalPoints = courses.reduce((s, c) => s + c.difficulty, 0);
-  const hoursPerPoint = totalPoints > 0 ? weeklyTarget / totalPoints : 0;
-
+  const plan = db.prepare("SELECT id FROM study_plans WHERE status = 'active' AND user_id = ? ORDER BY id DESC LIMIT 1").get(userId) as { id: number } | undefined;
+  const today = bangkokToday(), weekday = bangkokWeekday();
+  const monday = addDaysISO(today, -(weekday - 1)), sunday = addDaysISO(monday, 6);
+  const minutes = new Map<string, number>();
+  if (plan) {
+    for (const r of db.prepare("SELECT course_code, SUM(minutes) AS m FROM study_tasks WHERE plan_id = ? AND date >= ? AND date <= ? GROUP BY course_code").all(plan.id, monday, sunday) as { course_code: string; m: number }[]) minutes.set(r.course_code, r.m);
+  }
+  const hours = (m: number) => Math.round((m / 60) * 10) / 10;
   return {
-    weeklyTarget,
-    totalPoints,
-    courses: courses.map((c) => {
-      const weekly = c.difficulty * hoursPerPoint;
-      return {
-        code: c.code,
-        name_th: c.name_th,
-        name_en: c.name_en,
-        difficulty: c.difficulty,
-        weeklyHours: Math.round(weekly * 10) / 10,
-        dailyHours: Math.round((weekly / 7) * 10) / 10,
-      };
-    }),
+    /** Hours her plan gives this week, or null with no plan. */
+    weeklyTarget: plan ? hours([...minutes.values()].reduce((a, b) => a + b, 0)) : null,
+    fromPlan: !!plan,
+    courses: courses.map((c) => ({
+      code: c.code, name_th: c.name_th, name_en: c.name_en, difficulty: c.difficulty,
+      weeklyHours: plan ? hours(minutes.get(c.code) ?? 0) : null,
+    })),
   };
+}
+
+/** Today's study tasks from her active plan (courses she still takes), and how many are overdue. */
+export function studyToday(db: DB, termId: string, userId: string) {
+  const plan = db.prepare("SELECT id FROM study_plans WHERE status = 'active' AND user_id = ? ORDER BY id DESC LIMIT 1").get(userId) as { id: number } | undefined;
+  if (!plan) return { hasPlan: false, tasks: [], overdue: 0 };
+  const today = bangkokToday();
+  const taking = myCoursesFilter(db, userId, termId, "st.course_code");
+  const tasks = db.prepare(
+    `SELECT st.id, st.course_code, c.name_th, c.name_en, st.task_type, st.description, st.minutes, st.done
+     FROM study_tasks st JOIN courses c ON c.code = st.course_code
+     WHERE st.plan_id = ? AND st.date = ?${taking.sql} ORDER BY st.sort_order`,
+  ).all(plan.id, today, ...taking.params) as Array<{ id: number; course_code: string; name_th: string; name_en: string | null; task_type: string; description: string; minutes: number; done: number }>;
+  const overdue = (db.prepare(`SELECT COUNT(*) n FROM study_tasks st WHERE st.plan_id = ? AND st.done = 0 AND st.date < ?${taking.sql}`).get(plan.id, today, ...taking.params) as { n: number }).n;
+  return { hasPlan: true, tasks, overdue };
 }
 
 type ClassRow = {
@@ -300,11 +314,11 @@ export function createApiRouter(db: DB): Router {
     const allClasses = weekClasses(db, term, userId);
     const todayClasses = allClasses.filter((c) => c.weekday === weekday);
 
-    const exams = termExams(db, term, userId);
-    const upcoming = exams
-      .map((e) => ({ ...e, daysLeft: daysBetween(today, e.datetime_start.slice(0, 10)) }))
-      .filter((e) => e.daysLeft >= 0)
-      .sort((a, b) => a.daysLeft - b.daysLeft);
+    // Her next exam: a booked e-Test before its course's final, a faculty-arranged exam she dated (myExams.ts).
+    const upcoming = myExams(db, userId, term, today)
+      .filter((e) => e.next)
+      .map((e) => ({ ...e, next: e.next!, daysLeft: daysBetween(today, e.next!.date) }))
+      .sort((a, b) => a.daysLeft - b.daysLeft || (a.next.start ?? "").localeCompare(b.next.start ?? ""));
     const nextExam = upcoming[0] ?? null;
 
     res.json({
@@ -319,8 +333,12 @@ export function createApiRouter(db: DB): Router {
             course_code: nextExam.course_code,
             name_th: nextExam.name_th,
             name_en: nextExam.name_en,
-            date: nextExam.datetime_start.slice(0, 10),
-            slot: nextExam.slot,
+            date: nextExam.next.date,
+            slot: nextExam.next.kind === "final" ? nextExam.final?.slot ?? null : null,
+            kind: nextExam.next.kind,
+            start: nextExam.next.start,
+            end: nextExam.next.end,
+            seat: nextExam.seat,
             daysLeft: nextExam.daysLeft,
           }
         : null,
@@ -329,7 +347,7 @@ export function createApiRouter(db: DB): Router {
       // How many courses the student chose for this term (0 = not chosen: the whole program shows).
       chosenCourses: termCourses(db, userId, term).length,
       canChooseCourses: hasCatalog(db, userId),
-      studyTargets: studyTargets(db, term, userId),
+      studyToday: studyToday(db, term, userId),
     });
   });
 
@@ -486,15 +504,17 @@ export function createApiRouter(db: DB): Router {
       .prepare("SELECT id FROM study_plans WHERE status = 'active' AND user_id = ? ORDER BY id DESC LIMIT 1")
       .get(userId) as { id: number } | undefined;
     if (plan) {
+      // Only for courses she still takes this term: a dropped course's reading is not hers any more.
+      const taking = myCoursesFilter(db, userId, currentTermId(db), "st.course_code");
       const tasks = db
         .prepare(
           `SELECT st.course_code, c.name_th, c.name_en, st.date, st.task_type, st.description, st.done
            FROM study_tasks st
            JOIN courses c ON c.code = st.course_code
-           WHERE st.plan_id = ? AND st.date >= ? AND st.date <= ?
+           WHERE st.plan_id = ? AND st.date >= ? AND st.date <= ?${taking.sql}
            ORDER BY st.sort_order`,
         )
-        .all(plan.id, firstDay, lastDay) as Array<{
+        .all(plan.id, firstDay, lastDay, ...taking.params) as Array<{
         course_code: string;
         name_th: string;
         name_en: string | null;

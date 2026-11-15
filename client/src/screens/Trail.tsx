@@ -300,7 +300,7 @@ export default function Trail() {
         </div>
         {/* Said while the plan is worked out again, and if the change could not be saved. */}
         <p className="text-sm mt-2 min-h-5" aria-live="polite" style={{ color: goalFailed ? "var(--danger)" : "var(--text-tertiary)" }}>
-          {saving ? t("trail.replanning") : goalFailed ? t("trail.goalFailed") : ""}
+          {saving ? t("trail.replanning") : goalFailed ? t("trail.goalFailed") : data.goal.isDefault ? t("trail.startingGoal") : ""}
         </p>
       </Card>
 

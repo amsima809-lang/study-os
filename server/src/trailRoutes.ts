@@ -17,23 +17,71 @@ const currentTerm = (db: DB) => getSetting(db, "current_term_id", "2/69");
 
 type Profile = { program_id: string | null; entry_year: string | null; target_years: number | null; trail_target: string | null; trail_summers: number; trail_max: number | null };
 
-/** The goal to plan for: what the student set, or four years from their entry year, or the term after next. */
-export function trailGoal(db: DB, userId: string): { target: string; summers: boolean; maxPerTerm: number; isDefault: boolean } {
+/**
+ * The entry year as the two digits of its Buddhist-era year ("69"), however it was typed: "69",
+ * "2569", Thai digits, or a Christian-era year ("2026"). Null when it cannot be read.
+ */
+export function entryYearOf(raw: string | null | undefined): string | null {
+  const s = String(raw ?? "").trim().replace(/[๐-๙]/g, (d) => String(d.charCodeAt(0) - 0x0e50));
+  if (/^\d{2}$/.test(s)) return s;
+  if (/^25\d{2}$/.test(s)) return s.slice(2);
+  if (/^20\d{2}$/.test(s)) return String(+s + 543).slice(2);
+  return null;
+}
+
+type Goal = { target: string; summers: boolean; maxPerTerm: number; isDefault: boolean };
+/** The first regular term at or after a term (a summer is followed by the next year's first term). */
+const regularFrom = (t: string) => (parseTerm(t).kind === "S" ? nextTerm(t, false) : t);
+const regularAfter = (t: string, n: number) => { let x = t; for (let i = 0; i < n; i++) x = nextTerm(x, false); return x; };
+
+/**
+ * What she saved, as the screen can send it back. `target` is null when she has not set one (or
+ * it is no longer in the future); `entryGuess` is four years from her entry year, if known.
+ */
+function storedGoal(db: DB, userId: string): { target: string | null; entryGuess: string | null; summers: boolean; maxPerTerm: number } {
   const p = db.prepare("SELECT program_id, entry_year, target_years, trail_target, trail_summers, trail_max FROM user_profiles WHERE user_id = ?").get(userId) as Profile | undefined;
   const now = currentTerm(db);
   // A target that is no longer in the future (the term has moved on) counts as not set.
-  let target = p?.trail_target && termIndex(p.trail_target) > termIndex(now) ? p.trail_target : null;
-  if (!target) {
-    // Entry year 67 and a four-year plan end with the second term of year 70.
-    const entry = /^\d{2}$/.test(p?.entry_year ?? "") ? +p!.entry_year! : null;
-    const guess = entry === null ? null : `2/${entry + Math.ceil(p?.target_years ?? 4) - 1}`;
-    target = guess && termIndex(guess) > termIndex(now) ? guess : nextTerm(nextTerm(now, false), false);
-  }
+  const target = p?.trail_target && termIndex(p.trail_target) > termIndex(now) ? p.trail_target : null;
+  // Entry year 67 and a four-year plan end with the second term of year 70.
+  const entry = entryYearOf(p?.entry_year);
+  const guess = entry === null ? null : `2/${+entry + Math.ceil(p?.target_years ?? 4) - 1}`;
   // A ceiling saved under the old rules (3 to 24) is read as one the menu offers today: a
   // multiple of 3 from 9, or the limit (22).
   const stored = p?.trail_max ?? CREDIT_LIMITS.regular;
   const max = stored >= CREDIT_LIMITS.regular ? CREDIT_LIMITS.regular : Math.max(CREDIT_LIMITS.regularMin, Math.floor(stored / 3) * 3);
-  return { target, summers: !!p?.trail_summers, maxPerTerm: max, isDefault: target !== p?.trail_target };
+  return { target, entryGuess: guess && termIndex(guess) > termIndex(now) ? guess : null, summers: !!p?.trail_summers, maxPerTerm: max };
+}
+
+/**
+ * The goal to plan for. What she set; otherwise a STARTING goal that the plan can meet, so the
+ * first thing a new student sees is a plan, not "not on track" for a date nobody chose
+ * (owner 2026-11-15, north star: calm defaults):
+ *   four years from her entry year, when that can still be met;
+ *   else the faculty's own pace (its plan spreads the degree over its regular terms, e.g. 132
+ *   credits over 8: 17 a term, or her ceiling if lower), from the first term the plan fills;
+ *   never sooner than the earliest finish at her ceiling.
+ */
+export function trailGoal(db: DB, userId: string): Goal {
+  const g = storedGoal(db, userId);
+  if (g.target) return { target: g.target, summers: g.summers, maxPerTerm: g.maxPerTerm, isDefault: false };
+  const input = loadTrailInput(db, userId);
+  return { target: input?.targetTerm ?? g.entryGuess ?? regularAfter(currentTerm(db), 2), summers: g.summers, maxPerTerm: g.maxPerTerm, isDefault: true };
+}
+
+/** The starting goal for a plan she has not set a target for (see trailGoal). */
+function startingTarget(input: TrailInput, entryGuess: string | null): string {
+  const now = input.currentTerm;
+  if (entryGuess && buildTrail({ ...input, targetTerm: entryGuess }).achievable) return entryGuess;
+  // Plan towards a far target to learn what is left and the earliest finish.
+  const open = buildTrail({ ...input, targetTerm: regularAfter(now, 30) });
+  const planTerms = 2 * Math.max(0, ...input.courses.map((c) => c.planYear ?? 0)) || 8;
+  const perTerm = Math.min(Math.ceil(open.credits.total / planTerms), input.maxPerTerm ?? CREDIT_LIMITS.regular);
+  const terms = Math.max(1, Math.ceil(open.credits.left / perTerm));
+  let target = regularAfter(regularFrom(input.firstTerm ?? nextTerm(now, false)), terms - 1);
+  if (open.earliestTerm && termIndex(regularFrom(open.earliestTerm)) > termIndex(target)) target = regularFrom(open.earliestTerm);
+  // The goal is always a term still ahead (the screen offers targets from next term on).
+  return termIndex(target) > termIndex(now) ? target : nextTerm(now, false);
 }
 
 /**
@@ -70,7 +118,7 @@ export function loadTrailInput(db: DB, userId: string, { ignoreChosen = false } 
   const otherCredits = outside.length === 0 ? 0 : (db.prepare(
     `SELECT COALESCE(SUM(credits), 0) AS n FROM courses WHERE code IN (${outside.map(() => "?").join(",")})`,
   ).get(...outside) as { n: number }).n;
-  const goal = trailGoal(db, userId);
+  const goal = storedGoal(db, userId);
   // Nothing chosen for this term yet: the plan starts with this term, and uses its published
   // course list (what really runs, and when each exam is) if there is one.
   const fromNow = current.length === 0;
@@ -80,12 +128,14 @@ export function loadTrailInput(db: DB, userId: string, { ignoreChosen = false } 
   const published = listed.length > 0
     ? { term: now, offered: listed.map((r) => r.course_code).filter((c) => inMajor.has(c)), exams: Object.fromEntries(listed.filter((r) => r.exam_date && inMajor.has(r.course_code)).map((r) => [r.course_code, `${r.exam_date} ${r.exam_slot}`])) }
     : undefined;
-  return {
+  const input: TrailInput = {
     firstTerm: fromNow ? now : nextTerm(now, goal.summers), published,
     required, courses, slots, groups, history, historyTerms,
     passed: passed.filter((c) => inMajor.has(c)), current: current.filter((c) => inMajor.has(c)), otherCredits,
-    currentTerm: now, targetTerm: goal.target, summers: goal.summers, maxPerTerm: goal.maxPerTerm,
+    currentTerm: now, targetTerm: goal.target ?? goal.entryGuess ?? regularAfter(now, 2), summers: goal.summers, maxPerTerm: goal.maxPerTerm,
   };
+  if (!goal.target) input.targetTerm = startingTarget(input, goal.entryGuess);
+  return input;
 }
 
 /**
@@ -233,7 +283,8 @@ const passedSchema = z.object({ codes: z.array(z.string().regex(/^[A-Z]{3}\d{4}$
 export function trailPayload(db: DB, userId: string) {
   const input = loadTrailInput(db, userId);
   if (!input) return { available: false as const };
-  const goal = trailGoal(db, userId);
+  const stored = storedGoal(db, userId);
+  const goal: Goal = { target: input.targetTerm, summers: input.summers, maxPerTerm: stored.maxPerTerm, isDefault: !stored.target };
   const trail = buildTrail(input);
   const thisTerm = thisTermCourses(db, userId);
   // Terms she may aim for: every regular term from the next one, eight years on.

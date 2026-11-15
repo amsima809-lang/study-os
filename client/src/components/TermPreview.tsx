@@ -16,7 +16,7 @@ import { useT } from "../i18n.tsx";
 import { deleteJSON, getJSON, putJSON, type ApiError, type CalEvent } from "../api.ts";
 import { formatDate, timeRange } from "../format.ts";
 import { bangkokTime } from "../reminderAlerts.ts";
-import { EXAM_PERIODS, addDays, examFit, finalsInBusyTime, teachingSpanOf, termBoundsOf, weekFit, weekOf, type Commitment, type FitCourse } from "../termFit.ts";
+import { EXAM_PERIODS, addDays, examFit, finalsInBusyTime, ownBusy, teachingSpanOf, termBoundsOf, weekFit, weekOf, type Commitment, type FitCourse } from "../termFit.ts";
 import { blocksByDay, busyBetween, chosenSource, prepareGoogle, reconnectGoogle, CHANGED as BUSY_CHANGED, type BusyResult } from "../busyTimes.ts";
 import TimeGrid from "./TimeGrid.tsx";
 import { DotMark, MarkKey, SlotMarks } from "./Calendar.tsx";
@@ -66,6 +66,7 @@ function useCommitments(dates: string[]) {
   const [days, setDays] = useState<Record<string, Commitment[]> | null>(null);
   const from = dates[0], to = dates[dates.length - 1];
   useEffect(() => {
+    if (!from || !to) { setDays({}); return; }
     let stop = false;
     setDays(null);
     getJSON<{ days: Record<string, Commitment[]> }>(`/api/commitments?from=${from}&to=${to}`)
@@ -381,9 +382,9 @@ function MonthView({ courses, windows, month, onMonth, onPickDay }: {
   const exams = useMemo(() => examFit(courses, windows.finals), [courses, windows]);
   const problems = useMemo(() => {
     const out = new Set(exams.clashes.map((c) => c.date));
-    for (const c of finalsInBusyTime(exams, (d) => busy.byDay[d] ?? [])) out.add(c.date);
+    for (const c of finalsInBusyTime(exams, (d) => [...ownBusy(commitments?.[d]), ...(busy.byDay[d] ?? [])])) out.add(c.date);
     return out;
-  }, [exams, busy.byDay]);
+  }, [exams, commitments, busy.byDay]);
   const et = windows.etesting;
   const etClosed = (iso: string) => !!et && et.central_closed.some(([a, b]) => iso >= a && iso <= b);
   const overlapDays = new Set(week.overlaps.map((o) => o.date));
@@ -474,7 +475,9 @@ export default function TermPreview({ courses, windows, onClose, canBook = false
   // Her busy times across the finals fortnight: a final there cannot move.
   const finalsDates = useMemo(() => exams.days.map((d) => d.date), [exams]);
   const finalsBusy = useBusy(finalsDates); // nothing to fetch when there are no dated finals
-  const finalClashes = useMemo(() => (finalsDates.length ? finalsInBusyTime(exams, (d) => finalsBusy.byDay[d] ?? []) : []), [exams, finalsDates, finalsBusy.byDay]);
+  // Her own events on those days too (work shifts entered as events): a final in one is as stuck.
+  const finalsOwn = useCommitments(finalsDates);
+  const finalClashes = useMemo(() => (finalsDates.length ? finalsInBusyTime(exams, (d) => [...ownBusy(finalsOwn?.[d]), ...(finalsBusy.byDay[d] ?? [])]) : []), [exams, finalsDates, finalsOwn, finalsBusy.byDay]);
   const nameOf = (code: string) => { const c = courses.find((x) => x.code === code); return c ? (lang === "en" && c.name_en ? c.name_en : c.name_th) : code; };
 
   useEffect(() => {
@@ -622,7 +625,7 @@ export default function TermPreview({ courses, windows, onClose, canBook = false
                 <div className="rounded-xl px-3 py-2 text-sm space-y-1" style={{ backgroundColor: "var(--danger-bg)", color: "var(--danger)" }}>
                   <p className="font-semibold">{t("busy.finalTitle")}</p>
                   {finalClashes.map((c) => (
-                    <p key={`${c.code}${c.date}`}>{t("busy.finalLine", { code: c.code, date: formatDate(c.date, lang), slot: c.slot, time: timeRange(c.from, c.to), busy: c.busy.time === "00:00" && c.busy.end_time === "23:59" ? t("busy.allDay") : timeRange(c.busy.time, c.busy.end_time) })}</p>
+                    <p key={`${c.code}${c.date}`}>{t("busy.finalLine", { code: c.code, date: formatDate(c.date, lang), slot: c.slot, time: timeRange(c.from, c.to), busy: `${c.busy.title ? `${c.busy.title} ` : ""}${c.busy.time === "00:00" && c.busy.end_time === "23:59" ? t("busy.allDay") : timeRange(c.busy.time, c.busy.end_time)}` })}</p>
                   ))}
                   <p className="text-xs" style={{ color: "var(--text-secondary)" }}>{t("busy.finalHint")}</p>
                 </div>

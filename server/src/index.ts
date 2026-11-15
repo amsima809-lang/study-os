@@ -26,7 +26,8 @@ import { createMaterialsRouter } from "./materials.js";
 import { createStudyPlanRouter } from "./studyplan.js";
 import { createLecturesRouter } from "./lectures.js";
 import { createRemindersRouter } from "./reminders.js";
-import { createTrailRouter } from "./trailRoutes.js";
+import { createTrailRouter, entryYearOf } from "./trailRoutes.js";
+import { createMyExamsRouter } from "./myExams.js";
 import { createEtestingRouter } from "./etestingBookings.js";
 import { createCalendarFeedRouter, serveFeed } from "./calendarFeed.js";
 import { createPushRouter, loadVapidKeys, startPushScheduler } from "./push.js";
@@ -185,6 +186,8 @@ app.put("/api/profile", (req, res) => {
   if (university_id !== undefined && !/^[a-z]{2,12}$/.test(university_id)) {
     return res.status(400).json({ error: "Invalid university_id" });
   }
+  // Kept as two digits ("69") however it was typed ("2569", "69"); unreadable is not stored.
+  const entry = entry_year === undefined || entry_year === "" ? null : entryYearOf(entry_year);
   db.prepare(
     `UPDATE user_profiles SET
        university_id = COALESCE(?, university_id),
@@ -195,7 +198,7 @@ app.put("/api/profile", (req, res) => {
        target_years = COALESCE(?, target_years),
        onboarded = 1
      WHERE user_id = ?`,
-  ).run(university_id ?? null, faculty_id ?? null, program_id ?? null, entry_year ?? null, entry_term ?? null, target_years ?? null, userId);
+  ).run(university_id ?? null, faculty_id ?? null, program_id ?? null, entry, entry_term ?? null, target_years ?? null, userId);
   res.json({ ok: true });
 });
 
@@ -213,6 +216,7 @@ app.use("/api", createRemindersRouter(db));
 app.use("/api", createTrailRouter(db));
 app.use("/api", createEtestingRouter(db));
 app.use("/api", createCalendarFeedRouter(db));
+app.use("/api", createMyExamsRouter(db));
 
 // Notifications when the app is closed: routes for devices, and the half-minute check for due items.
 const vapidKeys = loadVapidKeys(db);
