@@ -28,6 +28,7 @@ import { createLecturesRouter } from "./lectures.js";
 import { createRemindersRouter } from "./reminders.js";
 import { createTrailRouter } from "./trailRoutes.js";
 import { createPushRouter, loadVapidKeys, startPushScheduler } from "./push.js";
+import { parseOldAddresses, movedMiddleware } from "./moved.js";
 
 const app = express();
 const db = openDb(env.dbPath);
@@ -258,8 +259,16 @@ if (isProd) {
 
 // Under a sub-path (BASE_PATH=/termtrail) the whole app is mounted there: every route
 // above keeps its own address, and anything outside the sub-path is "not found".
-const site = env.basePath ? express().use(env.basePath, app) : app;
-if (env.basePath && isProd) site.set("trust proxy", 1);
+// In front of it: a request that still arrives at an old address of the site (MOVED_FROM)
+// is sent on to the new one.
+const oldAddresses = parseOldAddresses(env.movedFrom);
+const wrapped = !!env.basePath || oldAddresses.length > 0;
+const site = wrapped ? express() : app;
+if (wrapped) {
+  if (isProd) site.set("trust proxy", 1);
+  if (oldAddresses.length > 0) site.use(movedMiddleware(oldAddresses, env.appUrl));
+  site.use(env.basePath || "/", app);
+}
 const onListening = () => {
   console.log(`[StudyOS] server listening on http://${env.host ?? "localhost"}:${env.port}${env.basePath} (${env.nodeEnv})`);
   if (isProd) {

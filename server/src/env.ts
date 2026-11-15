@@ -46,6 +46,8 @@ export const env = {
   googleClientId: process.env.GOOGLE_CLIENT_ID ?? "",
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
   appUrl: process.env.APP_URL ?? "http://localhost:3100",
+  /** Old addresses of this site, comma-separated; requests to them are sent on to APP_URL (moved.ts). */
+  movedFrom: process.env.MOVED_FROM ?? "",
   /**
    * The URL scheme that returns a Google sign-in to the iOS app (its bundle identifier, which
    * the app listens for). See appSignIn.ts. server/test/brand.test.ts keeps it equal to the app's.

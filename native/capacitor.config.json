@@ -5,7 +5,7 @@
   "backgroundColor": "#4f46e5",
   "zoomEnabled": false,
   "server": {
-    "url": "https://amsima.com/termtrail/",
+    "url": "https://termtrail.com/",
     "errorPath": "index.html"
   },
   "ios": {
