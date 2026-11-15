@@ -235,7 +235,7 @@ AI ช่วยเรา "ฝึก" ไม่ใช่ "ทำแทน" — �
 - `client/src/data/universities.ts`: 35 universities (names, colour names as the university states them, hex swatches with a `source` of official / converted / approximate, optional campus photo). Generated from the high-confidence entries in `docs/research/universities-*.json`.
 - `client/src/components/UniversityPicker.tsx`: `useUniversity()` (choice kept in localStorage `studyos.university`, because the login page is shown before sign-in) and the searchable bottom-sheet picker.
 - `client/src/screens/Login.tsx`: background, orbs, logo tile and button take the chosen colours; a campus photo (if any) sits under a dark tinted overlay with the author and licence shown on the page.
-- Photos: `client/public/campus/*.webp` (900×1600), credits in `docs/PHOTO_CREDITS.md`. No university logos or emblems are used.
+- Photos: archived 2026-11-16 in `docs/brand/campus-photos/` (900×1600 WebP, credits in its CREDITS.md); the login page shows none. No university logos or emblems are used.
 
 ## Phase 22 — University at onboarding
 - Migration `022_university.sql` adds `user_profiles.university_id` (a slug from `client/src/data/universities.ts`).
