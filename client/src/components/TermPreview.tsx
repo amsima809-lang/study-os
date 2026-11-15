@@ -164,7 +164,11 @@ export function FitSummary({ courses, windows, onPreview }: { courses: FitCourse
 }
 
 /** The finals fortnight as a strip: a column a day, a row for each period. */
-function ExamStrip({ fit }: { fit: ReturnType<typeof examFit> }) {
+/**
+ * The finals fortnight as a strip. Red: two finals in one period (she can sit one), or a final in
+ * her busy time from her own calendar (`busy`: "date|slot"), the clashes she has to solve.
+ */
+function ExamStrip({ fit, busy = new Set<string>() }: { fit: ReturnType<typeof examFit>; busy?: Set<string> }) {
   const { t, lang } = useT();
   const clash = new Set(fit.clashes.map((c) => `${c.date}|${c.slot}`));
   const dayLetter = (wd: number) => t(`fit.dow${wd}`);
@@ -187,8 +191,11 @@ function ExamStrip({ fit }: { fit: ReturnType<typeof examFit> }) {
               <th scope="row" className="text-xs font-semibold pr-1 text-left" style={{ color: "var(--text-tertiary)" }}>{slot}</th>
               {fit.days.map((d) => {
                 const codes = d[slot];
-                const bad = clash.has(`${d.date}|${slot}`);
-                const label = codes.length ? `${formatDate(d.date, lang)} ${slot}: ${codes.join(", ")}${bad ? ` (${t("fit.clashWord")})` : ""}` : undefined;
+                const twoAtOnce = clash.has(`${d.date}|${slot}`);
+                const inBusy = codes.length > 0 && busy.has(`${d.date}|${slot}`);
+                const bad = twoAtOnce || inBusy;
+                const why = [twoAtOnce ? t("fit.clashWord") : "", inBusy ? t("fit.busyWord") : ""].filter(Boolean).join(", ");
+                const label = codes.length ? `${formatDate(d.date, lang)} ${slot}: ${codes.join(", ")}${why ? ` (${why})` : ""}` : undefined;
                 return (
                   <td
                     key={d.date}
@@ -486,7 +493,11 @@ export default function TermPreview({ courses, windows, onClose, canBook = false
                 {t("fit.examDays", { n: exams.examDays })} · {t("fit.weekdays", { n: exams.weekdayExamDays })}
                 {exams.twoInADay.length > 0 && ` · ${t("fit.twoInADay", { n: exams.twoInADay.length })}`}
               </p>
-              <ExamStrip fit={exams} />
+              <ExamStrip fit={exams} busy={new Set(finalClashes.map((c) => `${c.date}|${c.slot}`))} />
+              <p className="text-xs flex flex-wrap items-center gap-x-3 gap-y-1" style={{ color: "var(--text-tertiary)" }}>
+                <span className="inline-flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: "var(--accent)" }} />{t("fit.legendFinal")}</span>
+                <span className="inline-flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: "var(--danger)" }} />{t("fit.legendProblem")}</span>
+              </p>
               <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
                 A {timeRange(EXAM_PERIODS.A[0], EXAM_PERIODS.A[1])} · B {timeRange(EXAM_PERIODS.B[0], EXAM_PERIODS.B[1])}
               </p>
