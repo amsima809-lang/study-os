@@ -19,7 +19,7 @@ import { bangkokTime } from "../reminderAlerts.ts";
 import { EXAM_PERIODS, addDays, examFit, finalsInBusyTime, teachingSpanOf, termBoundsOf, weekFit, weekOf, type Commitment, type FitCourse } from "../termFit.ts";
 import { blocksByDay, busyBetween, chosenSource, prepareGoogle, reconnectGoogle, CHANGED as BUSY_CHANGED, type BusyResult } from "../busyTimes.ts";
 import TimeGrid from "./TimeGrid.tsx";
-import { DotMark, MAX_MARKS } from "./Calendar.tsx";
+import { DotMark, MAX_MARKS, MarkKey } from "./Calendar.tsx";
 import Icon from "./Icon.tsx";
 import { ConfirmDialog, isTopDialog } from "./ui.tsx";
 import { RU_LINKS } from "../ruLinks.ts";
@@ -439,12 +439,17 @@ function MonthView({ courses, windows, month, onMonth, onPickDay }: {
           </button>
         ))}
       </div>
-      {/* The icons explain themselves; only the ring needs a word. */}
-      {overlapDays.size > 0 && (
-        <p className="text-xs inline-flex items-center gap-1.5" style={{ color: "var(--text-tertiary)" }}>
-          <span className="inline-block w-3 h-3 rounded-sm" style={{ outline: "2px solid var(--warning, var(--danger))", outlineOffset: -2 }} />{t("fit.mOverlap")}
-        </p>
-      )}
+      {/* The key: the kinds this month shows, and the ring; hidden for the session once she hides it. */}
+      <MarkKey
+        items={(() => {
+          const seen = new Map<string, { type: Parameters<typeof DotMark>[0]["type"]; color?: string; label: string }>();
+          for (const c of cells) for (const k of c.marks) if (!seen.has(k.label)) seen.set(k.label, { type: k.type, color: k.color, label: k.label });
+          return [...seen.values()];
+        })()}
+        extra={overlapDays.size > 0 ? (
+          <span className="inline-flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ outline: "2px solid var(--warning, var(--danger))", outlineOffset: -2 }} />{t("fit.mOverlap")}</span>
+        ) : undefined}
+      />
       <BusyNote busy={busy} />
     </div>
   );

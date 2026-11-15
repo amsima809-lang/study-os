@@ -64,6 +64,31 @@ export function DotMark({ type, color, label }: { type: DotType; color?: string;
 export const MAX_MARKS = 3;
 
 /**
+ * The key to the icons: open the first time, and once she hides it, a small "Key" link for the
+ * rest of the session (sessionStorage), so it is there to check but not in the way. Lists only
+ * the kinds this month shows (`items`), plus anything extra the caller explains (`extra`).
+ */
+const KEY_HIDDEN = "studyos.calKeyHidden";
+export function MarkKey({ items, extra }: { items: { type: DotType; color?: string; label: string }[]; extra?: React.ReactNode }) {
+  const { t } = useT();
+  const [hidden, setHidden] = useState(() => { try { return sessionStorage.getItem(KEY_HIDDEN) === "1"; } catch { return false; } });
+  const toggle = (h: boolean) => { setHidden(h); try { if (h) sessionStorage.setItem(KEY_HIDDEN, "1"); else sessionStorage.removeItem(KEY_HIDDEN); } catch { /* ok */ } };
+  if (items.length === 0 && !extra) return null;
+  if (hidden) {
+    return <button onClick={() => toggle(false)} className="tap-area text-xs" style={{ color: "var(--text-tertiary)" }}>{t("cal.keyShow")}</button>;
+  }
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs" style={{ color: "var(--text-tertiary)" }}>
+      {items.map((it) => (
+        <span key={it.type + it.label} className="inline-flex items-center gap-1"><DotMark type={it.type} color={it.color} />{it.label}</span>
+      ))}
+      {extra}
+      <button onClick={() => toggle(true)} className="tap-area underline" style={{ color: "var(--text-tertiary)" }}>{t("cal.keyHide")}</button>
+    </div>
+  );
+}
+
+/**
  * Swipe left or right with one finger to go to the next or previous month,
  * week or day. A swipe must be mostly sideways, at least 60px and quick, so
  * scrolling the page or the hour grid up and down never turns the page. If the
@@ -314,7 +339,7 @@ export default function Calendar() {
         ))}
       </div>
 
-      {/* Day grid */}
+      {/* Day grid (its key follows it) */}
       <div className="grid grid-cols-7 px-2 pb-2 gap-y-0.5">
         {days.map((cell, i) => {
           if (!cell) return <div key={`e${i}`} />;
@@ -361,6 +386,10 @@ export default function Calendar() {
             </button>
           );
         })}
+      </div>
+      {/* The key: only the kinds this month shows; hidden for the session once she hides it. */}
+      <div className="px-4 pb-3">
+        <MarkKey items={DOT_ORDER.filter((typ) => days.some((c) => c && data?.events[c.date]?.some((e) => dotOf(e) === typ))).map((typ) => ({ type: typ, label: t(`cal.kind.${typ}`) }))} />
       </div>
 
 
