@@ -62,7 +62,7 @@ Xcode refuses to sign when the account has an updated Program License Agreement 
 
 ## What the first version does and does not do
 
-It shows the trial site (`https://amsima.com/termtrail/`), so everything the web app does on an
+It shows the trial site (`https://termtrail.com/`), so everything the web app does on an
 iPhone in Safari, it does here, with these differences:
 
 - **Links to other sites** (Google Maps directions, the university's lecture pages) leave the app
@@ -85,7 +85,7 @@ Google refuses a sign-in inside an app's web view. So, in the app, the login pag
 button calls the app's own plugin (`native/ios/App/App/AppSignIn.swift`), which opens the site's
 sign-in in the system sign-in sheet: a real browser that shares Safari's cookies, so someone
 already signed in to Google there only has to tap their account. iOS first asks "Termtrail wants
-to use amsima.com to sign in".
+to use termtrail.com to sign in".
 
 The sheet is not the app, so it cannot pass on a session. It comes back to the app with a
 one-time code, and the page in the app exchanges the code for its own session
@@ -97,9 +97,10 @@ What it needs:
   `GOOGLE_CLIENT_SECRET`, `APP_URL`; `docs/DEPLOY.md`). The app uses the same web client: no
   iOS client, nothing added in Google Cloud. `IOS_APP_SCHEME` is the app's bundle identifier
   by default.
-- **In the app:** a build that has the plugin: `202611150945` (on TestFlight, 2026-11-15) or
-  later. The first build, `202611150853`, does not: it shows "update the app" in place of the
-  Google button.
+- **In the app:** a build that has the plugin and opens the right address: `202611151106` (on
+  TestFlight, 2026-11-15) or later. The two builds before it open the old address
+  (`amsima.com/termtrail`), which now redirects, and a redirect to another site leaves the app
+  for Safari; the first of them, `202611150853`, has no plugin either.
 
 Setting a Google client on a site **switches its access-code login off**.
 
@@ -112,8 +113,9 @@ ID `termtrail`), separate from his other projects so that Google's sign-in scree
   without the access code. Adding a tester: Google Auth Platform → Audience → Add users.
   Publishing it ("In production") opens sign-in to every Google account;
 - the web client **Termtrail web**, with the redirect address
-  `https://amsima.com/termtrail/api/auth/google/callback`. Its ID is on the Clients page; its
-  secret is shown once, when it is made, and after that can only be replaced.
+  `https://termtrail.com/api/auth/google/callback` (and the old site's, kept for now). Its ID is
+  on the Clients page; its secret is shown once, when it is made: Google does not show it again,
+  and a lost one is replaced with "Add secret" on the client's page.
 
 Not done: the client ID and secret are not on the trial server, so the trial site still signs
 in with the access code. Put the secret on first, then the ID: the ID is what switches Google on

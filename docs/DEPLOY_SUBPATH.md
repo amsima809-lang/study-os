@@ -2,7 +2,11 @@
 
 For showing the app to someone before the real deploy (`DEPLOY.md`, Fly). The app runs on a Mac that is already reachable through a Cloudflare Tunnel, under a sub-path of an existing site.
 
-**Live trial: https://amsima.com/termtrail** (since 14 November 2026, on the owner's Mac mini).
+**Live trial: https://termtrail.com** (on the owner's Mac mini). It began on 14 November 2026
+under a sub-path, `https://amsima.com/termtrail`, and moved to its own domain the next day
+(Phase 66); the old address still answers, and sends every page on to the new one. The section
+"After the move to termtrail.com" at the end says what changed. The rest of this page still
+describes a copy under a sub-path, which the app can be served from at any time.
 
 The access code is in `~/termtrail/termtrail.env` on that Mac (`DEV_LOGIN_CODE`), and a copy is kept on the development machine in `data/private/termtrail-trial-access-code.txt`, a folder git ignores. It is never written in the repository or in a message.
 
@@ -72,4 +76,35 @@ and remove the tunnel rule. The data stays in `~/termtrail-data`.
 `bash ~/termtrail/app/deploy/set-env.sh NAME` asks for the value at a prompt (it is not shown),
 writes it to `~/termtrail/termtrail.env`, restarts the service and checks it answers. For example
 `GOOGLE_MAPS_EMBED_KEY`: with it, walking directions open on a Google map inside the app. Restrict
-that key at Google to the Maps Embed API and to `https://amsima.com/*`.
+that key at Google to the Maps Embed API and to the site's address (`https://termtrail.com/*`).
+
+## After the move to termtrail.com
+
+The trial copy now sits at the top of its own domain. What is different from the settings above:
+
+```
+BASE_PATH=
+APP_URL=https://termtrail.com
+MOVED_FROM=https://amsima.com/termtrail,https://www.termtrail.com
+```
+
+- `BASE_PATH` is empty: the build and the server both serve from `/`. `deploy/update.sh` reads it
+  from the file, so it needs no change.
+- `MOVED_FROM` lists the old addresses. A request that still arrives at one is sent on to the
+  same page under `APP_URL` (`server/src/moved.ts`): 302 for a page, 307 for anything else.
+  `deploy/set-env.sh` refuses an empty value, so `BASE_PATH=` was edited in the file by hand.
+- DNS, in the owner's Cloudflare account, zone `termtrail.com`: two proxied CNAME records,
+  `@` and `www`, both to `<tunnel id>.cfargotunnel.com`.
+- Tunnel rules, above the others in the same config file. The `amsima.com` rule for
+  `/termtrail` stays, so that the old address reaches the server and is redirected:
+
+```yaml
+  - hostname: termtrail.com
+    service: http://127.0.0.1:3300
+  - hostname: www.termtrail.com
+    service: http://127.0.0.1:3300
+```
+
+What the move costs anyone who used the old address: they sign in again (the session cookie
+belonged to the old site), turn notifications on again, and add the app to the Home Screen again
+(all three belong to a site's address). The data is untouched.
