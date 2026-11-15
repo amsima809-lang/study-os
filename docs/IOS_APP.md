@@ -97,8 +97,9 @@ What it needs:
   `GOOGLE_CLIENT_SECRET`, `APP_URL`; `docs/DEPLOY.md`). The app uses the same web client: no
   iOS client, nothing added in Google Cloud. `IOS_APP_SCHEME` is the app's bundle identifier
   by default.
-- **In the app:** a build that has the plugin. Build `202611150853` (the first on TestFlight)
-  does not: it shows "update the app" in place of the Google button.
+- **In the app:** a build that has the plugin: `202611150945` (on TestFlight, 2026-11-15) or
+  later. The first build, `202611150853`, does not: it shows "update the app" in place of the
+  Google button.
 
 Setting a Google client on a site **switches its access-code login off** and lets anyone with a
 Google account sign in. On the trial site that is the owner's decision; it has not been made.
