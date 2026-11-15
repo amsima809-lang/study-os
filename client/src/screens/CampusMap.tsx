@@ -20,6 +20,7 @@ import "../maps/maps.css";
 import { onDrawing, placeOf, positionOf, type CampusId } from "../maps/locate.ts";
 import { DirectionsButton } from "../components/Directions.tsx";
 import { GROUND } from "../maps/places.ts";
+import { usePanZoom } from "../maps/panZoom.ts";
 
 const CAMPUSES: Record<CampusId, { svg: string; label: string }> = {
   huamak: { svg: huamak, label: "map.huamak" },
@@ -34,7 +35,10 @@ function buildingsOf(svg: string): Map<string, string> {
   return out;
 }
 const BUILDINGS: Record<CampusId, Map<string, string>> = { huamak: buildingsOf(huamak), bangna: buildingsOf(bangna) };
-const ZOOMS = [1, 1.8, 2.8];
+/** The drawing's width as a multiple of the box: 1 shows the whole campus across. */
+const MIN_ZOOM = 1, MAX_ZOOM = 5;
+/** What one press of + or − does. */
+const ZOOM_STEP = 1.5;
 const GROUND_UNIT: Record<CampusId, number> = { huamak: GROUND.huamak.unit, bangna: GROUND.bangna.unit };
 
 export default function CampusMap() {
@@ -42,9 +46,9 @@ export default function CampusMap() {
   const [classes, setClasses] = useState<ClassSession[]>([]);
   const [campus, setCampus] = useState<CampusId>("huamak");
   const [selected, setSelected] = useState<string | null>(null);
-  // On a phone the whole campus at once is too small to read: start one step in.
-  const [zoom, setZoom] = useState(() => (window.innerWidth < 700 ? 1 : 0));
-  const holder = useRef<HTMLDivElement>(null);
+  // On a phone the whole campus at once is too small to read: start zoomed in.
+  const view = usePanZoom({ min: MIN_ZOOM, max: MAX_ZOOM, initial: window.innerWidth < 700 ? 1.8 : 1 });
+  const holder = view.content;
   // Where she is, once she has asked ("Where am I?"). Kept up to date while this screen is open.
   const [me, setMe] = useState<{ lat: number; lon: number; accuracy: number } | null>(null);
   const [locating, setLocating] = useState<"off" | "asking" | "on" | "failed">("off");
@@ -108,7 +112,9 @@ export default function CampusMap() {
       shapes.forEach((el) => el.classList.add("is-selected"));
       shapes[0]?.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
     }
-  }, [selected, campus, mine, zoom]);
+    // Not on a zoom: that would pull the view away from where she is zooming.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected, campus, mine]);
 
   // Draw "you are here": a soft disc as wide as the mark is uncertain, with a dot in the middle.
   const spot = me ? onDrawing(campus, me.lat, me.lon, me.accuracy) : null;
@@ -128,7 +134,7 @@ export default function CampusMap() {
     svg.appendChild(g);
     if (locating === "on") g.scrollIntoView?.({ block: "nearest", inline: "center", behavior: "smooth" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [spot?.x, spot?.y, spot?.radius, spot?.inside, campus, zoom]);
+  }, [spot?.x, spot?.y, spot?.radius, spot?.inside, campus]);
 
   if (notRu) {
     return (
@@ -187,11 +193,11 @@ export default function CampusMap() {
       )}
 
       <Card className="relative !p-0 overflow-hidden">
-        <div className="overflow-auto" style={{ maxHeight: "68dvh" }}>
+        {/* Mouse: drag to move, wheel to zoom. Touch: two fingers move and pinch; one finger scrolls the page. maps/panZoom.ts */}
+        <div ref={view.scroller} className="map-viewport" style={{ maxHeight: "68dvh" }}>
           <div
             ref={holder}
             className="campus-map"
-            style={{ width: `${ZOOMS[zoom] * 100}%` }}
             // Our own drawing, bundled with the app (client/src/maps): safe to put in as markup.
             dangerouslySetInnerHTML={{ __html: CAMPUSES[campus].svg }}
             onClick={(e) => {
@@ -211,11 +217,11 @@ export default function CampusMap() {
           >
             <Icon name="crosshair" size={18} className={locating === "asking" ? "animate-pulse" : ""} />
           </button>
-          {([["plus", 1, "map.zoomIn"], ["minus", -1, "map.zoomOut"]] as const).map(([icon, step, label]) => (
+          {([["plus", ZOOM_STEP, "map.zoomIn"], ["minus", 1 / ZOOM_STEP, "map.zoomOut"]] as const).map(([icon, factor, label]) => (
             <button
               key={icon}
-              onClick={() => setZoom((z) => Math.max(0, Math.min(ZOOMS.length - 1, z + step)))}
-              disabled={step > 0 ? zoom === ZOOMS.length - 1 : zoom === 0}
+              onClick={() => view.zoomBy(factor)}
+              disabled={factor > 1 ? view.atMax : view.atMin}
               aria-label={t(label)}
               className="w-11 h-11 rounded-full border flex items-center justify-center text-xl font-semibold disabled:opacity-40"
               style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border)", color: "var(--text-primary)", boxShadow: "var(--shadow-md, 0 2px 8px rgba(0,0,0,.15))" }}

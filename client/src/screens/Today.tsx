@@ -11,7 +11,7 @@ import { ReminderRow, setDone, useRemindersChanged } from "../components/Reminde
 import { postJSON } from "../api.ts";
 import { navigateTo } from "../destinations.tsx";
 import { bangkokTime } from "../reminderAlerts.ts";
-import TermCoursesPicker, { ChooseCoursesCard } from "../components/TermCourses.tsx";
+import TermCoursesPicker, { ChooseCoursesCard, EditCoursesButton } from "../components/TermCourses.tsx";
 
 /**
  * Today's reminders and to-dos, soonest first, with a one-line quick add.
@@ -192,9 +192,7 @@ export default function Today() {
         <div className="flex items-center justify-between gap-2 mb-1">
           <h2 className="font-semibold" style={{ color: "var(--text-primary)" }}>{t("today.classes")}</h2>
           {data.canChooseCourses && data.chosenCourses > 0 && (
-            <button onClick={() => setChoosing(true)} className="text-sm min-h-11 px-1" style={{ color: "var(--accent-text)" }}>
-              {t("tc.link", { n: data.chosenCourses })} ›
-            </button>
+            <EditCoursesButton count={data.chosenCourses} onClick={() => setChoosing(true)} />
           )}
         </div>
         {data.classes.length === 0 && (

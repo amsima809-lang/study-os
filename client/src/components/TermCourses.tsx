@@ -45,6 +45,24 @@ const PROMPTED = "studyos.coursesPrompted";
  * `showLink`, a small "N courses this term" link to change the choice.
  * `onChanged` runs after the picker closes, so the screen can reload.
  */
+/**
+ * The button that opens this term's course list again, to add or take away courses.
+ * It used to be a quiet "8 courses this term ›" link, which the owner did not find.
+ */
+export function EditCoursesButton({ count, onClick }: { count: number; onClick: () => void }) {
+  const { t } = useT();
+  return (
+    <button
+      onClick={onClick}
+      className="inline-flex items-center gap-1.5 rounded-full border px-3 min-h-11 text-sm font-semibold"
+      style={{ borderColor: "var(--accent-text)", color: "var(--accent-text)" }}
+    >
+      <Icon name="edit" size={15} />
+      {t("tc.edit", { n: count })}
+    </button>
+  );
+}
+
 export function ChooseCoursesCard({ onChanged, showLink = false, onTrail = false }: { onChanged?: () => void; showLink?: boolean; /** On the trail screen itself: no button to it. */ onTrail?: boolean }) {
   const { t, lang } = useT();
   const [state, setState] = useState<{ chosen: number; options: number } | null>(null);
@@ -159,9 +177,9 @@ export function ChooseCoursesCard({ onChanged, showLink = false, onTrail = false
           </div>
         </Card>
       ) : showLink ? (
-        <button onClick={() => setChoosing(true)} className="tap-area text-sm font-medium" style={{ color: "var(--accent-text)" }}>
-          {t("tc.link", { n: state.chosen })} ›
-        </button>
+        <div className="flex justify-end">
+          <EditCoursesButton count={state.chosen} onClick={() => setChoosing(true)} />
+        </div>
       ) : null}
       {choosing && (
         <TermCoursesPicker
