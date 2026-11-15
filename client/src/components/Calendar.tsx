@@ -489,14 +489,19 @@ function EventRow({
           </span>
         </button>
       )}
-      {/* Type badge */}
-      <span
-        className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full mt-0.5 shrink-0"
-        style={{ background: `color-mix(in srgb, ${color} 14%, transparent)`, color }}
-      >
-        <DotMark type={dot} size={12} />
-        {label}
-      </span>
+      {/* What it is: for a course, its one chip carries the mark (owner 2026-11-16: "the icon and
+          color matching alone on a single chip is enough"); otherwise a chip with the kind's name. */}
+      {ev.course_code ? (
+        <span className="sr-only">{label}</span>
+      ) : (
+        <span
+          className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full mt-0.5 shrink-0"
+          style={{ background: `color-mix(in srgb, ${color} 14%, transparent)`, color }}
+        >
+          <DotMark type={dot} size={12} />
+          {label}
+        </span>
+      )}
 
       <div
         className={`flex-1 min-w-0 ${onOpen ? "cursor-pointer" : ""}`}
@@ -506,7 +511,7 @@ function EventRow({
         onKeyDown={onOpen ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } } : undefined}
       >
         {ev.course_code ? (
-          <CourseTitle code={ev.course_code} name_th={ev.name_th} name_en={ev.name_en} className="text-sm font-medium" kind={dot} noIcon />
+          <CourseTitle code={ev.course_code} name_th={ev.name_th} name_en={ev.name_en} className="text-sm font-medium" kind={dot} />
         ) : (
           <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
             {/* The university's own entries (e-Testing) carry both languages; a student's reminder has one. */}
