@@ -14,7 +14,7 @@ export default function ClassRows({ classes }: { classes: ClassSession[] }) {
       {classes.map((c, i) => (
         <li key={`${c.course_code}-${i}`} className="flex items-center justify-between gap-3 text-sm">
           <div className="min-w-0">
-            <CourseTitle code={c.course_code} name_th={c.name_th} name_en={c.name_en} className="font-medium" />
+            <CourseTitle code={c.course_code} name_th={c.name_th} name_en={c.name_en} className="font-medium" kind="class" />
             <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>{timeRange(c.start_time, c.end_time)}</p>
           </div>
           <RoomLink room={c.room} />

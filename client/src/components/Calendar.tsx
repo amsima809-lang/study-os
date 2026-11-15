@@ -4,6 +4,8 @@ import { getJSON, type CalendarData, type CalEvent } from "../api.ts";
 import { CourseTitle, CourseChip } from "./CourseTitle.tsx";
 import { timeRange, formatTime } from "../format.ts";
 import Icon from "./Icon.tsx";
+import { DOT_COLORS, DotMark, dotOf, type DotType } from "./marks.tsx";
+export { DotMark, type DotType } from "./marks.tsx";
 import { setDone, useRemindersChanged, ReminderSheet } from "./Reminders.tsx";
 import { AddButton } from "./ui.tsx";
 import TimeGrid from "./TimeGrid.tsx";
@@ -24,25 +26,11 @@ function shiftMonth(month: string, delta: number): string {
   return d.toISOString().slice(0, 7);
 }
 
-export type DotType = "class" | "exam" | "task" | "etesting" | "etwindow" | "etbooked" | "reminder" | "todo" | "event" | "busy";
-const DOT_COLORS: Record<DotType, string> = {
-  class: "var(--mark-class)", // yellow
-  exam: "#ef4444",
-  task: "var(--mark-study)", // teal: apart from classes (yellow) and booked e-Testing (green)
-  etesting: "#d97706",
-  etwindow: "var(--mark-window)", // grey; off-white in dark mode
-  etbooked: "var(--mark-booked)", // green
-  event: "#6366f1",
-  reminder: "#0ea5e9",
-  todo: "#a855f7",
-  busy: "var(--text-tertiary)",
-};
-
 /**
  * The mark under a day in a month grid: an icon that says what it is without a key, the same
- * icons as the menu where there is one. A class is an open book; an exam, the Exams page's icon;
+ * icons as the menu where there is one. A class is a whiteboard on an easel; an exam, the Exams page's icon;
  * an e-Testing exam she booked, that same icon in amber, and a day she COULD test, the same icon
- * in grey; e-Testing registration, a pen (sign up); a study-plan task, the Study plan's icon; an
+ * in grey; e-Testing registration, a pen (sign up); a study-plan task, the open book (the Study plan's icon); an
  * event, a calendar; a reminder, a bell; a to-do, a box; busy time from her calendar, a clock.
  * Different shapes as well as colours, so they are told apart without seeing colour.
  */
@@ -55,19 +43,6 @@ const DOT_ORDER: DotType[] = ["etbooked", "etesting", "etwindow", "exam", "class
  */
 export const SLOTS: DotType[][] = [["etbooked"], ["etesting", "etwindow"], ["exam", "class"], ["event", "busy", "reminder", "todo", "task"]];
 export const slotsOf = (types: Set<DotType>): (DotType | null)[] => SLOTS.map((s) => s.find((k) => types.has(k)) ?? null);
-const DOT_ICON: Record<DotType, string> = {
-  class: "whiteboard", exam: "fileEdit", task: "bookOpen", etesting: "pen", etwindow: "fileEdit", etbooked: "fileEdit",
-  event: "calendar", reminder: "bell", todo: "square", busy: "clock",
-};
-/** The dot for an item: e-Testing testing days get their own, quieter mark. */
-const dotOf = (e: { type: CalEvent["type"]; etesting_kind?: string }): DotType => (e.type === "etesting" && e.etesting_kind === "testing" ? "etwindow" : e.type);
-export function DotMark({ type, color, label, size = 13 }: { type: DotType; color?: string; /** shown on hover */ label?: string; size?: number }) {
-  return (
-    <span title={label} className="inline-flex" style={{ opacity: type === "etwindow" ? "var(--mark-window-opacity)" : 1 }}>
-      <Icon name={DOT_ICON[type]} size={size} style={{ color: color ?? DOT_COLORS[type], strokeWidth: 2.2 } as React.CSSProperties} />
-    </span>
-  );
-}
 /** A day's marks in SLOTS order, side by side; a missing kind leaves no gap. */
 export const SLOT_ICON = 11;
 export function SlotMarks({ slots }: { slots: ({ type: DotType; color?: string; label: string } | null)[] }) {
@@ -531,7 +506,7 @@ function EventRow({
         onKeyDown={onOpen ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } } : undefined}
       >
         {ev.course_code ? (
-          <CourseTitle code={ev.course_code} name_th={ev.name_th} name_en={ev.name_en} className="text-sm font-medium" />
+          <CourseTitle code={ev.course_code} name_th={ev.name_th} name_en={ev.name_en} className="text-sm font-medium" kind={dot} noIcon />
         ) : (
           <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
             {/* The university's own entries (e-Testing) carry both languages; a student's reminder has one. */}
