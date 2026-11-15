@@ -1,7 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { useT } from "../i18n.tsx";
-import { postJSON } from "../api.ts";
 import Icon from "../components/Icon.tsx";
 import { useTheme } from "../components/ui.tsx";
 import UniversityPicker from "../components/UniversityPicker.tsx";
@@ -18,7 +17,8 @@ const THEMES = [
 
 /**
  * Settings: how the app looks and reads on this device (light/dark mode, colour palettes, school
- * colours, high contrast, font, time format: see theme.ts and format.ts), and signing out.
+ * colours, high contrast, font, time format: see theme.ts and format.ts). Signing out is in the
+ * account menu (her picture, at the right of the header: components/Account.tsx).
  * Opened from the gear in the header, the rail or the sidebar.
  */
 export default function Settings() {
@@ -34,6 +34,7 @@ export default function Settings() {
       <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>
         {t("nav.settings")}
       </h1>
+
 
       {/* Theme: mode, colour palette, school colours, high contrast */}
       <section
@@ -255,20 +256,6 @@ export default function Settings() {
         document.body,
       )}
 
-      <button
-        onClick={async () => {
-          try {
-            await postJSON("/api/logout", {});
-          } catch {
-            /* ignore */
-          }
-          window.location.reload();
-        }}
-        className="w-full text-sm py-3 mt-2 transition-colors min-h-11"
-        style={{ color: "var(--text-tertiary)" }}
-      >
-        {t("auth.logout")}
-      </button>
     </div>
   );
 }

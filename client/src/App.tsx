@@ -14,6 +14,7 @@ import Login from "./screens/Login.tsx";
 import Onboarding from "./screens/Onboarding.tsx";
 import { JUST_ONBOARDED } from "./components/TermCourses.tsx";
 import Settings from "./screens/Settings.tsx";
+import { AccountContext, AccountMenu } from "./components/Account.tsx";
 import { SECTIONS, destination, sectionOf, pageNamed, NAVIGATE_EVENT, type DestId, type SectionId } from "./destinations.tsx";
 import { useReminderAlerts } from "./reminderAlerts.ts";
 import { setDone, REMINDERS_CHANGED } from "./components/Reminders.tsx";
@@ -230,6 +231,8 @@ function Shell() {
       <Icon name="settings" size={20} />
     </button>
   );
+  // Who is signed in, and signing out: her picture, at the far right (Account.tsx).
+  const accountMenu = (up = false) => <AccountMenu onSettings={() => open("settings")} up={up} />;
 
   return (
     <div data-layout={layout} className="min-h-dvh flex flex-col" style={{ backgroundColor: "var(--bg-base)" }}>
@@ -262,10 +265,7 @@ function Shell() {
               {sideItem("settings")}
             </div>
           </nav>
-          <div className="px-4 py-2 border-t flex items-center justify-between" style={{ borderColor: "var(--border-light)" }}>
-            <LanguageToggle />
-            <ThemeToggle />
-          </div>
+
         </aside>
       )}
 
@@ -301,8 +301,6 @@ function Shell() {
             ))}
             <div className="mt-auto pt-1 flex flex-col items-center">
               {gear}
-              <LanguageToggle />
-              <ThemeToggle />
             </div>
           </nav>
         </aside>
@@ -333,7 +331,23 @@ function Shell() {
                 {gear}
                 <ThemeToggle />
                 <LanguageToggle />
+                {accountMenu()}
               </div>
+            </div>
+          </header>
+        )}
+
+        {/* Sidebar and rail: a slim top bar like the phone's, with language, theme and her picture
+            (the account menu) at the far right. */}
+        {layout !== "phone" && (
+          <header
+            className="sticky top-0 z-10 backdrop-blur-md border-b"
+            style={{ backgroundColor: "color-mix(in srgb, var(--bg-surface) 85%, transparent)", borderColor: "var(--border-light)", paddingTop: "env(safe-area-inset-top)" }}
+          >
+            <div className="flex justify-end items-center px-3 py-0.5" style={{ paddingRight: "max(0.75rem, env(safe-area-inset-right))" }}>
+              <ThemeToggle />
+              <LanguageToggle />
+              {accountMenu()}
             </div>
           </header>
         )}
@@ -343,7 +357,7 @@ function Shell() {
           <div
             role="status"
             className="sticky z-10 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-center"
-            style={{ top: layout === "phone" ? "calc(3.75rem + env(safe-area-inset-top))" : 0, backgroundColor: "var(--warning)", color: "#1f1300" }}
+            style={{ top: layout === "phone" ? "calc(3.75rem + env(safe-area-inset-top))" : "calc(3rem + env(safe-area-inset-top))", backgroundColor: "var(--warning)", color: "#1f1300" }}
           >
             <Icon name="wifiOff" size={16} className="shrink-0" />
             {t("status.offlineBanner")}
@@ -561,9 +575,11 @@ function AuthGate() {
       />
     );
   return (
-    <SubscriptionProvider>
-      <Shell />
-    </SubscriptionProvider>
+    <AccountContext.Provider value={user}>
+      <SubscriptionProvider>
+        <Shell />
+      </SubscriptionProvider>
+    </AccountContext.Provider>
   );
 }
 
