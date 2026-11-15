@@ -127,8 +127,9 @@ An account is matched by its email address, ignoring capitals: someone who typed
 with a capital at the access-code login gets the same account when Google reports it in
 lowercase.
 
-Not tried: a sign-in by a real Google account, the real sign-in sheet, a phone. Everything
-after Google was tried with a stand-in for Google, and the login page with a simulated plugin.
+In a browser, the owner has signed in with his Google account (15 November 2026). Not tried:
+the app's own path, which is the real sign-in sheet on a phone. For the app, everything after
+Google was tried with a stand-in for Google, and the login page with a simulated plugin.
 
 ## Before it can go to App Review
 
