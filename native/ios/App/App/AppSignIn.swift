@@ -3,7 +3,7 @@ import Capacitor
 import AuthenticationServices
 
 /// The app's one screen: Capacitor's web view, plus the app's own plugin.
-/// `Main.storyboard` names this class.
+/// `SceneDelegate` creates it (that is what the app shows); `Main.storyboard` names it too.
 class MainViewController: CAPBridgeViewController {
     override open func capacitorDidLoad() {
         bridge?.registerPluginInstance(AppSignInPlugin())

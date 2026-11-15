@@ -98,10 +98,13 @@ What it needs:
   `GOOGLE_CLIENT_SECRET`, `APP_URL`; `docs/DEPLOY.md`). The app uses the same web client: no
   iOS client, nothing added in Google Cloud. `IOS_APP_SCHEME` is the app's bundle identifier
   by default.
-- **In the app:** a build that has the plugin and opens the right address: `202611151106` (on
-  TestFlight, 2026-11-15) or later. The two builds before it open the old address
-  (`amsima.com/termtrail`), which now redirects, and a redirect to another site leaves the app
-  for Safari; the first of them, `202611150853`, has no plugin either.
+- **In the app:** build `202611151316` (on TestFlight, 2026-11-15) or later. Every earlier build
+  shows "this version cannot sign in with Google yet": Capacitor's `SceneDelegate.swift` builds
+  the app's screen in code, and it built a plain `CAPBridgeViewController` instead of the app's
+  own `MainViewController`, so the plugin was never registered (the storyboard was changed, but
+  the app does not use it). Found with a probe page that reports what the app gives the page;
+  `server/test/appSignIn.test.ts` now checks `SceneDelegate`. Builds before `202611151106` also
+  open the old address (`amsima.com/termtrail`), which leaves the app for Safari.
 
 Setting a Google client on a site **switches its access-code login off**.
 

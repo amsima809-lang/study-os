@@ -8,7 +8,10 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let windowScene = scene as? UIWindowScene else { return }
 
         window = UIWindow(windowScene: windowScene)
-        window?.rootViewController = CAPBridgeViewController()
+        // The app's own screen (AppSignIn.swift): Capacitor's, plus the Google sign-in plugin.
+        // This, not Main.storyboard, is what the app shows: a plain CAPBridgeViewController here
+        // left the plugin unregistered, and the app said it could not sign in with Google.
+        window?.rootViewController = MainViewController()
         window?.makeKeyAndVisible()
 
         SceneDelegateProxy.shared.scene(scene, willConnectTo: session, options: connectionOptions)

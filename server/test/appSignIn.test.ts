@@ -115,6 +115,11 @@ describe("the address that returns to the app", () => {
   });
 
   it("is opened by the app's own screen, which carries the sign-in plugin", () => {
+    // What the app really shows is built in SceneDelegate, not taken from the storyboard: a
+    // plain CAPBridgeViewController there left the plugin out of TestFlight build 202611151106.
+    const scene = read("native/ios/App/App/SceneDelegate.swift");
+    expect(scene).toContain("rootViewController = MainViewController()");
+    expect(scene).not.toMatch(/rootViewController = CAPBridgeViewController\(\)/);
     expect(read("native/ios/App/App/Base.lproj/Main.storyboard")).toContain('customClass="MainViewController" customModule="App"');
     expect(read("native/ios/App/App.xcodeproj/project.pbxproj")).toContain("AppSignIn.swift in Sources");
   });
