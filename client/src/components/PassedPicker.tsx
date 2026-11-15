@@ -89,7 +89,7 @@ export default function PassedPicker({ onClose }: { onClose: () => void }) {
               <h3 className="sticky top-0 px-2 py-1.5 text-xs font-semibold" style={{ backgroundColor: "var(--bg-surface)", color: "var(--text-tertiary)" }}>
                 {t(`cat.${g.category}`)} · {g.items.length}
               </h3>
-              <ul>
+              <ul className="pick-list">
                 {g.items.map((c) => {
                   const on = picked.has(c.code);
                   return (
@@ -98,8 +98,7 @@ export default function PassedPicker({ onClose }: { onClose: () => void }) {
                         role="checkbox"
                         aria-checked={on}
                         onClick={() => toggle(c.code)}
-                        className="w-full flex items-start gap-3 rounded-xl px-2 py-2.5 text-left min-h-11"
-                        style={{ backgroundColor: on ? "var(--accent-light)" : "transparent" }}
+                        className="pick-row"
                       >
                         <span
                           className="mt-0.5 w-6 h-6 shrink-0 rounded-md flex items-center justify-center"

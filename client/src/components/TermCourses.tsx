@@ -93,7 +93,7 @@ export function ChooseCoursesCard({ onChanged, showLink = false, onTrail = false
             <h2 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>{t("tc.newTermTitle", { term: check.term })}</h2>
             <p className="text-sm mt-0.5" style={{ color: "var(--text-secondary)" }}>{t("tc.newTermHint")}</p>
           </div>
-          <ul className="flex-1 overflow-y-auto px-3 py-2">
+          <ul className="pick-list flex-1 overflow-y-auto px-3 py-2">
             {check.courses.map((c) => {
               const on = kept.has(c.code);
               return (
@@ -102,8 +102,7 @@ export function ChooseCoursesCard({ onChanged, showLink = false, onTrail = false
                     role="checkbox"
                     aria-checked={on}
                     onClick={() => setKept((k) => { const n = new Set(k); if (n.has(c.code)) n.delete(c.code); else n.add(c.code); return n; })}
-                    className="w-full flex items-start gap-3 rounded-xl px-2 py-2.5 text-left min-h-11"
-                    style={{ backgroundColor: on ? "var(--accent-light)" : "transparent" }}
+                    className="pick-row"
                   >
                     <span className="mt-0.5 w-6 h-6 shrink-0 rounded-md flex items-center justify-center" style={{ border: `2px solid ${on ? "var(--accent)" : "var(--text-tertiary)"}`, backgroundColor: on ? "var(--accent)" : "transparent", color: "#fff" }}>
                       {on && <Icon name="check" size={14} />}
@@ -332,7 +331,7 @@ export default function TermCoursesPicker({ onClose }: { onClose: () => void }) 
                   {g.category === "OTHER" ? t("tc.other") : t(`cat.${g.category}`)} · {g.items.length}
                 </h3>
               )}
-              <ul>
+              <ul className="pick-list">
                 {g.items.map((o) => {
                   const on = picked.has(o.code);
                   return (
@@ -341,8 +340,7 @@ export default function TermCoursesPicker({ onClose }: { onClose: () => void }) 
                         role="checkbox"
                         aria-checked={on}
                         onClick={() => toggle(o.code)}
-                        className="w-full flex items-start gap-3 rounded-xl px-2 py-2.5 text-left min-h-11"
-                        style={{ backgroundColor: on ? "var(--accent-light)" : "transparent" }}
+                        className="pick-row"
                       >
                         <span
                           className="mt-0.5 w-6 h-6 shrink-0 rounded-md flex items-center justify-center"

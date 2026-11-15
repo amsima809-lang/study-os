@@ -272,3 +272,26 @@ html.keyboard-open [role="alertdialog"] {
 /* The tabs of a section scroll sideways on a narrow phone, without a scrollbar. */
 .section-tabs { scrollbar-width: none; }
 .section-tabs::-webkit-scrollbar { display: none; }
+
+/* A row you tick in a list of courses (choosing this term's courses, marking passed ones).
+   Rows sit apart with a thin outline each, and a ticked row is outlined in the accent colour.
+   Before, a ticked row was only a filled block: several in a row ran together into one. */
+.pick-list > li + li {
+  margin-top: 0.375rem;
+}
+.pick-row {
+  width: 100%;
+  min-height: 2.75rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.4375rem 0.625rem;
+  text-align: left;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: transparent;
+}
+.pick-row[aria-checked="true"] {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent-light) 40%, transparent);
+}
