@@ -76,8 +76,8 @@ iPhone in Safari, it does here, with these differences:
   app shows its "cannot connect" page instead of the last-seen screens.
 - **Not checked:** downloading a file (the calendar export, a note as a text file) and printing a
   note. Web views handle neither by themselves.
-- **Google sign-in** goes through the system's sign-in sheet (Phase 65, below). The trial site
-  has no Google client, so there the app signs in with the access code, like a browser.
+- **Google sign-in** goes through the system's sign-in sheet (Phase 65, below). It is the trial
+  site's only way to sign in.
 
 ## Signing in with Google
 
@@ -117,16 +117,18 @@ ID `termtrail`), separate from his other projects so that Google's sign-in scree
   on the Clients page; its secret is shown once, when it is made: Google does not show it again,
   and a lost one is replaced with "Add secret" on the client's page.
 
-Not done: the client ID and secret are not on the trial server, so the trial site still signs
-in with the access code. Put the secret on first, then the ID: the ID is what switches Google on
-(`bash deploy/set-env.sh GOOGLE_CLIENT_SECRET`, then `GOOGLE_CLIENT_ID`, on the host).
+The client is on the trial server since 15 November 2026, so the access-code login is off
+there. When setting a client on a server, put the secret on first, then the ID: the ID is what
+switches Google on (`bash deploy/set-env.sh GOOGLE_CLIENT_SECRET`, then `GOOGLE_CLIENT_ID`, on
+the host). Checked from outside: both the browser's and the app's sign-in address hand over to
+Google with the right client and return address, and Google answers with its sign-in page.
 
 An account is matched by its email address, ignoring capitals: someone who typed their address
 with a capital at the access-code login gets the same account when Google reports it in
 lowercase.
 
-Not tried: a real Google account, the real sign-in sheet, a phone. Everything after Google was
-tried with a stand-in for Google, and the login page with a simulated plugin.
+Not tried: a sign-in by a real Google account, the real sign-in sheet, a phone. Everything
+after Google was tried with a stand-in for Google, and the login page with a simulated plugin.
 
 ## Before it can go to App Review
 

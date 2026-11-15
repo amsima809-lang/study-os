@@ -105,6 +105,10 @@ MOVED_FROM=https://amsima.com/termtrail,https://www.termtrail.com
     service: http://127.0.0.1:3300
 ```
 
+Sign-in there is now Google, for the test users listed in the owner's Google Cloud project
+(`GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are in the settings file). `ALLOW_DEV_LOGIN` and
+`DEV_LOGIN_CODE` are still in the file and do nothing while a Google client is set.
+
 What the move costs anyone who used the old address: they sign in again (the session cookie
 belonged to the old site), turn notifications on again, and add the app to the Home Screen again
 (all three belong to a site's address). The data is untouched.
