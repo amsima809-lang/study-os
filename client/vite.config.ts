@@ -56,6 +56,12 @@ export default defineConfig({
         // share_target above), and showing notifications when the app is closed.
         importScripts: ["share-sw.js", "push-sw.js"],
         navigateFallback: "index.html",
+        // The worker answers a page visit with the app itself, so the app opens offline. But
+        // not every visit is to a page of the app: "Sign in with Google" is a visit to
+        // /api/auth/google, and so are its return, a calendar export and an uploaded file.
+        // Those must reach the server. Without this line the worker answered them with the
+        // app, and the Google button only reloaded the login page.
+        navigateFallbackDenylist: [/\/api\//],
         // Show last-known data offline for the Today and Review screens.
         runtimeCaching: [
           {

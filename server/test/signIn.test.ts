@@ -1,7 +1,20 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
 import { signInMethods, codeGuard, normaliseBasePath } from "../src/env.js";
 import { openDb } from "../src/db.js";
 import { findOrCreateUser } from "../src/auth.js";
+
+describe("the offline worker and the server's own addresses", () => {
+  it("does not answer a visit to /api/... with the app (that swallowed \"Sign in with Google\")", () => {
+    const config = readFileSync(new URL("../../client/vite.config.ts", import.meta.url), "utf8");
+    const list = /navigateFallbackDenylist: \[([^\]]*)\]/.exec(config);
+    expect(list).not.toBeNull();
+    const patterns = list![1]!.split(",").map((p) => p.trim()).filter(Boolean).map((p) => new RegExp(p.slice(1, p.lastIndexOf("/"))));
+    const denied = (path: string) => patterns.some((p) => p.test(path));
+    for (const path of ["/api/auth/google", "/api/auth/google/callback?code=x&state=y", "/termtrail/api/auth/google", "/api/calendar.ics", "/api/uploads/a.pdf"]) expect(denied(path)).toBe(true);
+    for (const path of ["/", "/notes/12", "/termtrail/plan", "/apiary"]) expect(denied(path)).toBe(false);
+  });
+});
 
 describe("which sign-in methods a server offers", () => {
   const cfg = (nodeEnv: string, googleClientId = "", allowDevLogin = false) => ({ nodeEnv, googleClientId, allowDevLogin });
