@@ -49,12 +49,13 @@ is therefore **permanent**. The first build, `0.1.0 (202611150853)`, is uploaded
 
 TestFlight has one internal group, **Termtrail team**, with automatic distribution on (every
 build `testflight.sh` uploads goes to the group by itself; Apple does not let that be changed
-later). It has no testers yet. A tester must first be a user of the App Store Connect account
+later). A tester must first be a user of the App Store Connect account
 (Users and Access → +, Developer role, access to Termtrail only: the form ticks every app by
 default) and **must accept that invitation** before the group's "Add Testers" list shows them.
 
-The repository owner was invited that way on 2026-11-15 and has not accepted yet, so is not in
-the group.
+The repository owner was added that way on 2026-11-15 and is the group's one tester (status
+"Invited": TestFlight has emailed them; they install the TestFlight app on the iPhone and
+accept there).
 
 Xcode refuses to sign when the account has an updated Program License Agreement waiting
 ("PLA Update available"). Only the account holder can accept it, at developer.apple.com/account.
