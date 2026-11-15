@@ -12,6 +12,7 @@ import { Router } from "express";
 import { z } from "zod";
 import type { DB } from "./db.js";
 import { bangkokToday } from "./api.js";
+import { syncUniversityReminders } from "./universityReminders.js";
 
 export type Repeat = "none" | "daily" | "weekdays" | "weekly" | "monthly";
 export type Reminder = {
@@ -145,6 +146,14 @@ const Body = z
 
 export function createRemindersRouter(db: DB): Router {
   const router = Router();
+  // The university's dates as reminders in her own list (universityReminders.ts), in the language
+  // the app is shown in. The app asks on start and when the language changes.
+  router.post("/reminders/university", (req, res) => {
+    const lang = req.body?.lang === "en" ? "en" : "th";
+    // Remembered, so the notification round writes in the same language (readingLanguage).
+    db.prepare("UPDATE user_profiles SET ui_lang = ? WHERE user_id = ?").run(lang, req.user!.id);
+    res.json({ changed: syncUniversityReminders(db, req.user!.id, lang) });
+  });
   const courseExists = (code: string | null | undefined) =>
     !code || !!db.prepare("SELECT 1 FROM courses WHERE code = ?").get(code);
   const owned = (id: number, userId: string) =>

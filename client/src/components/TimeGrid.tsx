@@ -200,7 +200,7 @@ export default function TimeGrid({ dates, eventsOn, today, now, onPickDay, onTog
                         className={`block font-semibold ${week ? "break-words line-clamp-2" : "truncate"}`}
                         style={{ textDecoration: p.ev.done ? "line-through" : undefined }}
                       >
-                        {week ? p.ev.name_th : (p.ev.course_code ? `${p.ev.course_code} ` : "") + (lang === "en" && p.ev.name_en ? p.ev.name_en : p.ev.name_th)}
+                        {week && p.ev.course_code ? p.ev.name_th : (p.ev.course_code ? `${p.ev.course_code} ` : "") + (lang === "en" && p.ev.name_en ? p.ev.name_en : p.ev.name_th)}
                       </span>
                     )}
                     {!week && height > 34 && (
@@ -283,6 +283,7 @@ export default function TimeGrid({ dates, eventsOn, today, now, onPickDay, onTog
 }
 
 function AllDayChip({ ev, week, onToggle }: { ev: CalEvent; week: boolean; onToggle?: () => void }) {
+  const { lang } = useT();
   const color = COLORS[ev.type];
   const tickable = !week && !!ev.reminder_id && !!onToggle;
   const style: React.CSSProperties = {
@@ -293,7 +294,7 @@ function AllDayChip({ ev, week, onToggle }: { ev: CalEvent; week: boolean; onTog
     textDecoration: ev.done ? "line-through" : undefined,
   };
   const cls = `block w-full rounded-md truncate text-left ${week ? "px-1 text-xs" : "px-2 py-1.5 text-xs"}`;
-  const label = (ev.course_code ? `${ev.course_code} ` : "") + ev.name_th;
+  const label = (ev.course_code ? `${ev.course_code} ` : "") + (lang === "en" && ev.name_en ? ev.name_en : ev.name_th);
   return tickable ? (
     <button className={cls} style={style} onClick={onToggle} role="checkbox" aria-checked={!!ev.done}>
       <span className="float-right ml-1" style={{ color }}><Icon name={ev.done ? "checkCircle" : "square"} size={14} /></span>

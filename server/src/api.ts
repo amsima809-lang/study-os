@@ -509,29 +509,34 @@ export function createApiRouter(db: DB): Router {
       }
     }
 
-    // e-Testing exam period events
-    const etestingSched = db.prepare("SELECT * FROM etesting_schedule WHERE term_id = ?").get(term) as
-      { exam_start: string; exam_end: string } | undefined;
-    if (etestingSched) {
-      const eStart = etestingSched.exam_start;
-      const eEnd = etestingSched.exam_end;
-      if (eStart <= lastDay && eEnd >= firstDay) {
-        const regStart = eStart < firstDay ? firstDay : eStart;
-        const regEnd = eEnd > lastDay ? lastDay : eEnd;
-        const ed = new Date(`${regStart}T00:00:00Z`);
-        const regEndD = new Date(`${regEnd}T00:00:00Z`);
-        while (ed <= regEndD) {
-          const iso = ed.toISOString().slice(0, 10);
-          push(iso, {
-            type: "etesting",
-            course_code: "",
-            name_th: "ช่วงสอบ e-Testing",
-            name_en: "e-Testing exam period",
-            description: "09:00–20:30",
-          });
-          ed.setUTCDate(ed.getUTCDate() + 1);
-        }
-      }
+    // e-Testing (etesting_schedule, migrations 019 + 040), for Ramkhamhaeng students: every term's
+    // registration days, and the days the central centre tests, skipping the days it is closed.
+    // Marked as e-Testing, never as an exam: a student sits one only if she registers for it.
+    // Hours as the announcement prints them: three periods on weekdays (09:00–17:30), four at
+    // weekends (09:00–20:30).
+    const ru = (db.prepare("SELECT university_id FROM user_profiles WHERE user_id = ?").get(userId) as { university_id: string | null } | undefined)?.university_id === "ru";
+    const schedules = !ru ? [] : db.prepare(
+      `SELECT registration_start, registration_end, registration_opens, exam_start, exam_end, central_closed FROM etesting_schedule
+       WHERE (registration_start <= ? AND registration_end >= ?) OR (exam_start <= ? AND exam_end >= ?)`,
+    ).all(lastDay, firstDay, lastDay, firstDay) as
+      { registration_start: string; registration_end: string; registration_opens: string | null; exam_start: string; exam_end: string; central_closed: string | null }[];
+    for (const et of schedules) {
+      const closed = (et.central_closed ? JSON.parse(et.central_closed) : []) as [string, string][];
+      const isClosed = (iso: string) => closed.some(([a, b]) => iso >= a && iso <= b);
+      const eachDay = (from: string, to: string, f: (iso: string, weekday: number) => void) => {
+        const a = from < firstDay ? firstDay : from, b = to > lastDay ? lastDay : to;
+        for (const d = new Date(`${a}T00:00:00Z`), end = new Date(`${b}T00:00:00Z`); d <= end; d.setUTCDate(d.getUTCDate() + 1)) f(d.toISOString().slice(0, 10), d.getUTCDay());
+      };
+      eachDay(et.registration_start, et.registration_end, (iso) => push(iso, {
+        type: "etesting", course_code: "",
+        name_th: "ลงทะเบียนสอบ e-Testing (E-SERVICE)", name_en: "e-Testing registration (E-SERVICE)",
+        ...(iso === et.registration_start && et.registration_opens ? { start_time: et.registration_opens } : {}),
+      }));
+      eachDay(et.exam_start, et.exam_end, (iso, weekday) => {
+        if (isClosed(iso)) return;
+        const weekend = weekday === 0 || weekday === 6;
+        push(iso, { type: "etesting", course_code: "", name_th: "ช่วงสอบ e-Testing", name_en: "e-Testing exam period", description: weekend ? "09:00–20:30" : "09:00–17:30" });
+      });
     }
 
     // the student's reminders, to-dos and events (repeating ones are expanded per day)

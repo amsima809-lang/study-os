@@ -449,6 +449,7 @@ function EventRow({
   onToggle?: () => void;
   onOpen?: () => void;
 }) {
+  const { lang } = useT();
   const tagColors: Record<string, { bg: string; text: string }> = {
     class: { bg: "var(--accent-light)", text: "var(--accent-text)" },
     exam: { bg: "rgba(239,68,68,0.15)", text: "#ef4444" },
@@ -514,7 +515,8 @@ function EventRow({
           <CourseTitle code={ev.course_code} name_th={ev.name_th} name_en={ev.name_en} className="text-sm font-medium" />
         ) : (
           <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-            {ev.name_th}
+            {/* The university's own entries (e-Testing) carry both languages; a student's reminder has one. */}
+            {lang === "en" && ev.name_en ? ev.name_en : ev.name_th}
           </span>
         )}
 

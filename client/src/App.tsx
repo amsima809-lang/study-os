@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { LanguageProvider, LanguageToggle, useT } from "./i18n.tsx";
-import { getJSON, SIGNED_OUT } from "./api.ts";
+import { getJSON, postJSON, SIGNED_OUT } from "./api.ts";
 import { setDraftOwner } from "./noteDraft.ts";
 import { ConfirmDialog, LayoutContext, ThemeProvider, ThemeToggle, useOnline, type Layout } from "./components/ui.tsx";
 import { unsavedReason } from "./unsaved.ts";
@@ -15,7 +15,7 @@ import { JUST_ONBOARDED } from "./components/TermCourses.tsx";
 import Settings from "./screens/Settings.tsx";
 import { SECTIONS, destination, sectionOf, pageNamed, NAVIGATE_EVENT, type DestId, type SectionId } from "./destinations.tsx";
 import { useReminderAlerts } from "./reminderAlerts.ts";
-import { setDone } from "./components/Reminders.tsx";
+import { setDone, REMINDERS_CHANGED } from "./components/Reminders.tsx";
 import { CourseChip } from "./components/CourseTitle.tsx";
 import { formatTime } from "./format.ts";
 
@@ -113,7 +113,7 @@ function usePullToRefresh(onRefresh: () => void) {
 }
 
 function Shell() {
-  const { t } = useT();
+  const { t, lang } = useT();
   const [tab, setTab] = useState<Tab>("today");
   // The page each section was last left on: coming back to a section returns there.
   const [last, setLast] = useState<Partial<Record<SectionId, DestId>>>({});
@@ -121,6 +121,15 @@ function Shell() {
   const alerts = useReminderAlerts();
   const layout = useLayout();
   const online = useOnline();
+
+  // The university's key dates (e-Testing registration, …) as reminders in her own list, in the
+  // language she reads the app in (server/src/universityReminders.ts). Asked on start and when
+  // the language changes; screens showing reminders reload if anything was added or reworded.
+  useEffect(() => {
+    postJSON<{ changed: number }>("/api/reminders/university", { lang })
+      .then((r) => { if (r.changed > 0) window.dispatchEvent(new Event(REMINDERS_CHANGED)); })
+      .catch(() => { /* offline: asked again next time */ });
+  }, [lang]);
 
   // Screens can ask to open another screen (see navigateTo in destinations.tsx).
   useEffect(() => {
@@ -143,7 +152,8 @@ function Shell() {
   };
 
   // Keep this device's closed-app notifications tied to the account signed in now.
-  useEffect(() => { void syncPush(); }, []);
+  // (again when the language changes: the closed-app notifications are worded in it)
+  useEffect(() => { void syncPush(); }, [lang]);
 
   // Something was shared into StudyOS from another app: start a note with it.
   useEffect(() => {

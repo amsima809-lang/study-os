@@ -20,6 +20,7 @@ import { z } from "zod";
 import type { DB } from "./db.js";
 import { bangkokToday } from "./api.js";
 import { itemsForToday, type Occurrence } from "./reminders.js";
+import { readingLanguage, syncUniversityReminders, universityReminders } from "./universityReminders.js";
 
 // ---------- signing keys (VAPID) ----------
 
@@ -155,7 +156,18 @@ export async function sendDuePushes(db: DB, keys: VapidKeys, now = new Date(), f
   const already = db.prepare("SELECT 1 FROM reminder_pushes WHERE reminder_id = ? AND date = ?");
   const mark = db.prepare("INSERT OR IGNORE INTO reminder_pushes (reminder_id, date) VALUES (?, ?)");
   let accepted = 0;
+  // The university's reminders (universityReminders.ts), worked out once for the whole round.
+  let university: ReturnType<typeof universityReminders> = [];
+  try { university = universityReminders(db); } catch (err) { console.error("[StudyOS] university reminders failed:", err); }
   for (const { user_id } of users) {
+    // They reach a student who has not opened the app since they were announced too, in the
+    // language she reads the app in. A failure here never stops her own reminders, or anyone's.
+    try {
+      const lang = readingLanguage(db, user_id);
+      if (lang) syncUniversityReminders(db, user_id, lang, now, university);
+    } catch (err) {
+      console.error("[StudyOS] university reminders for one student failed:", err);
+    }
     const fresh = dueItems(db, user_id, now).filter((o) => !already.get(o.id, o.on));
     if (fresh.length === 0) continue;
     // One tap per device is enough: the device then asks for everything that is due.

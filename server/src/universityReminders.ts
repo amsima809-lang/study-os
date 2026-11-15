@@ -1,0 +1,164 @@
+/**
+ * Reminders the app puts in a Ramkhamhaeng student's own list from the university's dates, so
+ * a key date is never missed. For now: e-Testing registration (etesting_schedule, migration
+ * 040), announced a week before, when it opens, and on its last day.
+ *
+ * They are ordinary reminders (Today, the Reminders screen, the calendar, the in-app banner
+ * and phone notifications all show them), each made once per student: `reminder_sources`
+ * remembers it, so one she deletes is never put back. They are written in her language; when
+ * she switches language, the ones she has not edited follow.
+ */
+import type { DB } from "./db.js";
+
+type Lang = "th" | "en";
+type Text = Record<Lang, string>;
+export type UniversityReminder = { key: string; date: string; time: string; title: Text; note: Text };
+
+type Schedule = {
+  term_id: string; registration_start: string; registration_end: string; registration_opens: string | null; registration_closes: string | null;
+  payment_deadline: string | null; exam_start: string; exam_end: string; central_closed: string | null; regional_dates: string | null;
+};
+
+/** Today's date in Bangkok. */
+const bangkokDate = (now: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok" }).format(now);
+/** "2026-12-21" in the student's language: "21 ธ.ค. 2569" / "21 Dec 2026" (the screens' own rule, client/src/format.ts). */
+function day(iso: string, lang: Lang, year = true): string {
+  return new Intl.DateTimeFormat(lang === "th" ? "th-TH-u-ca-buddhist" : "en-GB", {
+    day: "numeric", month: "short", ...(year ? { year: "numeric" } : {}), timeZone: "UTC",
+  }).format(new Date(`${iso}T00:00:00Z`));
+}
+/** "21–25 ธ.ค. 2569" within a month, "12 ม.ค.–7 มี.ค. 2570" across months. */
+const span = (from: string, to: string, lang: Lang, year = true) =>
+  from === to ? day(from, lang, year)
+    : from.slice(0, 7) === to.slice(0, 7) ? `${Number(from.slice(8))}–${day(to, lang, year)}`
+      : `${day(from, lang, false)}–${day(to, lang, year)}`;
+const addDays = (iso: string, n: number) => { const d = new Date(`${iso}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+/** "2/69" -> "2/2569" */
+const termName = (id: string) => { const [k, yy] = id.split("/"); return `${k}/25${yy}`; };
+
+/** The university's reminders for every term with an e-Testing schedule. */
+export function universityReminders(db: DB): UniversityReminder[] {
+  const rows = db.prepare(
+    `SELECT term_id, registration_start, registration_end, registration_opens, registration_closes, payment_deadline,
+            exam_start, exam_end, central_closed, regional_dates FROM etesting_schedule ORDER BY registration_start`,
+  ).all() as Schedule[];
+  const out: UniversityReminder[] = [];
+  for (const s of rows) {
+    const term = termName(s.term_id);
+    const opens = s.registration_opens ?? "09:00";
+    const fees = db.prepare("SELECT MIN(fee_central) AS central, MIN(fee_regional) AS regional FROM etesting_courses WHERE term_id = ?").get(s.term_id) as { central: number | null; regional: number | null };
+    const closed = (s.central_closed ? JSON.parse(s.central_closed) : []) as [string, string][];
+    const regional = s.regional_dates ? (JSON.parse(s.regional_dates) as string[]).length > 0 : false;
+    const hours: Text = { th: "", en: "" };
+    if (s.registration_opens) { hours.th = `เปิด ${opens} น.`; hours.en = `opens ${opens}`; }
+    if (s.registration_closes) {
+      hours.th = [hours.th, `ปิดวันสุดท้าย ${s.registration_closes} น.`].filter(Boolean).join(" ");
+      hours.en = [hours.en, `closes ${s.registration_closes} on the last day`].filter(Boolean).join(", ");
+    }
+    const note: Text = {
+      th: [
+        `ลงทะเบียน ${span(s.registration_start, s.registration_end, "th")} ทาง E-SERVICE${hours.th ? ` (${hours.th})` : ""}`,
+        s.payment_deadline ? `ชำระเงินภายใน ${s.payment_deadline} น. ของวันที่ลงทะเบียน` : "",
+        `สอบที่หัวหมาก ${span(s.exam_start, s.exam_end, "th")}${closed.length ? ` (เว้น ${closed.map(([a, b]) => span(a, b, "th", false)).join(" และ ")})` : ""}`,
+        regional ? "ศูนย์สอบส่วนภูมิภาคเปิดเฉพาะบางวัน" : "",
+        fees.central ? `ค่าสอบวิชาละ ${fees.central} บาท (ศูนย์ส่วนกลาง)${fees.regional ? ` / ${fees.regional} บาท (ส่วนภูมิภาค)` : ""}` : "",
+        "ดูรายวิชาและรายละเอียดได้ที่ easi.ru.ac.th",
+      ].filter(Boolean).join(" · "),
+      en: [
+        `Register ${span(s.registration_start, s.registration_end, "en")} in E-SERVICE${hours.en ? ` (${hours.en})` : ""}`,
+        s.payment_deadline ? `pay by ${s.payment_deadline} the day you register` : "",
+        `exams at Hua Mak ${span(s.exam_start, s.exam_end, "en")}${closed.length ? ` (not ${closed.map(([a, b]) => span(a, b, "en", false)).join(" or ")})` : ""}`,
+        regional ? "regional centres test on set days only" : "",
+        fees.central ? `fee ${fees.central} baht a course (central centre)${fees.regional ? `, ${fees.regional} baht (regional)` : ""}` : "",
+        "courses and details: easi.ru.ac.th",
+      ].filter(Boolean).join(" · "),
+    };
+    out.push(
+      {
+        key: `etesting:${s.term_id}:week`, date: addDays(s.registration_start, -7), time: "09:00", note,
+        title: { th: `อีก 1 สัปดาห์ เปิดลงทะเบียนสอบ e-Testing ภาค ${term}`, en: `e-Testing registration for term ${term} opens in a week` },
+      },
+      {
+        key: `etesting:${s.term_id}:open`, date: s.registration_start, time: opens, note,
+        title: { th: `เปิดลงทะเบียนสอบ e-Testing ภาค ${term} แล้ว`, en: `e-Testing registration for term ${term} is open` },
+      },
+      {
+        key: `etesting:${s.term_id}:last`, date: s.registration_end, time: "09:00", note,
+        title: { th: `วันสุดท้ายลงทะเบียนสอบ e-Testing ภาค ${term}`, en: `Last day to register for e-Testing, term ${term}` },
+      },
+    );
+  }
+  return out;
+}
+
+type Given = { reminder_id: number | null; lang: Lang; title: string; note: string | null; date: string; time: string };
+
+/**
+ * Put the university's reminders into a student's list, in her language, once each. Only for
+ * Ramkhamhaeng students. A reminder she has not touched is kept in step with the university
+ * (a changed date or time moves it) and with her language; one she edited is left as she made
+ * it, and a new one is added beside it if the university's date then changes. A day already
+ * gone is skipped. `list` lets a caller compute the university's reminders once for many students.
+ * Returns how many reminders were added or changed.
+ */
+export function syncUniversityReminders(db: DB, userId: string, lang: Lang, now = new Date(), list = universityReminders(db)): number {
+  const uni = (db.prepare("SELECT university_id FROM user_profiles WHERE user_id = ?").get(userId) as { university_id: string | null } | undefined)?.university_id;
+  if (uni !== "ru") return 0;
+  const today = bangkokDate(now);
+  const seen = db.prepare("SELECT reminder_id, lang, title, note, date, time FROM reminder_sources WHERE user_id = ? AND source_key = ?");
+  const reminderOf = db.prepare("SELECT id, title, note, date, time FROM reminders WHERE id = ? AND user_id = ?");
+  const add = db.prepare("INSERT INTO reminders (user_id, kind, title, note, date, time) VALUES (?, 'reminder', ?, ?, ?, ?)");
+  const record = db.prepare(
+    `INSERT INTO reminder_sources (user_id, source_key, reminder_id, lang, title, note, date, time) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT (user_id, source_key) DO UPDATE SET reminder_id = excluded.reminder_id, lang = excluded.lang,
+       title = excluded.title, note = excluded.note, date = excluded.date, time = excluded.time`,
+  );
+  const rewrite = db.prepare("UPDATE reminders SET title = ?, note = ?, date = ?, time = ? WHERE id = ?");
+  // A moved reminder may be announced again at its new time.
+  const forgetPushes = db.prepare("DELETE FROM reminder_pushes WHERE reminder_id = ?");
+  let changed = 0;
+  db.transaction(() => {
+    for (const r of list) {
+      const want = { title: r.title[lang], note: r.note[lang], date: r.date, time: r.time };
+      const was = seen.get(userId, r.key) as Given | undefined;
+      if (!was) {
+        if (r.date < today) continue; // a day already gone is not worth a reminder (today's still is)
+        const id = Number(add.run(userId, want.title, want.note, want.date, want.time).lastInsertRowid);
+        record.run(userId, r.key, id, lang, want.title, want.note, want.date, want.time);
+        changed++;
+        continue;
+      }
+      const moved = was.date !== r.date || was.time !== r.time;
+      // Nothing to do: the same day and time, and already in her language (or the day is gone).
+      if (!moved && (was.lang === lang || was.date < today)) continue;
+      if (moved && r.date < today) continue;
+      const cur = was.reminder_id === null ? undefined : (reminderOf.get(was.reminder_id, userId) as { id: number; title: string; note: string | null; date: string; time: string } | undefined);
+      if (!cur) continue; // she deleted it: never put back
+      const untouched = cur.title === was.title && cur.note === was.note && cur.date === was.date && cur.time === was.time;
+      if (untouched) {
+        if (cur.title === want.title && cur.note === want.note && cur.date === want.date && cur.time === want.time) continue;
+        rewrite.run(want.title, want.note, want.date, want.time, cur.id);
+        if (moved) forgetPushes.run(cur.id);
+        record.run(userId, r.key, cur.id, lang, want.title, want.note, want.date, want.time);
+        changed++;
+      } else if (moved) {
+        // Hers now, but the university's date changed: tell her with a new reminder beside it.
+        const id = Number(add.run(userId, want.title, want.note, want.date, want.time).lastInsertRowid);
+        record.run(userId, r.key, id, lang, want.title, want.note, want.date, want.time);
+        changed++;
+      }
+    }
+  })();
+  return changed;
+}
+
+/**
+ * For the notification round: the language to write a student's reminders in. The one she last
+ * used the app in; failing that, her newest device's.
+ */
+export function readingLanguage(db: DB, userId: string): Lang | null {
+  const chosen = (db.prepare("SELECT ui_lang FROM user_profiles WHERE user_id = ?").get(userId) as { ui_lang: Lang | null } | undefined)?.ui_lang;
+  if (chosen) return chosen;
+  const device = db.prepare("SELECT lang FROM push_subscriptions WHERE user_id = ? ORDER BY created_at DESC, id DESC LIMIT 1").get(userId) as { lang: Lang } | undefined;
+  return device?.lang ?? null;
+}
