@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { LanguageProvider, LanguageToggle, useT } from "./i18n.tsx";
 import { getJSON, postJSON, SIGNED_OUT } from "./api.ts";
 import { setDraftOwner } from "./noteDraft.ts";
+import { setBusyOwner } from "./busyTimes.ts";
 import { ConfirmDialog, LayoutContext, ThemeProvider, ThemeToggle, useOnline, type Layout } from "./components/ui.tsx";
 import { unsavedReason } from "./unsaved.ts";
 import { syncPush } from "./push.ts";
@@ -534,7 +535,7 @@ function AuthGate() {
       if (u?.university_id) {
         try { localStorage.setItem("studyos.university", u.university_id); } catch { /* ok */ }
       }
-      if (u) setDraftOwner(u.id); // note drafts are kept per student
+      if (u) { setDraftOwner(u.id); setBusyOwner(u.id); } // note drafts and calendar busy times are per student
       setUser(u ?? null);
     });
 

@@ -155,3 +155,43 @@ describe("term 2/2569 from the registrar's own record", () => {
     expect(etestingBefore(db, ["MKT2101"], "1/69")).toEqual({});
   });
 });
+
+describe("busy times from her own calendar", () => {
+  const more = fit as unknown as {
+    blocksByDay: (b: { start: string; end: string }[], dates: string[]) => Record<string, { time: string; end_time: string }[]>;
+    finalsInBusyTime: (fit: unknown, busyOn: (d: string) => { time: string; end_time: string }[]) => { code: string; date: string; slot: string }[];
+  };
+  it("cuts busy blocks into Bangkok days, splitting one over midnight", () => {
+    const blocks = [
+      { start: "2026-11-17T01:00:00Z", end: "2026-11-17T10:00:00Z" }, // 08:00-17:00 in Bangkok
+      { start: "2026-11-18T15:00:00Z", end: "2026-11-19T03:00:00Z" }, // 22:00 on the 18th to 10:00 on the 19th
+    ];
+    expect(more.blocksByDay(blocks, ["2026-11-17", "2026-11-18", "2026-11-19", "2026-11-20"])).toEqual({
+      "2026-11-17": [{ time: "08:00", end_time: "17:00" }],
+      "2026-11-18": [{ time: "22:00", end_time: "23:59" }],
+      "2026-11-19": [{ time: "00:00", end_time: "10:00" }],
+    });
+  });
+  it("merges overlapping busy blocks (one meeting in two calendars) into one stretch", () => {
+    const blocks = [
+      { start: "2026-11-17T01:00:00Z", end: "2026-11-17T03:00:00Z" }, // 08:00-10:00
+      { start: "2026-11-17T02:00:00Z", end: "2026-11-17T05:00:00Z" }, // 09:00-12:00
+      { start: "2026-11-17T01:00:00Z", end: "2026-11-17T03:00:00Z" }, // the same as the first, from another account
+      { start: "2026-11-17T07:00:00Z", end: "2026-11-17T08:00:00Z" }, // 14:00-15:00, apart
+    ];
+    expect(more.blocksByDay(blocks, ["2026-11-17"])).toEqual({ "2026-11-17": [{ time: "08:00", end_time: "12:00" }, { time: "14:00", end_time: "15:00" }] });
+  });
+  it("makes a class overlap with a busy block, like any commitment", () => {
+    const busy = more.blocksByDay([{ start: "2026-11-17T01:00:00Z", end: "2026-11-17T10:00:00Z" }], ["2026-11-17"]);
+    const w = fit.weekFit([course("A", "2 11:00-13:00", null)], fit.weekOf("2026-11-16"), (d) => (busy[d] ?? []).map((b, i) => ({ id: -1 - i, kind: "busy", title: "Busy", time: b.time, end_time: b.end_time })));
+    expect(w.overlaps).toEqual([{ date: "2026-11-17", from: "11:00", to: "13:00", kind: "commitment", a: "A", b: "Busy" }]);
+  });
+  it("finds the finals that fall in her busy time, period by period", () => {
+    const f = fit.examFit([course("A", null, ["2027-03-10", "A"]), course("B", null, ["2027-03-10", "B"]), course("C", null, ["2027-03-11", "A"])], { from: "2027-03-09", to: "2027-03-22" });
+    // Busy 13:00-18:00 on the 10th: period B (14:00-16:30) is hit, A (09:30-12:00) is not.
+    const hits = more.finalsInBusyTime(f, (d) => (d === "2027-03-10" ? [{ time: "13:00", end_time: "18:00" }] : []));
+    expect(hits.map((h) => [h.code, h.date, h.slot])).toEqual([["B", "2027-03-10", "B"]]);
+    // Touching ends do not count.
+    expect(more.finalsInBusyTime(f, (d) => (d === "2027-03-11" ? [{ time: "12:00", end_time: "13:00" }] : []))).toEqual([]);
+  });
+});

@@ -120,7 +120,9 @@ export function setupAuth(db: DB): Router {
 
   // Public: which sign-in buttons the login page should show.
   router.get("/auth/config", (_req: Request, res: Response) => {
-    res.json(methods);
+    // The Google client's ID is public (it is in every sign-in address); the page needs it to ask
+    // Google for busy times (client/src/busyTimes.ts).
+    res.json({ ...methods, googleClientId: env.googleClientId || null });
   });
 
   // Dev login: any email, no password. Off in production unless allowed on purpose (see signInMethods).

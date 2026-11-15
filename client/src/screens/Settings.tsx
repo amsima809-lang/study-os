@@ -5,6 +5,7 @@ import { postJSON } from "../api.ts";
 import Icon from "../components/Icon.tsx";
 import { useTheme } from "../components/ui.tsx";
 import UniversityPicker from "../components/UniversityPicker.tsx";
+import CalendarLinks from "../components/CalendarLinks.tsx";
 import { UNIVERSITIES } from "../data/universities.ts";
 import { formatTime, getClock, setClock, subscribeClock, type Clock } from "../format.ts";
 import { PALETTES, DEFAULT_SWATCH, forcedMode, FONTS, FONT_SAMPLE, fontStack, loadFontPreviews } from "../theme.ts";
@@ -207,6 +208,9 @@ export default function Settings() {
           ))}
         </div>
       </section>
+
+      {/* Her term in her own calendar apps, and their busy times in this one */}
+      <CalendarLinks />
 
       {/* Time format: 24-hour or AM/PM, for every time the app shows */}
       <section

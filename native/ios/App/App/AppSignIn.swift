@@ -2,11 +2,12 @@ import UIKit
 import Capacitor
 import AuthenticationServices
 
-/// The app's one screen: Capacitor's web view, plus the app's own plugin.
+/// The app's one screen: Capacitor's web view, plus the app's own plugins.
 /// `SceneDelegate` creates it (that is what the app shows); `Main.storyboard` names it too.
 class MainViewController: CAPBridgeViewController {
     override open func capacitorDidLoad() {
         bridge?.registerPluginInstance(AppSignInPlugin())
+        bridge?.registerPluginInstance(AppCalendarPlugin()) // busy times from the phone's calendars (AppCalendar.swift)
     }
 }
 

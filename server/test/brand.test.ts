@@ -44,6 +44,12 @@ describe("the product's name is the same everywhere", () => {
     expect(/const APP_NAME_TH = "([^"]*)"; \/\/ @app-name-th/.exec(sw)![1]).toBe(nameTh);
   });
 
+  it("in the server's own outward text (the calendar feed)", () => {
+    const brand = read("server/src/brand.ts");
+    expect(/export const APP_NAME = "([^"]*)"; \/\/ @app-name\b/.exec(brand)![1]).toBe(name);
+    expect(/export const APP_NAME_TH = "([^"]*)"; \/\/ @app-name-th/.exec(brand)![1]).toBe(nameTh);
+  });
+
   it("in the lecture collector", () => {
     expect(/var APP_NAME_TH = "([^"]*)"; \/\/ @app-name-th/.exec(read("client/public/collector/ru-vod.js"))![1]).toBe(nameTh);
   });

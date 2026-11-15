@@ -16,7 +16,8 @@ import { useT } from "../i18n.tsx";
 import { deleteJSON, getJSON, putJSON, type ApiError, type CalEvent } from "../api.ts";
 import { formatDate, timeRange } from "../format.ts";
 import { bangkokTime } from "../reminderAlerts.ts";
-import { EXAM_PERIODS, addDays, examFit, weekFit, weekOf, type Commitment, type FitCourse } from "../termFit.ts";
+import { EXAM_PERIODS, addDays, examFit, finalsInBusyTime, weekFit, weekOf, type Commitment, type FitCourse } from "../termFit.ts";
+import { blocksByDay, busyBetween, chosenSource, prepareGoogle, reconnectGoogle, CHANGED as BUSY_CHANGED, type BusyResult } from "../busyTimes.ts";
 import TimeGrid from "./TimeGrid.tsx";
 import Icon from "./Icon.tsx";
 import { ConfirmDialog, isTopDialog } from "./ui.tsx";
@@ -75,6 +76,49 @@ function useCommitments(dates: string[]) {
   return days;
 }
 
+/**
+ * Her busy times from her own calendar (busyTimes.ts) for these dates, as commitments the week
+ * view understands ("Busy (your calendar)"), plus the raw answer (to offer a refresh, or say why not).
+ */
+function useBusy(dates: string[]) {
+  const { t } = useT();
+  const [result, setResult] = useState<BusyResult | undefined>(undefined);
+  const [version, setVersion] = useState(0);
+  const from = dates[0], to = dates[dates.length - 1];
+  useEffect(() => { const on = () => setVersion((v) => v + 1); window.addEventListener(BUSY_CHANGED, on); return () => window.removeEventListener(BUSY_CHANGED, on); }, []);
+  // Ready for a refresh tap (Google's window must open straight from the tap).
+  useEffect(() => { if (chosenSource() === "google") void prepareGoogle(); }, []);
+  useEffect(() => {
+    if (!from || !to) { setResult(null); return; }
+    let stop = false;
+    busyBetween(from, to).then((r) => { if (!stop) setResult(r); });
+    return () => { stop = true; };
+  }, [from, to, version]);
+  const byDay = useMemo(() => (result && "blocks" in result ? blocksByDay(result.blocks, dates) : {}), [result, dates]);
+  const asCommitments = (date: string): Commitment[] => (byDay[date] ?? []).map((b, i) => ({ id: -1 - i, kind: "busy", title: t("busy.label"), time: b.time, end_time: b.end_time }));
+  const [refreshFailed, setRefreshFailed] = useState(false);
+  return {
+    result, byDay, asCommitments, refreshFailed,
+    refresh: () => { setRefreshFailed(false); reconnectGoogle().then(() => setVersion((v) => v + 1)).catch(() => setRefreshFailed(true)); },
+  };
+}
+
+/** What the busy times say when they cannot be shown: a hint, a refresh, or that they could not be read. */
+function BusyNote({ busy }: { busy: ReturnType<typeof useBusy> }) {
+  const { t } = useT();
+  const r = busy.result;
+  if (r === undefined) return null;
+  if (r === null) return <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{t("busy.hint")}</p>;
+  if ("needsTap" in r) return (
+    <div>
+      <button onClick={busy.refresh} className="tap-area text-sm font-semibold" style={{ color: "var(--accent-text)" }}>{t("busy.refresh")}</button>
+      {busy.refreshFailed && <p role="alert" className="text-xs" style={{ color: "var(--danger)" }}>{t("busy.failed")}</p>}
+    </div>
+  );
+  if ("error" in r) return <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{t("busy.cantRead")}</p>;
+  return null;
+}
+
 /** "9–22 มี.ค. 2570" / "9–22 Mar 2027" (same month), else "12 ม.ค.–7 มี.ค. 2570". */
 function useSpan() {
   const { lang } = useT();
@@ -92,7 +136,8 @@ export function FitSummary({ courses, windows, onPreview }: { courses: FitCourse
   const { t } = useT();
   const dates = useMemo(() => weekOf(firstWeek(windows)), [windows]);
   const commitments = useCommitments(dates);
-  const week = useMemo(() => weekFit(courses, dates, (d) => commitments?.[d] ?? [], teachingSpan(windows)), [courses, dates, commitments, windows]);
+  const busy = useBusy(dates);
+  const week = useMemo(() => weekFit(courses, dates, (d) => [...(commitments?.[d] ?? []), ...busy.asCommitments(d)], teachingSpan(windows)), [courses, dates, commitments, windows, busy.byDay]); // eslint-disable-line react-hooks/exhaustive-deps
   const exams = useMemo(() => examFit(courses, windows.finals), [courses, windows]);
   if (courses.length === 0) return null;
   const etOver = etRegistrationOver(windows.etesting);
@@ -317,8 +362,13 @@ export default function TermPreview({ courses, windows, onClose, canBook = false
   const sheet = useRef<HTMLDivElement>(null);
   const dates = useMemo(() => weekOf(anchor), [anchor]);
   const commitments = useCommitments(dates);
-  const week = useMemo(() => weekFit(courses, dates, (d) => commitments?.[d] ?? [], teachingSpan(windows)), [courses, dates, commitments, windows]);
+  const busy = useBusy(dates);
+  const week = useMemo(() => weekFit(courses, dates, (d) => [...(commitments?.[d] ?? []), ...busy.asCommitments(d)], teachingSpan(windows)), [courses, dates, commitments, windows, busy.byDay]); // eslint-disable-line react-hooks/exhaustive-deps
   const exams = useMemo(() => examFit(courses, windows.finals), [courses, windows]);
+  // Her busy times across the finals fortnight: a final there cannot move.
+  const finalsDates = useMemo(() => exams.days.map((d) => d.date), [exams]);
+  const finalsBusy = useBusy(finalsDates); // nothing to fetch when there are no dated finals
+  const finalClashes = useMemo(() => (finalsDates.length ? finalsInBusyTime(exams, (d) => finalsBusy.byDay[d] ?? []) : []), [exams, finalsDates, finalsBusy.byDay]);
   const nameOf = (code: string) => { const c = courses.find((x) => x.code === code); return c ? (lang === "en" && c.name_en ? c.name_en : c.name_th) : code; };
 
   useEffect(() => {
@@ -341,7 +391,7 @@ export default function TermPreview({ courses, windows, onClose, canBook = false
         const c = courses.find((x) => x.code === m.code)!;
         return { type: "class", course_code: m.code, name_th: `${c.name_th} · ${m.kind}`, name_en: c.name_en ? `${c.name_en} · ${m.kind}` : null, start_time: m.start, end_time: m.end };
       }),
-      ...d.commitments.map((c): CalEvent => ({ type: c.kind === "event" ? "event" : "reminder", course_code: "", name_th: c.title, name_en: null, start_time: c.time ?? undefined, end_time: c.end_time ?? undefined })),
+      ...d.commitments.map((c): CalEvent => ({ type: c.kind === "event" || c.kind === "busy" ? "event" : "reminder", course_code: "", name_th: c.title, name_en: null, start_time: c.time ?? undefined, end_time: c.end_time ?? undefined })),
     ];
   };
   const et = windows.etesting;
@@ -411,6 +461,7 @@ export default function TermPreview({ courses, windows, onClose, canBook = false
               ) : (
                 courses.length > 0 && commitments && <p className="text-sm" style={{ color: "var(--success)" }}>{t("fit.noOverlaps")}</p>
               )}
+              <BusyNote busy={busy} />
               {week.sectioned.map((s) => (
                 <p key={s.code} className="text-sm" style={{ color: "var(--text-secondary)" }}>{t("fit.sectioned", { code: s.code, sections: s.sections.join(" / ") })}</p>
               ))}
@@ -449,6 +500,16 @@ export default function TermPreview({ courses, windows, onClose, canBook = false
                   <p className="text-xs" style={{ color: "var(--text-secondary)" }}>{t("fit.clashHint")}</p>
                 </div>
               )}
+              {finalClashes.length > 0 && (
+                <div className="rounded-xl px-3 py-2 text-sm space-y-1" style={{ backgroundColor: "var(--danger-bg)", color: "var(--danger)" }}>
+                  <p className="font-semibold">{t("busy.finalTitle")}</p>
+                  {finalClashes.map((c) => (
+                    <p key={`${c.code}${c.date}`}>{t("busy.finalLine", { code: c.code, date: formatDate(c.date, lang), slot: c.slot, time: timeRange(c.from, c.to), busy: timeRange(c.busy.time, c.busy.end_time) })}</p>
+                  ))}
+                  <p className="text-xs" style={{ color: "var(--text-secondary)" }}>{t("busy.finalHint")}</p>
+                </div>
+              )}
+              {finalsDates.length > 0 && <BusyNote busy={finalsBusy} />}
               <ul className="text-sm space-y-1">
                 {exams.days.filter((d) => d.A.length + d.B.length > 0).flatMap((d) =>
                   (["A", "B"] as const).flatMap((s) => d[s].map((code) => (

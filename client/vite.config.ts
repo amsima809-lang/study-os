@@ -61,7 +61,8 @@ export default defineConfig({
         // /api/auth/google, and so are its return, a calendar export and an uploaded file.
         // Those must reach the server. Without this line the worker answered them with the
         // app, and the Google button only reloaded the login page.
-        navigateFallbackDenylist: [/\/api\//],
+        // (and the calendar feed, /cal/<token>.ics, which a browser may open to subscribe)
+        navigateFallbackDenylist: [/\/api\//, /\/cal\//],
         // Show last-known data offline for the Today and Review screens.
         runtimeCaching: [
           {

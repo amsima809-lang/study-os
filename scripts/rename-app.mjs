@@ -18,6 +18,8 @@ import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("..", import.meta.url));
 const FILES = [
   "client/src/brand.ts", "client/public/push-sw.js", "client/public/collector/ru-vod.js",
+  // The server's own copy (the calendar feed's name).
+  "server/src/brand.ts",
   // The iOS app (native/): its "cannot connect" page, its Capacitor config, and the name under the icon.
   "native/www/index.html", "native/capacitor.config.json", "native/ios/App/App/Info.plist",
 ];

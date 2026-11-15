@@ -161,3 +161,50 @@ export function examFit(courses: FitCourse[], finals: { from: string; to: string
     etesting: courses.filter((c) => c.etesting).map((c) => c.code).sort(),
   };
 }
+
+export type FinalClash = { code: string; date: string; slot: "A" | "B"; from: string; to: string; busy: { time: string; end_time: string } };
+/**
+ * Finals that fall in her busy time (from her own calendar: busyTimes.ts), period by period.
+ * Unlike a class, a final cannot be skipped or watched later: these are the clashes she has to
+ * solve (time off; or e-Testing, if the course has it).
+ */
+export function finalsInBusyTime(fit: ExamFit, busyOn: (date: string) => { time: string; end_time: string }[]): FinalClash[] {
+  const out: FinalClash[] = [];
+  for (const d of fit.days) {
+    for (const slot of ["A", "B"] as const) {
+      const [from, to] = EXAM_PERIODS[slot];
+      for (const code of d[slot]) {
+        const hit = busyOn(d.date).find((b) => minutes(b.time) < minutes(to) && minutes(b.end_time) > minutes(from));
+        if (hit) out.push({ code, date: d.date, slot, from, to, busy: hit });
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Busy blocks cut into Bangkok days: { "2026-11-17": [{ time: "08:00", end_time: "17:00" }] }.
+ * A block over midnight is split; one covering the whole day becomes 00:00–23:59.
+ */
+export function blocksByDay(blocks: { start: string; end: string }[], dates: string[]): Record<string, { time: string; end_time: string }[]> {
+  const out: Record<string, { time: string; end_time: string }[]> = {};
+  const clock = (d: Date) => new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit", hour12: false }).format(d).replace(/^24/, "00");
+  for (const date of dates) {
+    const dayStart = new Date(`${date}T00:00:00+07:00`).getTime(), dayEnd = dayStart + 24 * 3600 * 1000;
+    for (const b of blocks) {
+      const s = Math.max(Date.parse(b.start), dayStart), e = Math.min(Date.parse(b.end), dayEnd);
+      if (e <= s) continue;
+      (out[date] ??= []).push({ time: clock(new Date(s)), end_time: e >= dayEnd ? "23:59" : clock(new Date(e)) });
+    }
+    // One meeting in two calendars, or two that overlap: one busy stretch.
+    if (out[date]) {
+      const merged: { time: string; end_time: string }[] = [];
+      for (const b of out[date].sort((x, y) => x.time.localeCompare(y.time))) {
+        const last = merged[merged.length - 1];
+        if (last && b.time <= last.end_time) { if (b.end_time > last.end_time) last.end_time = b.end_time; } else merged.push({ ...b });
+      }
+      out[date] = merged;
+    }
+  }
+  return out;
+}
