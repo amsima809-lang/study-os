@@ -24,44 +24,44 @@ function shiftMonth(month: string, delta: number): string {
   return d.toISOString().slice(0, 7);
 }
 
-export type DotType = "class" | "exam" | "task" | "etesting" | "etwindow" | "etbooked" | "reminder" | "todo" | "event";
+export type DotType = "class" | "exam" | "task" | "etesting" | "etwindow" | "etbooked" | "reminder" | "todo" | "event" | "busy";
 const DOT_COLORS: Record<DotType, string> = {
-  class: "var(--accent-2, var(--accent-text))",
+  class: "var(--accent-text)",
   exam: "#ef4444",
   task: "#22c55e",
   etesting: "#d97706",
-  etwindow: "#d97706",
+  etwindow: "var(--text-tertiary)",
   etbooked: "#d97706",
   event: "#6366f1",
   reminder: "#0ea5e9",
   todo: "#a855f7",
+  busy: "var(--text-tertiary)",
 };
 
 /**
- * The mark under a day in the month grid. Each kind has its own SHAPE as well
- * as its own colour, so the kinds can be told apart without seeing colour:
- * class ●, exam ◆, study-plan task ■, e-Testing: registration ▲, testing days △ (hollow, quiet),
- * an exam she booked ★; event ▬, reminder ○, to-do □.
+ * The mark under a day in a month grid: an icon that says what it is without a key, the same
+ * icons as the menu where there is one. A class is an open book; an exam, the Exams page's icon;
+ * an e-Testing exam she booked, that same icon in amber, and a day she COULD test, the same icon
+ * in grey; e-Testing registration, a pen (sign up); a study-plan task, the Study plan's icon; an
+ * event, a calendar; a reminder, a bell; a to-do, a box; busy time from her calendar, a clock.
+ * Different shapes as well as colours, so they are told apart without seeing colour.
  */
-const DOT_ORDER: DotType[] = ["class", "exam", "task", "etbooked", "etesting", "etwindow", "event", "reminder", "todo"];
+const DOT_ORDER: DotType[] = ["exam", "etbooked", "class", "task", "etesting", "etwindow", "event", "busy", "reminder", "todo"];
+const DOT_ICON: Record<DotType, string> = {
+  class: "bookOpen", exam: "fileEdit", task: "calendarCheck", etesting: "pen", etwindow: "fileEdit", etbooked: "fileEdit",
+  event: "calendar", reminder: "bell", todo: "square", busy: "clock",
+};
 /** The dot for an item: e-Testing testing days get their own, quieter mark. */
 const dotOf = (e: { type: CalEvent["type"]; etesting_kind?: string }): DotType => (e.type === "etesting" && e.etesting_kind === "testing" ? "etwindow" : e.type);
-export function DotMark({ type, color }: { type: DotType; color: string }) {
-  const base = { display: "inline-block", width: 7, height: 7, flexShrink: 0 } as React.CSSProperties;
-  const shapes: Record<DotType, React.CSSProperties> = {
-    class: { ...base, borderRadius: "50%", backgroundColor: color },
-    exam: { ...base, backgroundColor: color, transform: "rotate(45deg) scale(0.85)" },
-    task: { ...base, backgroundColor: color, borderRadius: 1 },
-    etesting: { ...base, backgroundColor: color, clipPath: "polygon(50% 0, 100% 100%, 0 100%)" },
-    // hollow: the outline drawn as a triangle with a triangle cut out of it
-    etwindow: { ...base, width: 8, height: 8, backgroundColor: color, clipPath: "polygon(50% 0, 100% 100%, 0 100%, 0 100%, 24% 84%, 76% 84%, 50% 30%, 24% 84%, 0 100%)" },
-    etbooked: { ...base, width: 9, height: 9, backgroundColor: color, clipPath: "polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)" },
-    event: { ...base, width: 10, height: 4, borderRadius: 2, backgroundColor: color },
-    reminder: { ...base, borderRadius: "50%", border: `1.5px solid ${color}` },
-    todo: { ...base, borderRadius: 1, border: `1.5px solid ${color}` },
-  };
-  return <span aria-hidden="true" style={shapes[type]} />;
+export function DotMark({ type, color, label }: { type: DotType; color?: string; /** shown on hover */ label?: string }) {
+  return (
+    <span title={label} className="inline-flex" style={{ opacity: type === "etwindow" ? 0.7 : 1 }}>
+      <Icon name={DOT_ICON[type]} size={13} style={{ color: color ?? DOT_COLORS[type], strokeWidth: 2.2 } as React.CSSProperties} />
+    </span>
+  );
 }
+/** At most this many marks under a day; the rest as "+n" (the day's list shows everything). */
+export const MAX_MARKS = 3;
 
 /**
  * Swipe left or right with one finger to go to the next or previous month,
@@ -213,8 +213,6 @@ export default function Calendar() {
     days.push({ date: `${month}-${String(d).padStart(2, "0")}`, day: d });
   }
 
-  // The kinds of item that appear somewhere in this month, for the legend.
-  const monthKinds = DOT_ORDER.filter((typ) => days.some((c) => c && data?.events[c.date]?.some((e) => dotOf(e) === typ)));
 
   const selectedEvents = selected && data?.events[selected] ? data.events[selected] : [];
 
@@ -326,6 +324,8 @@ export default function Calendar() {
           const isSel = date === selected;
           const types = new Set<DotType>();
           if (events) for (const e of events) types.add(dotOf(e));
+          // A day she booked an e-Testing exam: the booking says it; "she could test" would repeat it.
+          if (types.has("etbooked")) types.delete("etwindow");
 
           return (
             <button
@@ -349,26 +349,20 @@ export default function Calendar() {
               >
                 {day}
               </span>
-              {/* Event dots */}
-              <div className="flex items-center gap-0.5 h-2 mt-0.5">
-                {DOT_ORDER.map((typ) => types.has(typ) && <DotMark key={typ} type={typ} color={DOT_COLORS[typ]} />)}
+              {/* What is on the day, as icons (no key needed); the most important first. */}
+              <div className="flex items-center gap-px h-3.5 mt-0.5" aria-hidden="true">
+                {(() => { const shown = DOT_ORDER.filter((typ) => types.has(typ)); return (
+                  <>
+                    {shown.slice(0, MAX_MARKS).map((typ) => <DotMark key={typ} type={typ} label={t(`cal.kind.${typ}`)} />)}
+                    {shown.length > MAX_MARKS && <span className="text-xs leading-none" style={{ color: "var(--text-tertiary)" }}>+{shown.length - MAX_MARKS}</span>}
+                  </>
+                ); })()}
               </div>
             </button>
           );
         })}
       </div>
 
-      {/* What each mark means — only the kinds that appear this month */}
-      {monthKinds.length > 0 && (
-        <ul className="flex flex-wrap gap-x-3 gap-y-1 px-4 pb-3 text-xs" style={{ color: "var(--text-tertiary)" }}>
-          {monthKinds.map((typ) => (
-            <li key={typ} className="inline-flex items-center gap-1.5">
-              <DotMark type={typ} color={DOT_COLORS[typ]} />
-              {t(`cal.kind.${typ}`)}
-            </li>
-          ))}
-        </ul>
-      )}
 
       </>)}
       </div>

@@ -19,7 +19,7 @@ import { bangkokTime } from "../reminderAlerts.ts";
 import { EXAM_PERIODS, addDays, examFit, finalsInBusyTime, teachingSpanOf, termBoundsOf, weekFit, weekOf, type Commitment, type FitCourse } from "../termFit.ts";
 import { blocksByDay, busyBetween, chosenSource, prepareGoogle, reconnectGoogle, CHANGED as BUSY_CHANGED, type BusyResult } from "../busyTimes.ts";
 import TimeGrid from "./TimeGrid.tsx";
-import { DotMark } from "./Calendar.tsx";
+import { DotMark, MAX_MARKS } from "./Calendar.tsx";
 import Icon from "./Icon.tsx";
 import { ConfirmDialog, isTopDialog } from "./ui.tsx";
 import { RU_LINKS } from "../ruLinks.ts";
@@ -393,27 +393,24 @@ function MonthView({ courses, windows, month, onMonth, onPickDay }: {
   const shift = (n: number) => { const d = new Date(Date.UTC(y, m - 1 + n, 1)); return d.toISOString().slice(0, 7); };
   const lead = (new Date(`${first}T00:00:00Z`).getUTCDay() + 6) % 7; // Monday first
   const title = new Intl.DateTimeFormat(lang === "th" ? "th-TH-u-ca-buddhist" : "en-GB", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${first}T00:00:00Z`));
-  const kinds = new Set<string>();
+  // Her e-Testing bookings (etestingBookings.ts), for the booked-exam icon.
+  const [booked, setBooked] = useState<Set<string>>(new Set());
+  useEffect(() => { getJSON<{ bookings: { date: string }[] }>("/api/etesting/bookings").then((r) => setBooked(new Set(r.bookings.map((b) => b.date)))).catch(() => {}); }, []);
+  type Mark = { type: Parameters<typeof DotMark>[0]["type"]; color?: string; label: string };
   const cells = dates.map((date) => {
     const day = week.days.find((d) => d.date === date)!;
     const fin = exams.days.find((d) => d.date === date);
-    const marks: { type: Parameters<typeof DotMark>[0]["type"]; color: string; key: string }[] = [];
-    if (day.classes.length || day.choices.length) marks.push({ type: "class", color: "var(--accent-2, var(--accent-text))", key: "class" });
-    if (fin && fin.A.length + fin.B.length > 0) marks.push(problems.has(date) ? { type: "exam", color: "var(--danger)", key: "problem" } : { type: "exam", color: "var(--accent)", key: "final" });
-    if (et && date >= et.registration_start && date <= et.registration_end) marks.push({ type: "etesting", color: "#d97706", key: "etreg" });
-    else if (et && date >= et.exam_start && date <= et.exam_end && !etClosed(date)) marks.push({ type: "etwindow", color: "#d97706", key: "etdays" });
-    if (day.commitments.length) marks.push({ type: "event", color: "var(--text-tertiary)", key: "busy" });
-    for (const k of marks) kinds.add(k.key);
+    const marks: Mark[] = [];
+    // The most important first: a final (red when it clashes or falls in busy time), a booked e-Testing exam.
+    if (fin && fin.A.length + fin.B.length > 0) marks.push(problems.has(date) ? { type: "exam", color: "var(--danger)", label: t("fit.legendProblem") } : { type: "exam", color: "var(--accent-text)", label: t("fit.legendFinal") });
+    if (booked.has(date)) marks.push({ type: "etbooked", label: t("cal.kind.etbooked") });
+    if (day.classes.length || day.choices.length) marks.push({ type: "class", label: t("fit.mClass") });
+    if (et && date >= et.registration_start && date <= et.registration_end) marks.push({ type: "etesting", label: t("cal.kind.etesting") });
+    else if (et && date >= et.exam_start && date <= et.exam_end && !etClosed(date) && !booked.has(date)) marks.push({ type: "etwindow", label: t("cal.kind.etwindow") });
+    if (day.commitments.some((c) => c.kind === "busy")) marks.push({ type: "busy", label: t("cal.kind.busy") });
+    if (day.commitments.some((c) => c.kind !== "busy")) marks.push({ type: "event", label: t("fit.mBusy") });
     return { date, marks, ring: overlapDays.has(date) };
   });
-  const LEGEND: Record<string, { type: Parameters<typeof DotMark>[0]["type"]; color: string; label: string }> = {
-    class: { type: "class", color: "var(--accent-2, var(--accent-text))", label: t("fit.mClass") },
-    final: { type: "exam", color: "var(--accent)", label: t("fit.legendFinal") },
-    problem: { type: "exam", color: "var(--danger)", label: t("fit.legendProblem") },
-    etreg: { type: "etesting", color: "#d97706", label: t("cal.kind.etesting") },
-    etdays: { type: "etwindow", color: "#d97706", label: t("cal.kind.etwindow") },
-    busy: { type: "event", color: "var(--text-tertiary)", label: t("fit.mBusy") },
-  };
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
@@ -430,21 +427,24 @@ function MonthView({ courses, windows, month, onMonth, onPickDay }: {
           <button
             key={c.date}
             onClick={() => onPickDay(c.date)}
-            aria-label={[formatDate(c.date, lang), ...c.marks.map((k) => LEGEND[k.key].label), c.ring ? t("fit.mOverlap") : ""].filter(Boolean).join(", ")}
+            aria-label={[formatDate(c.date, lang), ...c.marks.map((k) => k.label), c.ring ? t("fit.mOverlap") : ""].filter(Boolean).join(", ")}
             className="rounded-lg min-h-11 py-1 flex flex-col items-center gap-1"
             style={{ backgroundColor: "var(--bg-base)", outline: c.ring ? "2px solid var(--warning, var(--danger))" : "none", outlineOffset: -2 }}
           >
             <span className="text-xs" style={{ color: "var(--text-primary)" }}>{Number(c.date.slice(8))}</span>
-            <span className="flex gap-0.5 items-center min-h-2">{c.marks.map((k) => <DotMark key={k.key} type={k.type} color={k.color} />)}</span>
+            <span className="flex gap-px items-center min-h-3" aria-hidden="true">
+              {c.marks.slice(0, MAX_MARKS).map((k) => <DotMark key={k.type} type={k.type} color={k.color} label={k.label} />)}
+              {c.marks.length > MAX_MARKS && <span className="text-xs leading-none" style={{ color: "var(--text-tertiary)" }}>+{c.marks.length - MAX_MARKS}</span>}
+            </span>
           </button>
         ))}
       </div>
-      <p className="text-xs flex flex-wrap gap-x-3 gap-y-1" style={{ color: "var(--text-tertiary)" }}>
-        {Object.entries(LEGEND).filter(([k]) => kinds.has(k)).map(([k, v]) => (
-          <span key={k} className="inline-flex items-center gap-1"><DotMark type={v.type} color={v.color} />{v.label}</span>
-        ))}
-        {overlapDays.size > 0 && <span className="inline-flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ outline: "2px solid var(--warning, var(--danger))", outlineOffset: -2 }} />{t("fit.mOverlap")}</span>}
-      </p>
+      {/* The icons explain themselves; only the ring needs a word. */}
+      {overlapDays.size > 0 && (
+        <p className="text-xs inline-flex items-center gap-1.5" style={{ color: "var(--text-tertiary)" }}>
+          <span className="inline-block w-3 h-3 rounded-sm" style={{ outline: "2px solid var(--warning, var(--danger))", outlineOffset: -2 }} />{t("fit.mOverlap")}
+        </p>
+      )}
       <BusyNote busy={busy} />
     </div>
   );
