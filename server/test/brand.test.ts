@@ -48,6 +48,16 @@ describe("the product's name is the same everywhere", () => {
     expect(/var APP_NAME_TH = "([^"]*)"; \/\/ @app-name-th/.exec(read("client/public/collector/ru-vod.js"))![1]).toBe(nameTh);
   });
 
+  it("in the iOS app", () => {
+    const config = JSON.parse(read("native/capacitor.config.json"));
+    const page = read("native/www/index.html");
+    expect(config.appName).toBe(name);
+    expect(/<key>CFBundleDisplayName<\/key>\s*<string>([^<]*)<\/string>/.exec(read("native/ios/App/App/Info.plist"))![1]).toBe(name);
+    expect(/var APP_NAME = "([^"]*)"; \/\/ @app-name/.exec(page)![1]).toBe(name);
+    // The "cannot connect" page returns to the same site the app opens.
+    expect(/var APP_URL = "([^"]*)"; \/\/ @app-url/.exec(page)![1]).toBe(config.server.url);
+  });
+
   it("and no translated string spells it out instead of using {app}", () => {
     const strings = read("client/src/i18n.tsx");
     expect(strings.includes(`"app.name": "{app}"`)).toBe(true);

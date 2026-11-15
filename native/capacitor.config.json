@@ -1,0 +1,15 @@
+{
+  "appId": "com.patrick.termtrail",
+  "appName": "Termtrail",
+  "webDir": "www",
+  "backgroundColor": "#4f46e5",
+  "zoomEnabled": false,
+  "server": {
+    "url": "https://amsima.com/termtrail/",
+    "errorPath": "index.html"
+  },
+  "ios": {
+    "contentInset": "never",
+    "preferredContentMode": "mobile"
+  }
+}

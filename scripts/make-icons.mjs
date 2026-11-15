@@ -27,8 +27,11 @@ ${body}
 </svg>
 `;
 };
-const png = async (file, size, body, scale, radius) => {
-  await sharp(Buffer.from(svg(body, scale, radius)), { density: 72 * (size / 96) * 2 }).resize(size, size).png().toFile(`client/public/${file}`);
+const png = async (file, size, body, scale, radius, dir = "client/public") => {
+  let image = sharp(Buffer.from(svg(body, scale, radius)), { density: 72 * (size / 96) * 2 }).resize(size, size);
+  // The iOS images carry no transparency at all (the App Store refuses an icon that has any).
+  if (dir !== "client/public") image = image.flatten({ background: TILE });
+  await image.png().toFile(`${dir}/${file}`);
   console.log(file, size);
 };
 await png("pwa-192x192.png", 192, FULL, 0.74, 0);
@@ -40,3 +43,10 @@ writeFileSync("client/public/favicon.svg", svg(SMALL, 0.8, 22, "App icon"));
 // For documents and stores: the full drawing on the rounded tile.
 writeFileSync("docs/brand/icon-cairn.svg", svg(FULL, 0.76, 22, "App icon: a cairn of three books, the top one amber"));
 console.log("favicon.svg, docs/brand/icon-cairn.svg");
+// The iOS app (native/): one square icon (iOS cuts the corners itself), the launch screen (a big
+// square that the phone crops to its own shape, so the mark is small and in the middle), and the
+// picture on the app's own "cannot connect" page.
+const IOS = "native/ios/App/App/Assets.xcassets";
+await png("AppIcon-512@2x.png", 1024, FULL, 0.72, 0, `${IOS}/AppIcon.appiconset`);
+for (const file of ["splash-2732x2732.png", "splash-2732x2732-1.png", "splash-2732x2732-2.png"]) await png(file, 2732, FULL, 0.16, 0, `${IOS}/Splash.imageset`);
+await png("icon.png", 192, FULL, 0.74, 0, "native/www");

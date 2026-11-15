@@ -10,12 +10,17 @@
 // (client/src/components/Logo.tsx and client/public icons), internal
 // identifiers (localStorage keys, the "studyos-" notification tags, the
 // StudyOSCollector global, server log prefixes), documentation, or the Fly app
-// name. After running it: npm run build, and check docs/brand/README.md.
+// name. After running it: npm run build, and check docs/brand/README.md. For the iOS app also
+// run `npm run sync` in native/; the name in the App Store is changed in App Store Connect.
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
-const FILES = ["client/src/brand.ts", "client/public/push-sw.js", "client/public/collector/ru-vod.js"];
+const FILES = [
+  "client/src/brand.ts", "client/public/push-sw.js", "client/public/collector/ru-vod.js",
+  // The iOS app (native/): its "cannot connect" page, its Capacitor config, and the name under the icon.
+  "native/www/index.html", "native/capacitor.config.json", "native/ios/App/App/Info.plist",
+];
 const [first, second] = process.argv.slice(2);
 
 const current = /export const APP_NAME = "([^"]*)";/.exec(readFileSync(root + "client/src/brand.ts", "utf8"))?.[1];
@@ -28,8 +33,8 @@ if (!first || first === "--check") {
 const name = first.trim();
 const nameTh = (second ?? first).trim();
 for (const value of [name, nameTh]) {
-  if (!value || /["\\\n]/.test(value) || value.length > 40) {
-    console.error(`Not a usable name: ${JSON.stringify(value)} (no quotes or backslashes, 40 characters at most)`);
+  if (!value || /["\\\n<>&]/.test(value) || value.length > 40) {
+    console.error(`Not a usable name: ${JSON.stringify(value)} (no quotes, backslashes, < > or &, 40 characters at most)`);
     process.exit(1);
   }
 }
@@ -41,7 +46,9 @@ for (const file of FILES) {
     .replace(/(export const APP_NAME = )"[^"]*"/, `$1"${name}"`)
     .replace(/(export const APP_NAME_TH = )"[^"]*"/, `$1"${nameTh}"`)
     .replace(/((?:const|var) APP_NAME = )"[^"]*"(; \/\/ @app-name)$/m, `$1"${name}"$2`)
-    .replace(/((?:const|var) APP_NAME_TH = )"[^"]*"(; \/\/ @app-name-th)$/m, `$1"${nameTh}"$2`);
+    .replace(/((?:const|var) APP_NAME_TH = )"[^"]*"(; \/\/ @app-name-th)$/m, `$1"${nameTh}"$2`)
+    .replace(/("appName": )"[^"]*"/, `$1"${name}"`)
+    .replace(/(<key>CFBundleDisplayName<\/key>\s*<string>)[^<]*(<\/string>)/, `$1${name}$2`);
   if (after !== before) { writeFileSync(root + file, after); changed++; }
   console.log(`${after !== before ? "updated  " : "unchanged"} ${file}`);
 }

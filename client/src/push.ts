@@ -5,15 +5,18 @@
  */
 import { getJSON, postJSON } from "./api.ts";
 import { getClock } from "./format.ts";
+import { inNativeApp } from "./native.ts";
 
 /**
  * - "on" / "off": this device can receive pushes, and is / is not subscribed;
  * - "needs-install": the browser has no push here yet — on iPhone and iPad it
  *   only works once StudyOS is added to the Home Screen;
+ * - "native-app": inside the iOS app, whose web view has no push; it needs Apple's own
+ *   notification service, which is not built yet;
  * - "no-worker": the service worker is not running (the dev server);
  * - "unsupported": this browser cannot do it at all.
  */
-export type PushState = "on" | "off" | "needs-install" | "no-worker" | "unsupported";
+export type PushState = "on" | "off" | "needs-install" | "native-app" | "no-worker" | "unsupported";
 
 const lang = (): "th" | "en" => {
   try { return localStorage.getItem("studyos.lang") === "en" ? "en" : "th"; } catch { return "th"; }
@@ -25,6 +28,7 @@ async function registration(): Promise<ServiceWorkerRegistration | null> {
 }
 
 export async function pushState(): Promise<PushState> {
+  if (inNativeApp()) return "native-app";
   if (!("serviceWorker" in navigator) || typeof Notification === "undefined") return "unsupported";
   if (!("PushManager" in window)) {
     const apple = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
