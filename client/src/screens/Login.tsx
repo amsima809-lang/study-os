@@ -60,8 +60,9 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
 
   // Theme colours: the chosen university's, or the default purple/blue/pink.
   // With no university chosen, the page wears the brand's own indigo.
-  // Ramkhamhaeng, the default university, wears the app's own colours and no campus photo
-  // (owner 2026-11-16): `look` is the university whose colours and photo the page shows.
+  // Ramkhamhaeng, the default university, wears the app's own colours (owner 2026-11-16): `look` is
+  // the university whose colours the page shows. No campus photos any more (archived in
+  // docs/brand/campus-photos/).
   const look = uni && uni.id !== DEFAULT_UNIVERSITY ? uni : null;
   const primary = look?.swatches[0].hex ?? BRAND.primary;
   const secondary = look?.swatches[1]?.hex ?? (look ? primary : "#3b82f6");
@@ -133,7 +134,7 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
   return (
     <div ref={landing} className="relative">
     {/* The mountain under the sign-in card, and the trail that winds up the whole page to its summit (Trail.tsx). */}
-    <TrailPath root={landing} faint={!!look?.photo} />
+    <TrailPath root={landing} />
     {/* The first screen, the summit: signing in or creating an account, with room below it for
         the mountain (pb-56), so the mountain never sits behind the text. Below, what the app does (Landing.tsx). */}
     <section id="top" className="min-h-dvh flex flex-col items-center justify-center px-6 pt-10 pb-56 relative overflow-hidden">
@@ -146,27 +147,10 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
             : "linear-gradient(135deg, #0f0c29 0%, #302b63 40%, #24243e 100%)" /* the brand's deep indigo */,
         }}
       />
-      {/* Campus photo (only some universities have one) under a tinted dark overlay */}
-      {look?.photo && (
-        <>
-          <div
-            key={look.id}
-            className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: `url(${withBase(look.photo.src)})` }}
-          />
-          <div
-            className="absolute inset-0"
-            style={{
-              background: `linear-gradient(180deg, ${mix(primary, DARK, 0.92, 0.88)} 0%, ${mix(primary, DARK, 0.85, 0.74)} 45%, ${mix(primary, DARK, 0.95, 0.94)} 100%)`,
-            }}
-          />
-        </>
-      )}
       {/* Floating gradient orbs */}
       <div
         className="absolute w-[500px] h-[500px] rounded-full opacity-30 blur-[100px]"
         style={{
-          display: look?.photo ? "none" : undefined,
           background: `radial-gradient(circle, ${primary} 0%, transparent 70%)`,
           top: "-10%",
           right: "-10%",
@@ -176,7 +160,6 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
       <div
         className="absolute w-[400px] h-[400px] rounded-full opacity-20 blur-[80px]"
         style={{
-          display: look?.photo ? "none" : undefined,
           background: `radial-gradient(circle, ${secondary} 0%, transparent 70%)`,
           bottom: "-5%",
           left: "-10%",
@@ -229,7 +212,7 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
         <div
           className="rounded-3xl px-7 py-7 border"
           style={{
-            background: look?.photo ? "rgba(11,11,24,0.45)" : "rgba(255,255,255,0.05)",
+            background: "rgba(255,255,255,0.05)",
             backdropFilter: "blur(40px)",
             WebkitBackdropFilter: "blur(40px)",
             borderColor: "rgba(255,255,255,0.08)",
@@ -393,7 +376,7 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
           </button>
         </div>
 
-        {/* Bottom text: school colours (as the university names them) + photo credit */}
+        {/* Bottom text: school colours (as the university names them) */}
         <div className="text-center text-xs mt-5 space-y-1" style={{ color: "rgba(255,255,255,0.65)" }}>
           {look && (
             <>
@@ -402,15 +385,6 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
                 {approx && " *"}
               </p>
               {approx && <p style={{ color: "rgba(255,255,255,0.58)" }}>* {t("uni.approx")}</p>}
-              {look.photo && (
-                <p>
-                  {t("look.photo_by")}{" "}
-                  <a href={look.photo.page} target="_blank" rel="noreferrer" className="tap-area inline-block underline">
-                    {look.photo.author}
-                  </a>
-                  , {look.photo.licence} (Wikimedia Commons)
-                </p>
-              )}
             </>
           )}
         </div>

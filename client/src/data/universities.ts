@@ -14,6 +14,7 @@ export interface University {
   colourTh: string;
   colourEn: string;
   swatches: { hex: string; source: "official" | "converted" | "website" | "approximate" }[];
+  /** ARCHIVED 2026-11-16: no longer shown; the files and credits are in docs/brand/campus-photos/. */
   photo?: { src: string; author: string; licence: string; page: string };
 }
 
