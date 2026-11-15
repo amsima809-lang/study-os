@@ -20,8 +20,9 @@ const START_ZOOM = 2.4;
 export default function RoomMapSheet({ room, campus, code, onClose }: { room: string; campus: CampusId; code: string; onClose: () => void }) {
   const { t } = useT();
   const view = usePanZoom({ min: 1, max: 5, initial: START_ZOOM });
-  // Where the pin's tip goes, as fractions of the drawing's width and height: the middle of
-  // the building's top edge, so the pin stands on it and its code stays readable.
+  // Where the pin's tip goes, as fractions of the drawing's width and height: just above the
+  // building's code written on it (maps.css lifts it a few pixels more), so the code stays
+  // readable under the pin. A building with no code on it: its top edge.
   const [pin, setPin] = useState<{ x: number; y: number } | null>(null);
   const name = BUILDINGS[campus].get(code) ?? "";
   const position = positionOf(campus, code);
@@ -34,7 +35,8 @@ export default function RoomMapSheet({ room, campus, code, onClose }: { room: st
     if (!inner || !svg || !building) return;
     building.querySelectorAll(".b").forEach((el) => el.classList.add("is-selected"));
     const s = svg.getBoundingClientRect(), b = building.getBoundingClientRect();
-    const at = { x: (b.left + b.width / 2 - s.left) / s.width, y: (b.top - s.top) / s.height };
+    const label = building.querySelector("text.code")?.getBoundingClientRect();
+    const at = { x: ((label ? label.left + label.width / 2 : b.left + b.width / 2) - s.left) / s.width, y: ((label ?? b).top - s.top) / s.height };
     setPin(at);
     view.centreOn(at.x, (b.top + b.height / 2 - s.top) / s.height);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -82,7 +84,7 @@ export default function RoomMapSheet({ room, campus, code, onClose }: { room: st
                   style={{ left: `${pin.x * 100}%`, top: `${pin.y * 100}%` }}
                 >
                   <svg viewBox="0 0 32 42" width="34" height="44">
-                    <path d="M16 41s13-14.2 13-24.4C29 8.5 23.2 2 16 2S3 8.5 3 16.6C3 26.8 16 41 16 41z" fill="var(--accent)" stroke="#fff" strokeWidth="2.5" />
+                    <path d="M16 41s13-14.2 13-24.4C29 8.5 23.2 2 16 2S3 8.5 3 16.6C3 26.8 16 41 16 41z" fill="var(--accent-2, var(--accent))" stroke="#fff" strokeWidth="2.5" />
                     <circle cx="16" cy="16.5" r="5" fill="#fff" />
                   </svg>
                 </span>
