@@ -504,7 +504,7 @@ export default function TermPreview({ courses, windows, onClose, canBook = false
                 <div className="rounded-xl px-3 py-2 text-sm space-y-1" style={{ backgroundColor: "var(--danger-bg)", color: "var(--danger)" }}>
                   <p className="font-semibold">{t("busy.finalTitle")}</p>
                   {finalClashes.map((c) => (
-                    <p key={`${c.code}${c.date}`}>{t("busy.finalLine", { code: c.code, date: formatDate(c.date, lang), slot: c.slot, time: timeRange(c.from, c.to), busy: timeRange(c.busy.time, c.busy.end_time) })}</p>
+                    <p key={`${c.code}${c.date}`}>{t("busy.finalLine", { code: c.code, date: formatDate(c.date, lang), slot: c.slot, time: timeRange(c.from, c.to), busy: c.busy.time === "00:00" && c.busy.end_time === "23:59" ? t("busy.allDay") : timeRange(c.busy.time, c.busy.end_time) })}</p>
                   ))}
                   <p className="text-xs" style={{ color: "var(--text-secondary)" }}>{t("busy.finalHint")}</p>
                 </div>
