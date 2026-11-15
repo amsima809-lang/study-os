@@ -20,6 +20,7 @@ import { EXAM_PERIODS, addDays, examFit, finalsInBusyTime, ownBusy, teachingSpan
 import { blocksByDay, busyBetween, chosenSource, prepareGoogle, reconnectGoogle, CHANGED as BUSY_CHANGED, type BusyResult } from "../busyTimes.ts";
 import TimeGrid from "./TimeGrid.tsx";
 import { DotMark, MarkKey, SlotMarks } from "./Calendar.tsx";
+import { finalRing } from "./marks.tsx";
 import Icon from "./Icon.tsx";
 import { ConfirmDialog, isTopDialog } from "./ui.tsx";
 import { RU_LINKS } from "../ruLinks.ts";
@@ -435,7 +436,8 @@ function MonthView({ courses, windows, month, onMonth, onPickDay }: {
             className="rounded-lg min-h-11 py-1 flex flex-col items-center gap-1"
             style={{ backgroundColor: "var(--bg-base)", outline: c.ring ? "2px solid var(--warning, var(--danger))" : "none", outlineOffset: -2 }}
           >
-            <span className="text-xs" style={{ color: "var(--text-primary)" }}>{Number(c.date.slice(8))}</span>
+            {/* A final that day: the date ringed in rose (red when it clashes or falls in busy time). */}
+            <span className="text-xs w-6 h-6 rounded-full flex items-center justify-center" style={{ color: "var(--text-primary)", boxShadow: c.marks[2]?.type === "exam" ? finalRing(c.marks[2].color) : undefined }}>{Number(c.date.slice(8))}</span>
             <span className="min-h-3"><SlotMarks slots={c.marks} /></span>
           </button>
         ))}

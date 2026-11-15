@@ -4,7 +4,7 @@ import { getJSON, type CalendarData, type CalEvent } from "../api.ts";
 import { CourseTitle, CourseChip } from "./CourseTitle.tsx";
 import { timeRange, formatTime } from "../format.ts";
 import Icon from "./Icon.tsx";
-import { DOT_COLORS, DotMark, dotOf, type DotType } from "./marks.tsx";
+import { DOT_COLORS, DotMark, RingSample, dotOf, finalRing, type DotType } from "./marks.tsx";
 export { DotMark, type DotType } from "./marks.tsx";
 import { setDone, useRemindersChanged, ReminderSheet } from "./Reminders.tsx";
 import { AddButton } from "./ui.tsx";
@@ -63,7 +63,11 @@ export function MarkKey({ items, extra }: { items: { type: DotType; color?: stri
   return (
     <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs" style={{ color: "var(--text-tertiary)" }}>
       {items.map((it) => (
-        <span key={it.type + it.label} className="inline-flex items-center gap-1"><DotMark type={it.type} color={it.color} />{it.label}</span>
+        <span key={it.type + it.label} className="inline-flex items-center gap-1">
+          {/* A final's mark is the ring round its date, shown here with its icon. */}
+          {it.type === "exam" && <RingSample color={it.color} />}
+          <DotMark type={it.type} color={it.color} />{it.label}
+        </span>
       ))}
       {extra}
     </div>
@@ -352,6 +356,8 @@ export default function Calendar() {
                   // White text needs the button shade (--accent), not the text shade.
                   background: isSel ? "var(--accent)" : isToday ? "var(--bg-surface-hover)" : "transparent",
                   color: isSel ? "#fff" : isToday ? "var(--accent-text)" : "var(--text-primary)",
+                  // A final that day: a rose ring round the date, round the purple circle too.
+                  boxShadow: types.has("exam") ? finalRing() : undefined,
                 }}
               >
                 {day}
