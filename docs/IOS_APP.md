@@ -76,8 +76,35 @@ iPhone in Safari, it does here, with these differences:
   app shows its "cannot connect" page instead of the last-seen screens.
 - **Not checked:** downloading a file (the calendar export, a note as a text file) and printing a
   note. Web views handle neither by themselves.
-- **Google sign-in will not work inside it** (Google refuses sign-in from a web view, and the link
-  would open in Safari). The trial site signs in with the access code, which works.
+- **Google sign-in** goes through the system's sign-in sheet (Phase 65, below). The trial site
+  has no Google client, so there the app signs in with the access code, like a browser.
+
+## Signing in with Google
+
+Google refuses a sign-in inside an app's web view. So, in the app, the login page's Google
+button calls the app's own plugin (`native/ios/App/App/AppSignIn.swift`), which opens the site's
+sign-in in the system sign-in sheet: a real browser that shares Safari's cookies, so someone
+already signed in to Google there only has to tap their account. iOS first asks "Termtrail wants
+to use amsima.com to sign in".
+
+The sheet is not the app, so it cannot pass on a session. It comes back to the app with a
+one-time code, and the page in the app exchanges the code for its own session
+(`server/src/appSignIn.ts` explains what keeps that code from being worth stealing).
+
+What it needs:
+
+- **On the server:** Google sign-in set up as for any browser (`GOOGLE_CLIENT_ID`,
+  `GOOGLE_CLIENT_SECRET`, `APP_URL`; `docs/DEPLOY.md`). The app uses the same web client: no
+  iOS client, nothing added in Google Cloud. `IOS_APP_SCHEME` is the app's bundle identifier
+  by default.
+- **In the app:** a build that has the plugin. Build `202611150853` (the first on TestFlight)
+  does not: it shows "update the app" in place of the Google button.
+
+Setting a Google client on a site **switches its access-code login off** and lets anyone with a
+Google account sign in. On the trial site that is the owner's decision; it has not been made.
+
+Not tried: a real Google account, the real sign-in sheet, a phone. Everything after Google was
+tried with a stand-in for Google, and the login page with a simulated plugin.
 
 ## Before it can go to App Review
 
@@ -88,8 +115,8 @@ The shell is for the team's own testers on TestFlight. Apple's review is a diffe
    for production. That means: the client built into `native/www`, the API address made
    absolute, and sign-in that works across sites (a web view blocks the session cookie from
    another site, so a token, or Capacitor's native HTTP).
-2. **A production server and real sign-in.** If Google sign-in is offered, Apple requires
-   Sign in with Apple beside it (guideline 4.8).
+2. **A production server and real sign-in.** Google sign-in now works in the app, so wherever it
+   is switched on Apple requires Sign in with Apple beside it (guideline 4.8).
 3. **Something native**: notifications through Apple's push service is the obvious first one.
 4. A privacy policy address, the App Privacy answers, screenshots, and a support address.
 5. Remove `testFlightInternalTestingOnly` from `ExportOptions.plist`.
@@ -137,6 +164,8 @@ in the wrapper bundle that App Store iPhone apps use on a Mac.
   `testflight.sh` uploaded build `202611150853`, which App Store Connect lists under TestFlight.
 - On the development Mac (`run-on-mac.sh`): the app starts and stays running, with no crash
   report.
+- Google sign-in (Phase 65): the server's part with a stand-in for Google, the login page with a
+  simulated plugin, the plugin's limit on what it opens; the app compiles and signs with it.
 - **Not checked: what the app shows.** Nobody has looked at its window yet, so sign-in, the
   links that leave the app, the camera and location prompts, and the "cannot connect" page
   inside the real app are all untested. Nor has it run on a phone.

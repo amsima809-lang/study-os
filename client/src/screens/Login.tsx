@@ -7,6 +7,7 @@ import UniversityPicker, { useUniversity } from "../components/UniversityPicker.
 import Logo from "../components/Logo.tsx";
 import { BRAND } from "../theme.ts";
 import { withBase } from "../base.ts";
+import { inNativeApp, canGoogleSignInInApp, googleSignInInApp } from "../native.ts";
 
 const DARK = "#0b0b18";
 
@@ -15,6 +16,17 @@ function mix(from: string, to: string, t: number, alpha = 1): string {
   const ch = (hex: string, i: number) => parseInt(hex.slice(1 + i * 2, 3 + i * 2), 16);
   const v = [0, 1, 2].map((i) => Math.round(ch(from, i) * (1 - t) + ch(to, i) * t));
   return `rgba(${v[0]},${v[1]},${v[2]},${alpha})`;
+}
+
+function GoogleMark() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true">
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+    </svg>
+  );
 }
 
 export default function Login({ onAuthed }: { onAuthed: () => void }) {
@@ -47,6 +59,31 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
     return failed;
   });
   const [busy, setBusy] = useState(false);
+  // In the iPhone app Google sign-in goes through the system's sign-in sheet (native.ts).
+  // A copy of the app from before it could do that cannot sign in with Google at all.
+  const inApp = inNativeApp();
+  const appCanGoogle = inApp && canGoogleSignInInApp();
+  const [appGoogleFailed, setAppGoogleFailed] = useState(false);
+
+  async function googleInApp() {
+    if (busy) return;
+    setAppGoogleFailed(false);
+    setBusy(true);
+    try {
+      const result = await googleSignInInApp(
+        (challenge) => new URL(withBase(`/api/auth/google?app=${challenge}`), window.location.origin).toString(),
+        (code, verifier) => postJSON("/api/auth/app/redeem", { code, verifier }),
+      );
+      if (result === "done") onAuthed();
+    } catch {
+      setAppGoogleFailed(true);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const googleStyle = { background: "#fff", color: "#333", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" } as const;
+  const googleClass = "w-full flex items-center justify-center gap-3 font-semibold rounded-2xl py-3.5 transition-all active:scale-[0.98] hover:shadow-lg";
 
   async function devLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -165,25 +202,21 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
         >
           <div className="space-y-4">
             {/* Google OAuth */}
-            {methods?.google && <a
-              href={withBase("/api/auth/google")}
-              className="w-full flex items-center justify-center gap-3 font-semibold rounded-2xl py-3.5 transition-all active:scale-[0.98] hover:shadow-lg"
-              style={{
-                background: "#fff",
-                color: "#333",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-              }}
-            >
-              <svg width="20" height="20" viewBox="0 0 48 48">
-                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
-                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
-                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
-                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
-              </svg>
+            {methods?.google && !inApp && <a href={withBase("/api/auth/google")} className={googleClass} style={googleStyle}>
+              <GoogleMark />
               {t("auth.google")}
             </a>}
+            {methods?.google && appCanGoogle && (
+              <button type="button" onClick={googleInApp} disabled={busy} className={`${googleClass} disabled:opacity-60`} style={googleStyle}>
+                <GoogleMark />
+                {t("auth.google")}
+              </button>
+            )}
+            {methods?.google && inApp && !appCanGoogle && (
+              <p role="alert" className="text-sm text-center" style={{ color: "rgba(255,255,255,0.75)" }}>{t("auth.appTooOld")}</p>
+            )}
 
-            {googleFailed && (
+            {(googleFailed || appGoogleFailed) && (
               <p role="alert" className="text-sm text-center" style={{ color: "#fca5a5" }}>{t("auth.googleFailed")}</p>
             )}
 

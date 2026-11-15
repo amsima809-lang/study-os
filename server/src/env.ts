@@ -46,6 +46,11 @@ export const env = {
   googleClientId: process.env.GOOGLE_CLIENT_ID ?? "",
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
   appUrl: process.env.APP_URL ?? "http://localhost:3100",
+  /**
+   * The URL scheme that returns a Google sign-in to the iOS app (its bundle identifier, which
+   * the app listens for). See appSignIn.ts. server/test/brand.test.ts keeps it equal to the app's.
+   */
+  iosAppScheme: process.env.IOS_APP_SCHEME ?? "com.patrick.termtrail",
   /** Production only: set ALLOW_DEV_LOGIN=true to keep the password-less dev login. See signInMethods. */
   allowDevLogin: process.env.ALLOW_DEV_LOGIN === "true",
   /** With the dev login on: the access code a visitor must give to use it (a private trial site). */

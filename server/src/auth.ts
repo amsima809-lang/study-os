@@ -9,6 +9,7 @@ import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import type { DB } from "./db.js";
 import { env, signInMethods, codeGuard } from "./env.js";
 import { createHash, timingSafeEqual } from "node:crypto";
+import { createHandoffs, isChallenge, appState, challengeFromState, appReturnUrl } from "./appSignIn.js";
 
 export interface AuthUser {
   id: string;
@@ -155,18 +156,53 @@ export function setupAuth(db: DB): Router {
   }
 
   if (methods.google) {
-    router.get(
-      "/auth/google",
-      passport.authenticate("google", { scope: ["profile", "email"] }),
-    );
+    // Sign-ins started by the iOS app, waiting to be collected by its web view (appSignIn.ts).
+    const handoffs = createHandoffs();
+
+    // `?app=<challenge>`: the iOS app started this, in the system's sign-in sheet.
+    router.get("/auth/google", (req: Request, res: Response, next: NextFunction) => {
+      const app = req.query.app;
+      if (app !== undefined && !isChallenge(app)) {
+        res.status(400).json({ error: "คำขอเข้าสู่ระบบจากแอปไม่ถูกต้อง", code: "BAD_APP_SIGNIN" });
+        return;
+      }
+      passport.authenticate("google", {
+        scope: ["profile", "email"],
+        ...(app ? { state: appState(app) } : {}),
+      })(req, res, next);
+    });
     // Back from Google. Anything that goes wrong (the student pressed Cancel, the
     // code expired or was reused, Google is unreachable) returns to the login
     // page with a plain message, never a bare server error.
     router.get("/auth/google/callback", (req: Request, res: Response, next: NextFunction) => {
+      const challenge = challengeFromState(req.query.state);
       passport.authenticate("google", (err: unknown, user: Express.User | false) => {
+        if (challenge) {
+          // This browser is the sign-in sheet, not the app: it gets no session. It
+          // goes back to the app with a one-time code for the app's web view.
+          if (err || !user) return res.redirect(appReturnUrl(env.iosAppScheme, { error: "failed" }));
+          return res.redirect(appReturnUrl(env.iosAppScheme, { code: handoffs.issue(user.id, challenge) }));
+        }
         if (err || !user) return res.redirect(`${env.basePath}/?signin=failed`);
         req.logIn(user, (loginErr) => res.redirect(loginErr ? `${env.basePath}/?signin=failed` : `${env.basePath}/`));
       })(req, res, next);
+    });
+    // The app's web view collects its session: the code from the sign-in sheet,
+    // and the verifier only this web view has.
+    router.post("/auth/app/redeem", (req: Request, res: Response) => {
+      const { code, verifier } = (req.body ?? {}) as { code?: unknown; verifier?: unknown };
+      const userId = handoffs.redeem(code, verifier);
+      if (!userId) {
+        res.status(403).json({ error: "การเข้าสู่ระบบจากแอปหมดอายุหรือถูกใช้ไปแล้ว ลองใหม่อีกครั้ง", code: "BAD_HANDOFF" });
+        return;
+      }
+      req.logIn({ id: userId } as Express.User, (loginErr) => {
+        if (loginErr) {
+          res.status(500).json({ error: "เข้าสู่ระบบไม่สำเร็จ", code: "SIGNIN_FAILED" });
+          return;
+        }
+        res.json({ ok: true });
+      });
     });
   } else {
     // Not configured: say so, instead of an unexplained server error.
