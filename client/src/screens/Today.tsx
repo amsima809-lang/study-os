@@ -241,7 +241,7 @@ export default function Today() {
               </div>
               {data.nextExam.seat && <div className="text-sm" style={{ color: "var(--text-secondary)" }}>{t("exam.seat")}: {data.nextExam.seat}</div>}
             </div>
-            <span className="font-semibold" style={{ color: "var(--accent-text)" }}>
+            <span className="text-sm font-semibold whitespace-nowrap" style={{ color: "var(--accent-text)" }}>
               {data.nextExam.daysLeft === 0
                 ? t("today.examToday")
                 : t("today.daysLeft", { n: data.nextExam.daysLeft })}
