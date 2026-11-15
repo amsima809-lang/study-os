@@ -63,7 +63,7 @@ function withCourses(View: ComponentType): ComponentType {
 export const DESTINATIONS: Destination[] = [
   { id: "today", icon: "calendar", label: "nav.today", Screen: Today },
   { id: "reminders", icon: "bell", label: "nav.reminders", Screen: Reminders, narrow: true },
-  { id: "studyplan", icon: "calendarCheck", label: "nav.studyplan", Screen: StudyPlan, narrow: true },
+  { id: "studyplan", icon: "bookOpen", label: "nav.studyplan", Screen: StudyPlan, narrow: true },
   { id: "timetable", icon: "calendarRange", label: "nav.timetable", Screen: withCourses(Week) },
   { id: "exams", icon: "fileEdit", label: "nav.exams", Screen: withCourses(Exams) },
   { id: "map", icon: "mapPin", label: "nav.map", Screen: CampusMap },

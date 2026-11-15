@@ -74,6 +74,9 @@ const paths: Record<string, string> = {
     "M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2zm10 4a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM21 15l-5-5L5 21",
   edit: "M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z",
 
+  // ── a class: a whiteboard with writing, on an A-frame easel (owner's choice, 2026-11-16) ──
+  whiteboard: "M10.5 4.5L12 2l1.5 2.5M4 4.5h16v10H4zM7 8h7M7 11h4M2.5 14.5h19M7 14.5L4.5 22M17 14.5l2.5 7.5M12 14.5V20",
+
   // ── study types ──
   bookOpen:
     "M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2V3zm20 0h-6a4 4 0 00-4 4v14a3 3 0 013-3h7V3z",

@@ -18,7 +18,7 @@ import { formatTime, timeRange, hourLabel, getClock } from "../format.ts";
 const COLORS: Record<CalEvent["type"], string> = {
   class: "var(--accent-text)",
   exam: "#ef4444",
-  task: "#22c55e",
+  task: "var(--mark-study)",
   etesting: "#f59e0b",
   etbooked: "#d97706",
   event: "#6366f1",

@@ -21,7 +21,7 @@ const SHOWN: { shot: string; key: string; icon: string }[] = [
   { shot: "map", key: "map", icon: "mapPin" },
   { shot: "exams", key: "exams", icon: "fileEdit" },
   { shot: "trail", key: "trail", icon: "flag" },
-  { shot: "studyplan", key: "studyplan", icon: "calendarCheck" },
+  { shot: "studyplan", key: "studyplan", icon: "bookOpen" },
 ];
 /** And the rest, as small cards. */
 const MORE: { icon: string; key: string }[] = [

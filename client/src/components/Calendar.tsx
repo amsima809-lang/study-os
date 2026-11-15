@@ -28,7 +28,7 @@ export type DotType = "class" | "exam" | "task" | "etesting" | "etwindow" | "etb
 const DOT_COLORS: Record<DotType, string> = {
   class: "var(--mark-class)", // yellow
   exam: "#ef4444",
-  task: "#22c55e",
+  task: "var(--mark-study)", // teal: apart from classes (yellow) and booked e-Testing (green)
   etesting: "#d97706",
   etwindow: "var(--mark-window)", // grey; off-white in dark mode
   etbooked: "var(--mark-booked)", // green
@@ -56,7 +56,7 @@ const DOT_ORDER: DotType[] = ["etbooked", "etesting", "etwindow", "exam", "class
 export const SLOTS: DotType[][] = [["etbooked"], ["etesting", "etwindow"], ["exam", "class"], ["event", "busy", "reminder", "todo", "task"]];
 export const slotsOf = (types: Set<DotType>): (DotType | null)[] => SLOTS.map((s) => s.find((k) => types.has(k)) ?? null);
 const DOT_ICON: Record<DotType, string> = {
-  class: "bookOpen", exam: "fileEdit", task: "calendarCheck", etesting: "pen", etwindow: "fileEdit", etbooked: "fileEdit",
+  class: "whiteboard", exam: "fileEdit", task: "bookOpen", etesting: "pen", etwindow: "fileEdit", etbooked: "fileEdit",
   event: "calendar", reminder: "bell", todo: "square", busy: "clock",
 };
 /** The dot for an item: e-Testing testing days get their own, quieter mark. */
@@ -486,7 +486,7 @@ function EventRow({
   const tagColors: Record<string, { bg: string; text: string }> = {
     class: { bg: "var(--accent-light)", text: "var(--accent-text)" },
     exam: { bg: "rgba(239,68,68,0.15)", text: "#ef4444" },
-    task: { bg: "rgba(34,197,94,0.15)", text: "#22c55e" },
+    task: { bg: "rgba(20,184,166,0.15)", text: "var(--mark-study)" },
     etesting: { bg: "rgba(245,158,11,0.15)", text: "#f59e0b" },
     etbooked: { bg: "rgba(217,119,6,0.22)", text: "#b45309" },
     event: { bg: "rgba(99,102,241,0.15)", text: "#6366f1" },
