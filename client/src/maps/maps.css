@@ -34,3 +34,8 @@
 .map-viewport.is-panning { cursor: grabbing; }
 .map-viewport .campus-map g[data-code] { cursor: pointer; }
 .map-viewport.is-panning .campus-map g[data-code] { cursor: grabbing; }
+
+/* The pin over a class's building (components/RoomMap.tsx): its tip on the building's top edge,
+   the same size on screen whatever the zoom. */
+.campus-map .room-pin { position: absolute; transform: translate(-50%, -100%); pointer-events: none; filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); line-height: 0; }
+.campus-map .room-pin svg { width: 34px; height: 44px; }

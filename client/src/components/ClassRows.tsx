@@ -1,6 +1,6 @@
 /**
- * A list of classes: the course, its time, and its room. The room is a button that opens
- * walking directions to the building when the building's position is known (RoomLink).
+ * A list of classes: the course, its time, and its room. The room is a button that opens the
+ * campus map on its building, with Google Maps a tap away (RoomLink).
  */
 import type { ClassSession } from "../api.ts";
 import { timeRange } from "../format.ts";

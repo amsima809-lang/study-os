@@ -19,7 +19,7 @@
  * `touch-action: pan-x pan-y` (maps.css) lets one finger scroll the page and keeps the
  * browser from zooming the whole page when two fingers are on the map.
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { anchoredScroll, clampZoom, wheelFactor, TAP_SLOP } from "./panZoomMath.ts";
 
@@ -55,8 +55,9 @@ export function usePanZoom({ min, max, initial }: Options) {
     [min, max],
   );
 
-  // The starting width, before the first paint.
-  useEffect(() => {
+  // The starting width, before the first paint, and before the screen's own layout effects
+  // (the room sheet centres its building straight away, and needs the drawing at full size).
+  useLayoutEffect(() => {
     if (content.current) content.current.style.width = `${zoomRef.current * 100}%`;
   }, []);
 
@@ -179,6 +180,13 @@ export function usePanZoom({ min, max, initial }: Options) {
     zoom,
     /** Zoom by a factor about the middle of the box (the + and − buttons). */
     zoomBy: (factor: number) => apply(zoomRef.current * factor),
+    /** Scroll so that a point of the drawing (fractions of its width and height) is in the middle of the box. */
+    centreOn: (fx: number, fy: number) => {
+      const box = scroller.current, inner = content.current;
+      if (!box || !inner) return;
+      box.scrollLeft = fx * inner.offsetWidth - box.clientWidth / 2;
+      box.scrollTop = fy * inner.offsetHeight - box.clientHeight / 2;
+    },
     atMin: zoom <= min + 1e-3,
     atMax: zoom >= max - 1e-3,
   };

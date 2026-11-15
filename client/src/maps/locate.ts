@@ -40,9 +40,13 @@ export function positionOfRoom(room: string | null): Place | null {
  * Walking directions to a place in Google Maps, from wherever the student is. On a phone with
  * the Google Maps app this link opens the app. Only the destination is in the link; Google Maps
  * works out where she is by itself.
+ *
+ * `start`: begin the walk at once (Google's `dir_action=navigate`): on a phone, turn-by-turn
+ * navigation starts from her position instead of a list of routes to choose from. A computer
+ * shows the route.
  */
-export function directionsUrl(to: Place): string {
-  return `https://www.google.com/maps/dir/?api=1&destination=${to.lat},${to.lon}&travelmode=walking`;
+export function directionsUrl(to: Place, { start = false }: { start?: boolean } = {}): string {
+  return `https://www.google.com/maps/dir/?api=1&destination=${to.lat},${to.lon}&travelmode=walking${start ? "&dir_action=navigate" : ""}`;
 }
 
 /**

@@ -14,27 +14,13 @@ import { weekdayName, timeRange } from "../format.ts";
 import { Card } from "../components/ui.tsx";
 import { CourseChip } from "../components/CourseTitle.tsx";
 import Icon from "../components/Icon.tsx";
-import huamak from "../maps/ru-huamak.svg?raw";
-import bangna from "../maps/ru-bangna.svg?raw";
 import "../maps/maps.css";
 import { onDrawing, placeOf, positionOf, type CampusId } from "../maps/locate.ts";
 import { DirectionsButton } from "../components/Directions.tsx";
 import { GROUND } from "../maps/places.ts";
 import { usePanZoom } from "../maps/panZoom.ts";
 
-const CAMPUSES: Record<CampusId, { svg: string; label: string }> = {
-  huamak: { svg: huamak, label: "map.huamak" },
-  bangna: { svg: bangna, label: "map.bangna" },
-};
-/** Every building on a map: its code, and its name where the map carries one. */
-function buildingsOf(svg: string): Map<string, string> {
-  const out = new Map<string, string>();
-  for (const m of svg.matchAll(/<g id="([A-Z0-9]+)" data-code="\1">(?:<title>([^<]*)<\/title>)?/g)) {
-    out.set(m[1], (m[2] ?? "").replace(/^[A-Z0-9]+ · /, "").replace(/&amp;/g, "&"));
-  }
-  return out;
-}
-const BUILDINGS: Record<CampusId, Map<string, string>> = { huamak: buildingsOf(huamak), bangna: buildingsOf(bangna) };
+import { BUILDINGS, CAMPUSES } from "../maps/campuses.ts";
 /** The drawing's width as a multiple of the box: 1 shows the whole campus across. */
 const MIN_ZOOM = 1, MAX_ZOOM = 5;
 /** What one press of + or − does. */

@@ -11,7 +11,7 @@ const { placeOf, positionOf, positionOfRoom, directionsUrl, embedUrl, onDrawing 
   placeOf: (room: string | null) => { campus: CampusId; code: string } | null;
   positionOf: (campus: CampusId, code: string) => Place | null;
   positionOfRoom: (room: string | null) => Place | null;
-  directionsUrl: (to: Place) => string;
+  directionsUrl: (to: Place, opts?: { start?: boolean }) => string;
   embedUrl: (key: string, to: Place, from: Place | null, lang: "th" | "en") => string;
   onDrawing: (campus: CampusId, lat: number, lon: number, fixAccuracy?: number) => { x: number; y: number; radius: number; inside: boolean; metresAway: number };
 };
@@ -103,6 +103,11 @@ describe("Phase 60 — walking directions and 'where am I'", () => {
     const url = new URL(directionsUrl(PLACES.bangna.KTB));
     expect(url.origin + url.pathname).toBe("https://www.google.com/maps/dir/");
     expect(Object.fromEntries(url.searchParams)).toEqual({ api: "1", destination: `${PLACES.bangna.KTB.lat},${PLACES.bangna.KTB.lon}`, travelmode: "walking" });
+  });
+
+  it("can ask Google Maps to start walking at once, still with no position of hers in the link", () => {
+    const url = new URL(directionsUrl(PLACES.bangna.KTB, { start: true }));
+    expect(Object.fromEntries(url.searchParams)).toEqual({ api: "1", destination: `${PLACES.bangna.KTB.lat},${PLACES.bangna.KTB.lon}`, travelmode: "walking", dir_action: "navigate" });
   });
 
   it("builds the Google map shown inside the app: the walking route from her position", () => {
