@@ -26,10 +26,15 @@ type Schedule = {
 /** Today's date in Bangkok. */
 const bangkokDate = (now: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok" }).format(now);
 /** "2026-12-21" in the student's language: "21 ธ.ค. 2569" / "21 Dec 2026" (the screens' own rule, client/src/format.ts). */
+const FORMATS = new Map<string, Intl.DateTimeFormat>(); // made once: the notification round uses them every 30 s
 function day(iso: string, lang: Lang, year = true): string {
-  return new Intl.DateTimeFormat(lang === "th" ? "th-TH-u-ca-buddhist" : "en-GB", {
-    day: "numeric", month: "short", ...(year ? { year: "numeric" } : {}), timeZone: "UTC",
-  }).format(new Date(`${iso}T00:00:00Z`));
+  const key = `${lang}${year}`;
+  let f = FORMATS.get(key);
+  if (!f) {
+    f = new Intl.DateTimeFormat(lang === "th" ? "th-TH-u-ca-buddhist" : "en-GB", { day: "numeric", month: "short", ...(year ? { year: "numeric" } : {}), timeZone: "UTC" });
+    FORMATS.set(key, f);
+  }
+  return f.format(new Date(`${iso}T00:00:00Z`));
 }
 /** "21–25 ธ.ค. 2569" within a month, "12 ม.ค.–7 มี.ค. 2570" across months. */
 const span = (from: string, to: string, lang: Lang, year = true) =>
@@ -145,24 +150,26 @@ export function examReminders(db: DB, userId: string, today: string): University
   }
   const finals = exams.filter((e) => e.final).sort((a, b) => a.final!.date.localeCompare(b.final!.date) || a.final!.start.localeCompare(b.final!.start));
   if (finals.length > 0) {
-    const first = finals[0].final!.date;
     out.push({
-      key: `seat:${term}`, date: addDays(first, -7), time: "09:00",
+      key: `seat:${term}`, date: addDays(finals[0].final!.date, -7), time: "09:00",
       title: { th: "ดูห้องสอบและที่นั่งของคุณ", en: "Look up your exam rooms and seats" },
       note: {
         th: `ตารางสอบไล่รายบุคคลจะขึ้นใน e-Service ประมาณหนึ่งสัปดาห์ก่อนสอบ: e-service.ru.ac.th · บันทึกไว้ในหน้าสอบของ {app} ได้`,
         en: `Your own exam timetable is in e-Service about a week before the finals: e-service.ru.ac.th · you can keep it on the Exams page`,
       },
     });
-    // Every exam day of hers (finals, booked e-Tests, dates she entered), to send to her manager.
-    const days = [
-      ...finals.map((e) => ({ date: e.final!.date, start: e.final!.start, end: e.final!.end, code: e.course_code })),
-      ...exams.filter((e) => e.booking).map((e) => ({ date: e.booking!.date, start: e.booking!.start, end: e.booking!.end, code: e.course_code })),
-      ...exams.filter((e) => e.own).map((e) => ({ date: e.own!.date, start: e.own!.start, end: e.own!.end, code: e.course_code })),
-    ].sort((a, b) => a.date.localeCompare(b.date) || (a.start ?? "").localeCompare(b.start ?? ""));
+  }
+  // Every exam day of hers (finals, booked e-Tests, dates she entered), to send to her manager,
+  // four weeks before the first of them (an e-Test can come weeks before the finals).
+  const days = [
+    ...finals.map((e) => ({ date: e.final!.date, start: e.final!.start as string | null, end: e.final!.end as string | null, code: e.course_code })),
+    ...exams.filter((e) => e.booking).map((e) => ({ date: e.booking!.date, start: e.booking!.start as string | null, end: e.booking!.end as string | null, code: e.course_code })),
+    ...exams.filter((e) => e.own).map((e) => ({ date: e.own!.date, start: e.own!.start, end: e.own!.end, code: e.course_code })),
+  ].filter((d) => d.date >= today).sort((a, b) => a.date.localeCompare(b.date) || (a.start ?? "").localeCompare(b.start ?? ""));
+  if (days.length > 0) {
     const line = (lang: Lang) => days.map((d) => `${day(d.date, lang)}${d.start && d.end ? ` ${d.start}–${d.end}` : ""} (${d.code})`).join(lang === "th" ? " · " : "; ");
     out.push({
-      key: `leave:${term}`, date: addDays(first, -28), time: "09:00",
+      key: `leave:${term}`, date: addDays(days[0].date, -28), time: "09:00",
       title: { th: "ถ้าทำงานอยู่ ขอลาวันสอบไว้ล่วงหน้า", en: "If you work, ask for time off for your exams" },
       note: { th: `วันสอบของคุณ: ${line("th")}`, en: `Your exam days: ${line("en")}` },
     });
@@ -184,7 +191,11 @@ export function syncUniversityReminders(db: DB, userId: string, lang: Lang, now 
   const uni = (db.prepare("SELECT university_id FROM user_profiles WHERE user_id = ?").get(userId) as { university_id: string | null } | undefined)?.university_id;
   if (uni !== "ru") return 0;
   const today = bangkokDate(now);
-  const list = [...university, ...examReminders(db, userId, today)];
+  // Her own exams' reminders: a problem with them (a bad date) never stops the university's.
+  let personal: UniversityReminder[] = [];
+  try { personal = examReminders(db, userId, today); } catch (err) { console.error("[StudyOS] exam reminders failed:", err); }
+  const list = [...university, ...personal];
+  const term = (db.prepare("SELECT value FROM settings WHERE key = 'current_term_id'").get() as { value: string } | undefined)?.value ?? "2/69";
   const seen = db.prepare("SELECT reminder_id, lang, title, note, date, time FROM reminder_sources WHERE user_id = ? AND source_key = ?");
   const reminderOf = db.prepare("SELECT id, title, note, date, time FROM reminders WHERE id = ? AND user_id = ?");
   const add = db.prepare("INSERT INTO reminders (user_id, kind, title, note, date, time) VALUES (?, 'reminder', ?, ?, ?, ?)");
@@ -197,6 +208,7 @@ export function syncUniversityReminders(db: DB, userId: string, lang: Lang, now 
   // A moved reminder may be announced again at its new time.
   const forgetPushes = db.prepare("DELETE FROM reminder_pushes WHERE reminder_id = ?");
   let changed = 0;
+  const wanted = new Set(list.map((r) => r.key));
   db.transaction(() => {
     for (const r of list) {
       const want = { title: r.title[lang], note: r.note[lang], date: r.date, time: r.time };
@@ -208,11 +220,18 @@ export function syncUniversityReminders(db: DB, userId: string, lang: Lang, now 
         changed++;
         continue;
       }
-      const moved = was.date !== r.date || was.time !== r.time;
+      // One of her own whose new day is already gone (a later course moved her first exam closer,
+      // a corrected date): a time-off or seat reminder keeps its day if that is still ahead, with
+      // the new words; an evening-before one is taken away (handled below as no longer wanted).
+      if (PERSONAL.test(r.key) && r.date < today && (was.date !== r.date || was.time !== r.time)) {
+        if (/^(leave|seat):/.test(r.key) && was.date >= today) { want.date = was.date; want.time = was.time; }
+        else { wanted.delete(r.key); continue; }
+      }
+      const moved = was.date !== want.date || was.time !== want.time;
       // Nothing to do: the same day, time and words in her language (or the day is gone). Words
       // change when her exams do (a seat recorded, a course added to the leave list).
       if (!moved && (was.date < today || (was.lang === lang && was.title === want.title && was.note === want.note))) continue;
-      if (moved && r.date < today) continue;
+      if (moved && want.date < today) continue;
       const cur = was.reminder_id === null ? undefined : (reminderOf.get(was.reminder_id, userId) as { id: number; title: string; note: string | null; date: string; time: string } | undefined);
       if (!cur) continue; // she deleted it: never put back
       const untouched = cur.title === was.title && cur.note === was.note && cur.date === was.date && cur.time === was.time;
@@ -231,12 +250,14 @@ export function syncUniversityReminders(db: DB, userId: string, lang: Lang, now 
     }
     // Her own exam reminders that no longer apply (a course she dropped, a booking she removed):
     // taken away if still ahead and untouched by her. One she edited stays hers.
-    const wanted = new Set(list.map((r) => r.key));
+    // Only this term's: a new term must not take away the last term's reminders still ahead.
     for (const g of db.prepare("SELECT source_key, reminder_id, title, note, date, time FROM reminder_sources WHERE user_id = ?").all(userId) as (Given & { source_key: string })[]) {
       if (!PERSONAL.test(g.source_key) || wanted.has(g.source_key) || g.date < today) continue;
+      if (!g.source_key.includes(`:${term}`)) continue;
       const cur = g.reminder_id === null ? undefined : (reminderOf.get(g.reminder_id, userId) as { id: number; title: string; note: string | null; date: string; time: string } | undefined);
-      if (cur && !(cur.title === g.title && cur.note === g.note && cur.date === g.date && cur.time === g.time)) continue;
-      if (cur) db.prepare("DELETE FROM reminders WHERE id = ? AND user_id = ?").run(cur.id, userId);
+      // She deleted it: keep the record, so it never comes back. She edited it: it is hers.
+      if (!cur || !(cur.title === g.title && cur.note === g.note && cur.date === g.date && cur.time === g.time)) continue;
+      db.prepare("DELETE FROM reminders WHERE id = ? AND user_id = ?").run(cur.id, userId);
       db.prepare("DELETE FROM reminder_sources WHERE user_id = ? AND source_key = ?").run(userId, g.source_key);
       changed++;
     }

@@ -30,7 +30,7 @@ function SeatLine({ exam, date, today, onSaved }: { exam: MyExam; date: string; 
     return (
       <div className="mt-2 space-y-1">
         <div className="flex gap-2">
-          <input aria-label={t("exam.seat")} value={value} maxLength={80} onChange={(e) => setValue(e.target.value)} placeholder={t("exams.seatPlaceholder")}
+          <input autoFocus aria-label={t("exam.seat")} value={value} maxLength={80} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") save(); }} placeholder={t("exams.seatPlaceholder")}
             className="flex-1 min-w-0 rounded-lg border px-3 text-sm min-h-11" style={fieldStyle} />
           <button onClick={save} className="px-3 rounded-lg text-sm min-h-11" style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}>{t("et.save")}</button>
           <button onClick={() => { setEditing(false); setValue(exam.seat ?? ""); }} className="px-2 text-sm min-h-11" style={{ color: "var(--text-tertiary)" }}>{t("et.cancel")}</button>
@@ -75,7 +75,7 @@ function OwnDate({ exam, onSaved }: { exam: MyExam; onSaved: (all: MyExam[]) => 
       <div className="mt-2 space-y-2">
         <div className="grid grid-cols-3 gap-2">
           <label className="text-xs" style={{ color: "var(--text-tertiary)" }}>{t("exams.ownDate")}
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="mt-1 w-full rounded-lg border px-2 text-sm min-h-11" style={fieldStyle} />
+            <input autoFocus type="date" value={date} onChange={(e) => setDate(e.target.value)} className="mt-1 w-full rounded-lg border px-2 text-sm min-h-11" style={fieldStyle} />
           </label>
           <label className="text-xs" style={{ color: "var(--text-tertiary)" }}>{t("exams.ownStart")}
             <input type="time" value={start} onChange={(e) => setStart(e.target.value)} className="mt-1 w-full rounded-lg border px-2 text-sm min-h-11" style={fieldStyle} />
@@ -85,10 +85,11 @@ function OwnDate({ exam, onSaved }: { exam: MyExam; onSaved: (all: MyExam[]) => 
           </label>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => save()} disabled={!date} className="px-3 rounded-lg text-sm min-h-11 disabled:opacity-50" style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}>{t("et.save")}</button>
+          <button onClick={() => save()} disabled={!date || (!!start && !!end && end <= start)} className="px-3 rounded-lg text-sm min-h-11 disabled:opacity-50" style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}>{t("et.save")}</button>
           {exam.own && <button onClick={() => save(true)} className="px-3 text-sm min-h-11" style={{ color: "var(--danger)" }}>{t("exams.ownClear")}</button>}
           <button onClick={() => setEditing(false)} className="px-2 text-sm min-h-11" style={{ color: "var(--text-tertiary)" }}>{t("et.cancel")}</button>
         </div>
+        {!!start && !!end && end <= start && <p className="text-xs" style={{ color: "var(--danger)" }}>{t("rem.endAfterStart")}</p>}
         {failed && <p className="text-xs" style={{ color: "var(--danger)" }}>{t("exams.saveFailed")}</p>}
       </div>
     );

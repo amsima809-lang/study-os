@@ -9,7 +9,7 @@ import { getJSON, putJSON } from "../api.ts";
 import { CourseChip } from "./CourseTitle.tsx";
 import Icon from "./Icon.tsx";
 
-type PassedCourse = { code: string; name_th: string; name_en: string | null; credits: number; category: "GE" | "CORE" | "MAJOR_REQ" | "MAJOR_ELEC" | "FREE"; /** The year of the faculty's plan it sits in; null for electives. */ planYear: number | null; /** A "choose one of" group: only one of them is taken. */ group: string | null };
+type PassedCourse = { code: string; name_th: string; name_en: string | null; credits: number; category: "GE" | "CORE" | "MAJOR_REQ" | "MAJOR_ELEC" | "FREE"; /** The year of the faculty's plan it sits in; null for electives. */ planYear: number | null; /** A "choose one of" group: only one of them is taken. */ group: string | null; /** Needed by everyone in the major (not one choice among several). */ required: boolean };
 const CATEGORIES: PassedCourse["category"][] = ["GE", "CORE", "MAJOR_REQ", "MAJOR_ELEC"];
 
 /** Tick the courses already passed. */
@@ -50,9 +50,9 @@ export default function PassedPicker({ onClose }: { onClose: () => void }) {
     }
   }
   // A student who started years ago has passed most of the first years: one tap per plan year.
-  const years = useMemo(() => [...new Set((courses ?? []).filter((c) => !c.group).map((c) => c.planYear).filter((y): y is number => !!y))].sort(), [courses]);
-  // Courses of a "choose one of" group are left out: she took one of them, ticked by hand.
-  const yearCodes = (y: number) => (courses ?? []).filter((c) => c.planYear === y && !c.group).map((c) => c.code);
+  const years = useMemo(() => [...new Set((courses ?? []).filter((c) => c.required).map((c) => c.planYear).filter((y): y is number => !!y))].sort(), [courses]);
+  // Courses that are one choice among several are left out: she took one of them, ticked by hand.
+  const yearCodes = (y: number) => (courses ?? []).filter((c) => c.planYear === y && c.required).map((c) => c.code);
   const yearAll = (y: number) => yearCodes(y).every((c) => picked.has(c));
   const toggleYear = (y: number) => {
     const all = yearAll(y);

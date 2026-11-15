@@ -91,13 +91,18 @@ function isWeekend(dateStr: string): boolean {
 export function dayCapacity(db: DB, userId: string, settings: PlanSettings, from: string, to: string): Record<string, number> {
   const out: Record<string, number> = {};
   if (to < from) return out;
+  // Minutes she is taken each day: overlapping events (a lunch inside a shift, one entered twice)
+  // count once.
   const busy: Record<string, number> = {};
+  const toMin = (hm: string) => { const [h, m] = hm.split(":").map(Number); return h * 60 + m; };
   for (const [date, list] of Object.entries(occurrencesInRange(db, userId, from, to))) {
-    for (const o of list) {
-      if (o.kind !== "event" || !o.time || !o.end_time) continue;
-      const [h1, m1] = o.time.split(":").map(Number), [h2, m2] = o.end_time.split(":").map(Number);
-      busy[date] = (busy[date] ?? 0) + Math.max(0, h2 * 60 + m2 - (h1 * 60 + m1));
+    const spans = list.filter((o) => o.kind === "event" && o.time && o.end_time).map((o) => [toMin(o.time!), toMin(o.end_time!)] as [number, number]).filter(([a, b]) => b > a).sort((x, y) => x[0] - y[0]);
+    let total = 0, curA = -1, curB = -1;
+    for (const [a, b] of spans) {
+      if (a > curB) { total += curB - curA; curA = a; curB = b; } else curB = Math.max(curB, b);
     }
+    total += curB - curA;
+    busy[date] = total;
   }
   for (let d = from; d <= to; d = addDaysISO(d, 1)) {
     const hours = settings.blocked_dates.includes(d) ? 0
@@ -106,11 +111,6 @@ export function dayCapacity(db: DB, userId: string, settings: PlanSettings, from
     out[d] = Math.floor(hours * 60 * 0.8);
   }
   return out;
-}
-
-/** Her hours for a date before any events: 0 on a day off. */
-function availableOn(settings: PlanSettings, date: string): number {
-  return settings.blocked_dates.includes(date) ? 0 : isWeekend(date) ? settings.weekend_hours : settings.weekday_hours;
 }
 
 /** Get courses with upcoming exams and their chapters. */
@@ -146,7 +146,10 @@ function getCoursesForPlanning(db: DB, today: string, userId: string): CourseExa
 const doneKey = (t: { task_type: string; chapter_id: number | null; page_start: number | null; page_end: number | null }) =>
   `${t.task_type}|${t.chapter_id}|${t.page_start}|${t.page_end}`;
 
-function generatePlan(db: DB, userId: string, done: Set<string> = new Set()): {
+/** A task kept from the plan being replaced: done ones, and today's not yet done. */
+type Carried = { course_code: string; date: string; task_type: string; chapter_id: number | null; page_start: number | null; page_end: number | null; minutes: number; done: number };
+
+function generatePlan(db: DB, userId: string, carried: Carried[] = []): {
   tasks: TaskInsert[];
   feasibility: "ok" | "tight" | "impossible";
   warnings: string[];
@@ -173,6 +176,17 @@ function generatePlan(db: DB, userId: string, done: Set<string> = new Set()): {
     description: string;
   };
 
+  // What is already done or kept: pages read per chapter (whatever the chunks were then), chapter
+  // quizzes done, and exam-week tasks already on a day.
+  const done = new Set(carried.filter((t) => t.done && t.chapter_id != null).map(doneKey));
+  const readPages = new Map<number, Set<number>>();
+  for (const t of carried) {
+    if (t.task_type !== "read" || !t.done || t.chapter_id == null || t.page_start == null || t.page_end == null) continue;
+    const set = readPages.get(t.chapter_id) ?? new Set<number>();
+    for (let p = t.page_start; p <= t.page_end; p++) set.add(p);
+    readPages.set(t.chapter_id, set);
+  }
+  const keptReview = new Set(carried.filter((t) => t.chapter_id == null).map((t) => `${t.course_code}|${t.date}|${t.task_type}`));
   const allWork: WorkItem[] = [];
   const courseDeadlines: Record<string, string> = {}; // study deadline = exam_date - 8
 
@@ -193,13 +207,15 @@ function generatePlan(db: DB, userId: string, done: Set<string> = new Set()): {
 
       // Split reading into ~45-min chunks
       const chunkSize = Math.ceil(settings.reading_speed * 0.75); // pages per 45-min chunk
+      // Pages read in an earlier plan are not planned again, whatever chunks they were read in.
+      const read = readPages.get(ch.id) ?? new Set<number>();
       let pageOffset = 1;
       while (pageOffset <= ch.page_count) {
-        const end = Math.min(pageOffset + chunkSize - 1, ch.page_count);
+        if (read.has(pageOffset)) { pageOffset++; continue; }
+        let end = Math.min(pageOffset + chunkSize - 1, ch.page_count);
+        for (let p = pageOffset; p <= end; p++) if (read.has(p)) { end = p - 1; break; }
         const chunkPages = end - pageOffset + 1;
         const mins = Math.ceil((chunkPages / settings.reading_speed) * 60);
-        // Already read in an earlier plan: not planned again.
-        if (done.has(doneKey({ task_type: "read", chapter_id: ch.id, page_start: pageOffset, page_end: end }))) { pageOffset = end + 1; continue; }
         allWork.push({
           course_code: course.course_code,
           chapter_id: ch.id,
@@ -240,7 +256,10 @@ function generatePlan(db: DB, userId: string, done: Set<string> = new Set()): {
   const unplaced: WorkItem[] = [];
   const lastExam = courses.map((c) => c.exam_date).sort().pop() ?? today;
   const dayMinutes = dayCapacity(db, userId, settings, addDaysISO(today, 1), addDaysISO(lastExam, -1));
-  let squeezed = 0; // review days that had no time left
+  // Kept tasks on later days (done ahead of time) already used part of that day.
+  for (const t of carried) if (t.date in dayMinutes) dayMinutes[t.date] = Math.max(0, dayMinutes[t.date] - t.minutes);
+  const capacityBefore = { ...dayMinutes };
+  let squeezed = 0; // review days that had time of their own but none left after other exams
 
   // The week before each exam first, earliest exam first: it is fixed to its days, while reading
   // can move earlier. Days -7 to -3: flashcards and a review quiz; -2 and -1: a mock exam.
@@ -249,15 +268,17 @@ function generatePlan(db: DB, userId: string, done: Set<string> = new Set()): {
       const reviewDate = addDaysISO(course.exam_date, -i);
       if (reviewDate <= today || !(reviewDate in dayMinutes)) continue;
       let rem = dayMinutes[reviewDate];
-      if (rem < 15) { if (availableOn(settings, reviewDate) > 0) squeezed++; continue; }
+      if (rem < 15) { if (capacityBefore[reviewDate] >= 15) squeezed++; continue; }
       const add = (task_type: TaskInsert["task_type"], minutes: number, description: string) => {
         tasks.push({ course_code: course.course_code, date: reviewDate, task_type, chapter_id: null, description, page_start: null, page_end: null, minutes, sort_order: sortCounter++ });
         rem -= minutes;
       };
+      // Already on that day from the plan being replaced (done ahead, or today's): not again.
+      const has = (type: string) => keptReview.has(`${course.course_code}|${reviewDate}|${type}`);
       if (i >= 3) {
-        add("review", Math.min(30, rem), `ทบทวนการ์ด ${course.course_code} (25 ใบ)`);
-        if (rem >= 15) { const m = Math.min(rem, 40); add("quiz", m, `ทำควิซทบทวน ${course.course_code} (${m} นาที)`); }
-      } else {
+        if (!has("review")) add("review", Math.min(30, rem), `ทบทวนการ์ด ${course.course_code} (25 ใบ)`);
+        if (rem >= 15 && !has("quiz")) { const m = Math.min(rem, 40); add("quiz", m, `ทำควิซทบทวน ${course.course_code} (${m} นาที)`); }
+      } else if (!has("mock")) {
         const m = Math.min(rem, MOCK_MINUTES);
         add("mock", m, `สอบจำลอง ${course.course_code} (${m} นาที)`);
       }
@@ -323,6 +344,8 @@ function generatePlan(db: DB, userId: string, done: Set<string> = new Set()): {
       warnings.push(`แผนแน่น: มีงานอีก ${Math.round(unplacedMinutes / 60)} ชม. ที่ยังจัดไม่ลง — ใช้เวลาสำรองได้`);
     }
   }
+  // Exam weeks that ran out of time are worth saying even when all the reading fits.
+  if (squeezed > 0 && feasibility === "ok") feasibility = "tight";
 
   return { tasks, feasibility, warnings };
 }
@@ -527,13 +550,14 @@ export function createStudyPlanRouter(db: DB): Router {
 
     // What she has already ticked in the plan being replaced is kept, and not planned again.
     const old = db.prepare("SELECT id FROM study_plans WHERE status = 'active' AND user_id = ? ORDER BY id DESC LIMIT 1").get(userId) as { id: number } | undefined;
+    // Today's tasks not done yet are kept too: the new plan starts tomorrow.
     const doneBefore = old
-      ? (db.prepare("SELECT * FROM study_tasks WHERE plan_id = ? AND done = 1").all(old.id) as Array<TaskInsert & { done_at: string | null; chapter_id: number | null }>)
+      ? (db.prepare("SELECT * FROM study_tasks WHERE plan_id = ? AND (done = 1 OR date = ?)").all(old.id, today) as Array<TaskInsert & Carried & { done_at: string | null }>)
       : [];
     // Archive any existing active plan
     db.prepare("UPDATE study_plans SET status = 'archived' WHERE status = 'active' AND user_id = ?").run(userId);
 
-    const { tasks, feasibility, warnings } = generatePlan(db, userId, new Set(doneBefore.filter((t) => t.chapter_id != null).map(doneKey)));
+    const { tasks, feasibility, warnings } = generatePlan(db, userId, doneBefore);
     const settings = getSettings(db, userId);
 
     const result = db.prepare(
@@ -544,9 +568,9 @@ export function createStudyPlanRouter(db: DB): Router {
     const planId = result.lastInsertRowid as number;
     const keep = db.prepare(
       `INSERT INTO study_tasks (plan_id, course_code, date, task_type, chapter_id, description, page_start, page_end, minutes, sort_order, done, done_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
-    for (const t of doneBefore) keep.run(planId, t.course_code, t.date, t.task_type, t.chapter_id, t.description, t.page_start, t.page_end, t.minutes, -1, t.done_at);
+    for (const t of doneBefore) keep.run(planId, t.course_code, t.date, t.task_type, t.chapter_id, t.description, t.page_start, t.page_end, t.minutes, t.done ? -1 : t.sort_order, t.done ? 1 : 0, t.done_at);
 
     const insert = db.prepare(
       `INSERT INTO study_tasks (plan_id, course_code, date, task_type, chapter_id, description, page_start, page_end, minutes, sort_order)
@@ -583,6 +607,10 @@ export function createStudyPlanRouter(db: DB): Router {
     ).all(plan.id);
 
     const statuses = getCourseStatuses(db, userId, plan.id, today);
+    // Courses in the plan with no exam ahead any more (exam over, or no longer hers this term):
+    // their unfinished tasks are not "overdue" — there is nothing left to do them for.
+    const ahead = new Set(getCoursesForPlanning(db, addDaysISO(today, -1), userId).map((c) => c.course_code));
+    const expired = [...new Set((tasks as { course_code: string }[]).map((t) => t.course_code))].filter((c) => !ahead.has(c)).sort();
 
     res.json({
       plan: {
@@ -593,6 +621,7 @@ export function createStudyPlanRouter(db: DB): Router {
         stale: planIsStale(db, userId, plan, today),
       },
       tasks,
+      expired,
       statuses,
       today,
     });
@@ -629,7 +658,7 @@ export function createStudyPlanRouter(db: DB): Router {
       `SELECT * FROM study_tasks WHERE plan_id = ? AND done = 0 AND date < ? ORDER BY date ASC, sort_order ASC`,
     ).all(plan.id, today) as Array<{ id: number; course_code: string; date: string; minutes: number; sort_order: number }>;
 
-    if (overdue.length === 0) return res.json({ rescheduled: 0, noTime: [] });
+    if (overdue.length === 0) return res.json({ rescheduled: 0, noTime: [], expired: [] });
 
     // A task moves to a day with room, before its course's exam: never to the exam day or after it.
     const examOf = new Map(getCoursesForPlanning(db, addDaysISO(today, -1), userId).map((c) => [c.course_code, c.exam_date]));
@@ -642,12 +671,12 @@ export function createStudyPlanRouter(db: DB): Router {
 
     let maxSort = (db.prepare("SELECT MAX(sort_order) AS m FROM study_tasks WHERE plan_id = ?").get(plan.id) as { m: number }).m || 0;
     let rescheduled = 0;
-    const noTime = new Set<string>();
+    const noTime = new Set<string>(), expired = new Set<string>();
     const update = db.prepare("UPDATE study_tasks SET date = ?, sort_order = ? WHERE id = ?");
     for (const task of overdue) {
       const exam = examOf.get(task.course_code);
       // Its exam has gone, or the course is no longer hers: nothing to move it to.
-      if (!exam) continue;
+      if (!exam) { expired.add(task.course_code); continue; }
       let placed = false;
       for (let d = today; d < exam; d = addDaysISO(d, 1)) {
         const used = usedByDate[d] || 0;
@@ -664,7 +693,7 @@ export function createStudyPlanRouter(db: DB): Router {
       if (!placed) noTime.add(task.course_code);
     }
 
-    res.json({ rescheduled, noTime: [...noTime].sort() });
+    res.json({ rescheduled, noTime: [...noTime].sort(), expired: [...expired].sort() });
   });
 
   // ICS export

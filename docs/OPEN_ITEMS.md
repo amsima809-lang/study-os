@@ -1,6 +1,6 @@
 # Open items
 
-Last updated 15 November 2026, after Phase 67. Everything that could be built or checked on the development machine has been. Each item below is **blocked**: it cannot be finished from the development machine, for the reason given. It needs a **person's decision**, something only the **owner** holds, a **device**, or **data** that is not published. For each: what was tried, why it stops there, and the exact next step.
+Last updated 16 November 2026, after Phase 73. Everything that could be built or checked on the development machine has been. Each item below is **blocked**: it cannot be finished from the development machine, for the reason given. It needs a **person's decision**, something only the **owner** holds, a **device**, or **data** that is not published. For each: what was tried, why it stops there, and the exact next step.
 
 What the development machine does not have (re-checked 14 November 2026, after Phase 51): no Docker, Podman, Colima or Fly CLI; no Java runtime (so the Android SDK installer cannot add a system image); Xcode without any iOS simulator (`simctl` lists no runtimes and no devices, and the app's simulator tool also needs an administrator password to select Xcode); one Android emulator image whose Chrome is a stub that cannot open a page; no Google sign-in keys and no Fly credentials; read-only access to the repository (pull, not push).
 
@@ -42,6 +42,17 @@ Because it is a real HTTPS site, the phone checks listed under "Needs a device o
 | **The lecture-collector bookmark** | Its logic was run on the live lecture site; the bookmark itself cannot load from `http://localhost`. | Try it from the deployed HTTPS site. |
 | **Trademark clearance for "Termtrail"** | Nothing identical or similar found at the Thai, US, EU or Australian offices or in WIPO's database; small unregistered uses exist (`brand/trademark-brief.md`). TMview refuses automated access; ASEAN TMview refused connections; the UK office has a human-verification wall; the Swiss register was down. Blocked: clearance is a legal opinion, and those walls are not to be worked around. | Hand `brand/trademark-brief.md` to a trademark professional. |
 | **Domains** | `termtrail.com` is the owner's (registered at Cloudflare, 15 November 2026) and the site is on it (Phase 66). `termtrail.app` was unregistered when last checked (14 November 2026). `termtrail.co.th` cannot be bought for now: THNIC gives a `.co.th` name only to a company registered under that name (or holding that trademark), and no such company exists. | Owner decides whether to register `.app` as well. `.co.th` only after a company or a Thai trademark named Termtrail exists. |
+
+## From the north-star review (Phase 73): needs research first
+
+Each depends on a university rule that is not in the repository, so nothing was built (never invent university facts).
+
+| Item | Why it waits | Next step |
+|---|---|---|
+| **Next term's deadlines** (course registration, fee payment, withdrawal, grade release) | The dates are not in the repository; a wrong registration reminder is worse than none. `universityReminders.ts` can carry them once they are cited. | Read the registrar's academic calendar for 2569/2570 (regis.ru.ac.th), cite it in a migration, add the rows. |
+| **Taking a term off** | Whether a term without courses needs a status-keeping registration or fee (รักษาสภาพ), its deadline, and the maximum years of study are not recorded. A "skip this term" switch without them could cost a student her status. | Read the 2560 regulation's clauses on student status and cite them. |
+| **Graduation checklist; real term costs** | The official steps to apply for graduation and the current fees per credit and per term are not recorded (`fee_structure` has amounts without a source or due dates). | Get the registrar's graduation guide and the 2569 fee table. |
+| **Make-up exams (สอบซ่อม) and e-Testing results** | To be designed with the owner's partner ("this feature needs to be precise"). The Phase 73 sheet after a fail deliberately says nothing about them. | The design session. |
 
 ## Course data: what is now official, and what is not
 

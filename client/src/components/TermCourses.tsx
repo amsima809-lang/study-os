@@ -59,23 +59,36 @@ type FailEffect = {
 function FailSheet({ effect, onClose }: { effect: FailEffect; onClose: () => void }) {
   const { t } = useT();
   const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const sheet = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && isTopDialog(sheet.current) && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
   const termName = (id: string) => { const [k, yy] = id.split("/"); return k === "S" ? t("trail.summerOf", { year: `25${yy}` }) : t("trail.termOf", { n: k, year: `25${yy}` }); };
   const aim = async () => {
     if (!effect.aim) return;
     setBusy(true);
-    await putJSON("/api/trail/goal", { ...effect.goal, target: effect.aim }).catch(() => {});
-    onClose();
+    setFailed(false);
+    try {
+      await putJSON("/api/trail/goal", { ...effect.goal, target: effect.aim });
+      onClose();
+    } catch {
+      setFailed(true); // stays open: the goal was not changed
+      setBusy(false);
+    }
   };
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" style={{ background: "rgba(0,0,0,0.5)" }}>
-      <div role="dialog" aria-modal="true" aria-label={t("tc.failTitle")} className="w-full md:max-w-lg flex flex-col rounded-t-3xl md:rounded-3xl border animate-slide-up" style={{ maxHeight: "92dvh", backgroundColor: "var(--bg-surface)", borderColor: "var(--border-light)" }}>
+      <div ref={sheet} role="dialog" aria-modal="true" aria-label={t("tc.failTitle")} className="w-full md:max-w-lg flex flex-col rounded-t-3xl md:rounded-3xl border animate-slide-up" style={{ maxHeight: "92dvh", backgroundColor: "var(--bg-surface)", borderColor: "var(--border-light)" }}>
         <div className="px-5 pt-5 pb-2 space-y-3 overflow-y-auto">
           <h2 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>{t("tc.failTitle")}</h2>
           <ul className="space-y-1 text-sm" style={{ color: "var(--text-secondary)" }}>
             {effect.failed.map((c) => (
               <li key={c}>
                 <CourseChip code={c} className="mr-1.5" />
-                {effect.movedTo[c] ? t("tc.failMovedTo", { term: termName(effect.movedTo[c]!) }) : t("tc.failBack")}
+                {effect.movedTo[c] ? t("tc.failMovedTo", { term: termName(effect.movedTo[c]!) }) : t("tc.failSeeTrail")}
               </li>
             ))}
           </ul>
@@ -90,6 +103,7 @@ function FailSheet({ effect, onClose }: { effect: FailEffect; onClose: () => voi
           </p>
         </div>
         <div className="px-5 py-3 border-t flex flex-col gap-2" style={{ borderColor: "var(--border-light)", paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}>
+          {failed && <p role="alert" className="text-sm" style={{ color: "var(--danger)" }}>{t("trail.goalFailed")}</p>}
           {!effect.achievable && effect.aim && (
             <button onClick={() => void aim()} disabled={busy} className="w-full rounded-xl min-h-11 font-semibold disabled:opacity-50" style={{ backgroundColor: "var(--accent)", color: "#fff" }}>
               {t("trail.aimFor", { term: termName(effect.aim) })}
@@ -172,11 +186,14 @@ export function ChooseCoursesCard({ onChanged, onTrail = false }: { onChanged?: 
             // Straight after onboarding, someone who started before this term has passed courses
             // already: the picker asks for those first, so the plan does not suggest them again.
             if (fresh) {
-              getJSON<{ entry_year?: string | null }>("/api/profile").then((p) => {
+              getJSON<{ entry_year?: string | null; entry_term?: string | null }>("/api/profile").then((p) => {
                 // Stored as two digits since the server reads any form; older rows may hold "2567".
                 const raw = String(p.entry_year ?? "").trim();
-                const entry = Number(/^25\d\d$/.test(raw) ? raw.slice(2) : raw), now = Number(d.term.split("/")[1]);
-                if (raw && entry && now && entry < now) setReturning(entry <= 64 ? "older" : "earlier");
+                const entry = Number(/^25\d\d$/.test(raw) ? raw.slice(2) : raw);
+                const [nowKind, nowYear] = d.term.split("/");
+                // Compared term by term: entered in term 1 of this year and now in term 2 is returning too.
+                const order = (year: number, kind: string) => year * 3 + (kind === "2" ? 1 : kind === "S" ? 2 : 0);
+                if (raw && entry && order(entry, p.entry_term === "2" ? "2" : "1") < order(Number(nowYear), nowKind)) setReturning(entry <= 64 ? "older" : "earlier");
               }).catch(() => {});
             }
           }

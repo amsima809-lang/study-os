@@ -524,6 +524,8 @@ export type StudyPlanData = {
     stale: boolean;
   } | null;
   tasks: StudyTask[];
+  /** Courses in the plan with no exam ahead (over, or dropped): their tasks are not overdue. */
+  expired?: string[];
   statuses: CourseStatus[];
   today: string;
 };

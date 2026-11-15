@@ -15,7 +15,7 @@ export { passedCourses };
 
 const currentTerm = (db: DB) => getSetting(db, "current_term_id", "2/69");
 
-type Profile = { program_id: string | null; entry_year: string | null; target_years: number | null; trail_target: string | null; trail_summers: number; trail_max: number | null };
+type Profile = { program_id: string | null; entry_year: string | null; entry_term: string | null; target_years: number | null; trail_target: string | null; trail_summers: number; trail_max: number | null };
 
 /**
  * The entry year as the two digits of its Buddhist-era year ("69"), however it was typed: "69",
@@ -39,13 +39,14 @@ const regularAfter = (t: string, n: number) => { let x = t; for (let i = 0; i < 
  * it is no longer in the future); `entryGuess` is four years from her entry year, if known.
  */
 function storedGoal(db: DB, userId: string): { target: string | null; entryGuess: string | null; summers: boolean; maxPerTerm: number } {
-  const p = db.prepare("SELECT program_id, entry_year, target_years, trail_target, trail_summers, trail_max FROM user_profiles WHERE user_id = ?").get(userId) as Profile | undefined;
+  const p = db.prepare("SELECT program_id, entry_year, entry_term, target_years, trail_target, trail_summers, trail_max FROM user_profiles WHERE user_id = ?").get(userId) as Profile | undefined;
   const now = currentTerm(db);
   // A target that is no longer in the future (the term has moved on) counts as not set.
   const target = p?.trail_target && termIndex(p.trail_target) > termIndex(now) ? p.trail_target : null;
-  // Entry year 67 and a four-year plan end with the second term of year 70.
+  // Four years from entry: in term 1 of 67 it ends with term 2 of 70; in term 2 of 69, with term 1 of 73.
   const entry = entryYearOf(p?.entry_year);
-  const guess = entry === null ? null : `2/${+entry + Math.ceil(p?.target_years ?? 4) - 1}`;
+  const years = Math.ceil(p?.target_years ?? 4);
+  const guess = entry === null ? null : p?.entry_term === "2" ? `1/${+entry + years}` : `2/${+entry + years - 1}`;
   // A ceiling saved under the old rules (3 to 24) is read as one the menu offers today: a
   // multiple of 3 from 9, or the limit (22).
   const stored = p?.trail_max ?? CREDIT_LIMITS.regular;
@@ -69,17 +70,22 @@ export function trailGoal(db: DB, userId: string): Goal {
   return { target: input?.targetTerm ?? g.entryGuess ?? regularAfter(currentTerm(db), 2), summers: g.summers, maxPerTerm: g.maxPerTerm, isDefault: true };
 }
 
-/** The starting goal for a plan she has not set a target for (see trailGoal). */
+/**
+ * The starting goal for a plan she has not set a target for (see trailGoal): the latest of four
+ * years from her entry, the faculty's own pace for what is left, and her earliest finish — so it
+ * is never a crammed plan, and always one the plan can meet.
+ */
 function startingTarget(input: TrailInput, entryGuess: string | null): string {
   const now = input.currentTerm;
-  if (entryGuess && buildTrail({ ...input, targetTerm: entryGuess }).achievable) return entryGuess;
   // Plan towards a far target to learn what is left and the earliest finish.
   const open = buildTrail({ ...input, targetTerm: regularAfter(now, 30) });
   const planTerms = 2 * Math.max(0, ...input.courses.map((c) => c.planYear ?? 0)) || 8;
   const perTerm = Math.min(Math.ceil(open.credits.total / planTerms), input.maxPerTerm ?? CREDIT_LIMITS.regular);
   const terms = Math.max(1, Math.ceil(open.credits.left / perTerm));
-  let target = regularAfter(regularFrom(input.firstTerm ?? nextTerm(now, false)), terms - 1);
-  if (open.earliestTerm && termIndex(regularFrom(open.earliestTerm)) > termIndex(target)) target = regularFrom(open.earliestTerm);
+  const candidates = [regularAfter(regularFrom(input.firstTerm ?? nextTerm(now, false)), terms - 1)];
+  if (entryGuess) candidates.push(entryGuess);
+  if (open.earliestTerm) candidates.push(regularFrom(open.earliestTerm));
+  const target = candidates.sort((a, b) => termIndex(b) - termIndex(a))[0];
   // The goal is always a term still ahead (the screen offers targets from next term on).
   return termIndex(target) > termIndex(now) ? target : nextTerm(now, false);
 }
@@ -288,7 +294,8 @@ export function failEffect(db: DB, userId: string, failed: string[]) {
 
 const TERM = /^[12S]\/\d{2}$/;
 const goalSchema = z.object({
-  target: z.string().regex(TERM),
+  /** Null keeps the starting goal (worked out again from the new ceiling and summers). */
+  target: z.string().regex(TERM).nullable(),
   summers: z.boolean(),
   // A multiple of 3 (most courses are 3 credits), or the university's limit itself.
   maxPerTerm: z.number().int().min(CREDIT_LIMITS.regularMin).max(CREDIT_LIMITS.regular).refine((n) => n % 3 === 0 || n === CREDIT_LIMITS.regular, "a multiple of 3, or the limit"),
@@ -354,7 +361,7 @@ export function createTrailRouter(db: DB): Router {
     const parsed = goalSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "เป้าหมายไม่ถูกต้อง", code: "BAD_GOAL" });
     const { target, summers, maxPerTerm } = parsed.data;
-    if (termIndex(target) <= termIndex(currentTerm(db))) return res.status(400).json({ error: "เลือกภาคเรียนในอนาคต", code: "BAD_GOAL" });
+    if (target !== null && termIndex(target) <= termIndex(currentTerm(db))) return res.status(400).json({ error: "เลือกภาคเรียนในอนาคต", code: "BAD_GOAL" });
     db.prepare("UPDATE user_profiles SET trail_target = ?, trail_summers = ?, trail_max = ? WHERE user_id = ?").run(target, summers ? 1 : 0, maxPerTerm, req.user!.id);
     // The plan as it is now, so the screen shows the change straight from this answer.
     res.json({ ok: true, ...trailPayload(db, req.user!.id) });
@@ -369,8 +376,13 @@ export function createTrailRouter(db: DB): Router {
       `SELECT c.code, c.name_th, c.name_en, c.credits, pc.category, pc.plan_year AS planYear,
               CASE WHEN pc.category = 'GE' THEN c.choose_group END AS "group"
        FROM program_courses pc JOIN courses c ON c.code = pc.course_code WHERE pc.program_id = ? ORDER BY c.code`,
-    ).all(programId);
-    res.json({ courses, passed: passedCourses(db, userId) });
+    ).all(programId) as { code: string; group: string | null }[];
+    // "Choose N of" groups where every course is needed (N at least the group's size in this
+    // major, e.g. the one-course required English) are required like any other course.
+    const choose = Object.fromEntries((db.prepare("SELECT id, choose FROM course_groups").all() as { id: string; choose: number }[]).map((g) => [g.id, g.choose]));
+    const size: Record<string, number> = {};
+    for (const c of courses) if (c.group) size[c.group] = (size[c.group] ?? 0) + 1;
+    res.json({ courses: courses.map((c) => ({ ...c, required: !c.group || (choose[c.group] ?? 1) >= size[c.group] })), passed: passedCourses(db, userId) });
   });
 
   // Make the passed courses exactly this list. A course that stays passed keeps its grade.

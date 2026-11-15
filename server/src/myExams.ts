@@ -71,7 +71,9 @@ export function myExams(db: DB, userId: string, termId = currentTermId(db), toda
 const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
 const body = z.object({
   /** Only for a faculty-arranged exam; null clears it. */
-  exam_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  exam_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+    .refine((d) => { const x = new Date(`${d}T00:00:00Z`); return !Number.isNaN(+x) && x.toISOString().slice(0, 10) === d; }, "not a real date")
+    .nullable().optional(),
   start_time: time.nullable().optional(),
   end_time: time.nullable().optional(),
   seat: z.string().trim().max(80).nullable().optional(),
@@ -101,6 +103,8 @@ export function createMyExamsRouter(db: DB): Router {
     };
     // Times belong to a date: clearing the date clears them.
     if (!next.exam_date) { next.start_time = null; next.end_time = null; }
+    // Checked on the merged record too: a new start after the end she saved before.
+    if (next.start_time && next.end_time && next.end_time <= next.start_time) return res.status(400).json({ error: "ends before it starts", code: "BAD_TIME" });
     if (!next.exam_date && !next.seat) db.prepare("DELETE FROM my_exams WHERE user_id = ? AND term_id = ? AND course_code = ?").run(userId, term, code);
     else db.prepare(
       `INSERT INTO my_exams (user_id, term_id, course_code, exam_date, start_time, end_time, seat, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))

@@ -35,13 +35,14 @@ describe("reminders from her own exams", () => {
     expect(byKey["etbooked:2/69:RAM1131"]).toMatchObject({ date: "2027-01-11", time: "19:00" });
     expect(byKey["etbooked:2/69:RAM1131"].note.en).toContain("12:00–14:30");
     expect(byKey["seat:2/69"]).toMatchObject({ date: "2027-03-02" });
-    expect(byKey["leave:2/69"]).toMatchObject({ date: "2027-02-09" });
+    // Four weeks before her first exam day, the e-Test on 12 Jan: 15 Dec 2026, already gone on 2 Jan.
+    expect(byKey["leave:2/69"]).toMatchObject({ date: "2026-12-15" });
     // The time-off list has every exam day, the e-Test first.
     expect(byKey["leave:2/69"].note.en).toMatch(/12 Jan 2027 12:00–14:30 \(RAM1131\).*9 Mar 2027 09:30–12:00 \(RAM1131\).*13 Mar 2027 14:00–16:30 \(MKT2101\)/);
     expect(byKey["seat:2/69"].note.en).not.toContain("{app}");
 
     syncUniversityReminders(db, u, "en", NOW);
-    expect(mine(u).map((r) => r.source_key)).toEqual(["etbooked:2/69:RAM1131", "final:2/69:MKT2101", "final:2/69:RAM1131", "leave:2/69", "seat:2/69"]);
+    expect(mine(u).map((r) => r.source_key)).toEqual(["etbooked:2/69:RAM1131", "final:2/69:MKT2101", "final:2/69:RAM1131", "seat:2/69"]);
     // Nothing new on a second round.
     expect(syncUniversityReminders(db, u, "en", NOW)).toBe(0);
   });
@@ -79,5 +80,43 @@ describe("reminders from her own exams", () => {
     const other = student("exam-rem4@example.com", ["MKT2101"]);
     db.prepare("UPDATE user_profiles SET university_id = 'cu' WHERE user_id = ?").run(other);
     expect(syncUniversityReminders(db, other, "en", NOW)).toBe(0);
+  });
+});
+
+describe("review fixes (Phase 73)", () => {
+  it("asks for time off four weeks before her FIRST exam day, an e-Test included", () => {
+    const u = student("leave-etest@example.com", ["MKT2101"]);
+    db.prepare("INSERT INTO plan_items (user_id, term_id, course_code) VALUES (?, ?, 'RAM1131')").run(u, TERM);
+    db.prepare("INSERT INTO etesting_bookings (user_id, term_id, course_code, centre, date, period) VALUES (?, ?, 'RAM1131', 'central', '2027-01-12', 2)").run(u, TERM);
+    const leave = examReminders(db, u, "2026-12-01").find((r) => r.key === "leave:2/69")!;
+    expect(leave.date).toBe("2026-12-15");
+  });
+
+  it("never brings back a reminder she deleted, even after the course is unticked and ticked again", () => {
+    const u = student("deleted-stays@example.com", ["MKT2101"]);
+    syncUniversityReminders(db, u, "en", NOW);
+    const eve = mine(u).find((r) => r.source_key === "final:2/69:MKT2101")!;
+    db.prepare("DELETE FROM reminders WHERE id = ?").run(eve.id);
+    db.prepare("DELETE FROM plan_items WHERE user_id = ?").run(u);
+    syncUniversityReminders(db, u, "en", NOW);
+    db.prepare("INSERT INTO plan_items (user_id, term_id, course_code) VALUES (?, ?, 'MKT2101')").run(u, TERM);
+    syncUniversityReminders(db, u, "en", NOW);
+    expect(mine(u).map((r) => r.source_key)).not.toContain("final:2/69:MKT2101");
+  });
+
+  it("takes away an evening-before reminder whose exam moved to today, and keeps a time-off reminder's day with new words", () => {
+    const u = student("moved-past@example.com", ["MKT2101"]);
+    db.prepare("INSERT INTO plan_items (user_id, term_id, course_code) VALUES (?, ?, 'ACC3250')").run(u, TERM);
+    db.prepare("INSERT INTO my_exams (user_id, term_id, course_code, exam_date) VALUES (?, ?, 'ACC3250', '2027-03-01')").run(u, TERM);
+    syncUniversityReminders(db, u, "en", NOW);
+    expect(mine(u).find((r) => r.source_key === "own:2/69:ACC3250")!.date).toBe("2027-02-28");
+    const leaveBefore = mine(u).find((r) => r.source_key === "leave:2/69")!;
+    // On 10 Jan she corrects the faculty exam to 10 Jan itself (eve: 9 Jan, gone), and the time-off day (now 13 Dec) is gone too.
+    db.prepare("UPDATE my_exams SET exam_date = '2027-01-10' WHERE user_id = ?").run(u);
+    syncUniversityReminders(db, u, "en", new Date("2027-01-10T03:00:00Z"));
+    expect(mine(u).map((r) => r.source_key)).not.toContain("own:2/69:ACC3250");
+    const leave = mine(u).find((r) => r.source_key === "leave:2/69")!;
+    expect(leave.date).toBe(leaveBefore.date);
+    expect(leave.note).toContain("10 Jan 2027");
   });
 });

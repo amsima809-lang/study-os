@@ -150,7 +150,9 @@ export default function Trail() {
   async function setGoal(next: Partial<{ target: string; summers: boolean; maxPerTerm: number }>) {
     if (!data || !data.available || saving || ticking) return;
     const n = ++latest.current;
-    const wanted = { target: goal.target, summers: goal.summers, maxPerTerm: goal.maxPerTerm, ...next };
+    // A starting goal stays one when only the ceiling or summers change: the server works it out
+    // again for them (null), instead of pinning a target she never chose.
+    const wanted = { target: data.goal.isDefault && !next.target ? null : goal.target, summers: goal.summers, maxPerTerm: goal.maxPerTerm, ...next };
     setPendingGoal(next);
     setGoalFailed(false);
     setSaving(true);

@@ -183,8 +183,10 @@ describe("the trail planner on the real curriculum", () => {
     }
   });
 
-  it("gives a new Marketing student a default goal four years from entry, and a complete plan to it", () => {
-    expect(trailGoal(db, user)).toMatchObject({ target: "2/72", summers: false, isDefault: true });
+  it("gives a new Marketing student a starting goal at the faculty's pace (never sooner than four years from entry), and a complete plan to it", () => {
+    // Entered 69 (term 1 assumed), starting from 2/69 with nothing passed: four years from entry
+    // is 2/72, but the faculty's pace for all 132 credits from 2/69 is eight terms, to 1/73.
+    expect(trailGoal(db, user)).toMatchObject({ target: "1/73", summers: false, isDefault: true });
     const input = loadTrailInput(db, user)!;
     const t = buildTrail(input);
     expect(t.credits.total).toBe(132);

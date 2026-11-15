@@ -433,3 +433,25 @@ describe("what the new-term answer changed (the calm sheet after a course not pa
     }
   });
 });
+
+describe("starting goal: review fixes (Phase 73)", () => {
+  it("counts four years from the entry TERM, and is never a crammed plan", async () => {
+    const u = student("term2@example.com");
+    db.prepare("UPDATE user_profiles SET entry_year = '69', entry_term = '2' WHERE user_id = ?").run(u);
+    const shown = await get(u);
+    expect(shown.goal).toMatchObject({ target: "1/73", isDefault: true });
+    expect(shown.trail.achievable).toBe(true);
+    // The faculty's pace, about 17 credits a term: not the 21 of the fastest plan.
+    expect(shown.trail.pace).toBeLessThanOrEqual(18);
+  });
+
+  it("stays a starting goal when only the ceiling or summers change", async () => {
+    const u = student("keep-start@example.com");
+    db.prepare("UPDATE user_profiles SET entry_year = '66' WHERE user_id = ?").run(u);
+    const r = await put(u, { target: null as unknown as string, summers: false, maxPerTerm: 12 });
+    expect(r.status).toBe(200);
+    expect(r.body.goal.isDefault).toBe(true);
+    expect(r.body.trail.achievable).toBe(true);
+    expect(termIndex(r.body.goal.target)).toBeGreaterThan(termIndex("1/73"));
+  });
+});

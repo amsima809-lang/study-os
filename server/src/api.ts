@@ -141,7 +141,9 @@ export function studyToday(db: DB, termId: string, userId: string) {
      FROM study_tasks st JOIN courses c ON c.code = st.course_code
      WHERE st.plan_id = ? AND st.date = ?${taking.sql} ORDER BY st.sort_order`,
   ).all(plan.id, today, ...taking.params) as Array<{ id: number; course_code: string; name_th: string; name_en: string | null; task_type: string; description: string; minutes: number; done: number }>;
-  const overdue = (db.prepare(`SELECT COUNT(*) n FROM study_tasks st WHERE st.plan_id = ? AND st.done = 0 AND st.date < ?${taking.sql}`).get(plan.id, today, ...taking.params) as { n: number }).n;
+  // Overdue only for courses with an exam still ahead: after it, there is nothing to catch up for.
+  const ahead = myExams(db, userId, termId, today).filter((e) => e.next).map((e) => e.course_code);
+  const overdue = ahead.length === 0 ? 0 : (db.prepare(`SELECT COUNT(*) n FROM study_tasks st WHERE st.plan_id = ? AND st.done = 0 AND st.date < ? AND st.course_code IN (${ahead.map(() => "?").join(",")})`).get(plan.id, today, ...ahead) as { n: number }).n;
   return { hasPlan: true, tasks, overdue };
 }
 
@@ -353,7 +355,8 @@ export function createApiRouter(db: DB): Router {
             kind: nextExam.next.kind,
             start: nextExam.next.start,
             end: nextExam.next.end,
-            seat: nextExam.seat,
+            // Her seat is the one for her final: not shown for an e-Test (another centre).
+            seat: nextExam.next.kind === "etesting" ? null : nextExam.seat,
             daysLeft: nextExam.daysLeft,
           }
         : null,
@@ -447,7 +450,9 @@ export function createApiRouter(db: DB): Router {
       .prepare("SELECT start_date FROM plan_terms WHERE term_id = ?")
       .get(term) as { start_date: string | null } | undefined;
     const termStart = termRow?.start_date ?? null;
-    const firstExamDate = exams.length > 0 ? exams[0].datetime_start.slice(0, 10) : null;
+    // Classes stop at the registrar's finals, not at a date she entered for a faculty exam.
+    const printed = exams.filter((e) => e.slot !== null).sort((a, b) => a.datetime_start.localeCompare(b.datetime_start));
+    const firstExamDate = printed.length > 0 ? printed[0].datetime_start.slice(0, 10) : null;
 
     type CalEvent = {
       type: "class" | "exam" | "task" | "etesting" | "etbooked" | "reminder" | "todo" | "event";

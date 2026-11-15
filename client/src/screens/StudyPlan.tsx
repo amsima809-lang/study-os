@@ -19,9 +19,10 @@ export default function StudyPlan() {
   const [loading, setLoading] = useState(true);
 
   const [failed, setFailed] = useState(false);
-  const loadPlan = () => {
+  // `quiet`: refresh what is shown without the loading screen (which would reset the plan view).
+  const loadPlan = (quiet = false) => {
     setFailed(false);
-    setLoading(true);
+    if (!quiet) setLoading(true);
     getJSON<StudyPlanData>("/api/studyplan")
       .then((d) => {
         setPlan(d);
@@ -32,20 +33,21 @@ export default function StudyPlan() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(loadPlan, []);
+  useEffect(() => loadPlan(), []);
 
   if (loading) return <Loading>{t("status.connecting")}</Loading>;
-  if (failed) return <ErrorBox onRetry={loadPlan} />;
+  if (failed) return <ErrorBox onRetry={() => loadPlan()} />;
 
   return (
     <div className="space-y-4">
       {/* A plan is built from the exams of the courses chosen for the term: ask for those first. */}
-      <ChooseCoursesCard onChanged={loadPlan} />
+      <ChooseCoursesCard onChanged={() => loadPlan()} />
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{t("sp.title")}</h1>
         {plan?.plan && (
           <button
-            onClick={() => setView(view === "setup" ? "plan" : "setup")}
+            // Back to the plan: read it again, since a changed setting can make it out of date.
+            onClick={() => (view === "setup" ? loadPlan() : setView("setup"))}
             className="text-sm min-h-11"
             style={{ color: "var(--accent-text)" }}
           >
@@ -55,9 +57,9 @@ export default function StudyPlan() {
       </div>
 
       {view === "setup" ? (
-        <Setup onGenerated={loadPlan} hasPlan={!!plan?.plan} />
+        <Setup onGenerated={() => loadPlan()} hasPlan={!!plan?.plan} />
       ) : plan?.plan ? (
-        <PlanView data={plan} onRefresh={loadPlan} />
+        <PlanView data={plan} onRefresh={() => loadPlan(true)} />
       ) : (
         <Card><p className="text-center py-4" style={{ color: "var(--text-tertiary)" }}>{t("sp.noPlan")}</p></Card>
       )}
@@ -68,6 +70,7 @@ export default function StudyPlan() {
 function Setup({ onGenerated, hasPlan }: { onGenerated: () => void; hasPlan: boolean }) {
   const { t, lang } = useT();
   const [dayOff, setDayOff] = useState("");
+  const [saveFailed, setSaveFailed] = useState(false);
   const [chapterCounts, setChapterCounts] = useState<Record<string, string>>({});
   const loadCourses = () => getJSON<{ courses: PlanCourse[] }>("/api/studyplan/courses").then((c) => setCourses(c.courses));
   const [settings, setSettings] = useState<PlanSettings | null>(null);
@@ -89,23 +92,31 @@ function Setup({ onGenerated, hasPlan }: { onGenerated: () => void; hasPlan: boo
   if (!settings) return <Loading>{t("status.connecting")}</Loading>;
 
   const saveDaysOff = (dates: string[]) => {
+    const was = settings.blocked_dates;
     setSettings({ ...settings, blocked_dates: dates });
     setSaving(true);
-    putJSON("/api/studyplan/settings", { blocked_dates: dates }).finally(() => setSaving(false));
+    setSaveFailed(false);
+    putJSON("/api/studyplan/settings", { blocked_dates: dates })
+      .catch(() => { setSettings((s) => (s ? { ...s, blocked_dates: was } : s)); setSaveFailed(true); })
+      .finally(() => setSaving(false));
   };
   /** No document uploaded for a course: she says how many chapters, and the plan can read them. */
   const addChapters = async (code: string) => {
     const n = Math.min(40, Math.max(1, Math.round(Number(chapterCounts[code]) || 0)));
     if (!n) return;
-    await postJSON("/api/chapters", { course_code: code, chapters: Array.from({ length: n }, (_, i) => ({ name: t("sp.chapterN", { n: i + 1 }) })) });
-    setChapterCounts((prev) => ({ ...prev, [code]: "" }));
-    await loadCourses();
+    setSaveFailed(false);
+    try {
+      await postJSON("/api/chapters", { course_code: code, chapters: Array.from({ length: n }, (_, i) => ({ name: t("sp.chapterN", { n: i + 1 }) })) });
+      setChapterCounts((prev) => ({ ...prev, [code]: "" }));
+      await loadCourses();
+    } catch { setSaveFailed(true); }
   };
   const saveField = (field: keyof PlanSettings, value: number) => {
     const updated = { ...settings, [field]: value };
     setSettings(updated);
     setSaving(true);
-    putJSON("/api/studyplan/settings", { [field]: value }).finally(() => setSaving(false));
+    setSaveFailed(false);
+    putJSON("/api/studyplan/settings", { [field]: value }).catch(() => setSaveFailed(true)).finally(() => setSaving(false));
   };
 
   const updateChapterPages = async (chapterId: number, pages: number) => {
@@ -183,6 +194,7 @@ function Setup({ onGenerated, hasPlan }: { onGenerated: () => void; hasPlan: boo
             <span className="block text-xs mt-1">{t("sp.workdayHint")}</span>
           </label>
         </div>
+        {saveFailed && <p role="alert" className="text-sm mt-3" style={{ color: "var(--danger)" }}>{t("exams.saveFailed")}</p>}
         {/* Days off: no study planned (a trip, a family day). */}
         <div className="mt-4">
           <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t("sp.daysOff")}</p>
@@ -315,11 +327,15 @@ function PlanView({ data, onRefresh }: { data: StudyPlanData; onRefresh: () => v
   const [rescheduling, setRescheduling] = useState(false);
   const [noTime, setNoTime] = useState<string[]>([]);
   const [updating, setUpdating] = useState(false);
+  const [actionFailed, setActionFailed] = useState(false);
   /** Make the plan again from what has changed; ticked tasks are kept (the server carries them over). */
   const update = async () => {
     setUpdating(true);
-    try { await postJSON("/api/studyplan/generate", {}); onRefresh(); } finally { setUpdating(false); }
+    setActionFailed(false);
+    try { await postJSON("/api/studyplan/generate", {}); setNoTime([]); onRefresh(); } catch { setActionFailed(true); } finally { setUpdating(false); }
   };
+  // The quiet refresh brings new tasks: show them.
+  useEffect(() => setTasks(data.tasks), [data.tasks]);
 
   const tasksByDate: Record<string, StudyTask[]> = {};
   for (const task of tasks) {
@@ -345,15 +361,20 @@ function PlanView({ data, onRefresh }: { data: StudyPlanData; onRefresh: () => v
   const reschedule = async () => {
     setRescheduling(true);
     try {
+      setActionFailed(false);
       const r = await postJSON<{ rescheduled: number; noTime: string[] }>("/api/studyplan/reschedule", {});
       setNoTime(r.noTime ?? []);
       if (r.rescheduled > 0) onRefresh();
+    } catch {
+      setActionFailed(true);
     } finally {
       setRescheduling(false);
     }
   };
 
-  const overdueTasks = tasks.filter((t) => !t.done && t.date < data.today);
+  // Courses whose exam is over (or that she dropped) have nothing left to catch up for.
+  const expired = new Set(data.expired ?? []);
+  const overdueTasks = tasks.filter((t) => !t.done && t.date < data.today && !expired.has(t.course_code));
 
   return (
     <div className="space-y-4">
@@ -407,6 +428,7 @@ function PlanView({ data, onRefresh }: { data: StudyPlanData; onRefresh: () => v
           </button>
         </div>
       )}
+      {actionFailed && <p role="alert" className="text-sm" style={{ color: "var(--danger)" }}>{t("exams.saveFailed")}</p>}
       {noTime.length > 0 && (
         <p className="text-sm" style={{ color: "var(--text-secondary)" }} aria-live="polite">{t("sp.noTimeLeft", { codes: noTime.join(", ") })}</p>
       )}

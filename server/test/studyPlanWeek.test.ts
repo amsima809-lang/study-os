@@ -165,3 +165,73 @@ describe("her own exam records (myExams)", () => {
     expect(myExams(db, other)[0].own).toBeNull();
   });
 });
+
+describe("review fixes (Phase 73)", () => {
+  it("never plans pages she already read, even after her reading speed changes the chunks", async () => {
+    const u = student("speed@example.com", "bus-mkt", ["RAM1111"]);
+    chapters(u, "RAM1111", 1, 20);
+    await call(u, "PUT", "/studyplan/settings", { reading_speed: 10 });
+    await call(u, "POST", "/studyplan/generate");
+    let plan = await tasksOf(u);
+    const reads = plan.tasks.filter((t: { task_type: string }) => t.task_type === "read");
+    expect(reads.map((t: { page_start: number; page_end: number }) => `${t.page_start}-${t.page_end}`)).toEqual(["1-8", "9-16", "17-20"]);
+    for (const t of reads.slice(0, 2)) await call(u, "POST", `/studyplan/tasks/${t.id}/toggle`);
+    await call(u, "PUT", "/studyplan/settings", { reading_speed: 20 });
+    await call(u, "POST", "/studyplan/generate");
+    plan = await tasksOf(u);
+    const open = plan.tasks.filter((t: { task_type: string; done: number }) => t.task_type === "read" && !t.done);
+    expect(open.map((t: { page_start: number; page_end: number }) => `${t.page_start}-${t.page_end}`)).toEqual(["17-20"]);
+  });
+
+  it("keeps a mock done ahead of time without planning a second one that day", async () => {
+    const u = student("mock@example.com", "bus-mkt", ["RAM1111"]);
+    chapters(u, "RAM1111", 1, 10);
+    await call(u, "POST", "/studyplan/generate");
+    const mock = (await tasksOf(u)).tasks.find((t: { task_type: string }) => t.task_type === "mock");
+    await call(u, "POST", `/studyplan/tasks/${mock.id}/toggle`);
+    await call(u, "POST", "/studyplan/generate");
+    const same = (await tasksOf(u)).tasks.filter((t: { task_type: string; date: string }) => t.task_type === "mock" && t.date === mock.date);
+    expect(same).toHaveLength(1);
+    expect(same[0].done).toBe(1);
+  });
+
+  it("keeps today's unfinished tasks when the plan is updated", async () => {
+    const u = student("today-keep@example.com", "bus-mkt", ["RAM1111"]);
+    chapters(u, "RAM1111", 2, 10);
+    await call(u, "POST", "/studyplan/generate");
+    const t = (await tasksOf(u)).tasks[0];
+    db.prepare("UPDATE study_tasks SET date = ? WHERE id = ?").run(bangkokToday(), t.id);
+    await call(u, "POST", "/studyplan/generate");
+    const kept = (await tasksOf(u)).tasks.filter((x: { date: string; done: number }) => x.date === bangkokToday() && !x.done);
+    expect(kept.length).toBe(1);
+  });
+
+  it("counts overlapping events once when deciding a long day", async () => {
+    const u = student("overlap@example.com", "bus-mkt", []);
+    const d = addDaysISO(bangkokToday(), 5);
+    db.prepare("INSERT INTO reminders (user_id, kind, title, date, time, end_time) VALUES (?, 'event', 'Work', ?, '09:00', '14:00'), (?, 'event', 'Lunch', ?, '12:00', '13:00')").run(u, d, u, d);
+    const s = await settingsOf(u);
+    expect(dayCapacity(db, u, s, d, d)[d]).toBe(Math.floor((new Date(`${d}T12:00:00Z`).getUTCDay() % 6 === 0 ? s.weekend_hours : s.weekday_hours) * 60 * 0.8));
+    db.prepare("INSERT INTO reminders (user_id, kind, title, date, time, end_time) VALUES (?, 'event', 'More', ?, '14:00', '15:00')").run(u, d);
+    expect(dayCapacity(db, u, s, d, d)[d]).toBe(Math.floor(Math.min(s.workday_hours, new Date(`${d}T12:00:00Z`).getUTCDay() % 6 === 0 ? s.weekend_hours : s.weekday_hours) * 60 * 0.8));
+  });
+
+  it("does not call a dropped course's tasks overdue, and says so when rescheduling", async () => {
+    const u = student("dropped@example.com", "bus-mkt", ["RAM1111", "MKT2101"]);
+    chapters(u, "RAM1111", 1, 10);
+    await call(u, "POST", "/studyplan/generate");
+    const t = (await tasksOf(u)).tasks.find((x: { course_code: string }) => x.course_code === "RAM1111");
+    db.prepare("UPDATE study_tasks SET date = ? WHERE id = ?").run(addDaysISO(bangkokToday(), -1), t.id);
+    db.prepare("DELETE FROM plan_items WHERE user_id = ? AND course_code = 'RAM1111'").run(u);
+    expect((await tasksOf(u)).expired).toContain("RAM1111");
+    expect((await call(u, "POST", "/studyplan/reschedule")).body).toMatchObject({ rescheduled: 0, expired: ["RAM1111"] });
+  });
+
+  it("refuses an exam date that does not exist, and an end before a saved start", async () => {
+    const u = student("baddate@example.com", "bus-acc", ["ACC3250"]);
+    expect((await call(u, "PUT", "/my-exams/ACC3250", { exam_date: "2027-13-05" })).status).toBe(400);
+    expect((await call(u, "PUT", "/my-exams/ACC3250", { exam_date: "2027-02-30" })).status).toBe(400);
+    expect((await call(u, "PUT", "/my-exams/ACC3250", { exam_date: "2027-02-10", start_time: "13:00" })).status).toBe(200);
+    expect((await call(u, "PUT", "/my-exams/ACC3250", { end_time: "12:00" })).body.code).toBe("BAD_TIME");
+  });
+});
