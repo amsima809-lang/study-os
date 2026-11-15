@@ -96,7 +96,7 @@ function ResultsTab({ data, onSetStatus }: { data: PlanData; onSetStatus: SetSta
 
       {nothing && (
         <Card className="span-all">
-          <p className="text-sm" style={{ color: "var(--text-secondary)" }}>{t("grades.empty")}</p>
+          <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t("grades.empty")}</p>
           <button onClick={() => navigateTo("trail")} className="mt-2 rounded-xl border px-4 min-h-11 text-sm font-semibold inline-flex items-center gap-1.5" style={{ borderColor: "var(--border)", color: "var(--text-primary)" }}>
             <Icon name="flag" size={15} />
             {t("grades.toTrail")}
@@ -145,8 +145,8 @@ function GradeSelect({ code, value, gradeScale, onChange }: { code: string; valu
       aria-label={t("plan.gradeOf", { code })}
       value={value ?? ""}
       onChange={(e) => onChange(e.target.value || null)}
-      className="text-xs rounded border px-1 py-1 w-14 min-h-11"
-      style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border)", color: "var(--text-secondary)" }}
+      className="text-sm rounded border px-1 py-1 w-16 min-h-11"
+      style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border)", color: "var(--text-primary)" }}
     >
       <option value="">{t("plan.selectGrade")}</option>
       {gradeScale.map((g) => <option key={g.grade} value={g.grade}>{g.grade}</option>)}
@@ -161,11 +161,12 @@ function TermCard({ term, gradeScale, onSetStatus }: { term: PlanTerm; gradeScal
   return (
     <Card>
       <div className="flex justify-between items-baseline mb-2">
-        <h2 className="font-semibold" style={{ color: isSummer ? "var(--warning)" : "var(--accent-text)" }}>
+        <h2 className="font-semibold flex items-center gap-1.5" style={{ color: "var(--accent-text)" }}>
+          {isSummer && <Icon name="sun" size={16} style={{ color: "var(--accent-2, var(--accent-text))" }} />}
           {term.term_id}
         </h2>
         <div className="text-right">
-          <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>{t("trail.credits", { n: term.credits })}</span>
+          <span className="text-sm whitespace-nowrap" style={{ color: "var(--text-tertiary)" }}>{t("trail.credits", { n: term.credits })}</span>
           {term.gpa != null && (
             <div className="text-xs font-medium" style={{ color: "var(--accent-text)" }}>
               {t("plan.termGpa", { gpa: term.gpa.toFixed(2) })}
@@ -209,8 +210,8 @@ function ItemRow({ item, termId, gradeScale, onSetStatus }: { item: PlanItem; te
         value={item.status ?? "PLANNED"}
         // Changing the result keeps the grade already chosen (the server keeps it when none is sent).
         onChange={(e) => onSetStatus(code, e.target.value, undefined, termId)}
-        className="text-xs rounded border px-1.5 py-1 min-h-11"
-        style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border)", color: "var(--text-secondary)" }}
+        className="text-sm rounded border px-1.5 py-1 min-h-11"
+        style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border)", color: "var(--text-primary)" }}
       >
         <option value="PLANNED">{t("plan.status.PLANNED")}</option>
         <option value="PASSED">{t("plan.status.PASSED")}</option>
@@ -291,7 +292,7 @@ function WhatIfTab({ gradeScale, currentGpa }: { gradeScale: PlanGradeScale[]; c
             onClick={calculate}
             disabled={loading}
             className="flex-1 text-sm rounded-lg py-1.5 font-medium disabled:opacity-50 min-h-11"
-            style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
+            style={{ backgroundColor: "var(--accent)", color: "#fff" }}
           >
             {t("plan.whatIfCalc")}
           </button>
@@ -355,14 +356,14 @@ function GradeScaleTab({ scale, onSaved }: { scale: PlanGradeScale[]; onSaved: (
       <div className="flex justify-between items-center mb-3">
         <h2 className="font-semibold" style={{ color: "var(--text-primary)" }}>{t("plan.gradeScale")}</h2>
         {!editing ? (
-          <button onClick={() => setEditing(true)} className="text-xs font-medium min-h-11" style={{ color: "var(--accent-text)" }}>
+          <button onClick={() => setEditing(true)} className="text-sm min-h-11 px-1" style={{ color: "var(--accent-text)" }}>
             {t("plan.editScale")}
           </button>
         ) : (
           <button
             onClick={save} disabled={saving}
-            className="text-xs rounded px-3 py-1 font-medium disabled:opacity-50 min-h-11"
-            style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
+            className="text-sm rounded-lg px-3 py-1.5 font-medium disabled:opacity-50 min-h-11"
+            style={{ backgroundColor: "var(--accent)", color: "#fff" }}
           >
             {t("plan.saveScale")}
           </button>

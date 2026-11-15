@@ -61,7 +61,7 @@ export default function Review() {
 
       {cards.length === 0 ? (
         <Card>
-          <p className="text-center py-8" style={{ color: "var(--text-tertiary)" }}>{t("review.empty")}</p>
+          <p className="text-sm text-center py-8" style={{ color: "var(--text-tertiary)" }}>{t("review.empty")}</p>
         </Card>
       ) : idx >= cards.length ? (
         <Done reviewed={cards.length} remembered={remembered} totalDue={totalDue} />

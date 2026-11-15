@@ -234,12 +234,12 @@ export default function Today() {
                 className="font-medium text-sm"
                 kind={data.nextExam.kind === "etesting" ? "etbooked" : "exam"}
               />
-              <div className="text-sm" style={{ color: "var(--text-tertiary)" }}>
+              <div className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>
                 {formatDate(data.nextExam.date, lang)}
                 {data.nextExam.start && data.nextExam.end ? ` · ${timeRange(data.nextExam.start, data.nextExam.end)}` : ""}
                 {data.nextExam.kind === "etesting" ? ` · ${t("today.examEtesting")}` : data.nextExam.kind === "own" ? ` · ${t("today.examOwn")}` : ""}
               </div>
-              {data.nextExam.seat && <div className="text-sm" style={{ color: "var(--text-secondary)" }}>{t("exam.seat")}: {data.nextExam.seat}</div>}
+              {data.nextExam.seat && <div className="text-xs" style={{ color: "var(--text-secondary)" }}>{t("exam.seat")}: {data.nextExam.seat}</div>}
             </div>
             <span className="text-sm font-semibold whitespace-nowrap" style={{ color: "var(--accent-text)" }}>
               {data.nextExam.daysLeft === 0

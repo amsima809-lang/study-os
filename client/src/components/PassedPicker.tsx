@@ -127,7 +127,7 @@ export default function PassedPicker({ onClose }: { onClose: () => void }) {
                         >
                           {on && <Icon name="check" size={14} />}
                         </span>
-                        <span className="flex-1 min-w-0" style={{ color: "var(--text-primary)" }}>
+                        <span className="flex-1 min-w-0 text-sm font-medium" style={{ color: "var(--text-primary)" }}>
                           <CourseChip code={c.code} className="mr-1.5" />
                           {lang === "en" && c.name_en ? c.name_en : c.name_th}
                         </span>

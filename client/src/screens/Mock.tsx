@@ -381,7 +381,7 @@ function CourseList({
               <button
                 onClick={() => startExam(c.code)}
                 className="w-full text-sm font-medium rounded-lg py-2 min-h-11"
-                style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
+                style={{ backgroundColor: "var(--accent)", color: "#fff" }}
               >
                 {t("mock.startExam")}
               </button>
@@ -598,7 +598,7 @@ function Runner({
               const isCurrent = i === idx;
 
               let bg: string; let fg: string;
-              if (isCurrent) { bg = "var(--accent)"; fg = "var(--text-inverse)"; }
+              if (isCurrent) { bg = "var(--accent)"; fg = "#fff"; }
               else if (isFlagged && isAnswered) { bg = "var(--warning)"; fg = "var(--text-inverse)"; }
               else if (isFlagged) { bg = "var(--warning-bg)"; fg = "var(--warning)"; }
               else if (isAnswered) { bg = "var(--accent-light)"; fg = "var(--accent-text)"; }
@@ -623,7 +623,7 @@ function Runner({
       <Card>
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs">
-            {q.topic && <span style={{ color: "var(--accent-text)" }}>{q.topic}</span>}
+            {q.topic && <span style={{ color: "var(--text-tertiary)" }}>{q.topic}</span>}
           </span>
           <button
             onClick={toggleFlag}
@@ -678,7 +678,7 @@ function Runner({
         <button
           onClick={() => goToQuestion(Math.max(0, idx - 1))}
           disabled={idx === 0}
-          className="flex-1 font-medium rounded-lg py-2 text-sm disabled:opacity-30 min-h-11"
+          className="flex-1 font-medium rounded-lg py-2 disabled:opacity-30 min-h-11"
           style={{ backgroundColor: "var(--bg-surface-hover)", color: "var(--text-secondary)" }}
         >
           ←
@@ -686,15 +686,15 @@ function Runner({
         {idx + 1 < questions.length ? (
           <button
             onClick={() => goToQuestion(idx + 1)}
-            className="flex-1 font-medium rounded-lg py-2 text-sm min-h-11"
-            style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
+            className="flex-1 font-medium rounded-lg py-2 min-h-11"
+            style={{ backgroundColor: "var(--accent)", color: "#fff" }}
           >
             {t("mock.next")}
           </button>
         ) : (
           <button
             onClick={handleSubmitClick}
-            className="flex-1 font-medium rounded-lg py-2 text-sm min-h-11"
+            className="flex-1 font-medium rounded-lg py-2 min-h-11"
             style={{ backgroundColor: "var(--success)", color: "var(--text-inverse)" }}
           >
             {t("mock.submit")}
@@ -722,7 +722,7 @@ function Runner({
             className="rounded-2xl p-5 max-w-sm w-full space-y-3"
             style={{ backgroundColor: "var(--bg-surface)" }}
           >
-            <p className="font-medium text-center" style={{ color: "var(--text-primary)" }}>
+            <h2 className="text-lg font-bold text-center" style={{ color: "var(--text-primary)" }}>
               {(() => {
                 const unanswered = questions.filter(
                   (q2) => !answers[String(q2.id)]?.trim(),
@@ -731,11 +731,11 @@ function Runner({
                   ? t("mock.confirmSubmit", { n: unanswered })
                   : t("mock.confirmSubmitAll");
               })()}
-            </p>
+            </h2>
             <div className="flex gap-2">
               <button
                 onClick={() => setShowConfirm(false)}
-                className="flex-1 font-medium rounded-lg py-2 text-sm min-h-11"
+                className="flex-1 font-medium rounded-lg py-2 min-h-11"
                 style={{ backgroundColor: "var(--bg-surface-hover)", color: "var(--text-secondary)" }}
               >
                 {t("mock.cancel")}
@@ -745,7 +745,7 @@ function Runner({
                   setShowConfirm(false);
                   void doFinish();
                 }}
-                className="flex-1 font-medium rounded-lg py-2 text-sm min-h-11"
+                className="flex-1 font-semibold rounded-lg py-2 min-h-11"
                 style={{ backgroundColor: "var(--success)", color: "var(--text-inverse)" }}
               >
                 {t("mock.confirm")}
@@ -790,7 +790,7 @@ function ResultView({ result, onDone }: { result: MockResultData; onDone: () => 
 
       {result.chapterScores.length > 0 && (
         <Card>
-          <h3 className="font-medium mb-2" style={{ color: "var(--text-primary)" }}>{t("mock.chapterBreakdown")}</h3>
+          <h2 className="font-semibold mb-2" style={{ color: "var(--text-primary)" }}>{t("mock.chapterBreakdown")}</h2>
           <div className="space-y-2">
             {result.chapterScores.map((cs) => {
               const barColor = cs.pct >= 70 ? "var(--success)" : cs.pct >= 50 ? "var(--warning)" : "var(--danger)";
@@ -818,7 +818,7 @@ function ResultView({ result, onDone }: { result: MockResultData; onDone: () => 
 
       {result.weakTopics.length > 0 && (
         <Card>
-          <p className="text-sm mb-1" style={{ color: "var(--text-tertiary)" }}>{t("mock.weak")}</p>
+          <h2 className="font-semibold mb-2" style={{ color: "var(--text-primary)" }}>{t("mock.weak")}</h2>
           <div className="flex flex-wrap gap-1">
             {result.weakTopics.map((w, i) => (
               <span
@@ -837,7 +837,7 @@ function ResultView({ result, onDone }: { result: MockResultData; onDone: () => 
       <button
         onClick={onDone}
         className="w-full font-medium rounded-lg py-2 min-h-11"
-        style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
+        style={{ backgroundColor: "var(--accent)", color: "#fff" }}
       >
         {t("mock.done")}
       </button>
@@ -866,7 +866,7 @@ function HistoryTab() {
     <div className="space-y-4">
       {trendData.length >= 2 && (
         <Card>
-          <h3 className="font-medium mb-2" style={{ color: "var(--text-primary)" }}>{t("mock.trend")}</h3>
+          <h2 className="font-semibold mb-2" style={{ color: "var(--text-primary)" }}>{t("mock.trend")}</h2>
           <TrendChart data={trendData} />
         </Card>
       )}
@@ -910,15 +910,17 @@ function HistoryTab() {
 function TrendChart({ data }: { data: HistoryItem[] }) {
   const W = 300;
   const H = 120;
-  const PAD = 20;
+  const PAD = 28;
+  // The y-axis numbers get their own column, so the first point's label never sits on them.
+  const LEFT = 44;
 
   if (data.length < 2) return null;
 
   const maxPct = 100;
-  const xStep = (W - PAD * 2) / (data.length - 1);
+  const xStep = (W - LEFT - PAD) / (data.length - 1);
 
   const points = data.map((d, i) => ({
-    x: PAD + i * xStep,
+    x: LEFT + i * xStep,
     y: H - PAD - ((d.pct / maxPct) * (H - PAD * 2)),
     label: d.pct,
   }));
@@ -931,8 +933,8 @@ function TrendChart({ data }: { data: HistoryItem[] }) {
         const y = H - PAD - ((pct / maxPct) * (H - PAD * 2));
         return (
           <g key={pct}>
-            <line x1={PAD} y1={y} x2={W - PAD} y2={y} stroke="var(--border-light)" strokeWidth={0.5} />
-            <text x={PAD - 4} y={y + 3} textAnchor="end" fontSize={8} fill="var(--text-tertiary)">
+            <line x1={LEFT} y1={y} x2={W - PAD} y2={y} stroke="var(--border-light)" strokeWidth={0.5} />
+            <text x={LEFT - 8} y={y + 5} textAnchor="end" fontSize={14} fill="var(--text-tertiary)">
               {pct}
             </text>
           </g>
@@ -942,7 +944,7 @@ function TrendChart({ data }: { data: HistoryItem[] }) {
       {points.map((p, i) => (
         <g key={i}>
           <circle cx={p.x} cy={p.y} r={3} fill="var(--accent)" />
-          <text x={p.x} y={p.y - 7} textAnchor="middle" fontSize={8} fill="var(--accent-text)" fontWeight="bold">
+          <text x={p.x} y={p.y - 9} textAnchor="middle" fontSize={14} fill="var(--accent-text)" fontWeight="bold">
             {p.label}%
           </text>
         </g>
@@ -984,9 +986,9 @@ function SettingsTab() {
   return (
     <Card>
       <div className="flex items-center justify-between mb-3">
-        <h3 className="font-medium" style={{ color: "var(--text-primary)" }}>{t("mock.cutoffs")}</h3>
+        <h2 className="font-semibold" style={{ color: "var(--text-primary)" }}>{t("mock.cutoffs")}</h2>
         {!editing && (
-          <button onClick={startEdit} className="text-xs underline min-h-11" style={{ color: "var(--accent-text)" }}>
+          <button onClick={startEdit} className="text-sm min-h-11" style={{ color: "var(--accent-text)" }}>
             {t("mock.editCutoffs")}
           </button>
         )}
@@ -1024,7 +1026,7 @@ function SettingsTab() {
           <button
             onClick={save}
             className="w-full text-sm font-medium rounded-lg py-2 mt-2 min-h-11"
-            style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
+            style={{ backgroundColor: "var(--accent)", color: "#fff" }}
           >
             {t("mock.saveCutoffs")}
           </button>

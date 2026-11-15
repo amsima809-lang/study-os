@@ -337,35 +337,36 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
     isEmpty: () => strokes.length === 0,
   }));
 
-  const toolBtn = (active: boolean) =>
-    `px-3 min-h-11 min-w-11 rounded-md text-sm font-medium ${
-      active ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600"
-    }`;
+  const toolBtn = (_active: boolean) => "px-3 min-h-11 min-w-11 rounded-md text-sm font-medium";
+  const toolStyle = (active: boolean) => ({
+    backgroundColor: active ? "var(--accent)" : "var(--bg-surface-hover)",
+    color: active ? "#fff" : "var(--text-secondary)",
+  });
 
   return (
-    <div className="border border-slate-200 rounded-lg overflow-hidden">
+    <div className="border rounded-lg overflow-hidden" style={{ borderColor: "var(--border)" }}>
       {/* toolbar */}
-      <div className="bg-slate-50 border-b border-slate-200 p-2 space-y-2">
+      <div className="border-b p-2 space-y-2" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border)" }}>
         <div className="flex flex-wrap items-center gap-1.5">
-          <button className={toolBtn(tool === "pen")} onClick={() => setTool("pen")} title={t("draw.pen")}>
+          <button className={toolBtn(tool === "pen")} style={toolStyle(tool === "pen")} onClick={() => setTool("pen")} title={t("draw.pen")}>
             <Icon name="pen" size={16} />
           </button>
           <button
-            className={toolBtn(tool === "highlighter")}
+            className={toolBtn(tool === "highlighter")} style={toolStyle(tool === "highlighter")}
             onClick={() => setTool("highlighter")}
             title={t("draw.highlighter")}
           >
             <Icon name="highlighter" size={16} />
           </button>
           <button
-            className={toolBtn(tool === "eraser")}
+            className={toolBtn(tool === "eraser")} style={toolStyle(tool === "eraser")}
             onClick={() => setTool("eraser")}
             title={t("draw.eraser")}
           >
             🧽
           </button>
 
-          <span className="w-px h-5 bg-slate-200 mx-0.5" />
+          <span className="w-px h-5 mx-0.5" style={{ backgroundColor: "var(--border)" }} />
 
           {(tool === "highlighter" ? HL_COLORS : COLORS).map((c) => {
             const active = tool === "highlighter" ? hlColor === c : tool === "pen" && color === c;
@@ -380,13 +381,13 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
                   }
                 }}
                 title={t("draw.color")}
-                className={`tap-area w-8 h-8 rounded-full border-2 ${active ? "border-slate-800" : "border-white"}`}
-                style={{ backgroundColor: c }}
+                className="tap-area w-8 h-8 rounded-full border-2"
+                style={{ backgroundColor: c, borderColor: active ? "var(--text-primary)" : "var(--bg-surface)" }}
               />
             );
           })}
 
-          <span className="w-px h-5 bg-slate-200 mx-0.5" />
+          <span className="w-px h-5 mx-0.5" style={{ backgroundColor: "var(--border)" }} />
 
           {WIDTHS.map((w) => (
             <button
@@ -396,38 +397,37 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
                 setTool("pen");
               }}
               title={t(`draw.${w.key}`)}
-              className={`w-11 h-11 rounded-md flex items-center justify-center ${
-                width === w.val ? "bg-indigo-100" : "bg-slate-100"
-              }`}
+              className="w-11 h-11 rounded-md flex items-center justify-center"
+              style={{ backgroundColor: width === w.val ? "var(--accent-light)" : "var(--bg-surface-hover)" }}
             >
-              <span className="rounded-full bg-slate-700" style={{ width: w.val / 2 + 2, height: w.val / 2 + 2 }} />
+              <span className="rounded-full" style={{ width: w.val / 2 + 2, height: w.val / 2 + 2, backgroundColor: "var(--text-secondary)" }} />
             </button>
           ))}
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5">
-          <button className={toolBtn(false)} onClick={undo} disabled={strokes.length === 0} title={t("draw.undo")}>
+          <button className={toolBtn(false)} style={toolStyle(false)} onClick={undo} disabled={strokes.length === 0} title={t("draw.undo")}>
             ↩︎
           </button>
-          <button className={toolBtn(false)} onClick={redo} disabled={redoStack.length === 0} title={t("draw.redo")}>
+          <button className={toolBtn(false)} style={toolStyle(false)} onClick={redo} disabled={redoStack.length === 0} title={t("draw.redo")}>
             ↪︎
           </button>
-          <button className={toolBtn(false)} onClick={clearAll} title={t("draw.clear")}>
+          <button className={toolBtn(false)} style={toolStyle(false)} onClick={clearAll} title={t("draw.clear")}>
             <Icon name="trash" size={16} />
           </button>
 
-          <span className="w-px h-5 bg-slate-200 mx-0.5" />
+          <span className="w-px h-5 mx-0.5" style={{ backgroundColor: "var(--border)" }} />
 
           <button
-            className={toolBtn(false)}
+            className={toolBtn(false)} style={toolStyle(false)}
             onClick={() => setZoom((z) => Math.max(0.5, Math.round((z - 0.25) * 100) / 100))}
             title={t("draw.zoomOut")}
           >
             🔍−
           </button>
-          <span className="text-xs text-slate-500 w-10 text-center">{Math.round(zoom * 100)}%</span>
+          <span className="text-xs w-10 text-center" style={{ color: "var(--text-tertiary)" }}>{Math.round(zoom * 100)}%</span>
           <button
-            className={toolBtn(false)}
+            className={toolBtn(false)} style={toolStyle(false)}
             onClick={() => setZoom((z) => Math.min(4, Math.round((z + 0.25) * 100) / 100))}
             title={t("draw.zoomIn")}
           >
@@ -435,7 +435,7 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
           </button>
 
           <button
-            className={`${toolBtn(false)} ml-auto min-h-11`}
+            className={`${toolBtn(false)} ml-auto min-h-11`} style={toolStyle(false)}
             onClick={() => setPages((p) => Math.max(1, p - 1))}
             disabled={pages <= 1}
             title={t("draw.removePage")}
@@ -443,7 +443,7 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
             <Icon name="fileMinus" size={16} />
           </button>
           <button
-            className={toolBtn(false)}
+            className={toolBtn(false)} style={toolStyle(false)}
             onClick={() => setPages((p) => Math.min(MAX_PAGES, p + 1))}
             disabled={pages >= MAX_PAGES}
             title={t("draw.addPage")}
@@ -451,16 +451,16 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
             <Icon name="filePlus" size={16} />
           </button>
           <button
-            className={toolBtn(expanded)}
+            className={toolBtn(expanded)} style={toolStyle(expanded)}
             onClick={() => setExpanded((v) => !v)}
             title={t(expanded ? "draw.collapse" : "draw.expand")}
           >
             ⤢
           </button>
         </div>
-        <div className="flex items-center gap-2 text-xs text-slate-500">
+        <div className="flex items-center gap-2 text-xs" style={{ color: "var(--text-tertiary)" }}>
           <button
-            className={`${toolBtn(fingerDraw)} inline-flex items-center gap-1.5`}
+            className={`${toolBtn(fingerDraw)} inline-flex items-center gap-1.5`} style={toolStyle(fingerDraw)}
             onClick={toggleFingerDraw}
             aria-pressed={fingerDraw}
           >
@@ -468,7 +468,7 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
             {t("draw.finger")}
           </button>
           <span className="flex-1 min-w-0">{t("draw.gestureHint")}</span>
-          <span className="text-slate-400 whitespace-nowrap">{t("draw.pages", { n: pages })}</span>
+          <span className="whitespace-nowrap">{t("draw.pages", { n: pages })}</span>
         </div>
       </div>
 

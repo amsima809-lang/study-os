@@ -312,7 +312,7 @@ function Setup({
         <button
           onClick={start}
           className="w-full font-medium rounded-lg py-2 min-h-11"
-          style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
+          style={{ backgroundColor: "var(--accent)", color: "#fff" }}
         >
           {t("quiz.start")}
         </button>
@@ -419,8 +419,8 @@ function Runner({
             ))}
           </div>
         ) : (
-          <div>
-            <span className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t("quiz.yourAnswer")}</span>
+          <label className="block">
+            <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>{t("quiz.yourAnswer")}</span>
             <textarea
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
@@ -430,7 +430,7 @@ function Runner({
               className="mt-1 w-full rounded-lg border px-3 py-2 text-sm disabled:opacity-60"
               style={{ borderColor: "var(--border)", backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}
             />
-          </div>
+          </label>
         )}
 
         {error && <ErrorBox>{error}</ErrorBox>}
@@ -442,7 +442,7 @@ function Runner({
               <span className="text-sm" style={{ color: "var(--text-secondary)" }}>{result.feedback}</span>
             </div>
             <div className="text-sm rounded-lg px-3 py-2" style={{ backgroundColor: "var(--bg-surface-hover)" }}>
-              <span style={{ color: "var(--text-tertiary)" }}>{t("quiz.modelAnswer")}: </span>
+              <span className="text-xs font-medium" style={{ color: "var(--text-tertiary)" }}>{t("quiz.modelAnswer")}: </span>
               <span style={{ color: "var(--text-primary)" }}>{result.modelAnswer}</span>
             </div>
             {result.explanation && (
@@ -469,7 +469,7 @@ function Runner({
             onClick={submit}
             disabled={!canSubmit}
             className="w-full font-medium rounded-lg py-2 disabled:opacity-40 min-h-11"
-            style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
+            style={{ backgroundColor: "var(--accent)", color: "#fff" }}
           >
             {t("quiz.submit")}
           </button>
@@ -540,7 +540,7 @@ function Summary({
         <button
           onClick={onAgain}
           className="mt-3 font-medium rounded-lg py-2 px-6 min-h-11"
-          style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
+          style={{ backgroundColor: "var(--accent)", color: "#fff" }}
         >
           {t("quiz.again")}
         </button>

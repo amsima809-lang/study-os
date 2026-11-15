@@ -22,13 +22,14 @@ import TimeGrid from "./TimeGrid.tsx";
 import { DotMark, MarkKey, SlotMarks } from "./Calendar.tsx";
 import { finalRing } from "./marks.tsx";
 import Icon from "./Icon.tsx";
+import { CourseChip } from "./CourseTitle.tsx";
 import { ConfirmDialog, isTopDialog } from "./ui.tsx";
 import { RU_LINKS } from "../ruLinks.ts";
 
 /** A link to one of the university's own pages (ruLinks.ts): opens outside the app. */
 export function RuLink({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer" className="tap-area inline-flex items-center gap-1 text-sm font-semibold underline-offset-2 hover:underline" style={{ color: "var(--accent-text)" }}>
+    <a href={href} target="_blank" rel="noopener noreferrer" className="tap-area inline-flex items-center gap-1 text-sm underline-offset-2 hover:underline" style={{ color: "var(--accent-text)" }}>
       {children} <span aria-hidden="true">↗</span>
     </a>
   );
@@ -296,7 +297,7 @@ function EtestingBookings({ courses, canBook }: { courses: FitCourse[]; canBook:
           const b = data.bookings.find((x) => x.course_code === c.code);
           return (
             <li key={c.code} className="rounded-lg px-2.5 py-2" style={{ backgroundColor: b ? "rgba(217,119,6,0.12)" : "var(--bg-base)" }}>
-              <p style={{ color: "var(--text-primary)" }}><strong>{c.code}</strong> {nameOf(c)}{c.etesting_essay ? ` · ${t("et.essay")}` : ""}</p>
+              <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}><CourseChip code={c.code} className="mr-1.5" />{nameOf(c)}{c.etesting_essay ? ` · ${t("et.essay")}` : ""}</p>
               {b ? <p className="text-xs mt-0.5 font-semibold" style={{ color: "var(--amber-text)" }}>{bookedLine(b)}</p> : <p className="text-xs mt-0.5">{t("et.notBooked")}</p>}
               {b && c.exam_date && <p className="text-xs">{t("et.backup", { date: formatDate(c.exam_date, lang) })}</p>}
               {editing !== c.code && (
@@ -307,21 +308,21 @@ function EtestingBookings({ courses, canBook }: { courses: FitCourse[]; canBook:
               )}
               {editing === c.code && (
                 <div className="mt-2 grid gap-2 sm:grid-cols-3">
-                  <label className="text-xs block">{t("et.centre")}
+                  <label className="text-xs block" style={{ color: "var(--text-tertiary)" }}>{t("et.centre")}
                     <select className="mt-0.5 w-full rounded-lg border px-2 min-h-11" style={field} value={form.centre}
                       onChange={(e) => setForm({ centre: e.target.value as "central" | "regional", date: "", period: 0 })}>
                       <option value="central">{t("et.central")}</option>
                       <option value="regional">{t("et.regional")}</option>
                     </select>
                   </label>
-                  <label className="text-xs block">{t("et.day")}
+                  <label className="text-xs block" style={{ color: "var(--text-tertiary)" }}>{t("et.day")}
                     <select className="mt-0.5 w-full rounded-lg border px-2 min-h-11" style={field} value={form.date}
                       onChange={(e) => setForm((f) => ({ ...f, date: e.target.value, period: f.period === 4 && !weekend(e.target.value) ? 0 : f.period }))}>
                       <option value="">{t("et.chooseDay")}</option>
                       {days.map((d) => <option key={d} value={d}>{dayLabel(d)}</option>)}
                     </select>
                   </label>
-                  <label className="text-xs block">{t("et.period")}
+                  <label className="text-xs block" style={{ color: "var(--text-tertiary)" }}>{t("et.period")}
                     <select className="mt-0.5 w-full rounded-lg border px-2 min-h-11" style={field} value={form.period} disabled={!form.date}
                       onChange={(e) => setForm((f) => ({ ...f, period: Number(e.target.value) }))}>
                       <option value={0}>{t("et.choosePeriod")}</option>
@@ -340,7 +341,7 @@ function EtestingBookings({ courses, canBook }: { courses: FitCourse[]; canBook:
         })}
         {orphans.map((b) => (
           <li key={b.course_code} className="rounded-lg px-2.5 py-2" style={{ backgroundColor: "var(--bg-base)" }}>
-            <p style={{ color: "var(--text-primary)" }}><strong>{b.course_code}</strong> · {t("et.noLongerRegistered")}</p>
+            <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}><CourseChip code={b.course_code} className="mr-1.5" />· {t("et.noLongerRegistered")}</p>
             <p className="text-xs mt-0.5">{bookedLine(b)}</p>
             <button onClick={() => setRemoving(b.course_code)} disabled={busy} className="tap-area text-xs font-semibold mt-1" style={{ color: "var(--accent-text)" }}>{t("et.remove")}</button>
           </li>
@@ -539,15 +540,15 @@ export default function TermPreview({ courses, windows, onClose, canBook = false
           </button>
         </div>
 
-        <div className="px-5 pt-3 flex gap-1.5" role="tablist">
+        <div className="mx-5 mt-3 grid grid-cols-3 gap-1 rounded-xl p-1" role="tablist" style={{ backgroundColor: "var(--bg-base)" }}>
           {(["week", "month", "exams"] as const).map((id) => (
             <button
               key={id}
               role="tab"
               aria-selected={tab === id}
               onClick={() => setTab(id)}
-              className="rounded-full px-4 min-h-11 text-sm font-semibold"
-              style={{ backgroundColor: tab === id ? "var(--accent)" : "var(--bg-base)", color: tab === id ? "#fff" : "var(--text-secondary)" }}
+              className="rounded-lg px-4 min-h-11 text-sm font-medium"
+              style={{ backgroundColor: tab === id ? "var(--accent)" : "transparent", color: tab === id ? "#fff" : "var(--text-secondary)" }}
             >
               {t(id === "week" ? "fit.tabWeek" : id === "month" ? "fit.tabMonth" : "fit.tabExams")}
             </button>
@@ -647,7 +648,7 @@ export default function TermPreview({ courses, windows, onClose, canBook = false
                   (["A", "B"] as const).flatMap((s) => d[s].map((code) => (
                     <li key={`${d.date}${s}${code}`} className="flex gap-2">
                       <span className="whitespace-nowrap" style={{ color: "var(--text-tertiary)" }}>{formatDate(d.date, lang)} · {s}</span>
-                      <span style={{ color: "var(--text-primary)" }}><strong>{code}</strong> {nameOf(code)}</span>
+                      <span style={{ color: "var(--text-primary)" }}><CourseChip code={code} className="mr-1.5" kind="exam" />{nameOf(code)}</span>
                     </li>
                   ))),
                 )}

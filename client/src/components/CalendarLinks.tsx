@@ -37,7 +37,7 @@ function BusySettings() {
   }
   return (
     <div className="space-y-2 pt-3 border-t" style={{ borderColor: "var(--border-light)" }}>
-      <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{t("busy.title")}</h3>
+      <h3 className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>{t("busy.title")}</h3>
       <p className="text-sm" style={{ color: "var(--text-secondary)" }}>{t("busy.what")}</p>
       {!available ? (
         <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{t("busy.unavailable")}</p>

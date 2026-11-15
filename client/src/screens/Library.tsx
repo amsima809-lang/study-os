@@ -302,7 +302,7 @@ function TranscriptView({ which, onDeleted }: { which: OpenTranscript; onDeleted
 
   return (
     <div className="space-y-3">
-      <h1 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>
+      <h1 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
         <CourseChip code={which.code} className="mr-2" />
         {t("lib.lectureNo", { n: which.no })}
       </h1>
@@ -428,7 +428,7 @@ function StatusBadge({ status, pagesDone, totalPages }: { status: string; pagesD
 
   return (
     <span
-      className="text-xs px-2 py-0.5 rounded-full"
+      className="text-xs font-semibold px-2 py-0.5 rounded-full"
       style={{ backgroundColor: s.bg, color: s.text }}
     >
       {status === "processing" && totalPages
@@ -511,7 +511,7 @@ function UploadForm({ courses, onDone }: { courses: Course[]; onDone: () => void
     )}
     <Card>
       <div className="space-y-3">
-        <h3 className="font-medium" style={{ color: "var(--text-primary)" }}>{t("lib.upload")}</h3>
+        <h3 className="font-semibold" style={{ color: "var(--text-primary)" }}>{t("lib.upload")}</h3>
         {err && <ErrorBox>{err}</ErrorBox>}
         <select aria-label={t("field.course")}
           value={courseCode}
@@ -549,7 +549,7 @@ function UploadForm({ courses, onDone }: { courses: Course[]; onDone: () => void
           onClick={handleUpload}
           disabled={!courseCode || uploading}
           className="w-full rounded-lg py-2 text-sm font-medium disabled:opacity-50 min-h-11"
-          style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
+          style={{ backgroundColor: "var(--accent)", color: "#fff" }}
         >
           {uploading ? t("lib.uploading") : t("lib.upload")}
         </button>
@@ -634,7 +634,7 @@ function MaterialDetail({
       <Card>
         <h2 className="font-bold text-lg truncate" style={{ color: "var(--text-primary)" }}>{material.filename}</h2>
         <div className="flex flex-wrap gap-2 text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>
-          <span>{material.course_code}</span>
+          <CourseChip code={material.course_code} />
           <span>·</span>
           <span>{t(`lib.kind.${material.material_kind}`)}</span>
           <span>·</span>
@@ -667,7 +667,7 @@ function MaterialDetail({
             onClick={handleExtract}
             disabled={!!busy}
             className="rounded-lg py-2 text-sm font-medium disabled:opacity-50 min-h-11"
-            style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
+            style={{ backgroundColor: "var(--accent)", color: "#fff" }}
           >
             {busy === "extract" ? t("lib.extracting") : t("lib.extract")}
           </button>
@@ -750,7 +750,7 @@ function PageViewer({ materialId, filename }: { materialId: number; filename: st
 
   return (
     <div className="space-y-3">
-      <h2 className="font-bold" style={{ color: "var(--text-primary)" }}>{filename}</h2>
+      <h2 className="font-bold text-lg truncate" style={{ color: "var(--text-primary)" }}>{filename}</h2>
       {pages.map((p) => (
         <Card key={p.page_num}>
           <div className="flex items-center justify-between mb-1">
@@ -775,7 +775,7 @@ function PageViewer({ materialId, filename }: { materialId: number; filename: st
                 <button
                   onClick={() => saveEdit(p.page_num)}
                   className="text-sm px-3 py-1 rounded-lg min-h-11"
-                  style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
+                  style={{ backgroundColor: "var(--accent)", color: "#fff" }}
                 >
                   {t("lib.saveText")}
                 </button>
@@ -868,7 +868,7 @@ function ChapterManager({ courseCode, materialId }: { courseCode: string; materi
     <Card>
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="font-medium" style={{ color: "var(--text-primary)" }}>{t("chap.title")}</h3>
+          <h3 className="font-semibold" style={{ color: "var(--text-primary)" }}>{t("chap.title")}</h3>
           <button
             onClick={suggestChapters}
             disabled={!!busy}
@@ -888,7 +888,7 @@ function ChapterManager({ courseCode, materialId }: { courseCode: string; materi
               onClick={addSuggested}
               disabled={busy === "add"}
               className="text-sm px-3 py-1 rounded-lg mt-1 min-h-11"
-              style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
+              style={{ backgroundColor: "var(--accent)", color: "#fff" }}
             >
               {t("chap.addAll")}
             </button>

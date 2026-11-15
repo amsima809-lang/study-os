@@ -7,7 +7,7 @@ import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useT } from "../i18n.tsx";
 import { getJSON, postJSON, putJSON, deleteJSON, type ApiError, type ReminderRule } from "../api.ts";
-import { ConfirmDialog } from "./ui.tsx";
+import { ConfirmDialog, ErrorBox } from "./ui.tsx";
 import { draftOwner } from "../noteDraft.ts";
 import { formatDate, formatTime, timeRange } from "../format.ts";
 import { CourseChip } from "./CourseTitle.tsx";
@@ -137,7 +137,7 @@ export function ReminderRow({ item, on, done, overdue, today, hideDate, onToggle
       )}
       <button onClick={onOpen} disabled={!onOpen} className="flex-1 min-w-0 text-left py-2.5 min-h-11">
         <span
-          className="block"
+          className="block text-sm font-medium"
           style={{ color: done ? "var(--text-tertiary)" : "var(--text-primary)", textDecoration: done ? "line-through" : "none" }}
         >
           {item.title}
@@ -291,8 +291,8 @@ export function ReminderForm({ item, today, preset, onSaved, onCancel }: FormPro
 
   const field = "w-full rounded-xl border px-3 py-2.5";
   const fieldStyle = { backgroundColor: "var(--bg-base)", borderColor: "var(--border)", color: "var(--text-primary)" };
-  const label = "block text-xs font-medium mb-1";
-  const labelStyle = { color: "var(--text-secondary)" };
+  const label = "block text-xs mb-1";
+  const labelStyle = { color: "var(--text-tertiary)" };
 
   return (
     <form onSubmit={save} className="space-y-3">
@@ -468,7 +468,7 @@ export function ReminderSheet({
           </button>
         </div>
         {missing ? (
-          <p className="text-sm py-6 text-center" style={{ color: "var(--text-tertiary)" }}>{t("status.error")}</p>
+          <ErrorBox />
         ) : ready ? (
           <ReminderForm item={item} today={today} preset={preset} onSaved={onClose} onCancel={onClose} />
         ) : (

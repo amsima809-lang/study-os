@@ -232,7 +232,7 @@ export function ChooseCoursesCard({ onChanged, onTrail = false }: { onChanged?: 
                     <span className="mt-0.5 w-6 h-6 shrink-0 rounded-md flex items-center justify-center" style={{ border: `2px solid ${on ? "var(--accent)" : "var(--text-tertiary)"}`, backgroundColor: on ? "var(--accent)" : "transparent", color: "#fff" }}>
                       {on && <Icon name="check" size={14} />}
                     </span>
-                    <span className="flex-1 min-w-0" style={{ color: "var(--text-primary)" }}>
+                    <span className="flex-1 min-w-0 text-sm font-medium" style={{ color: "var(--text-primary)" }}>
                       <CourseChip code={c.code} className="mr-1.5" />
                       {lang === "en" && c.name_en ? c.name_en : c.name_th}
                     </span>
@@ -467,7 +467,7 @@ export default function TermCoursesPicker({ onClose, returning }: { onClose: () 
                     <Icon name="flag" size={13} />
                     {t("tc.fromTrail")} · {g.items.length}
                   </h3>
-                  <button onClick={() => { openTrail(); onClose(); }} className="tap-area text-xs underline" style={{ color: "var(--text-tertiary)" }}>
+                  <button onClick={() => { openTrail(); onClose(); }} className="tap-area text-xs underline" style={{ color: "var(--accent-text)" }}>
                     {t("tc.whatsThis")}
                   </button>
                   <button
@@ -506,7 +506,7 @@ export default function TermCoursesPicker({ onClose, returning }: { onClose: () 
                           {on && <Icon name="check" size={14} />}
                         </span>
                         <span className="flex-1 min-w-0">
-                          <span className="block" style={{ color: "var(--text-primary)" }}>
+                          <span className="block text-sm font-medium" style={{ color: "var(--text-primary)" }}>
                             <CourseChip code={o.code} className="mr-1.5" />
                             {lang === "en" && o.name_en ? o.name_en : o.name_th}
                           </span>
@@ -516,7 +516,7 @@ export default function TermCoursesPicker({ onClose, returning }: { onClose: () 
                             {" · "}
                             {o.exam_date && o.exam_slot ? t("tc.final", { date: formatDate(o.exam_date, lang), slot: o.exam_slot }) : o.exam_note ? t("tc.finalFaculty") : ""}
                             {o.etesting && (
-                              <span className="ml-1.5 inline-block rounded-full border px-1.5 leading-4 align-middle" style={{ borderColor: "rgba(245,158,11,0.55)", color: "#b45309" }}>e-Testing</span>
+                              <span className="ml-1.5 inline-block rounded-full border px-1.5 leading-4 align-middle" style={{ borderColor: "rgba(245,158,11,0.55)", color: "var(--amber-text)" }}>e-Testing</span>
                             )}
                           </span>
                           {/* The registrar's own note on who may register, as printed. */}

@@ -258,24 +258,24 @@ export default function Trail() {
       <Card>
         <div className="grid gap-3 sm:grid-cols-3">
           <label className="block">
-            <span className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>{t("trail.goal")}</span>
+            <span className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>{t("trail.goal")}</span>
             <select
               value={goal.target}
               disabled={busy}
               onChange={(e) => setGoal({ target: e.target.value })}
-              className="w-full rounded-xl border px-3 min-h-11"
+              className="w-full rounded-xl border px-3 text-sm min-h-11"
               style={fieldStyle}
             >
               {data.targets.map((id) => <option key={id} value={id}>{termName(id)}</option>)}
             </select>
           </label>
           <label className="block">
-            <span className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>{t("trail.maxPerTerm")}</span>
+            <span className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>{t("trail.maxPerTerm")}</span>
             <select
               value={goal.maxPerTerm}
               disabled={busy}
               onChange={(e) => setGoal({ maxPerTerm: Number(e.target.value) })}
-              className="w-full rounded-xl border px-3 min-h-11"
+              className="w-full rounded-xl border px-3 text-sm min-h-11"
               style={fieldStyle}
             >
               {maxChoices.map((n) => (
@@ -284,7 +284,7 @@ export default function Trail() {
             </select>
           </label>
           <div>
-            <span className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>{t("trail.summers")}</span>
+            <span className="block text-xs font-medium mb-1" style={{ color: "var(--text-secondary)" }}>{t("trail.summers")}</span>
             <button
               role="switch"
               aria-checked={goal.summers}
@@ -368,6 +368,7 @@ export default function Trail() {
 
       {/* Where she stands */}
       <Card>
+        <h2 className="font-semibold mb-2" style={{ color: "var(--text-primary)" }}>{t("trail.progressTitle")}</h2>
         <div className="flex h-2.5 rounded-full overflow-hidden" style={{ backgroundColor: "var(--bg-surface-hover)" }} aria-hidden="true">
           <span style={{ width: pct(trail.credits.done), backgroundColor: "var(--success)" }} />
           <span style={{ width: pct(trail.credits.thisTerm), backgroundColor: "var(--accent)" }} />
@@ -375,7 +376,7 @@ export default function Trail() {
         <p className="text-sm mt-2" style={{ color: "var(--text-secondary)" }}>
           {t("trail.progress", { done: trail.credits.done, now: trail.credits.thisTerm, left: trail.credits.left, total: trail.credits.total })}
         </p>
-        <button onClick={() => setPicking(true)} disabled={busy} className="tap-area text-sm font-medium mt-1 disabled:opacity-50" style={{ color: "var(--accent-text)" }}>
+        <button onClick={() => setPicking(true)} disabled={busy} className="tap-area text-sm mt-1 disabled:opacity-50" style={{ color: "var(--accent-text)" }}>
           {t("trail.passedLink", { n: data.passedCount })} ›
         </button>
         {/* Passed credits in each part of the curriculum */}
@@ -424,7 +425,7 @@ export default function Trail() {
                     {c.on && <Icon name="check" size={14} />}
                   </span>
                   <span className="flex-1 min-w-0">
-                    <span className="block" style={{ color: "var(--text-primary)" }}>
+                    <span className="block text-sm font-medium" style={{ color: "var(--text-primary)" }}>
                       <CourseChip code={c.code} className="mr-1.5" />
                       {lang === "en" && c.name_en ? c.name_en : c.name_th}
                     </span>
@@ -483,14 +484,14 @@ export default function Trail() {
           <ul className="space-y-2.5">
             {term.items.map((item, i) => (
               <li key={`${item.code ?? item.category}-${i}`}>
-                <div style={{ color: "var(--text-primary)" }}>
+                <div className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
                   {item.code ? (
                     <>
                       <CourseChip code={item.code} className="mr-1.5" />
                       {nameOf(item.code)}
                     </>
                   ) : (
-                    <span className="font-medium">{t("trail.freeElective")}</span>
+                    <span className="font-normal" style={{ color: "var(--text-secondary)" }}>{t("trail.freeElective")}</span>
                   )}
                 </div>
                 {/* Kept short: the category, whether it is hers to choose, and a warning only

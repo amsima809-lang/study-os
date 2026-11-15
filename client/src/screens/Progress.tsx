@@ -258,7 +258,7 @@ function Pomodoro() {
             setRunning((r) => !r);
           }}
           className="flex-1 font-medium rounded-lg py-2 min-h-11"
-          style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
+          style={{ backgroundColor: "var(--accent)", color: "#fff" }}
         >
           {running ? t("pomo.pause") : t("pomo.start")}
         </button>

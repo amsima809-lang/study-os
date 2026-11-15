@@ -259,7 +259,7 @@ export default function Calendar() {
         >
           <Icon name="chevronLeft" size={18} />
         </button>
-        <h2 className="text-sm font-semibold capitalize" style={{ color: "var(--text-primary)" }}>
+        <h2 className="font-semibold capitalize" style={{ color: "var(--text-primary)" }}>
           {view === "month" ? monthLabel(month, lang) : rangeLabel(shown, lang)}
         </h2>
         <div className="flex items-center gap-1">
@@ -330,7 +330,7 @@ export default function Calendar() {
       {view === "month" && (<>
       <div className="grid grid-cols-7 px-2 pt-2">
         {DAY_KEYS.map((k) => (
-          <div key={k} className="text-center text-xs font-medium py-1" style={{ color: "var(--text-tertiary)" }}>
+          <div key={k} className="text-center text-xs py-1" style={{ color: "var(--text-tertiary)" }}>
             {t(k)}
           </div>
         ))}
@@ -400,7 +400,7 @@ export default function Calendar() {
           }}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>
+            <span className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
               {new Intl.DateTimeFormat(lang === "th" ? "th-TH-u-ca-buddhist" : "en-GB", {
                 weekday: "long",
                 day: "numeric",
@@ -411,7 +411,7 @@ export default function Calendar() {
             <div className="flex items-center gap-2">
               {selected === data?.today && (
                 <span
-                  className="text-xs font-medium px-2 py-0.5 rounded-full"
+                  className="text-xs font-semibold px-2 py-0.5 rounded-full"
                   style={{ background: "var(--accent)", color: "#fff" }}
                 >
                   {t("cal.today")}
@@ -421,7 +421,7 @@ export default function Calendar() {
           </div>
 
           {selectedEvents.length === 0 && !loading ? (
-            <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+            <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>
               {t("cal.noEvents")}
             </p>
           ) : (
@@ -579,7 +579,7 @@ function EventRow({
             </span>
           )}
           {ev.done && !onToggle && (
-            <span className="text-xs flex items-center gap-0.5" style={{ color: "#22c55e" }}>
+            <span className="text-xs flex items-center gap-0.5" style={{ color: "var(--success)" }}>
               <Icon name="checkCircle" size={12} />
               {t("cal.done")}
             </span>

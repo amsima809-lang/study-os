@@ -251,7 +251,7 @@ function CourseList({ onSelectGroup }: { onSelectGroup: (g: CourseGroup) => void
           >
             <Icon name="notebook" size={26} style={{ color: "var(--accent-text)" }} />
             <div className="flex-1 min-w-0">
-              <div className="font-medium truncate" style={{ color: "var(--text-primary)" }}>
+              <div className="text-sm font-medium truncate" style={{ color: "var(--text-primary)" }}>
                 {g.code ? (
                   <CourseTitle inline code={g.code} name_th={g.name_th!} name_en={g.name_en} />
                 ) : (
@@ -361,7 +361,7 @@ function CourseNotes({
 
         <button
           onClick={() => setSummary(null)}
-          className="w-full rounded-lg py-2 text-sm font-medium min-h-11"
+          className="w-full rounded-lg py-2 font-medium min-h-11"
           style={{ backgroundColor: "var(--bg-surface-hover)", color: "var(--text-secondary)" }}
         >
           {t("notes.closeSummary")}
@@ -387,8 +387,8 @@ function CourseNotes({
       {group.code && group.notes.length >= 2 && (
         <button
           onClick={handleSummarize}
-          className="w-full font-medium rounded-lg py-2.5 text-sm min-h-11"
-          style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
+          className="w-full font-medium rounded-lg py-2.5 min-h-11"
+          style={{ backgroundColor: "var(--accent)", color: "#fff" }}
         >
           {t("notes.summarizeAll")}
         </button>
@@ -812,7 +812,7 @@ function AddNote({
           </div>
         )}
 
-        <label className="block text-sm">
+        <label className="block text-xs">
           <span style={{ color: "var(--text-tertiary)" }}>{t("notes.course")}</span>
           <select
             value={courseCode}
@@ -943,7 +943,7 @@ function AddNote({
           <button
             onClick={submit}
             className="flex-1 font-medium rounded-lg py-2 min-h-11"
-            style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
+            style={{ backgroundColor: "var(--accent)", color: "#fff" }}
           >
             {t("notes.submit")}
           </button>
@@ -992,7 +992,7 @@ function ResultView({ result, onDone }: { result: NoteLearning; onDone: () => vo
         </div>
         <button
           onClick={onDone}
-          className="w-full rounded-lg py-2 min-h-11"
+          className="w-full rounded-lg py-2 font-medium min-h-11"
           style={{ backgroundColor: "var(--bg-surface-hover)", color: "var(--text-secondary)" }}
         >
           {t("notes.back")}
@@ -1057,7 +1057,7 @@ function ResultView({ result, onDone }: { result: NoteLearning; onDone: () => vo
 
       <button
         onClick={onDone}
-        className="w-full rounded-lg py-2 min-h-11"
+        className="w-full rounded-lg py-2 font-medium min-h-11"
         style={{ backgroundColor: "var(--bg-surface-hover)", color: "var(--text-secondary)" }}
       >
         {t("notes.back")}

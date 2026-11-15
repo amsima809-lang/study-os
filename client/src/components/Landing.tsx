@@ -60,7 +60,7 @@ export function AppStoreButton({ compact = false }: { compact?: boolean }) {
     <>
       <Icon name="download" size={compact ? 18 : 22} />
       <span className="flex flex-col items-start leading-tight text-left">
-        <span className="text-[11px] opacity-75">{live ? t("land.appStoreSmall") : t("land.appSoonSmall")}</span>
+        <span className="text-xs opacity-75">{live ? t("land.appStoreSmall") : t("land.appSoonSmall")}</span>
         <span className={compact ? "text-sm font-semibold" : "text-base font-semibold"}>App Store</span>
       </span>
     </>

@@ -69,7 +69,7 @@ app.use(passport.session());
 
 // --- public routes ---
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, app: "StudyOS", phase: 73, tz: env.tz, time: new Date().toISOString() });
+  res.json({ ok: true, app: "StudyOS", phase: 74, tz: env.tz, time: new Date().toISOString() });
 });
 // A student's private calendar feed, for Google or iPhone Calendar to subscribe to (calendarFeed.ts).
 // Public: a calendar app cannot sign in; the random token in the address is the key.

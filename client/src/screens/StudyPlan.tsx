@@ -8,6 +8,7 @@ import {
 import { Card, ErrorBox, Loading } from "../components/ui.tsx";
 import { withBase } from "../base.ts";
 import { ChooseCoursesCard } from "../components/TermCourses.tsx";
+import { CourseTitle } from "../components/CourseTitle.tsx";
 import { formatDate } from "../format.ts";
 
 type View = "setup" | "plan";
@@ -61,7 +62,7 @@ export default function StudyPlan() {
       ) : plan?.plan ? (
         <PlanView data={plan} onRefresh={() => loadPlan(true)} />
       ) : (
-        <Card><p className="text-center py-4" style={{ color: "var(--text-tertiary)" }}>{t("sp.noPlan")}</p></Card>
+        <Card><p className="text-sm text-center py-4" style={{ color: "var(--text-tertiary)" }}>{t("sp.noPlan")}</p></Card>
       )}
     </div>
   );
@@ -150,7 +151,7 @@ function Setup({ onGenerated, hasPlan }: { onGenerated: () => void; hasPlan: boo
   return (
     <div className="space-y-4">
       <Card>
-        <h3 className="font-medium mb-3" style={{ color: "var(--text-primary)" }}>{t("sp.availability")}</h3>
+        <h3 className="font-semibold mb-3" style={{ color: "var(--text-primary)" }}>{t("sp.availability")}</h3>
         <div className="grid grid-cols-2 gap-3">
           <label className="text-sm" style={{ color: "var(--text-tertiary)" }}>
             {t("sp.weekdayHours")}
@@ -225,7 +226,7 @@ function Setup({ onGenerated, hasPlan }: { onGenerated: () => void; hasPlan: boo
 
       {courses.length > 0 ? (
         <Card>
-          <h3 className="font-medium mb-3" style={{ color: "var(--text-primary)" }}>{t("sp.coursesChapters")}</h3>
+          <h3 className="font-semibold mb-3" style={{ color: "var(--text-primary)" }}>{t("sp.coursesChapters")}</h3>
           <div className="space-y-3">
             {courses.map((c) => (
               <div
@@ -234,7 +235,7 @@ function Setup({ onGenerated, hasPlan }: { onGenerated: () => void; hasPlan: boo
                 style={{ borderBottom: "1px solid var(--border-light)" }}
               >
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{c.course_code} {c.name_th}</span>
+                  <CourseTitle code={c.course_code} name_th={c.name_th} name_en={c.name_en} inline className="text-sm font-medium" />
                   <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
                     {t(c.exam_kind === "etesting" ? "sp.examEtesting" : c.exam_kind === "own" ? "sp.examOwn" : "sp.examDate")}: {formatDate(c.exam_date, lang)}
                   </span>
@@ -253,21 +254,21 @@ function Setup({ onGenerated, hasPlan }: { onGenerated: () => void; hasPlan: boo
                       className="w-16 rounded border px-2 py-1 text-right text-sm min-h-11" style={inputStyle} />
                     <button onClick={() => void addChapters(c.course_code)} disabled={!Number(chapterCounts[c.course_code])}
                       className="px-3 rounded-lg text-sm min-h-11 disabled:opacity-50"
-                      style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}>{t("sp.addChapters")}</button>
+                      style={{ backgroundColor: "var(--accent)", color: "#fff" }}>{t("sp.addChapters")}</button>
                   </div>
                 )}
                 {c.chapters.length > 0 && (
                   <ul className="mt-2 space-y-1">
                     {c.chapters.map((ch) => (
-                      <li key={ch.id} className="flex items-center gap-2 text-xs">
+                      <li key={ch.id} className="flex items-center gap-2 text-sm">
                         <span className="truncate flex-1" style={{ color: "var(--text-secondary)" }}>{ch.name}</span>
                         <input aria-label={ch.name}
                           type="number" min="1" value={ch.page_count}
                           onChange={(e) => updateChapterPages(ch.id, Number(e.target.value) || 1)}
-                          className="w-16 rounded border px-2 py-1 text-right text-xs min-h-11"
+                          className="w-16 rounded border px-2 py-1 text-right text-sm min-h-11"
                           style={inputStyle}
                         />
-                        <span className="w-6" style={{ color: "var(--text-tertiary)" }}>{t("sp.pg")}</span>
+                        <span className="w-6 text-xs" style={{ color: "var(--text-tertiary)" }}>{t("sp.pg")}</span>
                         {ch.mastery > 0 && (
                           <span style={{ color: masteryColor(ch.mastery) }}>
                             {Math.round(ch.mastery)}%
@@ -292,7 +293,7 @@ function Setup({ onGenerated, hasPlan }: { onGenerated: () => void; hasPlan: boo
           onClick={generate}
           disabled={generating}
           className="w-full font-medium rounded-xl py-3 disabled:opacity-50 min-h-11"
-          style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
+          style={{ backgroundColor: "var(--accent)", color: "#fff" }}
         >
           {generating ? t("sp.generating") : hasPlan ? t("sp.regenerate") : t("sp.generate")}
         </button>
@@ -382,7 +383,7 @@ function PlanView({ data, onRefresh }: { data: StudyPlanData; onRefresh: () => v
         <div className="rounded-xl px-4 py-3 flex items-center justify-between gap-3" style={{ backgroundColor: "var(--bg-accent)" }}>
           <p className="text-sm" style={{ color: "var(--text-primary)" }}>{t("sp.stale")}</p>
           <button onClick={() => void update()} disabled={updating} className="text-sm px-3 rounded-lg min-h-11 whitespace-nowrap disabled:opacity-50"
-            style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}>
+            style={{ backgroundColor: "var(--accent)", color: "#fff" }}>
             {updating ? t("sp.generating") : t("sp.update")}
           </button>
         </div>
@@ -443,7 +444,7 @@ function PlanView({ data, onRefresh }: { data: StudyPlanData; onRefresh: () => v
           let bg: string;
           let fg: string;
           if (d === selectedDate) {
-            bg = "var(--accent)"; fg = "var(--text-inverse)";
+            bg = "var(--accent)"; fg = "#fff";
           } else if (allDone) {
             bg = "var(--success-bg)"; fg = "var(--success)";
           } else if (isPast) {
@@ -479,7 +480,7 @@ function PlanView({ data, onRefresh }: { data: StudyPlanData; onRefresh: () => v
         <a
           href={withBase("/api/studyplan/ics")}
           download="studyos-plan.ics"
-          className="flex-1 text-center text-sm border rounded-xl py-2.5"
+          className="flex-1 inline-flex items-center justify-center text-sm font-medium border rounded-xl min-h-11"
           style={{ color: "var(--accent-text)", borderColor: "var(--accent-light)" }}
         >
           {t("sp.exportICS")}
@@ -537,15 +538,13 @@ function CourseStatusCard({ status }: { status: CourseStatus }) {
     <Card>
       <div className="flex justify-between items-center">
         <div className="min-w-0">
-          <p className="text-sm font-medium truncate" style={{ color: "var(--text-primary)" }}>
-            {status.course_code} {status.name_th}
-          </p>
+          <p className="text-sm font-medium truncate" style={{ color: "var(--text-primary)" }}><CourseTitle code={status.course_code} name_th={status.name_th} inline /></p>
           <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
             {t("sp.daysLeft").replace("{n}", String(status.days_left))} · {status.done_tasks}/{status.total_tasks} {t("sp.tasksDone")}
           </p>
         </div>
         <span
-          className="text-xs font-medium px-2 py-1 rounded-lg"
+          className="text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap"
           style={{ backgroundColor: ss.bg, color: ss.text }}
         >
           {statusLabels[status.status]}

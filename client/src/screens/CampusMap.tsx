@@ -147,7 +147,7 @@ export default function CampusMap() {
             onClick={() => pick(id, null)}
             aria-pressed={campus === id}
             className="flex-1 rounded-lg py-2 text-sm font-medium transition-colors min-h-11"
-            style={{ backgroundColor: campus === id ? "var(--accent)" : "var(--bg-surface-hover)", color: campus === id ? "var(--text-inverse)" : "var(--text-tertiary)" }}
+            style={{ backgroundColor: campus === id ? "var(--accent)" : "var(--bg-surface-hover)", color: campus === id ? "#fff" : "var(--text-tertiary)" }}
           >
             {t(CAMPUSES[id].label)}
           </button>
@@ -157,7 +157,7 @@ export default function CampusMap() {
       {/* The buildings she has a class in this term: one tap finds each */}
       {mine.length > 0 && (
         <div>
-          <p className="text-sm mb-1.5" style={{ color: "var(--text-secondary)" }}>{t("map.yourClasses")}</p>
+          <p className="text-sm font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>{t("map.yourClasses")}</p>
           <div className="flex flex-wrap gap-2">
             {mine.map((m) => {
               const on = campus === m.campus && selected === m.code;
@@ -209,10 +209,10 @@ export default function CampusMap() {
               onClick={() => view.zoomBy(factor)}
               disabled={factor > 1 ? view.atMax : view.atMin}
               aria-label={t(label)}
-              className="w-11 h-11 rounded-full border flex items-center justify-center text-xl font-semibold disabled:opacity-40"
+              className="w-11 h-11 rounded-full border flex items-center justify-center disabled:opacity-40"
               style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border)", color: "var(--text-primary)", boxShadow: "var(--shadow-md, 0 2px 8px rgba(0,0,0,.15))" }}
             >
-              {icon === "plus" ? <Icon name="plus" size={18} /> : "−"}
+              <Icon name={icon} size={18} />
             </button>
           ))}
         </div>

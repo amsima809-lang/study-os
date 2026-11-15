@@ -14,17 +14,8 @@ import type { CalEvent } from "../api.ts";
 import Icon from "./Icon.tsx";
 import { layoutDay, minutes } from "../calendarLayout.ts";
 import { formatTime, timeRange, hourLabel, getClock } from "../format.ts";
-
-const COLORS: Record<CalEvent["type"], string> = {
-  class: "var(--accent-text)",
-  exam: "var(--mark-exam)",
-  task: "var(--mark-study)",
-  etesting: "#f59e0b",
-  etbooked: "var(--mark-exam)",
-  event: "#6366f1",
-  reminder: "#0ea5e9",
-  todo: "#a855f7",
-};
+import { CourseChip } from "./CourseTitle.tsx";
+import { DOT_COLORS, dotOf } from "./marks.tsx";
 
 type Props = {
   /** One date (day view) or seven (week view), as YYYY-MM-DD. */
@@ -183,7 +174,7 @@ export default function TimeGrid({ dates, eventsOn, today, now, onPickDay, onTog
               ))}
 
               {d.placed.map((p, i) => {
-                const color = COLORS[p.ev.type];
+                const color = DOT_COLORS[dotOf(p.ev)];
                 const height = Math.max(y(p.end) - y(p.start) - 2, 18);
                 const tickable = !week && !!p.ev.reminder_id && p.ev.type !== "event" && !!onToggle;
                 const editable = !week && !!p.ev.reminder_id && !!onOpen;
@@ -201,7 +192,14 @@ export default function TimeGrid({ dates, eventsOn, today, now, onPickDay, onTog
                         className={`block font-semibold ${week ? "break-words line-clamp-2" : "truncate"}`}
                         style={{ textDecoration: p.ev.done ? "line-through" : undefined }}
                       >
-                        {week && p.ev.course_code ? p.ev.name_th : (p.ev.course_code ? `${p.ev.course_code} ` : "") + (lang === "en" && p.ev.name_en ? p.ev.name_en : p.ev.name_th)}
+                        {week && p.ev.course_code ? (
+                          p.ev.name_th
+                        ) : (
+                          <>
+                            {p.ev.course_code && <CourseChip code={p.ev.course_code} className="mr-1" />}
+                            {lang === "en" && p.ev.name_en ? p.ev.name_en : p.ev.name_th}
+                          </>
+                        )}
                       </span>
                     )}
                     {!week && height > 34 && (
@@ -260,7 +258,7 @@ export default function TimeGrid({ dates, eventsOn, today, now, onPickDay, onTog
                 <button
                   key={`more-${i}`}
                   onClick={() => onPickDay?.(d.date)}
-                  className="absolute z-10 right-0.5 rounded-full px-1 text-[11px] font-bold leading-4"
+                  className="absolute z-10 right-0.5 rounded-full px-1 text-xs font-semibold leading-4"
                   // On the second line, so it does not cover the course code.
                   style={{ top: y(o.start) + 22, backgroundColor: "var(--accent)", color: "#fff" }}
                   aria-label={t("cal.more", { n: o.count })}
@@ -285,7 +283,7 @@ export default function TimeGrid({ dates, eventsOn, today, now, onPickDay, onTog
 
 function AllDayChip({ ev, week, onToggle }: { ev: CalEvent; week: boolean; onToggle?: () => void }) {
   const { lang } = useT();
-  const color = COLORS[ev.type];
+  const color = DOT_COLORS[dotOf(ev)];
   const tickable = !week && !!ev.reminder_id && !!onToggle;
   const style: React.CSSProperties = {
     backgroundColor: `color-mix(in srgb, ${color} 18%, var(--bg-surface))`,
@@ -295,7 +293,11 @@ function AllDayChip({ ev, week, onToggle }: { ev: CalEvent; week: boolean; onTog
     textDecoration: ev.done ? "line-through" : undefined,
   };
   const cls = `block w-full rounded-md truncate text-left ${week ? "px-1 text-xs" : "px-2 py-1.5 text-xs"}`;
-  const label = (ev.course_code ? `${ev.course_code} ` : "") + (lang === "en" && ev.name_en ? ev.name_en : ev.name_th);
+  const name = lang === "en" && ev.name_en ? ev.name_en : ev.name_th;
+  // Day view: the course code as a chip, like everywhere else. A week column is too narrow, so it keeps plain text.
+  const label = ev.course_code ? (
+    week ? `${ev.course_code} ${name}` : <><CourseChip code={ev.course_code} className="mr-1" kind={dotOf(ev)} />{name}</>
+  ) : name;
   return tickable ? (
     <button className={cls} style={style} onClick={onToggle} role="checkbox" aria-checked={!!ev.done}>
       <span className="float-right ml-1" style={{ color }}><Icon name={ev.done ? "checkCircle" : "square"} size={14} /></span>
