@@ -483,28 +483,11 @@ function EventRow({
   onOpen?: () => void;
 }) {
   const { lang } = useT();
-  const tagColors: Record<string, { bg: string; text: string }> = {
-    class: { bg: "var(--accent-light)", text: "var(--accent-text)" },
-    exam: { bg: "rgba(239,68,68,0.15)", text: "#ef4444" },
-    task: { bg: "rgba(20,184,166,0.15)", text: "var(--mark-study)" },
-    etesting: { bg: "rgba(245,158,11,0.15)", text: "#f59e0b" },
-    etbooked: { bg: "rgba(217,119,6,0.22)", text: "#b45309" },
-    event: { bg: "rgba(99,102,241,0.15)", text: "#6366f1" },
-    reminder: { bg: "rgba(14,165,233,0.15)", text: "#0ea5e9" },
-    todo: { bg: "rgba(168,85,247,0.15)", text: "#a855f7" },
-  };
-  const tag = tagColors[ev.type] ?? tagColors.class;
-  const labelMap: Record<string, string> = {
-    class: t("cal.class"),
-    exam: t("cal.exam"),
-    task: t("cal.task"),
-    etesting: t("cal.etesting"),
-    etbooked: t("cal.etbooked"),
-    event: t("rem.kind.event"),
-    reminder: t("rem.kind.reminder"),
-    todo: t("rem.kind.todo"),
-  };
-  const label = labelMap[ev.type] ?? ev.type;
+  // The chip carries the same icon, colour and words as the month's mark and its key, so the two
+  // are learnt together (owner 2026-11-16).
+  const dot = dotOf(ev);
+  const color = DOT_COLORS[dot];
+  const label = t(`cal.kind.${dot}`);
 
   return (
     <li
@@ -533,9 +516,10 @@ function EventRow({
       )}
       {/* Type badge */}
       <span
-        className="text-xs font-semibold px-2 py-0.5 rounded-full mt-0.5 shrink-0"
-        style={{ background: tag.bg, color: tag.text }}
+        className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full mt-0.5 shrink-0"
+        style={{ background: `color-mix(in srgb, ${color} 14%, transparent)`, color }}
       >
+        <DotMark type={dot} size={12} />
         {label}
       </span>
 
