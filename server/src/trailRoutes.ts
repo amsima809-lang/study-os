@@ -266,6 +266,26 @@ export function answerTermCheck(db: DB, userId: string, codes: string[]): void {
   })();
 }
 
+/**
+ * What the new-term answer changed, for the sheet that follows it (owner 2026-11-15, north star:
+ * a failed course gets a plan, not a red verdict): where each course not passed now sits in the
+ * plan, the finish with and without them, and the earliest finish if the goal is out of reach.
+ */
+export function failEffect(db: DB, userId: string, failed: string[]) {
+  const input = loadTrailInput(db, userId);
+  if (!input || failed.length === 0) return null;
+  const inMajor = new Set(input.courses.map((c) => c.code));
+  const now = buildTrail(input);
+  // The same plan had she passed them: the finish she would have had.
+  const was = buildTrail({ ...input, passed: [...new Set([...input.passed, ...failed.filter((c) => inMajor.has(c))])] });
+  const movedTo = Object.fromEntries(failed.map((c) => [c, now.terms.find((t) => t.items.some((i) => i.code === c || i.alternatives?.includes(c)))?.term ?? null]));
+  return {
+    failed, movedTo, wasFinish: was.achievable ? was.finishTerm : null, nowFinish: now.finishTerm, achievable: now.achievable,
+    earliestTerm: now.earliestTerm, aim: now.earliestTerm ? regularFrom(now.earliestTerm) : null,
+    goal: { target: input.targetTerm, summers: input.summers, maxPerTerm: input.maxPerTerm ?? CREDIT_LIMITS.regular },
+  };
+}
+
 const TERM = /^[12S]\/\d{2}$/;
 const goalSchema = z.object({
   target: z.string().regex(TERM),
@@ -324,8 +344,10 @@ export function createTrailRouter(db: DB): Router {
   router.post("/trail/term-check", (req, res) => {
     const parsed = passedSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "รายการวิชาไม่ถูกต้อง", code: "BAD_COURSES" });
+    const asked = unsettled(db, req.user!.id, currentTerm(db)).map((c) => c.code);
     answerTermCheck(db, req.user!.id, parsed.data.codes);
-    res.json({ ok: true, passed: passedCourses(db, req.user!.id) });
+    const kept = new Set(parsed.data.codes);
+    res.json({ ok: true, passed: passedCourses(db, req.user!.id), effect: failEffect(db, req.user!.id, asked.filter((c) => !kept.has(c))) });
   });
 
   router.put("/trail/goal", (req, res) => {
@@ -344,7 +366,8 @@ export function createTrailRouter(db: DB): Router {
     const programId = (db.prepare("SELECT program_id FROM user_profiles WHERE user_id = ?").get(userId) as { program_id: string | null } | undefined)?.program_id;
     if (!programId || !hasCatalog(db, userId)) return res.json({ courses: [], passed: [] });
     const courses = db.prepare(
-      `SELECT c.code, c.name_th, c.name_en, c.credits, pc.category
+      `SELECT c.code, c.name_th, c.name_en, c.credits, pc.category, pc.plan_year AS planYear,
+              CASE WHEN pc.category = 'GE' THEN c.choose_group END AS "group"
        FROM program_courses pc JOIN courses c ON c.code = pc.course_code WHERE pc.program_id = ? ORDER BY c.code`,
     ).all(programId);
     res.json({ courses, passed: passedCourses(db, userId) });

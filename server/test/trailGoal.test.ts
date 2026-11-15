@@ -390,3 +390,46 @@ describe("the starting goal (owner 2026-11-15: a new student must not see 'not o
     expect(r.body.goal).toMatchObject({ target: "1/71", isDefault: false });
   });
 });
+
+describe("what the new-term answer changed (the calm sheet after a course not passed)", () => {
+  // The term after 2/69 has started: 2/69's courses are "last term".
+  beforeAll(() => { db.prepare("UPDATE settings SET value = '1/70' WHERE key = 'current_term_id'").run(); });
+  afterAll(() => { db.prepare("UPDATE settings SET value = '2/69' WHERE key = 'current_term_id'").run(); });
+  it("says where the course went and what it did to the finish; nothing when all were passed", async () => {
+    const u = student("fail-sheet@example.com");
+    // Last term (2/69) she took three first-year courses.
+    for (const c of ["RAM1101", "RAM1111", "RAM1131"]) db.prepare("INSERT INTO plan_items (user_id, term_id, course_code) VALUES (?, '2/69', ?)").run(u, c);
+    as = u;
+    const post = async (codes: string[]) => (await (await fetch(`${base}/api/trail/term-check`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ codes }) })).json()) as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    const r = await post(["RAM1101", "RAM1111"]);
+    expect(r.effect.failed).toEqual(["RAM1131"]);
+    // Back in a later term of the plan, and the default goal still met.
+    expect(r.effect.movedTo.RAM1131).toMatch(/^[12S]\/\d{2}$/);
+    expect(r.effect.achievable).toBe(true);
+    expect(r.effect.nowFinish).toBeTruthy();
+    // A second student who passed everything gets no sheet.
+    const v = student("fail-sheet2@example.com");
+    for (const c of ["RAM1101", "RAM1111"]) db.prepare("INSERT INTO plan_items (user_id, term_id, course_code) VALUES (?, '2/69', ?)").run(v, c);
+    as = v;
+    expect((await post(["RAM1101", "RAM1111"])).effect).toBeNull();
+  });
+
+  it("offers the earliest finish when a goal she set is now out of reach", async () => {
+    const u = student("fail-sheet3@example.com");
+    for (const c of ["RAM1101", "RAM1111"]) db.prepare("INSERT INTO plan_items (user_id, term_id, course_code) VALUES (?, '2/69', ?)").run(u, c);
+    // Mark everything but the first-year courses passed, then aim for the earliest finish.
+    const all = (db.prepare("SELECT course_code FROM program_courses WHERE program_id = 'bus-mkt' AND category != 'GE' AND course_code NOT IN ('RAM1101', 'RAM1111')").all() as { course_code: string }[]).map((r) => r.course_code);
+    setPassedList(db, u, all);
+    const plan = await get(u);
+    await put(u, { target: plan.targets.find((x: string) => termIndex(x) >= termIndex(plan.trail.earliestTerm)), summers: false, maxPerTerm: 22 });
+    as = u;
+    const r = (await (await fetch(`${base}/api/trail/term-check`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ codes: [] }) })).json()) as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    expect(r.effect.failed.sort()).toEqual(["RAM1101", "RAM1111"]);
+    if (!r.effect.achievable) {
+      expect(r.effect.aim).toMatch(/^[12]\/\d{2}$/);
+      expect(termIndex(r.effect.aim)).toBeGreaterThanOrEqual(termIndex(r.effect.earliestTerm));
+    } else {
+      expect(r.effect.nowFinish).toBeTruthy();
+    }
+  });
+});

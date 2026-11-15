@@ -271,21 +271,36 @@ export function findExamClashes(exams: ExamRow[]): Array<{ date: string; courses
     const date = e.datetime_start.slice(0, 10);
     (byDate.get(date) ?? byDate.set(date, []).get(date)!).push(e);
   }
-
+  // Two printed finals clash when their periods overlap; an exam with no period (a date she
+  // entered for a faculty-arranged exam) clashes by its hours, or with anything that day if it
+  // has none.
+  const hours = (e: ExamRow) => [e.datetime_start.slice(11, 16), e.datetime_end.slice(11, 16)] as const;
+  const overlaps = (a: ExamRow, b: ExamRow) => {
+    if (a.slot && b.slot) {
+      const sa = new Set(a.slot.split(",").map((s) => s.trim()));
+      return b.slot.split(",").map((s) => s.trim()).some((s) => s && sa.has(s));
+    }
+    const [a1, a2] = hours(a), [b1, b2] = hours(b);
+    return a1 < b2 && b1 < a2;
+  };
   const clashes: Array<{ date: string; courses: string[] }> = [];
   for (const [date, list] of byDate) {
     for (let i = 0; i < list.length; i++) {
       for (let j = i + 1; j < list.length; j++) {
-        const a = new Set((list[i].slot ?? "").split(",").map((s) => s.trim()));
-        const b = new Set((list[j].slot ?? "").split(",").map((s) => s.trim()));
-        const overlap = [...a].some((s) => s && b.has(s));
-        if (overlap) {
-          clashes.push({ date, courses: [list[i].course_code, list[j].course_code] });
-        }
+        if (overlaps(list[i], list[j])) clashes.push({ date, courses: [list[i].course_code, list[j].course_code] });
       }
     }
   }
   return clashes;
+}
+
+/** Her faculty-arranged exams that she has dated (myExams.ts), as exam rows for the clash check. */
+function ownExamRows(db: DB, userId: string, termId: string): ExamRow[] {
+  return myExams(db, userId, termId).filter((e) => e.own).map((e) => ({
+    course_code: e.course_code, name_th: e.name_th, name_en: e.name_en,
+    datetime_start: `${e.own!.date}T${e.own!.start ?? "00:00"}:00+07:00`, datetime_end: `${e.own!.date}T${e.own!.end ?? "23:59"}:00+07:00`,
+    slot: null, location: null,
+  }));
 }
 
 function dueFlashcardCount(db: DB, today: string, userId: string): number {
@@ -424,7 +439,8 @@ export function createApiRouter(db: DB): Router {
     const lastDay = new Date(Date.UTC(year, mon, 0)).toISOString().slice(0, 10);
 
     const classes = weekClasses(db, term, userId);
-    const exams = termExams(db, term, userId);
+    // Her faculty-arranged exams that she dated count as exams on the calendar too.
+    const exams = [...termExams(db, term, userId), ...ownExamRows(db, userId, term)];
 
     // term date boundaries: classes run from start_date to day before first exam
     const termRow = db
@@ -630,8 +646,10 @@ export function createApiRouter(db: DB): Router {
     const chosen = termCourses(db, userId, term).length > 0;
     res.json({
       term, today, exams, chosen,
-      clashes: chosen ? findExamClashes(termExams(db, term, userId)) : [],
+      clashes: chosen ? findExamClashes([...termExams(db, term, userId), ...ownExamRows(db, userId, term)]) : [],
       facultyArranged: facultyArrangedExams(db, term, userId),
+      // Her e-Testing bookings, the dates she entered and her seats, by course (myExams.ts).
+      mine: myExams(db, userId, term, today),
     });
   });
 

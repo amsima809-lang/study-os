@@ -15,6 +15,7 @@ import type { DB } from "./db.js";
 import { env } from "./env.js";
 import { getSetting, termCourses } from "./api.js";
 import { courseExams, termExamWindows } from "./termExams.js";
+import { myExams } from "./myExams.js";
 import { ETESTING_PERIODS } from "./etestingBookings.js";
 import { EXAM_PERIODS } from "./termSchedule.js";
 import { APP_NAME, APP_NAME_TH } from "./brand.js";
@@ -46,8 +47,8 @@ const RRULE_DAY = ["", "MO", "TU", "WE", "TH", "FR", "SA", "SU"];
 /** Where her own exam timetable (rooms and seats) is: the registrar's e-Service (client/src/ruLinks.ts). */
 const EXAM_TIMETABLE = "http://e-service.ru.ac.th/search/index.php";
 const WORDS = {
-  th: { calendar: `${APP_NAME_TH} · ภาคเรียน`, finalNote: `ห้องและที่นั่งสอบ: ตารางสอบไล่ของคุณใน e-Service ${EXAM_TIMETABLE}`, oneOf: "ตอนเรียนหนึ่งใน {n} ตอน", final: "สอบไล่", period: "ช่วง", etBooked: "สอบ e-Testing", etPeriod: "คาบ", etReg: "ลงทะเบียนสอบ e-Testing (E-SERVICE)", opens: "เปิด", closes: "ปิดวันสุดท้าย", huamak: "หัวหมาก", regional: "ศูนย์ส่วนภูมิภาค" },
-  en: { calendar: `${APP_NAME} · this term`, finalNote: `Room and seat: your exam timetable in e-Service ${EXAM_TIMETABLE}`, oneOf: "one of {n} sections", final: "Final", period: "period", etBooked: "e-Testing", etPeriod: "period", etReg: "e-Testing registration (E-SERVICE)", opens: "opens", closes: "closes on the last day", huamak: "Hua Mak", regional: "regional centre" },
+  th: { calendar: `${APP_NAME_TH} · ภาคเรียน`, finalNote: `ห้องและที่นั่งสอบ: ตารางสอบไล่ของคุณใน e-Service ${EXAM_TIMETABLE}`, oneOf: "ตอนเรียนหนึ่งใน {n} ตอน", final: "สอบไล่", period: "ช่วง", seat: "ห้องและที่นั่ง", own: "สอบ (วันที่คุณบันทึก)", etBooked: "สอบ e-Testing", etPeriod: "คาบ", etReg: "ลงทะเบียนสอบ e-Testing (E-SERVICE)", opens: "เปิด", closes: "ปิดวันสุดท้าย", huamak: "หัวหมาก", regional: "ศูนย์ส่วนภูมิภาค" },
+  en: { calendar: `${APP_NAME} · this term`, finalNote: `Room and seat: your exam timetable in e-Service ${EXAM_TIMETABLE}`, oneOf: "one of {n} sections", final: "Final", period: "period", seat: "Room and seat", own: "Exam (the date you entered)", etBooked: "e-Testing", etPeriod: "period", etReg: "e-Testing registration (E-SERVICE)", opens: "opens", closes: "closes on the last day", huamak: "Hua Mak", regional: "regional centre" },
 };
 
 /** The feed for one student, as iCalendar text. `now` stamps it (DTSTAMP). */
@@ -100,8 +101,20 @@ export function buildFeed(db: DB, userId: string, now = new Date()): string {
     }
   }
 
-  // Finals, as printed (a faculty-arranged exam has no date and is left out).
+  // Finals, as printed; a faculty-arranged exam only once she has entered its date (myExams.ts).
   const exams = courseExams(db, term, codes);
+  const mine = new Map(myExams(db, userId, term).map((m) => [m.course_code, m]));
+  for (const m of mine.values()) {
+    if (!m.own) continue;
+    const timed = m.own.start && m.own.end;
+    event(`own-${termId}-${m.course_code}`, [
+      ...(timed
+        ? [`DTSTART;TZID=Asia/Bangkok:${ymd(m.own.date)}T${hms(m.own.start!)}`, `DTEND;TZID=Asia/Bangkok:${ymd(m.own.date)}T${hms(m.own.end!)}`]
+        : [`DTSTART;VALUE=DATE:${ymd(m.own.date)}`, `DTEND;VALUE=DATE:${ymd(addDays(m.own.date, 1))}`]),
+      `SUMMARY:${esc(`${w.own} ${title(m.course_code)}`)}`,
+      ...(m.seat ? [`DESCRIPTION:${esc(`${w.seat}: ${m.seat}`)}`] : []),
+    ]);
+  }
   for (const code of codes) {
     const e = exams[code];
     if (!e?.exam_date || !e.exam_slot) continue;
@@ -110,7 +123,7 @@ export function buildFeed(db: DB, userId: string, now = new Date()): string {
       `DTSTART;TZID=Asia/Bangkok:${ymd(e.exam_date)}T${hms(p.start)}`,
       `DTEND;TZID=Asia/Bangkok:${ymd(e.exam_date)}T${hms(p.end)}`,
       `SUMMARY:${esc(`${w.final} ${title(code)} (${w.period} ${e.exam_slot})`)}`,
-      `DESCRIPTION:${esc(w.finalNote)}`,
+      `DESCRIPTION:${esc(mine.get(code)?.seat ? `${w.seat}: ${mine.get(code)!.seat}` : w.finalNote)}`,
     ]);
   }
 

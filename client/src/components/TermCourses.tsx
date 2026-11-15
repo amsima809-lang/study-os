@@ -40,6 +40,71 @@ const worthShowing = (note?: string | null): note is string =>
   !!note && !/^สำหรับนักศึกษา\s*รหัส\s*65[\s.]*เป็นต้นไป\s*ลงทะเบียนเรียน$/.test(note.trim());
 const DAY_KEYS = ["", "cal.mon", "cal.tue", "cal.wed", "cal.thu", "cal.fri", "cal.sat", "cal.sun"];
 
+type FailEffect = {
+  failed: string[];
+  movedTo: Record<string, string | null>;
+  wasFinish: string | null;
+  nowFinish: string | null;
+  achievable: boolean;
+  earliestTerm: string | null;
+  aim: string | null;
+  goal: { target: string; summers: boolean; maxPerTerm: number };
+};
+
+/**
+ * After she says some of last term's courses were not passed: calmly, where they are in the plan
+ * now and what it does to the finish, with one tap to aim for the new earliest finish when the
+ * goal is out of reach. No advice on re-sits or e-Testing (owner: designed later with his partner).
+ */
+function FailSheet({ effect, onClose }: { effect: FailEffect; onClose: () => void }) {
+  const { t } = useT();
+  const [busy, setBusy] = useState(false);
+  const termName = (id: string) => { const [k, yy] = id.split("/"); return k === "S" ? t("trail.summerOf", { year: `25${yy}` }) : t("trail.termOf", { n: k, year: `25${yy}` }); };
+  const aim = async () => {
+    if (!effect.aim) return;
+    setBusy(true);
+    await putJSON("/api/trail/goal", { ...effect.goal, target: effect.aim }).catch(() => {});
+    onClose();
+  };
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" style={{ background: "rgba(0,0,0,0.5)" }}>
+      <div role="dialog" aria-modal="true" aria-label={t("tc.failTitle")} className="w-full md:max-w-lg flex flex-col rounded-t-3xl md:rounded-3xl border animate-slide-up" style={{ maxHeight: "92dvh", backgroundColor: "var(--bg-surface)", borderColor: "var(--border-light)" }}>
+        <div className="px-5 pt-5 pb-2 space-y-3 overflow-y-auto">
+          <h2 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>{t("tc.failTitle")}</h2>
+          <ul className="space-y-1 text-sm" style={{ color: "var(--text-secondary)" }}>
+            {effect.failed.map((c) => (
+              <li key={c}>
+                <CourseChip code={c} className="mr-1.5" />
+                {effect.movedTo[c] ? t("tc.failMovedTo", { term: termName(effect.movedTo[c]!) }) : t("tc.failBack")}
+              </li>
+            ))}
+          </ul>
+          <p className="text-sm" style={{ color: "var(--text-primary)" }}>
+            {effect.achievable && effect.nowFinish
+              ? effect.wasFinish && effect.wasFinish !== effect.nowFinish
+                ? t("tc.failFinishMoved", { was: termName(effect.wasFinish), now: termName(effect.nowFinish) })
+                : t("tc.failFinishSame", { term: termName(effect.nowFinish) })
+              : effect.earliestTerm
+                ? t("tc.failOutOfReach", { target: termName(effect.goal.target), earliest: termName(effect.earliestTerm) })
+                : t("tc.failNoFinish")}
+          </p>
+        </div>
+        <div className="px-5 py-3 border-t flex flex-col gap-2" style={{ borderColor: "var(--border-light)", paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}>
+          {!effect.achievable && effect.aim && (
+            <button onClick={() => void aim()} disabled={busy} className="w-full rounded-xl min-h-11 font-semibold disabled:opacity-50" style={{ backgroundColor: "var(--accent)", color: "#fff" }}>
+              {t("trail.aimFor", { term: termName(effect.aim) })}
+            </button>
+          )}
+          <button onClick={onClose} disabled={busy} className="w-full rounded-xl min-h-11 font-semibold border" style={!effect.achievable && effect.aim ? { borderColor: "var(--border)", color: "var(--text-primary)" } : { backgroundColor: "var(--accent)", color: "#fff", borderColor: "var(--accent)" }}>
+            {t(!effect.achievable && effect.aim ? "tc.failKeep" : "tc.failOk")}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 /** Set by the app when onboarding has just finished: the picker then opens by itself, once. */
 export const JUST_ONBOARDED = "studyos.justOnboarded";
 /** The term for which this device has already opened the picker by itself. */
@@ -75,6 +140,9 @@ export function ChooseCoursesCard({ onChanged, onTrail = false }: { onChanged?: 
   const { t, lang } = useT();
   const [state, setState] = useState<{ chosen: number; options: number } | null>(null);
   const [choosing, setChoosing] = useState(false);
+  const [returning, setReturning] = useState<"earlier" | "older" | undefined>(undefined);
+  // After the new-term answer, when something was not passed: what that changed in the plan.
+  const [effect, setEffect] = useState<FailEffect | null>(null);
   // A new term has started: first ask which of last term's courses were passed.
   const [check, setCheck] = useState<TermCheck | null>(null);
   const [kept, setKept] = useState<Set<string>>(new Set());
@@ -101,6 +169,16 @@ export function ChooseCoursesCard({ onChanged, onTrail = false }: { onChanged?: 
           if (d.chosen.length === 0 && d.options.length > 0 && (fresh || !shown)) {
             setChoosing(true);
             try { localStorage.setItem(PROMPTED, d.term); } catch { /* ok */ }
+            // Straight after onboarding, someone who started before this term has passed courses
+            // already: the picker asks for those first, so the plan does not suggest them again.
+            if (fresh) {
+              getJSON<{ entry_year?: string | null }>("/api/profile").then((p) => {
+                // Stored as two digits since the server reads any form; older rows may hold "2567".
+                const raw = String(p.entry_year ?? "").trim();
+                const entry = Number(/^25\d\d$/.test(raw) ? raw.slice(2) : raw), now = Number(d.term.split("/")[1]);
+                if (raw && entry && now && entry < now) setReturning(entry <= 64 ? "older" : "earlier");
+              }).catch(() => {});
+            }
           }
         })
         .catch(() => setState(null));
@@ -111,7 +189,8 @@ export function ChooseCoursesCard({ onChanged, onTrail = false }: { onChanged?: 
 
   if (check) {
     const answer = async () => {
-      await postJSON("/api/trail/term-check", { codes: [...kept] }).catch(() => {});
+      const r = await postJSON<{ effect: FailEffect | null }>("/api/trail/term-check", { codes: [...kept] }).catch(() => null);
+      if (r?.effect && r.effect.failed.length > 0) { setCheck(null); setEffect(r.effect); return; }
       await load();
       onChanged?.();
     };
@@ -155,6 +234,9 @@ export function ChooseCoursesCard({ onChanged, onTrail = false }: { onChanged?: 
       document.body,
     );
   }
+  if (effect) {
+    return <FailSheet effect={effect} onClose={async () => { setEffect(null); await load(); onChanged?.(); }} />;
+  }
   if (!state || state.options === 0 || onTrail) return null;
   return (
     <>
@@ -190,8 +272,10 @@ export function ChooseCoursesCard({ onChanged, onTrail = false }: { onChanged?: 
       ) : null}
       {choosing && (
         <TermCoursesPicker
+          returning={returning}
           onClose={() => {
             setChoosing(false);
+            setReturning(undefined);
             load();
             onChanged?.();
           }}
@@ -201,7 +285,12 @@ export function ChooseCoursesCard({ onChanged, onTrail = false }: { onChanged?: 
   );
 }
 
-export default function TermCoursesPicker({ onClose }: { onClose: () => void }) {
+/**
+ * `returning`: set when the picker opens straight after onboarding for a student whose entry year
+ * is before this term's ("earlier"), or before 2565 ("older": ID 62-64 follow an older curriculum
+ * the app does not have, docs/OPEN_ITEMS.md). Then the passed courses come first.
+ */
+export default function TermCoursesPicker({ onClose, returning }: { onClose: () => void; returning?: "earlier" | "older" }) {
   const { t, lang } = useT();
   const [data, setData] = useState<Data | null>(null);
   const [picked, setPicked] = useState<Set<string>>(new Set());
@@ -315,6 +404,16 @@ export default function TermCoursesPicker({ onClose }: { onClose: () => void }) 
             <Icon name="x" size={20} />
           </button>
         </div>
+
+        {returning && (
+          <div className="mx-5 mt-3 rounded-xl px-3 py-2 text-sm space-y-2" style={{ backgroundColor: "var(--bg-accent)", color: "var(--text-primary)" }}>
+            <p>{t("tc.returning")}</p>
+            {returning === "older" && <p className="text-xs" style={{ color: "var(--text-secondary)" }}>{t("tc.olderCurriculum")}</p>}
+            <button onClick={() => setMarkingPassed(true)} className="rounded-lg px-3 min-h-11 text-sm font-semibold" style={{ backgroundColor: "var(--accent)", color: "#fff" }}>
+              {t("tc.returningButton")}
+            </button>
+          </div>
+        )}
 
         <div className="px-5 pt-3 pb-2 flex gap-2">
           <input

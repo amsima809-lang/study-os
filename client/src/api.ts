@@ -85,6 +85,21 @@ export type ExamsData = {
   facultyArranged?: { course_code: string; name_th: string; name_en: string | null; note: string }[];
   /** False until the student has chosen their courses for the term: nothing is listed until then. */
   chosen?: boolean;
+  /** Her e-Testing bookings, dates she entered and seats, by course (server/src/myExams.ts). */
+  mine?: MyExam[];
+};
+
+/** One of her courses' exams this term, from every source (server/src/myExams.ts). */
+export type MyExam = {
+  course_code: string;
+  name_th: string;
+  name_en: string | null;
+  final: { date: string; slot: string | null; start: string; end: string } | null;
+  facultySet: boolean;
+  own: { date: string; start: string | null; end: string | null } | null;
+  booking: { date: string; period: number; centre: string; start: string; end: string } | null;
+  seat: string | null;
+  next: { date: string; kind: "etesting" | "final" | "own"; start: string | null; end: string | null } | null;
 };
 
 // ---------- Calendar ----------
