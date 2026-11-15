@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useT } from "../i18n.tsx";
 import { UNIVERSITIES, type University } from "../data/universities.ts";
-import { listUniversities, myUniversityId, UNIVERSITY_KEY as STORAGE_KEY } from "../data/universityList.ts";
+import { DEFAULT_UNIVERSITY, listUniversities, myUniversityId, UNIVERSITY_KEY as STORAGE_KEY } from "../data/universityList.ts";
+import { BRAND } from "../theme.ts";
 import Icon from "./Icon.tsx";
 
 /** The university chosen on the login page, remembered in this browser. */
@@ -21,9 +22,11 @@ export function useUniversity(): [University | null, (id: string | null) => void
 }
 
 function Swatches({ uni }: { uni: University }) {
+  // The default university wears the app's own default colours.
+  const swatches = uni.id === DEFAULT_UNIVERSITY ? [{ hex: BRAND.primary }, { hex: BRAND.secondary }] : uni.swatches;
   return (
     <span className="flex shrink-0 w-12 -space-x-1.5">
-      {uni.swatches.map((s) => (
+      {swatches.map((s) => (
         <span
           key={s.hex}
           className="w-5 h-5 rounded-full"
@@ -55,7 +58,8 @@ export default function UniversityPicker({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const results = useMemo(() => listUniversities(lang, mine, query), [query, lang, mine]);
+  // Her own first, then Ramkhamhaeng (the default), then A to Z.
+  const results = useMemo(() => listUniversities(lang, mine, query, undefined, [DEFAULT_UNIVERSITY]), [query, lang, mine]);
   const own = results[0]?.id === mine ? results[0] : null;
   const others = own ? results.slice(1) : results;
 
@@ -75,7 +79,7 @@ export default function UniversityPicker({
           {lang === "th" ? u.nameTh : u.nameEn}
         </span>
         <span className="block text-xs truncate" style={{ color: "rgba(255,255,255,0.45)" }}>
-          {u.id === mine ? t("uni.yours") : lang === "th" ? u.nameEn : u.nameTh}
+          {u.id === DEFAULT_UNIVERSITY ? t("uni.default") : u.id === mine ? t("uni.yours") : lang === "th" ? u.nameEn : u.nameTh}
         </span>
       </span>
       {current?.id === u.id && <Icon name="check" size={18} />}
@@ -132,18 +136,6 @@ export default function UniversityPicker({
 
         <div className="overflow-y-auto px-2 pb-3">
           {own && row(own)}
-          {!query && (
-            <button type="button" onClick={() => pick(null)} className={rowClass}>
-              <span className="w-12 shrink-0">
-                <span
-                  className="block w-5 h-5 rounded-full"
-                  style={{ background: "linear-gradient(135deg, #7c3aed, #3b82f6)" }}
-                />
-              </span>
-              <span className="flex-1 text-sm font-medium">{t("uni.default")}</span>
-              {!current && <Icon name="check" size={18} />}
-            </button>
-          )}
 
           {others.map(row)}
 

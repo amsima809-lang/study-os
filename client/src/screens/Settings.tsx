@@ -4,6 +4,7 @@ import { useT } from "../i18n.tsx";
 import Icon from "../components/Icon.tsx";
 import { useTheme } from "../components/ui.tsx";
 import UniversityPicker from "../components/UniversityPicker.tsx";
+import { DEFAULT_UNIVERSITY } from "../data/universityList.ts";
 import CalendarLinks from "../components/CalendarLinks.tsx";
 import { UNIVERSITIES } from "../data/universities.ts";
 import { formatTime, getClock, setClock, subscribeClock, type Clock } from "../format.ts";
@@ -249,8 +250,9 @@ export default function Settings() {
 
       {pickingSchool && createPortal(
         <UniversityPicker
-          current={school}
-          onPick={(id) => setColour(id ? `school:${id}` : "default")}
+          current={school ?? (colour === "default" ? UNIVERSITIES.find((u) => u.id === DEFAULT_UNIVERSITY) ?? null : null)}
+          // Ramkhamhaeng is the default theme itself (DEFAULT_UNIVERSITY).
+          onPick={(id) => setColour(id && id !== DEFAULT_UNIVERSITY ? `school:${id}` : "default")}
           onClose={() => setPickingSchool(false)}
         />,
         document.body,

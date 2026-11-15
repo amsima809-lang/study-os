@@ -9,12 +9,20 @@ import { UNIVERSITIES, type University } from "./universities.ts";
 /** Where this browser remembers the student's university (set on the login page, at onboarding and at sign-in). */
 export const UNIVERSITY_KEY = "studyos.university";
 
-/** The student's own university, or null if none has been chosen yet. */
-export function myUniversityId(): string | null {
+/**
+ * Ramkhamhaeng: the only university with a curriculum, and the app's own default (owner
+ * 2026-11-16: "the default theme is also already the school's colors, so make it the default and
+ * first"). It is chosen until the student picks another, listed first, and shown in the app's own
+ * default colours, with no campus photo.
+ */
+export const DEFAULT_UNIVERSITY = "ru";
+
+/** The student's own university: the one chosen in this browser, else Ramkhamhaeng. */
+export function myUniversityId(): string {
   try {
-    return localStorage.getItem(UNIVERSITY_KEY);
+    return localStorage.getItem(UNIVERSITY_KEY) ?? DEFAULT_UNIVERSITY;
   } catch {
-    return null; // storage can be blocked (private mode)
+    return DEFAULT_UNIVERSITY; // storage can be blocked (private mode)
   }
 }
 

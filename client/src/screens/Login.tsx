@@ -6,6 +6,7 @@ import Icon from "../components/Icon.tsx";
 import UniversityPicker, { useUniversity } from "../components/UniversityPicker.tsx";
 import Logo from "../components/Logo.tsx";
 import { BRAND } from "../theme.ts";
+import { DEFAULT_UNIVERSITY } from "../data/universityList.ts";
 import { withBase } from "../base.ts";
 import { inNativeApp, canGoogleSignInInApp, googleSignInInApp } from "../native.ts";
 import LandingMore, { AppStoreButton, PhoneShot } from "../components/Landing.tsx";
@@ -59,9 +60,12 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
 
   // Theme colours: the chosen university's, or the default purple/blue/pink.
   // With no university chosen, the page wears the brand's own indigo.
-  const primary = uni?.swatches[0].hex ?? BRAND.primary;
-  const secondary = uni?.swatches[1]?.hex ?? (uni ? primary : "#3b82f6");
-  const approx = uni?.swatches.some((s) => s.source !== "official") ?? false;
+  // Ramkhamhaeng, the default university, wears the app's own colours and no campus photo
+  // (owner 2026-11-16): `look` is the university whose colours and photo the page shows.
+  const look = uni && uni.id !== DEFAULT_UNIVERSITY ? uni : null;
+  const primary = look?.swatches[0].hex ?? BRAND.primary;
+  const secondary = look?.swatches[1]?.hex ?? (look ? primary : "#3b82f6");
+  const approx = look?.swatches.some((s) => s.source !== "official") ?? false;
   const [showDev, setShowDev] = useState(false);
   // Which ways of signing in this server offers (dev login is off on a live site).
   const [methods, setMethods] = useState<{ google: boolean; devLogin: boolean; needsCode?: boolean } | null>(null);
@@ -129,7 +133,7 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
   return (
     <div ref={landing} className="relative">
     {/* The mountain under the sign-in card, and the trail that winds up the whole page to its summit (Trail.tsx). */}
-    <TrailPath root={landing} faint={!!uni?.photo} />
+    <TrailPath root={landing} faint={!!look?.photo} />
     {/* The first screen, the summit: signing in or creating an account, with room below it for
         the mountain (pb-56), so the mountain never sits behind the text. Below, what the app does (Landing.tsx). */}
     <section id="top" className="min-h-dvh flex flex-col items-center justify-center px-6 pt-10 pb-56 relative overflow-hidden">
@@ -137,18 +141,18 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
       <div
         className="absolute inset-0"
         style={{
-          background: uni
+          background: look
             ? `linear-gradient(135deg, ${mix(primary, DARK, 0.85)} 0%, ${mix(primary, DARK, 0.6)} 40%, ${mix(secondary, DARK, 0.8)} 100%)`
             : "linear-gradient(135deg, #0f0c29 0%, #302b63 40%, #24243e 100%)" /* the brand's deep indigo */,
         }}
       />
       {/* Campus photo (only some universities have one) under a tinted dark overlay */}
-      {uni?.photo && (
+      {look?.photo && (
         <>
           <div
-            key={uni.id}
+            key={look.id}
             className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: `url(${withBase(uni.photo.src)})` }}
+            style={{ backgroundImage: `url(${withBase(look.photo.src)})` }}
           />
           <div
             className="absolute inset-0"
@@ -162,7 +166,7 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
       <div
         className="absolute w-[500px] h-[500px] rounded-full opacity-30 blur-[100px]"
         style={{
-          display: uni?.photo ? "none" : undefined,
+          display: look?.photo ? "none" : undefined,
           background: `radial-gradient(circle, ${primary} 0%, transparent 70%)`,
           top: "-10%",
           right: "-10%",
@@ -172,7 +176,7 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
       <div
         className="absolute w-[400px] h-[400px] rounded-full opacity-20 blur-[80px]"
         style={{
-          display: uni?.photo ? "none" : undefined,
+          display: look?.photo ? "none" : undefined,
           background: `radial-gradient(circle, ${secondary} 0%, transparent 70%)`,
           bottom: "-5%",
           left: "-10%",
@@ -212,21 +216,20 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
               boxShadow: `0 8px 32px ${mix(primary, DARK, 0.2, 0.25)}`,
             }}
           >
-            <Logo size={44} accent={uni ? undefined : BRAND.secondary} style={{ color: "rgba(255,255,255,0.95)" }} />
+            <Logo size={44} accent={look ? undefined : BRAND.secondary} style={{ color: "rgba(255,255,255,0.95)" }} />
           </div>
           <h1 ref={summitHeading} tabIndex={-1} className="text-4xl font-extrabold tracking-tight outline-none" style={{ color: "#fff" }}>
             {t("app.name")}
           </h1>
-          <p className="text-sm mt-2 font-medium" style={{ color: "rgba(255,255,255,0.68)" }}>
-            {uni ? (lang === "th" ? uni.nameTh : uni.nameEn) : t("app.tagline")}
-          </p>
+          <p className="text-sm mt-2 font-medium" style={{ color: "rgba(255,255,255,0.75)" }}>{t("app.tagline")}</p>
+          {uni && <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.6)" }}>{lang === "th" ? uni.nameTh : uni.nameEn}</p>}
         </div>
 
         {/* Login card */}
         <div
           className="rounded-3xl px-7 py-7 border"
           style={{
-            background: uni?.photo ? "rgba(11,11,24,0.45)" : "rgba(255,255,255,0.05)",
+            background: look?.photo ? "rgba(11,11,24,0.45)" : "rgba(255,255,255,0.05)",
             backdropFilter: "blur(40px)",
             WebkitBackdropFilter: "blur(40px)",
             borderColor: "rgba(255,255,255,0.08)",
@@ -392,25 +395,23 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
 
         {/* Bottom text: school colours (as the university names them) + photo credit */}
         <div className="text-center text-xs mt-5 space-y-1" style={{ color: "rgba(255,255,255,0.65)" }}>
-          {uni ? (
+          {look && (
             <>
               <p title={approx ? t("uni.approx") : undefined}>
-                {lang === "th" ? uni.colourTh : uni.colourEn}
+                {lang === "th" ? look.colourTh : look.colourEn}
                 {approx && " *"}
               </p>
               {approx && <p style={{ color: "rgba(255,255,255,0.58)" }}>* {t("uni.approx")}</p>}
-              {uni.photo && (
+              {look.photo && (
                 <p>
-                  {t("uni.photo_by")}{" "}
-                  <a href={uni.photo.page} target="_blank" rel="noreferrer" className="tap-area inline-block underline">
-                    {uni.photo.author}
+                  {t("look.photo_by")}{" "}
+                  <a href={look.photo.page} target="_blank" rel="noreferrer" className="tap-area inline-block underline">
+                    {look.photo.author}
                   </a>
-                  , {uni.photo.licence} (Wikimedia Commons)
+                  , {look.photo.licence} (Wikimedia Commons)
                 </p>
               )}
             </>
-          ) : (
-            <p>{t("uni.tagline")}</p>
           )}
         </div>
       </div>
