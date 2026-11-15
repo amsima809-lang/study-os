@@ -148,7 +148,8 @@ export default function Today() {
       <header className="today-head">
         <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{t("today.title")}</h1>
         <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>
-          {formatDate(data.today, lang)} · {t("today.term", { term: data.term })}
+          {/* The term written the way the trail writes it ("Term 2/2569"), not "Term 2/69". */}
+          {formatDate(data.today, lang)} · {(() => { const [k, yy] = data.term.split("/"); return k === "S" ? t("trail.summerOf", { year: `25${yy}` }) : t("trail.termOf", { n: k, year: `25${yy}` }); })()}
         </p>
       </header>
 

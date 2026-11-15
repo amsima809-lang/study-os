@@ -19,15 +19,20 @@ import { useEffect, useState, type RefObject } from "react";
 
 type Pt = { x: number; y: number };
 
-/** A smooth curve through the points (Catmull-Rom, as cubic Bézier segments). */
-export function smoothPath(p: Pt[]): string {
+/**
+ * A smooth curve through the points (Catmull-Rom, as cubic Bézier segments). With `minX` and
+ * `maxX` the control points are kept between them, and so the whole curve is (a Bézier stays
+ * inside the hull of its control points): the trail never runs off the side of the page.
+ */
+export function smoothPath(p: Pt[], minX = -Infinity, maxX = Infinity): string {
   if (p.length < 2) return "";
   const r = (n: number) => Math.round(n * 10) / 10;
   let d = `M${r(p[0].x)},${r(p[0].y)}`;
   for (let i = 0; i < p.length - 1; i++) {
     const a = p[i - 1] ?? p[i], b = p[i], c = p[i + 1], e = p[i + 2] ?? c;
-    const c1 = { x: b.x + (c.x - a.x) / 6, y: b.y + (c.y - a.y) / 6 };
-    const c2 = { x: c.x - (e.x - b.x) / 6, y: c.y - (e.y - b.y) / 6 };
+    const keep = (x: number) => Math.min(maxX, Math.max(minX, x));
+    const c1 = { x: keep(b.x + (c.x - a.x) / 6), y: b.y + (c.y - a.y) / 6 };
+    const c2 = { x: keep(c.x - (e.x - b.x) / 6), y: c.y - (e.y - b.y) / 6 };
     d += ` C${r(c1.x)},${r(c1.y)} ${r(c2.x)},${r(c2.y)} ${r(c.x)},${r(c.y)}`;
   }
   return d;
@@ -95,7 +100,7 @@ export function TrailPath({ root, faint = false }: { root: RefObject<HTMLDivElem
 
         // The trail, top down: the summit, the switchbacks, then each marker and out to its
         // side and down past its section, and last the trailhead.
-        const margin = Math.max(14, Math.min(40, W * 0.04));
+        const margin = W < 640 ? 18 : Math.max(14, Math.min(40, W * 0.04));
         const pts: Pt[] = [place(CAP_BASE), ...[...CLIMB].reverse().map(place)];
         stops.forEach((stop, i) => {
           const m = at(stop.getBoundingClientRect());
@@ -103,19 +108,31 @@ export function TrailPath({ root, faint = false }: { root: RefObject<HTMLDivElem
           const left = i % 2 === 0;
           const side = left ? Math.max(margin, row.left - box.left - 28) : Math.min(W - margin, row.right - box.left + 28);
           pts.push(m);
-          pts.push({ x: side, y: m.y + Math.min(90, row.height * 0.25) });
+          pts.push({ x: m.x + (side > m.x ? 1 : -1) * Math.min(70, Math.abs(side - m.x) / 2), y: m.y - 6 });
+          pts.push({ x: side, y: m.y + 24 });
           pts.push({ x: side, y: row.bottom - box.top - Math.min(40, row.height * 0.1) });
         });
-        pts.push(at(start.getBoundingClientRect(), 0.5, 0));
-        setShape({ w: W, h: H, trail: smoothPath(pts), ridges, rim, cap: poly(CAP) });
+        const sb = start.getBoundingClientRect();
+        const mid = at(sb, 0.5, 0.5);
+        const fromRight = pts[pts.length - 1].x > mid.x;
+        pts.push({ x: pts[pts.length - 1].x, y: mid.y });
+        pts.push(at(sb, fromRight ? 1 : 0, 0.5));
+        setShape({ w: W, h: H, trail: smoothPath(pts, margin, W - margin), ridges, rim, cap: poly(CAP) });
       });
     };
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
+    el.querySelectorAll("[data-trail-summit], [data-trail-row], [data-trail-start]").forEach((n) => ro.observe(n));
     document.fonts?.ready.then(measure).catch(() => {});
     window.addEventListener("resize", measure);
-    return () => { cancelAnimationFrame(frame); ro.disconnect(); window.removeEventListener("resize", measure); };
+    el.addEventListener("animationend", measure);
+    return () => {
+      cancelAnimationFrame(frame);
+      ro.disconnect();
+      window.removeEventListener("resize", measure);
+      el.removeEventListener("animationend", measure);
+    };
   }, [root]);
 
   if (!shape) return null;

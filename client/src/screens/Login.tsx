@@ -63,6 +63,7 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
   const [busy, setBusy] = useState(false);
   // The whole front page, which the trail is measured against.
   const landing = useRef<HTMLDivElement>(null);
+  const summitHeading = useRef<HTMLHeadingElement>(null);
   // In the iPhone app Google sign-in goes through the system's sign-in sheet (native.ts).
   // A copy of the app from before it could do that cannot sign in with Google at all.
   const inApp = inNativeApp();
@@ -192,10 +193,10 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
           >
             <Logo size={44} accent={uni ? undefined : BRAND.secondary} style={{ color: "rgba(255,255,255,0.95)" }} />
           </div>
-          <h1 className="text-4xl font-extrabold tracking-tight" style={{ color: "#fff" }}>
+          <h1 ref={summitHeading} tabIndex={-1} className="text-4xl font-extrabold tracking-tight outline-none" style={{ color: "#fff" }}>
             {t("app.name")}
           </h1>
-          <p className="text-sm mt-2 font-medium" style={{ color: "rgba(255,255,255,0.45)" }}>
+          <p className="text-sm mt-2 font-medium" style={{ color: "rgba(255,255,255,0.68)" }}>
             {uni ? (lang === "th" ? uni.nameTh : uni.nameEn) : t("app.tagline")}
           </p>
         </div>
@@ -228,7 +229,7 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
               <div className="space-y-2">
                 <div className="flex items-center gap-3">
                   <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.08)" }} />
-                  <span className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>{t("land.newHere")}</span>
+                  <span className="text-xs" style={{ color: "rgba(255,255,255,0.65)" }}>{t("land.newHere")}</span>
                   <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.08)" }} />
                 </div>
                 {inApp ? (
@@ -240,7 +241,7 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
                     {t("land.register")}
                   </a>
                 )}
-                <p className="text-xs text-center" style={{ color: "rgba(255,255,255,0.45)" }}>{t("land.registerNote")}</p>
+                <p className="text-xs text-center text-balance" style={{ color: "rgba(255,255,255,0.7)" }}>{t("land.registerNote")}</p>
               </div>
             )}
             {methods?.google && inApp && !appCanGoogle && (
@@ -258,7 +259,7 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
             {/* Divider */}
             {methods?.google && methods.devLogin && <div className="flex items-center gap-3">
               <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.08)" }} />
-              <span className="text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>{t("auth.or")}</span>
+              <span className="text-xs" style={{ color: "rgba(255,255,255,0.6)" }}>{t("auth.or")}</span>
               <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.08)" }} />
             </div>}
 
@@ -366,14 +367,14 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
         </div>
 
         {/* Bottom text: school colours (as the university names them) + photo credit */}
-        <div className="text-center text-xs mt-5 space-y-1" style={{ color: "rgba(255,255,255,0.4)" }}>
+        <div className="text-center text-xs mt-5 space-y-1" style={{ color: "rgba(255,255,255,0.65)" }}>
           {uni ? (
             <>
               <p title={approx ? t("uni.approx") : undefined}>
                 {lang === "th" ? uni.colourTh : uni.colourEn}
                 {approx && " *"}
               </p>
-              {approx && <p style={{ color: "rgba(255,255,255,0.28)" }}>* {t("uni.approx")}</p>}
+              {approx && <p style={{ color: "rgba(255,255,255,0.58)" }}>* {t("uni.approx")}</p>}
               {uni.photo && (
                 <p>
                   {t("uni.photo_by")}{" "}
@@ -394,7 +395,13 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
 
     </section>
 
-      <LandingMore onSignIn={() => document.getElementById("top")?.scrollIntoView({ behavior: "smooth" })} />
+      <LandingMore
+        onSignIn={() => {
+          const still = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+          document.getElementById("top")?.scrollIntoView({ behavior: still ? "auto" : "smooth" });
+          summitHeading.current?.focus({ preventScroll: true });
+        }}
+      />
 
       {picking && (
         <UniversityPicker current={uni} onPick={chooseUni} onClose={() => setPicking(false)} />

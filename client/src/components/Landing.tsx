@@ -72,7 +72,7 @@ export function AppStoreButton({ compact = false }: { compact?: boolean }) {
       {body}
     </a>
   ) : (
-    <span className={cls} style={{ ...style, opacity: 0.7 }} aria-label={t("land.appSoon")}>
+    <span className={cls} style={{ ...style, opacity: 0.7 }}>
       {body}
     </span>
   );
@@ -103,14 +103,14 @@ export default function LandingMore({ onSignIn }: { onSignIn: () => void }) {
   return (
     <div id="features" style={{ background: "linear-gradient(180deg, #24243e 0%, #14132a 30%, #0b0b18 100%)", color: "#fff" }}>
       {/* Everything here sits above the trail, which is drawn behind the whole page. */}
-      <section data-trail-row className="relative z-[2] max-w-5xl mx-auto px-6 pt-16 text-center">
-        <Stop icon="flag" />
+      <section data-trail-row className="relative z-[2] max-w-5xl mx-auto px-9 md:px-6 pt-16 text-center">
+        <Stop icon="bookOpen" />
         <h2 className="mt-4 text-2xl md:text-4xl font-extrabold tracking-tight">{t("land.featuresTitle")}</h2>
         <p className="text-sm md:text-base mt-2" style={{ color: "rgba(255,255,255,0.6)" }}>{t("land.featuresIntro")}</p>
       </section>
 
       {/* One feature at a time, a stop each: what it does, beside the screen that does it. */}
-      <div className="relative z-[2] max-w-5xl mx-auto px-6 py-14 space-y-20 md:space-y-28">
+      <div className="relative z-[2] max-w-5xl mx-auto px-9 md:px-6 py-14 space-y-20 md:space-y-28">
         {SHOWN.map((f, i) => (
           <section key={f.key} data-trail-row className={`flex flex-col gap-8 md:gap-16 items-center ${i % 2 ? "md:flex-row-reverse" : "md:flex-row"}`}>
             <div className="flex-1 max-w-md text-center md:text-left">
@@ -123,7 +123,7 @@ export default function LandingMore({ onSignIn }: { onSignIn: () => void }) {
         ))}
       </div>
 
-      <section data-trail-row className="relative z-[2] max-w-5xl mx-auto px-6 pb-8 text-center">
+      <section data-trail-row className="relative z-[2] max-w-5xl mx-auto px-9 md:px-6 pb-8 text-center">
         <Stop icon="sparkles" />
         <h2 className="mt-4 text-lg font-bold">{t("land.moreTitle")}</h2>
         <ul className="mt-5 grid gap-3 sm:grid-cols-3 text-left">
@@ -140,14 +140,14 @@ export default function LandingMore({ onSignIn }: { onSignIn: () => void }) {
       </section>
 
       {!native && (
-        <section data-trail-row className="relative z-[2] max-w-5xl mx-auto px-6 py-12 text-center">
+        <section data-trail-row className="relative z-[2] max-w-5xl mx-auto px-9 md:px-6 py-12 text-center">
           <Stop icon="download" />
           <div className="mt-4 rounded-3xl border p-6 md:p-8 flex flex-col md:flex-row md:items-center gap-5 text-left" style={SOLID}>
             {/* The app's own icon, as it looks on the Home Screen. */}
             <img src={withBase("/apple-touch-icon.png")} alt="" width={56} height={56} className="w-14 h-14 rounded-2xl shrink-0" />
             <div className="flex-1">
-              <h2 className="text-lg font-bold">{t("land.appTitle")}</h2>
-              <p className="text-sm mt-1" style={{ color: "rgba(255,255,255,0.62)" }}>{t("land.appBody")}</p>
+              <h2 className="text-lg font-bold">{t(APP_STORE_URL ? "land.appTitle" : "land.appSoonTitle")}</h2>
+              <p className="text-sm mt-1" style={{ color: "rgba(255,255,255,0.68)" }}>{t(APP_STORE_URL ? "land.appBody" : "land.appSoonBody")}</p>
             </div>
             <AppStoreButton />
           </div>
@@ -170,7 +170,7 @@ export default function LandingMore({ onSignIn }: { onSignIn: () => void }) {
         </button>
       </section>
 
-      <footer className="relative z-[2] px-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] text-center text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
+      <footer className="relative z-[2] px-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] text-center text-xs" style={{ color: "rgba(255,255,255,0.62)" }}>
         {t("land.footer")}
       </footer>
     </div>
