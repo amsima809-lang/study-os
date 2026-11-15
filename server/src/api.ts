@@ -6,6 +6,8 @@ import { Router } from "express";
 import type { DB } from "./db.js";
 import { env } from "./env.js";
 import { itemsForToday, occurrencesInRange } from "./reminders.js";
+import { courseExams, termExamWindows } from "./termExams.js";
+import { ETESTING_PERIODS } from "./etestingBookings.js";
 
 // ---------- date helpers (Asia/Bangkok) ----------
 const TZ = "Asia/Bangkok";
@@ -343,7 +345,7 @@ export function createApiRouter(db: DB): Router {
     const options = db
       .prepare(
         `SELECT c.code, c.name_th, c.name_en, COALESCE(pc.category, c.category) AS category,
-                (SELECT GROUP_CONCAT(cs.weekday || ' ' || cs.start_time || '-' || cs.end_time, ';')
+                (SELECT GROUP_CONCAT(cs.weekday || ' ' || cs.start_time || '-' || cs.end_time || '|' || COALESCE(cs.kind, ''), ';')
                    FROM class_sessions cs WHERE cs.course_code = c.code AND cs.term_id = @term) AS classes,
                 (SELECT o.notes FROM term_offerings o WHERE o.course_code = c.code AND o.term_id = @term) AS note
          FROM courses c
@@ -355,8 +357,11 @@ export function createApiRouter(db: DB): Router {
            ${mine.sql.replace("?", "@program")}
          ORDER BY c.code`,
       )
-      .all({ term, user: userId, program: mine.params[0] ?? null });
-    res.json({ term, chosen: termCourses(db, userId, term), options });
+      .all({ term, user: userId, program: mine.params[0] ?? null }) as { code: string }[];
+    // Each course's final and whether it can be taken early by e-Testing, and the term's windows,
+    // so the picker can show how the exams of what she ticks fall (components/ExamFit.tsx).
+    const exams = courseExams(db, term, options.map((o) => o.code));
+    res.json({ term, chosen: termCourses(db, userId, term), options: options.map((o) => ({ ...o, ...exams[o.code] })), windows: termExamWindows(db, term) });
   });
 
   // Replace the student's courses for the current term. Placeholders in the plan are kept.
@@ -411,7 +416,9 @@ export function createApiRouter(db: DB): Router {
     const firstExamDate = exams.length > 0 ? exams[0].datetime_start.slice(0, 10) : null;
 
     type CalEvent = {
-      type: "class" | "exam" | "task" | "etesting" | "reminder" | "todo" | "event";
+      type: "class" | "exam" | "task" | "etesting" | "etbooked" | "reminder" | "todo" | "event";
+      /** For "etesting": a registration day, or a day the central centre tests. */
+      etesting_kind?: "registration" | "testing";
       course_code: string;
       name_th: string;
       name_en: string | null;
@@ -528,15 +535,33 @@ export function createApiRouter(db: DB): Router {
         for (const d = new Date(`${a}T00:00:00Z`), end = new Date(`${b}T00:00:00Z`); d <= end; d.setUTCDate(d.getUTCDate() + 1)) f(d.toISOString().slice(0, 10), d.getUTCDay());
       };
       eachDay(et.registration_start, et.registration_end, (iso) => push(iso, {
-        type: "etesting", course_code: "",
+        type: "etesting", etesting_kind: "registration", course_code: "",
         name_th: "ลงทะเบียนสอบ e-Testing (E-SERVICE)", name_en: "e-Testing registration (E-SERVICE)",
         ...(iso === et.registration_start && et.registration_opens ? { start_time: et.registration_opens } : {}),
       }));
       eachDay(et.exam_start, et.exam_end, (iso, weekday) => {
         if (isClosed(iso)) return;
         const weekend = weekday === 0 || weekday === 6;
-        push(iso, { type: "etesting", course_code: "", name_th: "ช่วงสอบ e-Testing", name_en: "e-Testing exam period", description: weekend ? "09:00–20:30" : "09:00–17:30" });
+        push(iso, { type: "etesting", etesting_kind: "testing", course_code: "", name_th: "ช่วงสอบ e-Testing", name_en: "e-Testing exam period", description: weekend ? "09:00–20:30" : "09:00–17:30" });
       });
+    }
+
+    // Her own e-Testing bookings (etestingBookings.ts): the course, the day and the period she chose.
+    // Marked apart from the window above ("etbooked"): this one she has registered and paid for.
+    // Only for a course she is still registered in that term: one she dropped is not shown.
+    if (ru) {
+      const booked = db.prepare(
+        `SELECT b.course_code, b.date, b.period, b.centre, c.name_th, c.name_en FROM etesting_bookings b
+         JOIN plan_items pi ON pi.user_id = b.user_id AND pi.term_id = b.term_id AND pi.course_code = b.course_code
+         LEFT JOIN courses c ON c.code = b.course_code WHERE b.user_id = ? AND b.date BETWEEN ? AND ?`,
+      ).all(userId, firstDay, lastDay) as { course_code: string; date: string; period: 1 | 2 | 3 | 4; centre: string; name_th: string | null; name_en: string | null }[];
+      for (const b of booked) {
+        push(b.date, {
+          type: "etbooked", course_code: b.course_code, name_th: b.name_th ?? b.course_code, name_en: b.name_en,
+          start_time: ETESTING_PERIODS[b.period][0], end_time: ETESTING_PERIODS[b.period][1],
+          location: b.centre === "central" ? "หัวหมาก (Hua Mak)" : "ศูนย์ส่วนภูมิภาค (regional centre)",
+        });
+      }
     }
 
     // the student's reminders, to-dos and events (repeating ones are expanded per day)

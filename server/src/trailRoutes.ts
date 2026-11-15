@@ -9,6 +9,7 @@ import type { DB } from "./db.js";
 import { getSetting, hasCatalog, termCourses } from "./api.js";
 import { buildTrail, nextTerm, parseTerm, termIndex, CREDIT_LIMITS, type Category, type TrailInput } from "./trail.js";
 import { courseResults, passedCourses, passedCreditsByCategory, setPassedList, setResult } from "./results.js";
+import { courseExams, etestingBefore, termExamWindows, type CourseExam } from "./termExams.js";
 
 export { passedCourses };
 
@@ -154,7 +155,7 @@ export function suggestedCourses(db: DB, userId: string): { term: string; codes:
  * term's courses (PUT /api/term-courses), and the terms after it are planned again around them.
  * In order of code, whichever they are, so a row does not jump away when it is ticked or unticked.
  */
-export type ThisTermCourse = { code: string; name_th: string; name_en: string | null; credits: number; category: string | null; registered: boolean; suggested: boolean };
+export type ThisTermCourse = { code: string; name_th: string; name_en: string | null; credits: number; category: string | null; classes: string | null; registered: boolean; suggested: boolean } & CourseExam;
 export function thisTermCourses(db: DB, userId: string): { term: string; courses: ThisTermCourse[] } {
   const term = currentTerm(db);
   const registered = termCourses(db, userId, term);
@@ -162,17 +163,20 @@ export function thisTermCourses(db: DB, userId: string): { term: string; courses
   const codes = [...new Set([...registered, ...suggested])];
   if (codes.length === 0) return { term, courses: [] };
   const rows = db.prepare(
-    `SELECT c.code, c.name_th, c.name_en, c.credits, COALESCE(pc.category, c.category) AS category
+    `SELECT c.code, c.name_th, c.name_en, c.credits, COALESCE(pc.category, c.category) AS category,
+            (SELECT GROUP_CONCAT(cs.weekday || ' ' || cs.start_time || '-' || cs.end_time || '|' || COALESCE(cs.kind, ''), ';')
+               FROM class_sessions cs WHERE cs.course_code = c.code AND cs.term_id = ?) AS classes
      FROM courses c
      LEFT JOIN program_courses pc ON pc.course_code = c.code
           AND pc.program_id = (SELECT program_id FROM user_profiles WHERE user_id = ?)
      WHERE c.code IN (${codes.map(() => "?").join(",")})`,
-  ).all(userId, ...codes) as Omit<ThisTermCourse, "registered" | "suggested">[];
+  ).all(term, userId, ...codes) as Omit<ThisTermCourse, "registered" | "suggested" | keyof CourseExam>[];
   const mine = new Set(registered), plan = new Set(suggested);
+  const exams = courseExams(db, term, rows.map((r) => r.code));
   return {
     term,
     courses: rows
-      .map((r) => ({ ...r, registered: mine.has(r.code), suggested: plan.has(r.code) }))
+      .map((r) => ({ ...r, ...exams[r.code], registered: mine.has(r.code), suggested: plan.has(r.code) }))
       .sort((a, b) => a.code.localeCompare(b.code)),
   };
 }
@@ -243,6 +247,10 @@ export function trailPayload(db: DB, userId: string) {
   return {
     available: true as const, currentTerm: input.currentTerm, goal, targets, limits: CREDIT_LIMITS, trail, names,
     otherSummers: otherSummers(input), lastSummer: lastSummer(db, summerCodes, input.currentTerm),
+    // This term's finals fortnight and e-Testing window; for later terms, which planned
+    // courses were on an e-Testing list before (a term's own list is announced each term).
+    examWindows: termExamWindows(db, input.currentTerm),
+    etestingBefore: etestingBefore(db, trail.terms.filter((t) => t.term !== input.currentTerm).flatMap((t) => t.items.map((i) => i.code)).filter((c): c is string => !!c), input.currentTerm),
     history: [...input.historyTerms].sort((a, b) => termIndex(a) - termIndex(b)),
     chosenThisTerm: input.current.length, passedCount: input.passed.length, thisTerm,
     // Credits passed in each part of the curriculum (the bars the degree planner used to show).

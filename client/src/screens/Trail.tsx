@@ -14,6 +14,8 @@ import TermCoursesPicker, { ChooseCoursesCard, EditCoursesButton } from "../comp
 import { REMINDERS_CHANGED } from "../components/Reminders.tsx";
 import Icon from "../components/Icon.tsx";
 import PassedPicker from "../components/PassedPicker.tsx";
+import TermPreview, { FitSummary, RuLink, etRegistrationOver, type ExamWindows } from "../components/TermPreview.tsx";
+import { RU_LINKS } from "../ruLinks.ts";
 
 type Category = "GE" | "CORE" | "MAJOR_REQ" | "MAJOR_ELEC" | "FREE";
 type Item = {
@@ -51,13 +53,21 @@ type TrailData =
       chosenThisTerm: number;
       passedCount: number;
       /** This term: what she registered for, and what the trail would have her take. */
-      thisTerm: { term: string; courses: { code: string; name_th: string; name_en: string | null; credits: number; category: string | null; registered: boolean; suggested: boolean }[] };
+      thisTerm: { term: string; courses: NowCourse[] };
+      /** This term's finals fortnight and e-Testing window; later-term courses on an earlier e-Testing list. */
+      examWindows: ExamWindows;
+      etestingBefore: Record<string, string>;
       categories: { category: string; required: number; passed: number }[];
       /** The same plan with summer terms switched the other way. */
       otherSummers: { summers: boolean; achievable: boolean; earliestTerm: string | null };
       /** For courses in a summer term of the plan: how each ran in the latest past summer. */
       lastSummer: Record<string, LastRun>;
     };
+/** One of this term's courses on the trail screen: registered or suggested, with its classes and final. */
+type NowCourse = {
+  code: string; name_th: string; name_en: string | null; credits: number; category: string | null; registered: boolean; suggested: boolean;
+  classes: string | null; exam_date: string | null; exam_slot: "A" | "B" | null; exam_note: string | null; etesting: boolean; etesting_essay?: boolean;
+};
 type LastRun = {
   term: string;
   classes: { days: number[]; start: string | null; end: string | null; room: string; kind: string; text: string }[];
@@ -75,6 +85,8 @@ export default function Trail() {
   // is worked out again; a save that fails is said in the goal card and the old goal comes back.
   const [pendingGoal, setPendingGoal] = useState<Partial<{ target: string; summers: boolean; maxPerTerm: number }> | null>(null);
   const [goalFailed, setGoalFailed] = useState(false);
+  // The term preview: this term's week and finals (TermPreview.tsx).
+  const [previewing, setPreviewing] = useState(false);
   const [picking, setPicking] = useState(false);
   // This term's courses: the full list ("Edit courses"), and a tick being saved.
   const [editing, setEditing] = useState(false);
@@ -83,7 +95,6 @@ export default function Trail() {
   const [ticked, setTicked] = useState<Record<string, boolean>>({});
   // Courses unticked during this visit. One the trail does not suggest would otherwise drop out
   // of the list once unticked, and a slip could not be undone on the card.
-  type NowCourse = { code: string; name_th: string; name_en: string | null; credits: number; category: string | null; registered: boolean; suggested: boolean };
   const [dropped, setDropped] = useState<Record<string, NowCourse>>({});
   // A save that failed: said inside the card, not by blanking the whole screen.
   const [tickFailed, setTickFailed] = useState(false);
@@ -192,6 +203,15 @@ export default function Trail() {
     .sort((a, b) => a.code.localeCompare(b.code))
     .map((c) => ({ ...c, on: ticked[c.code] ?? c.registered }));
   const anyOn = nowCourses.some((c) => c.on);
+  // What the preview shows: the registered courses; before any are registered, the trail's suggestions.
+  const previewCourses = anyOn ? nowCourses.filter((c) => c.on) : nowCourses.filter((c) => c.suggested);
+  // e-Testing this term, while its registration is still ahead or open.
+  const et = data.examWindows?.etesting ?? null;
+  const etOpen = !!et && !etRegistrationOver(et);
+  const etHere = previewCourses.filter((c) => c.etesting).length;
+  const regSpan = !et ? "" : et.registration_start.slice(0, 7) === et.registration_end.slice(0, 7)
+    ? `${Number(et.registration_start.slice(8))}–${formatDate(et.registration_end, lang)}`
+    : `${formatDate(et.registration_start, lang)} – ${formatDate(et.registration_end, lang)}`;
   const nowCredits = nowCourses.filter((c) => c.on).reduce((n, c) => n + c.credits, 0);
   const suggestedCredits = nowCourses.filter((c) => c.suggested).reduce((n, c) => n + c.credits, 0);
   // With nothing registered, the plan's first term IS this term: its course places are in the
@@ -321,6 +341,13 @@ export default function Trail() {
           )}
         </div>
       )}
+      {/* e-Testing: an extra, earlier chance at this term's finals. Quiet: one line, never above the verdict. */}
+      {trail.credits.left > 0 && etOpen && etHere > 0 && (
+        <p className="text-sm flex gap-2" style={{ color: "var(--text-secondary)" }}>
+          <Icon name="clock" size={16} style={{ marginTop: 2, flexShrink: 0, color: "#b45309" }} />
+          <span>{t("trail.etChance", { n: etHere, reg: regSpan })} <RuLink href={RU_LINKS.E_SERVICE}>{t("link.etBook")}</RuLink></span>
+        </p>
+      )}
       {/* What summer terms change, both ways, so switching them always shows its effect. */}
       {trail.credits.left > 0 && summerLine && (
         <p className="text-sm flex gap-2" style={{ color: "var(--text-secondary)" }}>
@@ -428,6 +455,10 @@ export default function Trail() {
             ))}
           </ul>
         )}
+        {/* How this term's week and finals look, with a full preview. */}
+        {previewCourses.length > 0 && data.examWindows && (
+          <div className="mt-3"><FitSummary courses={previewCourses} windows={data.examWindows} onPreview={() => setPreviewing(true)} /></div>
+        )}
         <div className="mt-3 flex justify-end">
           <EditCoursesButton count={nowCourses.filter((c) => c.on).length} onClick={() => setEditing(true)} disabled={busy} />
         </div>
@@ -466,6 +497,8 @@ export default function Trail() {
                   {t(`cat.${item.category}`)}
                   {item.type === "choice" && ` · ${t("trail.yourChoice")}`}
                   {item.type === "free" && ` · ${t("trail.anyCourse")}`}
+                  {/* A later term's e-Testing list is announced each term: say only what was offered before. */}
+                  {item.code && data.etestingBefore?.[item.code] && ` · ${t("trail.etBefore", { term: termName(data.etestingBefore[item.code]) })}`}
                   {item.code && (item.offered === null || item.offered < item.of) && (
                     <span style={{ color: "var(--warning, var(--danger))" }}>
                       {" · "}
@@ -515,6 +548,7 @@ export default function Trail() {
 
       {picking && <PassedPicker onClose={() => { setPicking(false); load(); }} />}
       {editing && <TermCoursesPicker onClose={() => { setEditing(false); load(); }} />}
+      {previewing && data.examWindows && <TermPreview courses={previewCourses} windows={data.examWindows} canBook={anyOn} onClose={() => { setPreviewing(false); load(); }} />}
     </div>
   );
 }

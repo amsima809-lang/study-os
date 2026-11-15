@@ -89,7 +89,10 @@ export type ExamsData = {
 
 // ---------- Calendar ----------
 export type CalEvent = {
-  type: "class" | "exam" | "task" | "etesting" | "reminder" | "todo" | "event";
+  /** "etesting": the university's e-Testing days (registration, testing); "etbooked": an e-Testing exam she booked. */
+  type: "class" | "exam" | "task" | "etesting" | "etbooked" | "reminder" | "todo" | "event";
+  /** For "etesting": a registration day, or a day the central centre tests. */
+  etesting_kind?: "registration" | "testing";
   course_code: string;
   name_th: string;
   name_en: string | null;

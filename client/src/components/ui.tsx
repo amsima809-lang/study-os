@@ -281,3 +281,13 @@ export function useOnline(): boolean {
   }, []);
   return online;
 }
+
+/**
+ * Is this dialog the one on top? Dialogs open over each other (the term preview over the course
+ * picker, a confirmation over the preview): only the top one should answer Escape. The newest
+ * dialog is the last [role=dialog] in the page (portals are appended to <body>).
+ */
+export function isTopDialog(el: Element | null): boolean {
+  const all = document.querySelectorAll('[role="dialog"]');
+  return !!el && all[all.length - 1] === el;
+}

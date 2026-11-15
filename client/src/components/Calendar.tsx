@@ -24,12 +24,14 @@ function shiftMonth(month: string, delta: number): string {
   return d.toISOString().slice(0, 7);
 }
 
-type DotType = "class" | "exam" | "task" | "etesting" | "reminder" | "todo" | "event";
+type DotType = "class" | "exam" | "task" | "etesting" | "etwindow" | "etbooked" | "reminder" | "todo" | "event";
 const DOT_COLORS: Record<DotType, string> = {
   class: "var(--accent-2, var(--accent-text))",
   exam: "#ef4444",
   task: "#22c55e",
-  etesting: "#f59e0b",
+  etesting: "#d97706",
+  etwindow: "#d97706",
+  etbooked: "#d97706",
   event: "#6366f1",
   reminder: "#0ea5e9",
   todo: "#a855f7",
@@ -38,9 +40,12 @@ const DOT_COLORS: Record<DotType, string> = {
 /**
  * The mark under a day in the month grid. Each kind has its own SHAPE as well
  * as its own colour, so the kinds can be told apart without seeing colour:
- * class ●, exam ◆, study-plan task ■, e-Testing ▲, event ▬, reminder ○, to-do □.
+ * class ●, exam ◆, study-plan task ■, e-Testing: registration ▲, testing days △ (hollow, quiet),
+ * an exam she booked ★; event ▬, reminder ○, to-do □.
  */
-const DOT_ORDER: DotType[] = ["class", "exam", "task", "etesting", "event", "reminder", "todo"];
+const DOT_ORDER: DotType[] = ["class", "exam", "task", "etbooked", "etesting", "etwindow", "event", "reminder", "todo"];
+/** The dot for an item: e-Testing testing days get their own, quieter mark. */
+const dotOf = (e: { type: CalEvent["type"]; etesting_kind?: string }): DotType => (e.type === "etesting" && e.etesting_kind === "testing" ? "etwindow" : e.type);
 function DotMark({ type, color }: { type: DotType; color: string }) {
   const base = { display: "inline-block", width: 7, height: 7, flexShrink: 0 } as React.CSSProperties;
   const shapes: Record<DotType, React.CSSProperties> = {
@@ -48,6 +53,9 @@ function DotMark({ type, color }: { type: DotType; color: string }) {
     exam: { ...base, backgroundColor: color, transform: "rotate(45deg) scale(0.85)" },
     task: { ...base, backgroundColor: color, borderRadius: 1 },
     etesting: { ...base, backgroundColor: color, clipPath: "polygon(50% 0, 100% 100%, 0 100%)" },
+    // hollow: the outline drawn as a triangle with a triangle cut out of it
+    etwindow: { ...base, width: 8, height: 8, backgroundColor: color, clipPath: "polygon(50% 0, 100% 100%, 0 100%, 0 100%, 24% 84%, 76% 84%, 50% 30%, 24% 84%, 0 100%)" },
+    etbooked: { ...base, width: 9, height: 9, backgroundColor: color, clipPath: "polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)" },
     event: { ...base, width: 10, height: 4, borderRadius: 2, backgroundColor: color },
     reminder: { ...base, borderRadius: "50%", border: `1.5px solid ${color}` },
     todo: { ...base, borderRadius: 1, border: `1.5px solid ${color}` },
@@ -206,7 +214,7 @@ export default function Calendar() {
   }
 
   // The kinds of item that appear somewhere in this month, for the legend.
-  const monthKinds = DOT_ORDER.filter((typ) => days.some((c) => c && data?.events[c.date]?.some((e) => e.type === typ)));
+  const monthKinds = DOT_ORDER.filter((typ) => days.some((c) => c && data?.events[c.date]?.some((e) => dotOf(e) === typ)));
 
   const selectedEvents = selected && data?.events[selected] ? data.events[selected] : [];
 
@@ -317,7 +325,7 @@ export default function Calendar() {
           const isToday = date === data?.today;
           const isSel = date === selected;
           const types = new Set<DotType>();
-          if (events) for (const e of events) types.add(e.type);
+          if (events) for (const e of events) types.add(dotOf(e));
 
           return (
             <button
@@ -455,6 +463,7 @@ function EventRow({
     exam: { bg: "rgba(239,68,68,0.15)", text: "#ef4444" },
     task: { bg: "rgba(34,197,94,0.15)", text: "#22c55e" },
     etesting: { bg: "rgba(245,158,11,0.15)", text: "#f59e0b" },
+    etbooked: { bg: "rgba(217,119,6,0.22)", text: "#b45309" },
     event: { bg: "rgba(99,102,241,0.15)", text: "#6366f1" },
     reminder: { bg: "rgba(14,165,233,0.15)", text: "#0ea5e9" },
     todo: { bg: "rgba(168,85,247,0.15)", text: "#a855f7" },
@@ -465,6 +474,7 @@ function EventRow({
     exam: t("cal.exam"),
     task: t("cal.task"),
     etesting: t("cal.etesting"),
+    etbooked: t("cal.etbooked"),
     event: t("rem.kind.event"),
     reminder: t("rem.kind.reminder"),
     todo: t("rem.kind.todo"),

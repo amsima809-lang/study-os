@@ -146,6 +146,21 @@ const Body = z
 
 export function createRemindersRouter(db: DB): Router {
   const router = Router();
+  // Her own commitments in a week or two (events and timed reminders, as she entered them,
+  // repeats expanded): what a course's class times are checked against in the term preview.
+  router.get("/commitments", (req, res) => {
+    const from = String(req.query.from ?? ""), to = String(req.query.to ?? "");
+    const ok = (d: string) => /^\d{4}-\d{2}-\d{2}$/.test(d);
+    const span = (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000;
+    if (!ok(from) || !ok(to) || !(span >= 0 && span <= 31)) return res.status(400).json({ error: "bad range", code: "BAD_RANGE" });
+    const days: Record<string, { id: number; kind: string; title: string; time: string | null; end_time: string | null }[]> = {};
+    for (const [date, list] of Object.entries(occurrencesInRange(db, req.user!.id, from, to))) {
+      const timed = list.filter((o) => o.time && o.kind !== "todo");
+      if (timed.length) days[date] = timed.map((o) => ({ id: o.id, kind: o.kind, title: o.title, time: o.time, end_time: o.end_time ?? null }));
+    }
+    res.json({ days });
+  });
+
   // The university's dates as reminders in her own list (universityReminders.ts), in the language
   // the app is shown in. The app asks on start and when the language changes.
   router.post("/reminders/university", (req, res) => {

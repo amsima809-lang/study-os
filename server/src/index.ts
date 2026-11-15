@@ -27,6 +27,7 @@ import { createStudyPlanRouter } from "./studyplan.js";
 import { createLecturesRouter } from "./lectures.js";
 import { createRemindersRouter } from "./reminders.js";
 import { createTrailRouter } from "./trailRoutes.js";
+import { createEtestingRouter } from "./etestingBookings.js";
 import { createPushRouter, loadVapidKeys, startPushScheduler } from "./push.js";
 import { parseOldAddresses, movedMiddleware } from "./moved.js";
 
@@ -66,7 +67,7 @@ app.use(passport.session());
 
 // --- public routes ---
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, app: "StudyOS", phase: 70, tz: env.tz, time: new Date().toISOString() });
+  res.json({ ok: true, app: "StudyOS", phase: 71, tz: env.tz, time: new Date().toISOString() });
 });
 // Every answer from the API is about now: never kept by a browser or the iOS app's web view, so
 // a screen that saves and then asks again (the trail after a change to its goal) gets the new answer.
@@ -206,6 +207,7 @@ app.use("/api", createStudyPlanRouter(db));
 app.use("/api", createLecturesRouter(db));
 app.use("/api", createRemindersRouter(db));
 app.use("/api", createTrailRouter(db));
+app.use("/api", createEtestingRouter(db));
 
 // Notifications when the app is closed: routes for devices, and the half-minute check for due items.
 const vapidKeys = loadVapidKeys(db);

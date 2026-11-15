@@ -4,23 +4,30 @@
  * show those and nothing else; until a student chooses, they are empty and
  * each shows `ChooseCoursesCard` instead.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useT } from "../i18n.tsx";
 import { getJSON, postJSON, putJSON, type ApiError } from "../api.ts";
 import { CourseChip } from "./CourseTitle.tsx";
 import { REMINDERS_CHANGED } from "./Reminders.tsx";
 import Icon from "./Icon.tsx";
-import { Card } from "./ui.tsx";
+import { Card, isTopDialog } from "./ui.tsx";
 import PassedPicker from "./PassedPicker.tsx";
 
 /** Open the trail planner. (The event the app shell listens for; destinations.tsx imports this file, so its helper cannot be imported here.) */
 const openTrail = () => window.dispatchEvent(new CustomEvent("studyos:navigate", { detail: "trail" }));
 type TermCheck = { term: string; due: boolean; courses: { term_id: string; code: string; name_th: string; name_en: string | null }[] };
 import { timeRange } from "../format.ts";
+import TermPreview, { FitSummary, RuLink, type ExamWindows } from "./TermPreview.tsx";
+import { RU_LINKS } from "../ruLinks.ts";
+import { formatDate } from "../format.ts";
 
-type Option = { code: string; name_th: string; name_en: string | null; category: string; classes: string | null; note?: string | null };
-type Data = { term: string; chosen: string[]; options: Option[] };
+type Option = {
+  code: string; name_th: string; name_en: string | null; category: string; classes: string | null; note?: string | null;
+  // The final as the registrar prints it, and whether it can be taken early by e-Testing (server/src/termExams.ts).
+  exam_date: string | null; exam_slot: "A" | "B" | null; exam_note: string | null; etesting: boolean; etesting_essay?: boolean;
+};
+type Data = { term: string; chosen: string[]; options: Option[]; windows: ExamWindows };
 
 const CATEGORIES = ["GE", "CORE", "MAJOR_REQ", "MAJOR_ELEC", "FREE"];
 
@@ -206,6 +213,9 @@ export default function TermCoursesPicker({ onClose }: { onClose: () => void }) 
   // nothing is chosen yet, so choosing can be one tap on Save.
   const [suggested, setSuggested] = useState<string[]>([]);
   const [markingPassed, setMarkingPassed] = useState(false);
+  // The term preview (TermPreview.tsx): how the ticked courses' week and finals look.
+  const [previewing, setPreviewing] = useState(false);
+  const pickedCourses = useMemo(() => (data?.options ?? []).filter((o) => picked.has(o.code)), [data, picked]);
 
   const load = useCallback(() => {
     Promise.all([
@@ -223,8 +233,10 @@ export default function TermCoursesPicker({ onClose }: { onClose: () => void }) 
   }, [t]);
   useEffect(() => { load(); }, [load]);
 
+  // Escape closes the picker only when it is on top (not under the preview or the passed list).
+  const sheet = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && isTopDialog(sheet.current) && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
@@ -254,12 +266,14 @@ export default function TermCoursesPicker({ onClose }: { onClose: () => void }) 
   }
 
   /** "1 08:30-11:00;3 13:00-15:00" -> "Mon 08:30–11:00, Wed 13:00–15:00" */
+  /** "1 08:30-11:00|SEC. 1;3 13:00-15:00|" -> "Mon 08:30–11:00 (SEC. 1), Wed 13:00–15:00" */
   const when = (classes: string | null) =>
     classes
       ? classes.split(";").map((c) => {
-          const [day, time] = c.split(" ");
+          const [slot, kind = ""] = c.split("|");
+          const [day, time] = slot.split(" ");
           const [start, end] = time.split("-");
-          return `${t(DAY_KEYS[Number(day)] ?? "")} ${timeRange(start, end)}`;
+          return `${t(DAY_KEYS[Number(day)] ?? "")} ${timeRange(start, end)}${/^SEC\b/i.test(kind) ? ` (${kind})` : ""}`;
         }).join(", ")
       : t("tc.examOnly");
 
@@ -280,6 +294,7 @@ export default function TermCoursesPicker({ onClose }: { onClose: () => void }) 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" style={{ background: "rgba(0,0,0,0.5)" }} onClick={onClose}>
       <div
+        ref={sheet}
         role="dialog"
         aria-modal="true"
         aria-label={t("tc.title")}
@@ -291,6 +306,10 @@ export default function TermCoursesPicker({ onClose }: { onClose: () => void }) 
           <div>
             <h2 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>{t("tc.title")}</h2>
             <p className="text-sm mt-0.5" style={{ color: "var(--text-secondary)" }}>{t("tc.hint", { term: data?.term ?? "" })}</p>
+            {/* Termtrail plans; the university registers. Say so, and point to how. */}
+            <p className="text-xs mt-0.5 flex flex-wrap items-center gap-x-2" style={{ color: "var(--text-tertiary)" }}>
+              {t("tc.notRegistering")} <RuLink href={RU_LINKS.REGISTER_GUIDE}>{t("link.registerCourses")}</RuLink>
+            </p>
           </div>
           <button onClick={onClose} aria-label={t("uni.close")} className="w-11 h-11 -mr-2 -mt-2 shrink-0 flex items-center justify-center rounded-full" style={{ color: "var(--text-secondary)" }}>
             <Icon name="x" size={20} />
@@ -375,7 +394,15 @@ export default function TermCoursesPicker({ onClose }: { onClose: () => void }) 
                             <CourseChip code={o.code} className="mr-1.5" />
                             {lang === "en" && o.name_en ? o.name_en : o.name_th}
                           </span>
-                          <span className="block text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>{when(o.classes)}</span>
+                          <span className="block text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                            {when(o.classes)}
+                            {/* Its final, as the registrar prints it; and, quietly, whether e-Testing is possible. */}
+                            {" · "}
+                            {o.exam_date && o.exam_slot ? t("tc.final", { date: formatDate(o.exam_date, lang), slot: o.exam_slot }) : o.exam_note ? t("tc.finalFaculty") : ""}
+                            {o.etesting && (
+                              <span className="ml-1.5 inline-block rounded-full border px-1.5 leading-4 align-middle" style={{ borderColor: "rgba(245,158,11,0.55)", color: "#b45309" }}>e-Testing</span>
+                            )}
+                          </span>
                           {/* The registrar's own note on who may register, as printed. */}
                           {worthShowing(o.note) && <span className="block text-xs mt-0.5 whitespace-pre-line" style={{ color: "var(--text-secondary)" }}>{o.note}</span>}
                         </span>
@@ -390,11 +417,14 @@ export default function TermCoursesPicker({ onClose }: { onClose: () => void }) 
 
         <div className="px-5 py-3 border-t" style={{ borderColor: "var(--border-light)", paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}>
           {error && <p role="alert" className="text-sm mb-2" style={{ color: "var(--danger)" }}>{error}</p>}
+          {/* Live as she ticks: how the week and the finals look, and a full preview before saving. */}
+          {data && pickedCourses.length > 0 && <div className="mb-2"><FitSummary courses={pickedCourses} windows={data.windows} onPreview={() => setPreviewing(true)} /></div>}
           <p className="text-xs mb-2" style={{ color: "var(--text-tertiary)" }}>
             {picked.size === 0 ? t("tc.noneMeansEmpty") : t("tc.savedMeans")}{" "}
             {/* Suggestions are only right if the app knows what she has already passed. */}
             <button onClick={() => setMarkingPassed(true)} className="tap-area underline" style={{ color: "var(--accent-text)" }}>{t("tc.markPassed")}</button>
           </p>
+
           <div className="flex gap-2">
             <button onClick={save} disabled={busy || !data} className="flex-1 rounded-xl min-h-11 font-semibold disabled:opacity-40" style={{ backgroundColor: "var(--accent)", color: "#fff" }}>
               {t("tc.save", { n: picked.size })}
@@ -408,6 +438,15 @@ export default function TermCoursesPicker({ onClose }: { onClose: () => void }) 
         </div>
       </div>
       {markingPassed && <PassedPicker onClose={() => { setMarkingPassed(false); load(); }} />}
+      {previewing && data && (
+        <TermPreview
+          courses={pickedCourses}
+          windows={data.windows}
+          // Bookings can be recorded for courses already saved as registered, when nothing is changed.
+          canBook={data.chosen.length > 0 && data.chosen.length === picked.size && data.chosen.every((c) => picked.has(c))}
+          onClose={() => setPreviewing(false)}
+        />
+      )}
     </div>,
     document.body,
   );
