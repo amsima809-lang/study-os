@@ -231,7 +231,7 @@ export default function Today() {
                 code={data.nextExam.course_code}
                 name_th={data.nextExam.name_th}
                 name_en={data.nextExam.name_en}
-                className="font-medium"
+                className="font-medium text-sm"
                 kind={data.nextExam.kind === "etesting" ? "etbooked" : "exam"}
               />
               <div className="text-sm" style={{ color: "var(--text-tertiary)" }}>
