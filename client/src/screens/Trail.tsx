@@ -9,7 +9,8 @@ import { useT } from "../i18n.tsx";
 import { getJSON, putJSON } from "../api.ts";
 import { Card, ErrorBox, Loading } from "../components/ui.tsx";
 import { CourseChip } from "../components/CourseTitle.tsx";
-import { ChooseCoursesCard } from "../components/TermCourses.tsx";
+import TermCoursesPicker, { ChooseCoursesCard, EditCoursesButton } from "../components/TermCourses.tsx";
+import { REMINDERS_CHANGED } from "../components/Reminders.tsx";
 import Icon from "../components/Icon.tsx";
 import PassedPicker from "../components/PassedPicker.tsx";
 
@@ -48,6 +49,8 @@ type TrailData =
       history: string[];
       chosenThisTerm: number;
       passedCount: number;
+      /** This term: what she registered for, and what the trail would have her take. */
+      thisTerm: { term: string; courses: { code: string; name_th: string; name_en: string | null; credits: number; category: string | null; registered: boolean; suggested: boolean }[] };
       categories: { category: string; required: number; passed: number }[];
     };
 
@@ -57,6 +60,17 @@ export default function Trail() {
   const [error, setError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [picking, setPicking] = useState(false);
+  // This term's courses: the full list ("Edit courses"), and a tick being saved.
+  const [editing, setEditing] = useState(false);
+  const [ticking, setTicking] = useState<string | null>(null);
+  // A tick shows at once; the plan below catches up when the save comes back.
+  const [ticked, setTicked] = useState<Record<string, boolean>>({});
+  // Courses unticked during this visit. One the trail does not suggest would otherwise drop out
+  // of the list once unticked, and a slip could not be undone on the card.
+  type NowCourse = { code: string; name_th: string; name_en: string | null; credits: number; category: string | null; registered: boolean; suggested: boolean };
+  const [dropped, setDropped] = useState<Record<string, NowCourse>>({});
+  // A save that failed: said inside the card, not by blanking the whole screen.
+  const [tickFailed, setTickFailed] = useState(false);
 
   const load = useCallback(() => {
     setError(false);
@@ -101,6 +115,45 @@ export default function Trail() {
       setSaving(false);
     }
   }
+  /** Tick or untick one of this term's courses: saved at once, and the plan re-made around it. */
+  async function toggleThisTerm(code: string) {
+    if (!data || !data.available || ticking) return;
+    const mine = new Set(nowCourses.filter((c) => c.on).map((c) => c.code));
+    const row = nowCourses.find((c) => c.code === code);
+    const on = !mine.has(code);
+    if (on) mine.add(code); else mine.delete(code);
+    setTicked((m) => ({ ...m, [code]: on }));
+    setTicking(code);
+    setTickFailed(false);
+    try {
+      await putJSON("/api/term-courses", { codes: [...mine] });
+      // Today, the timetable and the exams listen for this and reload.
+      window.dispatchEvent(new Event(REMINDERS_CHANGED));
+      if (row) setDropped((d) => { const n = { ...d }; if (on) delete n[code]; else n[code] = { ...row, registered: false }; return n; });
+      await load();
+      setTicked({});
+    } catch {
+      setTicked((m) => { const n = { ...m }; delete n[code]; return n; });
+      setTickFailed(true);
+    } finally {
+      setTicking(null);
+    }
+  }
+  const listed = new Set(data.thisTerm.courses.map((c) => c.code));
+  const nowCourses = [...data.thisTerm.courses, ...Object.values(dropped).filter((c) => !listed.has(c.code))]
+    .sort((a, b) => a.code.localeCompare(b.code))
+    .map((c) => ({ ...c, on: ticked[c.code] ?? c.registered }));
+  const anyOn = nowCourses.some((c) => c.on);
+  const nowCredits = nowCourses.filter((c) => c.on).reduce((n, c) => n + c.credits, 0);
+  const suggestedCredits = nowCourses.filter((c) => c.suggested).reduce((n, c) => n + c.credits, 0);
+  // With nothing registered, the plan's first term IS this term: its course places are in the
+  // card above, so the card below would repeat them. Its elective places (no course) stay.
+  const planNow = trail.terms.find((x) => x.term === data.currentTerm);
+  const placesNow = planNow ? planNow.items.filter((i) => !i.code) : [];
+  const laterTerms = trail.terms.filter((x) => x.term !== data.currentTerm);
+  /** The later term the plan now puts a course in, if any. */
+  const plannedFor = (code: string) => laterTerms.find((x) => x.items.some((i) => i.code === code))?.term ?? null;
+
   const kindName = (k: "1" | "2" | "S") => t(k === "S" ? "trail.kindS" : k === "1" ? "trail.kind1" : "trail.kind2");
   const pct = (n: number) => `${Math.round((n / Math.max(1, trail.credits.total)) * 100)}%`;
   const fieldStyle = { backgroundColor: "var(--bg-base)", borderColor: "var(--border)", color: "var(--text-primary)" };
@@ -232,17 +285,81 @@ export default function Trail() {
         </div>
       </Card>
 
-      {/* Term by term */}
-      {trail.terms.map((term) => (
+      {/* This term: registered courses ticked and marked, the trail's suggestions not. Ticking
+          or unticking saves at once, and every term below is planned again around the result. */}
+      <Card>
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--accent-2, var(--accent-text))" }}>{t("trail.nowLabel")}</p>
+            <h2 className="font-semibold" style={{ color: "var(--accent-text)" }}>{termName(data.currentTerm)}</h2>
+          </div>
+          <span className="text-sm whitespace-nowrap mt-4" style={{ color: "var(--text-tertiary)" }} aria-live="polite">
+            {ticking ? t("trail.replanning") : anyOn ? t("trail.credits", { n: nowCredits }) : t("trail.nowPlanCredits", { n: suggestedCredits })}
+          </span>
+        </div>
+        <p className="text-xs mt-1 mb-3" style={{ color: "var(--text-tertiary)" }}>
+          {nowCourses.length === 0 ? t("trail.nowHintEmpty") : anyOn ? t("trail.nowHint") : t("trail.nowHintNone")}
+        </p>
+        {tickFailed && (
+          <p role="alert" className="text-sm mb-3" style={{ color: "var(--danger)" }}>{t("trail.tickFailed")}</p>
+        )}
+        {nowCourses.length > 0 && (
+          <ul className="pick-list" aria-busy={!!ticking}>
+            {nowCourses.map((c) => (
+              <li key={c.code}>
+                <button role="checkbox" aria-checked={c.on} disabled={!!ticking} onClick={() => toggleThisTerm(c.code)} className="pick-row disabled:opacity-70">
+                  <span
+                    className="mt-0.5 w-6 h-6 shrink-0 rounded-md flex items-center justify-center"
+                    style={{ border: `2px solid ${c.on ? "var(--accent)" : "var(--text-tertiary)"}`, backgroundColor: c.on ? "var(--accent)" : "transparent", color: "#fff" }}
+                  >
+                    {c.on && <Icon name="check" size={14} />}
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block" style={{ color: "var(--text-primary)" }}>
+                      <CourseChip code={c.code} className="mr-1.5" />
+                      {lang === "en" && c.name_en ? c.name_en : c.name_th}
+                    </span>
+                    <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>
+                      {/* What it is now, in words as well as the tick. Registered; or, before
+                          anything is registered, what the trail suggests; or not registered,
+                          with the later term the plan has moved it to. */}
+                      {c.on ? (
+                        <span className="rounded-full px-2 py-0.5 font-semibold" style={{ backgroundColor: "var(--success-bg)", color: "var(--success)" }}>{t("trail.registered")}</span>
+                      ) : !anyOn && c.suggested ? (
+                        <span className="rounded-full px-2 py-0.5 font-semibold" style={{ backgroundColor: "color-mix(in srgb, var(--accent-2, var(--accent)) 16%, transparent)", color: "var(--accent-2, var(--accent-text))" }}>{t("trail.suggestedTag")}</span>
+                      ) : (
+                        <span className="rounded-full px-2 py-0.5 font-semibold" style={{ backgroundColor: "var(--bg-surface-hover)", color: "var(--text-secondary)" }}>
+                          {plannedFor(c.code) ? t("trail.notRegisteredFor", { term: termName(plannedFor(c.code)!) }) : t("trail.notRegistered")}
+                        </span>
+                      )}
+                      <span>{t("trail.credits", { n: c.credits })}</span>
+                      {c.category && <span>· {t(`cat.${c.category}`)}</span>}
+                    </span>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {placesNow.length > 0 && (
+          <ul className="mt-3 space-y-1.5 text-sm" style={{ color: "var(--text-secondary)" }}>
+            {placesNow.map((p, i) => (
+              <li key={i}>+ {t("trail.freeElective")} · {t(`cat.${p.category}`)} · {t("trail.credits", { n: p.credits })}</li>
+            ))}
+          </ul>
+        )}
+        <div className="mt-3 flex justify-end">
+          <EditCoursesButton count={nowCourses.filter((c) => c.on).length} onClick={() => setEditing(true)} />
+        </div>
+      </Card>
+
+      {/* The terms after this one */}
+      {laterTerms.map((term) => (
         <Card key={term.term}>
           <div className="flex items-baseline justify-between gap-2 mb-2">
             <h2 className="font-semibold" style={{ color: "var(--accent-text)" }}>{termName(term.term)}</h2>
             <span className="text-sm whitespace-nowrap" style={{ color: "var(--text-tertiary)" }}>{t("trail.credits", { n: term.credits })}</span>
           </div>
-          {/* The term she is in now, courses not chosen yet: these come from its published list, and are what the picker ticks for her. */}
-          {term.term === data.currentTerm && (
-            <p className="text-xs -mt-1 mb-2.5" style={{ color: "var(--text-tertiary)" }}>{t("trail.thisTerm")}</p>
-          )}
           <ul className="space-y-2.5">
             {term.items.map((item, i) => (
               <li key={`${item.code ?? item.category}-${i}`}>
@@ -296,6 +413,7 @@ export default function Trail() {
       </p>
 
       {picking && <PassedPicker onClose={() => { setPicking(false); load(); }} />}
+      {editing && <TermCoursesPicker onClose={() => { setEditing(false); load(); }} />}
     </div>
   );
 }

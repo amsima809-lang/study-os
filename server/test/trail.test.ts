@@ -3,7 +3,7 @@ import { openDb, type DB } from "../src/db.js";
 import { seedDatabase } from "../src/seed.js";
 import { findOrCreateUser } from "../src/auth.js";
 import { buildTrail, nextTerm, termIndex, CREDIT_LIMITS, type TrailInput, type TrailCourse } from "../src/trail.js";
-import { loadTrailInput, trailGoal, passedCourses, suggestedCourses, termCheck, answerTermCheck } from "../src/trailRoutes.js";
+import { loadTrailInput, trailGoal, passedCourses, suggestedCourses, termCheck, answerTermCheck, thisTermCourses } from "../src/trailRoutes.js";
 import { termCourses } from "../src/api.js";
 
 describe("terms", () => {
@@ -344,5 +344,57 @@ describe("Phase 59 — suggestions for the course picker, and the new-term check
     const none = findOrCreateUser(db, { email: "p59c@studyos.test", name: "N", avatar: "" });
     expect(suggestedCourses(db, none)).toEqual({ term: "2/69", codes: [], credits: 0 });
     expect(termCheck(db, none).due).toBe(false);
+  });
+});
+
+describe("the trail screen's \"this term\" card", () => {
+  let db: DB;
+  let user: string;
+  const choose = (codes: string[]) => {
+    db.prepare("DELETE FROM plan_items WHERE user_id = ? AND term_id = '2/69' AND course_code IS NOT NULL").run(user);
+    for (const c of codes) db.prepare("INSERT INTO plan_items (user_id, term_id, course_code) VALUES (?, '2/69', ?)").run(user, c);
+  };
+  beforeAll(() => {
+    db = openDb(":memory:");
+    seedDatabase(db, { reset: false });
+    user = findOrCreateUser(db, { email: "now@studyos.test", name: "N", avatar: "" });
+    db.prepare("UPDATE user_profiles SET program_id = 'bus-mkt', university_id = 'ru', entry_year = '69', onboarded = 1 WHERE user_id = ?").run(user);
+  });
+
+  it("with nothing registered, lists the trail's suggestions, none marked registered", () => {
+    const now = thisTermCourses(db, user);
+    const suggested = suggestedCourses(db, user).codes;
+    expect(now.term).toBe("2/69");
+    expect(now.courses.map((c) => c.code).sort()).toEqual([...suggested].sort());
+    expect(now.courses.every((c) => c.suggested && !c.registered)).toBe(true);
+    for (const c of now.courses) expect(c.credits).toBeGreaterThan(0);
+  });
+
+  it("marks what she registered for, keeps the order by code, and still shows the suggestions she has not taken", () => {
+    const suggested = suggestedCourses(db, user).codes;
+    choose(suggested.slice(0, 2));
+    const now = thisTermCourses(db, user);
+    expect(now.courses.map((c) => c.code)).toEqual(now.courses.map((c) => c.code).sort());
+    expect(now.courses.filter((c) => c.registered).map((c) => c.code).sort()).toEqual(suggested.slice(0, 2).sort());
+    expect(now.courses.filter((c) => !c.registered).map((c) => c.code).sort()).toEqual(suggested.slice(2).sort());
+  });
+
+  it("includes a registered course the trail did not suggest", () => {
+    const suggested = new Set(suggestedCourses(db, user).codes);
+    const extra = (db.prepare("SELECT course_code FROM term_offerings WHERE term_id = '2/69'").all() as { course_code: string }[]).map((r) => r.course_code).find((c) => !suggested.has(c))!;
+    choose([extra]);
+    const row = thisTermCourses(db, user).courses.find((c) => c.code === extra)!;
+    expect(row).toMatchObject({ registered: true, suggested: false });
+  });
+
+  it("re-plans the later terms around what is ticked: unticking a course puts it back into the plan", () => {
+    const suggested = suggestedCourses(db, user).codes;
+    choose(suggested);
+    const later = (codes: string[]) => buildTrail(loadTrailInput(db, user)!).terms.flatMap((t) => t.items.map((i) => i.code)).filter((c): c is string => !!c && codes.includes(c));
+    expect(buildTrail(loadTrailInput(db, user)!).terms[0].term).not.toBe("2/69");
+    expect(later(suggested)).toEqual([]);
+    choose(suggested.slice(1));
+    expect(later([suggested[0]])).toEqual([suggested[0]]);
+    choose([]);
   });
 });

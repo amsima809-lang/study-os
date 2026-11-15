@@ -63,7 +63,7 @@ export function EditCoursesButton({ count, onClick }: { count: number; onClick: 
   );
 }
 
-export function ChooseCoursesCard({ onChanged, showLink = false, onTrail = false }: { onChanged?: () => void; showLink?: boolean; /** On the trail screen itself: no button to it. */ onTrail?: boolean }) {
+export function ChooseCoursesCard({ onChanged, showLink = false, onTrail = false }: { onChanged?: () => void; showLink?: boolean; /** On the trail screen itself: no prompt or button, since the screen has its own "this term" card; only the new-term question. */ onTrail?: boolean }) {
   const { t, lang } = useT();
   const [state, setState] = useState<{ chosen: number; options: number } | null>(null);
   const [choosing, setChoosing] = useState(false);
@@ -81,6 +81,9 @@ export function ChooseCoursesCard({ onChanged, showLink = false, onTrail = false
           // Nobody should have to find the button: with nothing chosen, the picker opens by
           // itself straight after onboarding, and once per term on a device that has not
           // shown it yet (a student who onboarded before this existed). After that, the card.
+          // Not on the trail screen, which shows no picker of its own here: there the flags are
+          // left for the next screen that does.
+          if (onTrail) return;
           let fresh = false, shown = true;
           try {
             fresh = sessionStorage.getItem(JUST_ONBOARDED) === "1";
@@ -94,7 +97,7 @@ export function ChooseCoursesCard({ onChanged, showLink = false, onTrail = false
         })
         .catch(() => setState(null));
     },
-    [],
+    [onTrail],
   );
   useEffect(() => { load(); }, [load]);
 
@@ -144,7 +147,7 @@ export function ChooseCoursesCard({ onChanged, showLink = false, onTrail = false
       document.body,
     );
   }
-  if (!state || state.options === 0) return null;
+  if (!state || state.options === 0 || onTrail) return null;
   return (
     <>
       {state.chosen === 0 ? (

@@ -94,6 +94,35 @@ export function suggestedCourses(db: DB, userId: string): { term: string; codes:
   return { term: input.currentTerm, codes: here.map((i) => i.code!), credits: here.reduce((n, i) => n + i.credits, 0) };
 }
 
+/**
+ * This term on the trail screen: the courses she has registered for, and the ones the trail
+ * would have her take this term that she has not. Ticking or unticking one there saves this
+ * term's courses (PUT /api/term-courses), and the terms after it are planned again around them.
+ * In order of code, whichever they are, so a row does not jump away when it is ticked or unticked.
+ */
+export type ThisTermCourse = { code: string; name_th: string; name_en: string | null; credits: number; category: string | null; registered: boolean; suggested: boolean };
+export function thisTermCourses(db: DB, userId: string): { term: string; courses: ThisTermCourse[] } {
+  const term = currentTerm(db);
+  const registered = termCourses(db, userId, term);
+  const suggested = suggestedCourses(db, userId).codes;
+  const codes = [...new Set([...registered, ...suggested])];
+  if (codes.length === 0) return { term, courses: [] };
+  const rows = db.prepare(
+    `SELECT c.code, c.name_th, c.name_en, c.credits, COALESCE(pc.category, c.category) AS category
+     FROM courses c
+     LEFT JOIN program_courses pc ON pc.course_code = c.code
+          AND pc.program_id = (SELECT program_id FROM user_profiles WHERE user_id = ?)
+     WHERE c.code IN (${codes.map(() => "?").join(",")})`,
+  ).all(userId, ...codes) as Omit<ThisTermCourse, "registered" | "suggested">[];
+  const mine = new Set(registered), plan = new Set(suggested);
+  return {
+    term,
+    courses: rows
+      .map((r) => ({ ...r, registered: mine.has(r.code), suggested: plan.has(r.code) }))
+      .sort((a, b) => a.code.localeCompare(b.code)),
+  };
+}
+
 // ---- a new term: which of last term's courses were passed? ----
 export type TermCheck = { term: string; due: boolean; courses: { term_id: string; code: string; name_th: string; name_en: string | null }[] };
 /** Courses the student chose in an EARLIER term that have no result yet: not passed, and not marked "not passed" for that term. */
@@ -146,6 +175,7 @@ export function createTrailRouter(db: DB): Router {
     if (!input) return res.json({ available: false });
     const goal = trailGoal(db, userId);
     const trail = buildTrail(input);
+    const thisTerm = thisTermCourses(db, userId);
     // Terms she may aim for: every regular term from the next one, eight years on.
     const targets: string[] = [];
     for (let t = nextTerm(input.currentTerm, false), i = 0; i < 16; i++, t = nextTerm(t, false)) targets.push(t);
@@ -156,7 +186,7 @@ export function createTrailRouter(db: DB): Router {
     res.json({
       available: true, currentTerm: input.currentTerm, goal, targets, limits: CREDIT_LIMITS, trail, names,
       history: [...input.historyTerms].sort((a, b) => termIndex(a) - termIndex(b)),
-      chosenThisTerm: input.current.length, passedCount: input.passed.length,
+      chosenThisTerm: input.current.length, passedCount: input.passed.length, thisTerm,
       // Credits passed in each part of the curriculum (the bars the degree planner used to show).
       categories: (() => {
         const done = passedCreditsByCategory(db, userId);

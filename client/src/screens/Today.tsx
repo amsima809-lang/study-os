@@ -11,7 +11,7 @@ import { ReminderRow, setDone, useRemindersChanged } from "../components/Reminde
 import { postJSON } from "../api.ts";
 import { navigateTo } from "../destinations.tsx";
 import { bangkokTime } from "../reminderAlerts.ts";
-import TermCoursesPicker, { ChooseCoursesCard, EditCoursesButton } from "../components/TermCourses.tsx";
+import { ChooseCoursesCard } from "../components/TermCourses.tsx";
 
 /**
  * Today's reminders and to-dos, soonest first, with a one-line quick add.
@@ -129,7 +129,6 @@ export default function Today() {
   const { t, lang } = useT();
   const [data, setData] = useState<TodayData | null>(null);
   const [error, setError] = useState(false);
-  const [choosing, setChoosing] = useState(false);
 
   const load = useCallback(() => {
     setError(false);
@@ -159,7 +158,6 @@ export default function Today() {
       {/* Not chosen yet: the timetable is empty. Straight after onboarding the picker opens by itself. */}
       <ChooseCoursesCard onChanged={load} />
       <TrailCard />
-      {choosing && <TermCoursesPicker onClose={() => setChoosing(false)} />}
       </div>
 
       <div className="today-cal"><Calendar /></div>
@@ -190,12 +188,8 @@ export default function Today() {
       </Card>
 
       <Card>
-        <div className="flex items-center justify-between gap-2 mb-1">
-          <h2 className="font-semibold" style={{ color: "var(--text-primary)" }}>{t("today.classes")}</h2>
-          {data.canChooseCourses && data.chosenCourses > 0 && (
-            <EditCoursesButton count={data.chosenCourses} onClick={() => setChoosing(true)} />
-          )}
-        </div>
+        {/* Editing this term's courses is on the trail screen, where the plan re-shapes around them. */}
+        <h2 className="font-semibold mb-1" style={{ color: "var(--text-primary)" }}>{t("today.classes")}</h2>
         {data.classes.length === 0 && (
           <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t("today.noClasses")}</p>
         )}
