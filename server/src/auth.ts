@@ -31,14 +31,19 @@ declare global {
  * The account for a sign-in: the existing one with that email (so a student who
  * first used dev login keeps their notes when they later sign in with Google,
  * and the Google identity is attached once), or a new one.
+ *
+ * Capitals do not make a different address: someone who typed "Name@gmail.com" at
+ * the dev login is the same person Google later reports as "name@gmail.com".
+ * Matching them exactly would hand that student a new, empty account.
  */
 export function findOrCreateUser(
   db: DB,
   profile: { googleId?: string; email: string; name: string; avatar: string },
 ): string {
+  // The exact address first; otherwise the oldest account that differs only in capitals.
   const existing = db
-    .prepare("SELECT id FROM users WHERE email = ?")
-    .get(profile.email) as { id: string } | undefined;
+    .prepare("SELECT id FROM users WHERE lower(email) = lower(?) ORDER BY email = ? DESC, created_at LIMIT 1")
+    .get(profile.email, profile.email) as { id: string } | undefined;
 
   if (existing) {
     db.prepare(

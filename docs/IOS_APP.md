@@ -101,8 +101,27 @@ What it needs:
   later. The first build, `202611150853`, does not: it shows "update the app" in place of the
   Google button.
 
-Setting a Google client on a site **switches its access-code login off** and lets anyone with a
-Google account sign in. On the trial site that is the owner's decision; it has not been made.
+Setting a Google client on a site **switches its access-code login off**.
+
+The Google side exists (2026-11-15), in the owner's Google Cloud project **Termtrail** (project
+ID `termtrail`), separate from his other projects so that Google's sign-in screen says
+"Termtrail":
+
+- the sign-in screen: app name Termtrail, external users, publishing status **Testing**. In
+  Testing only the listed test users can sign in (two are listed), so the trial stays private
+  without the access code. Adding a tester: Google Auth Platform → Audience → Add users.
+  Publishing it ("In production") opens sign-in to every Google account;
+- the web client **Termtrail web**, with the redirect address
+  `https://amsima.com/termtrail/api/auth/google/callback`. Its ID is on the Clients page; its
+  secret is shown once, when it is made, and after that can only be replaced.
+
+Not done: the client ID and secret are not on the trial server, so the trial site still signs
+in with the access code. Put the secret on first, then the ID: the ID is what switches Google on
+(`bash deploy/set-env.sh GOOGLE_CLIENT_SECRET`, then `GOOGLE_CLIENT_ID`, on the host).
+
+An account is matched by its email address, ignoring capitals: someone who typed their address
+with a capital at the access-code login gets the same account when Google reports it in
+lowercase.
 
 Not tried: a real Google account, the real sign-in sheet, a phone. Everything after Google was
 tried with a stand-in for Google, and the login page with a simulated plugin.

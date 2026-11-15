@@ -96,6 +96,27 @@ describe("the account behind a sign-in", () => {
     expect(db.prepare("SELECT COUNT(*) n FROM notes WHERE user_id = ?").get(google)).toEqual({ n: 1 });
   });
 
+  it("knows the same address whatever its capitals: typed with a capital at the trial login, lowercase from Google", () => {
+    const db = openDb(":memory:");
+    const dev = findOrCreateUser(db, { email: "Trial.Student@gmail.com", name: "Trial", avatar: "" });
+    db.prepare("INSERT INTO notes (user_id, created_at, title, raw_text) VALUES (?, '2026-11-01T00:00:00', 'Kept', 'x')").run(dev);
+    const google = findOrCreateUser(db, { googleId: "g-88", email: "trial.student@gmail.com", name: "Trial", avatar: "" });
+    expect(google).toBe(dev);
+    expect(db.prepare("SELECT COUNT(*) n FROM users WHERE lower(email) = 'trial.student@gmail.com'").get()).toEqual({ n: 1 });
+    expect(db.prepare("SELECT COUNT(*) n FROM notes WHERE user_id = ?").get(google)).toEqual({ n: 1 });
+  });
+
+  it("prefers the exactly matching account when two differ only in capitals", () => {
+    const db = openDb(":memory:");
+    const now = "2026-11-01T00:00:00.000Z";
+    for (const [id, email] of [["u-upper", "Twin@gmail.com"], ["u-lower", "twin@gmail.com"]]) {
+      db.prepare("INSERT INTO users (id, email, name, referral_code, created_at, last_login_at) VALUES (?, ?, 'Twin', ?, ?, ?)").run(id, email, id, now, now);
+    }
+    expect(findOrCreateUser(db, { googleId: "g-1", email: "twin@gmail.com", name: "Twin", avatar: "" })).toBe("u-lower");
+    expect(findOrCreateUser(db, { email: "Twin@gmail.com", name: "Twin", avatar: "" })).toBe("u-upper");
+    expect(db.prepare("SELECT COUNT(*) n FROM users WHERE lower(email) = 'twin@gmail.com'").get()).toEqual({ n: 2 });
+  });
+
   it("does not let a second Google identity take over an account already linked to one", () => {
     const db = openDb(":memory:");
     const id = findOrCreateUser(db, { googleId: "g-1", email: "a@student.test", name: "A", avatar: "" });
