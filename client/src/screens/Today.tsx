@@ -134,7 +134,7 @@ function TrailCard() {
  * per-course targets, which split a hidden 36 hours a week (owner 2026-11-15: calm defaults).
  * With no plan, one line pointing to the Study plan page.
  */
-function StudyTodayCard({ data, onChanged }: { data: TodayData["studyToday"]; onChanged: () => void }) {
+function StudyTodayCard({ data, dueCards, onChanged }: { data: TodayData["studyToday"]; /** flashcards due: a row of their own, gone at 0 (owner 2026-11-16) */ dueCards: number; onChanged: () => void }) {
   const { t } = useT();
   const [tasks, setTasks] = useState<TodayStudyTask[]>(data.tasks);
   useEffect(() => setTasks(data.tasks), [data.tasks]);
@@ -150,10 +150,18 @@ function StudyTodayCard({ data, onChanged }: { data: TodayData["studyToday"]; on
           {t(data.hasPlan ? "today.studyOpen" : "today.studyMake")} ›
         </button>
       </div>
+      {/* Flashcards due are part of today's study: one row that opens them, shown only when some are due. */}
+      {dueCards > 0 && (
+        <button onClick={() => navigateTo("review")} className="w-full flex items-center gap-3 text-left min-h-11 py-1">
+          <Icon name="refresh" size={20} style={{ color: "var(--mark-study)", flexShrink: 0 }} />
+          <span className="flex-1 min-w-0 text-sm" style={{ color: "var(--text-primary)" }}>{t("today.reviewCards", { n: dueCards })}</span>
+          <span className="text-sm" style={{ color: "var(--accent-text)" }}>›</span>
+        </button>
+      )}
       {!data.hasPlan ? (
         <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t("today.studyNone")}</p>
       ) : tasks.length === 0 ? (
-        <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t("today.studyFree")}</p>
+        dueCards > 0 ? null : <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t("today.studyFree")}</p>
       ) : (
         <ul className="space-y-1">
           {tasks.map((task) => (
@@ -258,16 +266,7 @@ export default function Today() {
         <ClassRows classes={data.classes.length > 0 ? data.classes : data.nextClasses?.classes ?? []} />
       </Card>
 
-      <Card>
-        <div className="flex justify-between items-center">
-          <h2 className="font-semibold" style={{ color: "var(--text-primary)" }}>{t("today.review")}</h2>
-          <span className="font-semibold" style={{ color: "var(--accent-text)" }}>
-            {t("today.cards", { n: data.dueFlashcards })}
-          </span>
-        </div>
-      </Card>
-
-      <StudyTodayCard data={data.studyToday} onChanged={load} />
+      <StudyTodayCard data={data.studyToday} dueCards={data.dueFlashcards} onChanged={load} />
       </div>
     </div>
   );
