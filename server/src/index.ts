@@ -15,6 +15,7 @@ import { openDb } from "./db.js";
 import { seedDatabase, needsSeed } from "./seed.js";
 import { setupAuth, requireAuth } from "./auth.js";
 import { scheduleDailyBackups } from "./backup.js";
+import { AI_IS_FREE } from "./ai.js";
 import { createApiRouter } from "./api.js";
 import { createNotesRouter } from "./notes.js";
 import { createQuizRouter } from "./quiz.js";
@@ -230,7 +231,8 @@ app.get("/api/subscription", (req, res) => {
     "SELECT * FROM subscriptions WHERE user_id = ? AND status = 'active' AND expires_at > datetime('now') ORDER BY expires_at DESC LIMIT 1",
   ).get(userId) as any;
   const user = db.prepare("SELECT plan FROM users WHERE id = ?").get(userId) as { plan: string };
-  res.json({ plan: user.plan, subscription: sub ?? null, isPremium: user.plan === "premium" || !!sub });
+  // While AI is free (ai.ts AI_IS_FREE) everyone counts as Premium, so no paywall shows.
+  res.json({ plan: user.plan, subscription: sub ?? null, isPremium: AI_IS_FREE || user.plan === "premium" || !!sub });
 });
 
 app.post("/api/subscription/activate", (req, res) => {

@@ -9,8 +9,9 @@ import {
   isAiConfigured,
   AiNotConfiguredError,
   type ImageInput,
+  aiClient,
+  aiMaxTokens,
 } from "./ai.js";
-import Anthropic from "@anthropic-ai/sdk";
 import { env } from "./env.js";
 
 // pdfjs-dist legacy build for Node.js (no DOM required for text extraction).
@@ -103,16 +104,11 @@ export async function ocrWithClaude(
 ): Promise<{ text: string; confidence: number }> {
   if (!isAiConfigured()) throw new AiNotConfiguredError();
 
-  const client = new Anthropic({
-    apiKey: env.anthropicApiKey,
-    ...(env.anthropicWorkspaceId && {
-      defaultHeaders: { "anthropic-workspace-id": env.anthropicWorkspaceId },
-    }),
-  });
+  const client = aiClient();
 
   const res = await client.messages.create({
-    model: env.anthropicModel,
-    max_tokens: 4000,
+    model: env.aiModel,
+    max_tokens: aiMaxTokens(4000),
     system: "You are an OCR assistant. Extract ALL text from the image exactly as it appears. Preserve the original language (Thai/English). Output ONLY the extracted text, nothing else.",
     messages: [
       {
@@ -135,7 +131,7 @@ export async function ocrWithClaude(
   const usage = { input_tokens: res.usage.input_tokens, output_tokens: res.usage.output_tokens };
   db.prepare(
     "INSERT INTO ai_usage (created_at, model, purpose, input_tokens, output_tokens) VALUES (?, ?, ?, ?, ?)",
-  ).run(new Date().toISOString(), env.anthropicModel, "ocr", usage.input_tokens, usage.output_tokens);
+  ).run(new Date().toISOString(), env.aiModel, "ocr", usage.input_tokens, usage.output_tokens);
 
   const textBlock = res.content.find((b) => b.type === "text");
   const text = textBlock && textBlock.type === "text" ? textBlock.text : "";

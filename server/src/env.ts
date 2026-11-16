@@ -28,6 +28,11 @@ export function normaliseBasePath(value: string | undefined): string {
   return trimmed ? `/${trimmed}` : "";
 }
 
+// AI provider. With DEEPSEEK_API_KEY set (the owner's DeepSeek account, 2026-11-16) every AI
+// call goes to DeepSeek through its Anthropic-compatible API, so the Anthropic SDK code is unchanged.
+// Without it the app falls back to Anthropic (ANTHROPIC_API_KEY).
+const deepseekKey = (process.env.DEEPSEEK_API_KEY ?? "").trim();
+
 export const env = {
   port: Number(process.env.PORT ?? 3100),
   /** Address to listen on. Unset: every address (what a container host expects). Set 127.0.0.1 behind a tunnel or proxy on the same machine. */
@@ -40,8 +45,12 @@ export const env = {
   dbPath: resolve(repoRoot, process.env.DB_PATH ?? "data/studyos.db"),
   uploadDir: resolve(repoRoot, process.env.UPLOAD_DIR ?? "data/uploads"),
   clientDist: process.env.CLIENT_DIST ?? `${repoRoot}client/dist`,
-  anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? "",
-  anthropicModel: process.env.ANTHROPIC_MODEL ?? "claude-sonnet-5",
+  aiProvider: (deepseekKey ? "deepseek" : "anthropic") as "deepseek" | "anthropic",
+  aiApiKey: deepseekKey || (process.env.ANTHROPIC_API_KEY ?? ""),
+  /** DeepSeek's Anthropic-compatible endpoint; undefined = Anthropic's own. */
+  aiBaseUrl: deepseekKey ? (process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com/anthropic") : undefined,
+  /** DeepSeek V4 Flash ("deepseek-flash" is the API's id for it). */
+  aiModel: deepseekKey ? (process.env.DEEPSEEK_MODEL || "deepseek-flash") : (process.env.ANTHROPIC_MODEL ?? "claude-sonnet-5"),
   anthropicWorkspaceId: process.env.ANTHROPIC_WORKSPACE_ID ?? "",
   googleClientId: process.env.GOOGLE_CLIENT_ID ?? "",
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",

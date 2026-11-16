@@ -23,8 +23,9 @@ import {
   gradeModelCall,
   logUsage,
   SYSTEM_PROMPT,
+  aiClient,
+  aiMaxTokens,
 } from "./ai.js";
-import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { env } from "./env.js";
 
@@ -235,15 +236,10 @@ ${diffInstruction}
       });
 
       const call: import("./ai.js").ModelCall = async (extra?: string) => {
-        const client = new Anthropic({
-          apiKey: env.anthropicApiKey,
-          ...(env.anthropicWorkspaceId && {
-            defaultHeaders: { "anthropic-workspace-id": env.anthropicWorkspaceId },
-          }),
-        });
+        const client = aiClient();
         const result = await client.messages.create({
-          model: env.anthropicModel,
-          max_tokens: 6000,
+          model: env.aiModel,
+          max_tokens: aiMaxTokens(6000),
           system: SYSTEM_PROMPT,
           messages: [{ role: "user", content: `${instruction}\n\nเนื้อหา:\n${sourceText.slice(0, 30000)}${extra ? `\n\n${extra}` : ""}` }],
         });

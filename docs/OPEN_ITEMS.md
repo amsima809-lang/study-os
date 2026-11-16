@@ -16,8 +16,8 @@ Because it is a real HTTPS site, the phone checks listed under "Needs a device o
 |---|---|---|
 | **Offline use with sync** | The app says when it is offline and fails saves clearly; nothing is queued. Which data works offline, and how conflicts resolve, is an architecture choice. | Decide the scope (read-only offline, or offline writes with sync). |
 | **The iOS app: from a shell to something Apple will review** | Started (Phase 64, `docs/IOS_APP.md`): a Capacitor shell that shows the trial site, for the team's own testers on TestFlight. It is not fit for App Review: Apple rejects a website in a frame, and Capacitor says loading from a server is not for production. | Decide when to do the real version: the web app shipped inside the app, sign-in that works across sites, a production server, Sign in with Apple if Google is offered, notifications through Apple's push service. The lecture-transcript in-app browser (`LECTURE_TRANSCRIPTS_PLAN.md`) comes after that. |
-| **What AI may do with a lecture transcript** | Transcripts can be imported, read and searched. Nothing is generated from them, because of the rule "AI helps me practise, never does it for me". | Decide: quiz questions only, outlines, or nothing. |
-| **Payment** | `/api/subscription/activate` grants premium with no payment, as on `main`. | Choose a payment provider. |
+| **What AI may do with a lecture transcript** | Decided by the owner 2026-11-16: AI summaries, in the notes' AI summary section, citing the lecture time each point came from, with practice questions left unanswered. The format is being tuned with him. | Agree the format; then build: he downloads the transcripts, the notes are created beforehand and served from the site (which changes the "per student, never shown to others" rule in `LECTURE_TRANSCRIPTS_PLAN.md`). |
+| **Payment** | AI is free for everyone while the owner's partner tests it (`AI_IS_FREE` in `server/src/ai.ts`, Phase 75); `/api/subscription/activate` still grants premium with no payment. | Decide the price, if any, from the testing; then a payment provider. |
 
 ## Needs the owner
 

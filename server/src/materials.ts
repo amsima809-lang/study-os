@@ -23,8 +23,9 @@ import {
   checkAiSubscription,
   hasAiSubscription,
   AiError,
+  aiClient,
+  aiMaxTokens,
 } from "./ai.js";
-import Anthropic from "@anthropic-ai/sdk";
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
 const MAX_PAGES = 500;
@@ -277,16 +278,11 @@ export function createMaterialsRouter(db: DB): Router {
         return res.status(400).json({ error: "ยังไม่มีข้อความในเอกสาร ดึงข้อความก่อน" });
       }
 
-      const client = new Anthropic({
-        apiKey: env.anthropicApiKey,
-        ...(env.anthropicWorkspaceId && {
-          defaultHeaders: { "anthropic-workspace-id": env.anthropicWorkspaceId },
-        }),
-      });
+      const client = aiClient();
 
       const result = await client.messages.create({
-        model: env.anthropicModel,
-        max_tokens: 2000,
+        model: env.aiModel,
+        max_tokens: aiMaxTokens(2000),
         system: "You extract chapter/topic structure from Thai textbook content. Return JSON only.",
         messages: [
           {
@@ -303,7 +299,7 @@ ${textSample}`,
         "INSERT INTO ai_usage (created_at, model, purpose, input_tokens, output_tokens) VALUES (?, ?, ?, ?, ?)",
       ).run(
         new Date().toISOString(),
-        env.anthropicModel,
+        env.aiModel,
         "chapter_suggest",
         result.usage.input_tokens,
         result.usage.output_tokens,
@@ -427,16 +423,11 @@ ${textSample}`,
         return res.status(400).json({ error: "ยังไม่มีข้อความ ดึงข้อความจากเอกสารก่อน" });
       }
 
-      const client = new Anthropic({
-        apiKey: env.anthropicApiKey,
-        ...(env.anthropicWorkspaceId && {
-          defaultHeaders: { "anthropic-workspace-id": env.anthropicWorkspaceId },
-        }),
-      });
+      const client = aiClient();
 
       const result = await client.messages.create({
-        model: env.anthropicModel,
-        max_tokens: 8000,
+        model: env.aiModel,
+        max_tokens: aiMaxTokens(8000),
         system: "You extract exam questions from Thai university past exam papers. Return JSON only.",
         messages: [
           {
@@ -459,7 +450,7 @@ ${fullText.slice(0, 15000)}`,
         "INSERT INTO ai_usage (created_at, model, purpose, input_tokens, output_tokens) VALUES (?, ?, ?, ?, ?)",
       ).run(
         new Date().toISOString(),
-        env.anthropicModel,
+        env.aiModel,
         "parse_exam",
         result.usage.input_tokens,
         result.usage.output_tokens,

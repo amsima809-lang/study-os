@@ -21,17 +21,42 @@ export const SYSTEM_PROMPT = [
 export const AI_DISCLAIMER = "AI อาจผิดได้ — ยึดตำรารามฯ เป็นหลัก";
 
 export function getModel(): string {
-  return env.anthropicModel;
+  return env.aiModel;
 }
 
 export function isAiConfigured(): boolean {
-  return env.anthropicApiKey.trim().length > 0;
+  return env.aiApiKey.trim().length > 0;
 }
+
+/** The one AI client: DeepSeek (Anthropic-compatible API) or Anthropic, per env.ts. */
+export function aiClient(): Anthropic {
+  return new Anthropic({
+    apiKey: env.aiApiKey,
+    ...(env.aiBaseUrl && { baseURL: env.aiBaseUrl }),
+    ...(env.aiProvider === "anthropic" && env.anthropicWorkspaceId && {
+      defaultHeaders: { "anthropic-workspace-id": env.anthropicWorkspaceId },
+    }),
+  });
+}
+
+/**
+ * DeepSeek thinks before it answers, and the thinking counts toward max_tokens.
+ * Give it room so the answer itself is never cut off (only tokens used are billed).
+ */
+export function aiMaxTokens(answerTokens: number): number {
+  return env.aiProvider === "deepseek" ? answerTokens + 8000 : answerTokens;
+}
+
+/**
+ * AI is free while the owner's partner tests the app (owner, 2026-11-16); pricing is
+ * decided later, if at all. Set to false to bring back the Premium check.
+ */
+export const AI_IS_FREE = true;
 
 /** Thrown when the API key is missing — the UI shows a "set up your key" message. */
 export class AiNotConfiguredError extends Error {
   constructor() {
-    super("AI ยังไม่ได้ตั้งค่า — ใส่ ANTHROPIC_API_KEY ในไฟล์ .env ก่อนใช้งาน");
+    super("AI ยังไม่พร้อมใช้งานตอนนี้ ลองใหม่ภายหลัง");
     this.name = "AiNotConfiguredError";
   }
 }
@@ -45,6 +70,7 @@ export class AiSubscriptionRequired extends Error {
 }
 
 export function hasAiSubscription(db: DB, userId: string): boolean {
+  if (AI_IS_FREE) return true;
   const user = db.prepare("SELECT plan FROM users WHERE id = ?").get(userId) as { plan: string } | undefined;
   if (user?.plan === "premium") return true;
   const sub = db.prepare(
@@ -78,7 +104,7 @@ export function logUsage(db: DB, purpose: string, usage: Usage): void {
   db.prepare(
     `INSERT INTO ai_usage (created_at, model, purpose, input_tokens, output_tokens)
      VALUES (?, ?, ?, ?, ?)`,
-  ).run(new Date().toISOString(), env.anthropicModel, purpose, usage.input_tokens, usage.output_tokens);
+  ).run(new Date().toISOString(), env.aiModel, purpose, usage.input_tokens, usage.output_tokens);
 }
 
 /** Run one Anthropic message call, log usage, and return the text block. */
@@ -88,15 +114,9 @@ async function callAnthropic(
   content: Content,
   maxTokens: number,
 ): Promise<{ text: string; usage: Usage }> {
-  const client = new Anthropic({
-    apiKey: env.anthropicApiKey,
-    ...(env.anthropicWorkspaceId && {
-      defaultHeaders: { "anthropic-workspace-id": env.anthropicWorkspaceId },
-    }),
-  });
-  const res = await client.messages.create({
-    model: env.anthropicModel,
-    max_tokens: maxTokens,
+  const res = await aiClient().messages.create({
+    model: env.aiModel,
+    max_tokens: aiMaxTokens(maxTokens),
     system: SYSTEM_PROMPT,
     messages: [{ role: "user", content }],
   });
