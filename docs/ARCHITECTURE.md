@@ -583,6 +583,14 @@ AI ช่วยเรา "ฝึก" ไม่ใช่ "ทำแทน" — �
 
 นักศึกษาขีดเส้นใต้หรือวงข้อความเพื่อจดเพิ่ม ระบบผูกลายมือกับคำที่เลือกและบันทึกรูปกับสีไว้ในบัญชีของตน เมื่อให้ AI อ่านลายมือ นักศึกษาตรวจคำก่อนใช้ในการค้นหาหรือรวมโน้ต แอป iOS ใช้ PencilKit และใช้ Apple Speech เมื่อแตะพูด เบราว์เซอร์ใช้กระดานเขียนและระบบรับเสียงของเบราว์เซอร์
 
-เมื่อเลือกรวมโน้ต AI เลือกบรรทัดสรุปที่สัมพันธ์กับข้อความของนักศึกษา เซิร์ฟเวอร์ตรวจตำแหน่งแล้วดึงคำกับสีจากต้นฉบับของเจ้าของ เลือกแยกเพื่ออ่านสรุปและคำจดคนละส่วน บัญชีจะจำตัวเลือกครั้งล่าสุด
+เมื่อเลือกรวมโน้ต AI เลือกบรรทัดสรุปที่สัมพันธ์กับข้อความของนักศึกษา เซิร์ฟเวอร์ตรวจตำแหน่งแล้วดึงคำกับสีจากต้นฉบับของเจ้าของ เลือกแยกเพื่ออ่านสรุปและคำจดคนละส่วน
 
 รูปที่บันทึกกับโน้ตเปิดให้อ่านเป็นแผนภาพ สมการ และข้อความได้ นักศึกษาตอบคำถามที่ AI ยังไม่แน่ใจพร้อมกัน รูปต้นฉบับยังเปิดดูได้เสมอ บทเรียนที่บันทึกไว้ การแก้ไข และคำตอบจากการอ่านรูปเก็บใน SQLite ชุดสำรองประจำวันรวมตารางเหล่านี้ด้วย
+
+## Phase 79 — Lecture navigation and layout
+
+Study lists Documents & lectures first. Course rows show how many summaries are available. The lecture list, links on personal notes and the reader use the same layout for a given student and lecture. Separate shows **Summary** and **Notes**. Combine shows **Summary and notes**. Transcript and Watch remain available where applicable.
+
+Migration 049 adds `lecture_note_layouts` keyed by student and catalogue lecture. An existing row in `created_lecture_notes` seeds the layout for that student and lecture from the copy’s saved mode. Other lectures start in Separate, regardless of the former account-wide preference. Each lecture returned by `GET /api/lectures` includes its own `note_mode`. Changing the layout preserves the generated copy and its passages. Only creating notes again replaces it.
+
+The production entry at `/api/open/lectures?view=lectures&summary=MGT3204-1` serves the app through the network even with an older installed service worker. The browser keeps the requested lecture in the current tab through sign-in. The authenticated lecture list determines whether that student can open its summary.

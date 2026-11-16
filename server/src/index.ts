@@ -83,6 +83,12 @@ app.get("/cal/:token.ics", serveFeed(db));
 // a screen that saves and then asks again (the trail after a change to its goal) gets the new answer.
 // (Uploaded note photos and documents never change once stored, so they may be kept.)
 app.use("/api", (req, res, next) => { if (!req.path.startsWith("/uploads/")) res.set("Cache-Control", "no-store"); next(); });
+// A fresh entry point for shared lecture links. Even earlier offline workers send
+// /api/ navigations to the server. This only serves the public app shell; study
+// content is loaded through the same authenticated lecture routes as usual.
+if (isProd) app.get("/api/open/lectures", (_req, res) => {
+  res.sendFile(join(env.clientDist, "index.html"), { cacheControl: false });
+});
 app.use("/api", setupAuth(db));
 
 // --- everything else under /api needs auth ---
@@ -271,6 +277,10 @@ if (isProd) {
   // If it is not running yet, open the app instead of answering 404; the shared
   // content is not read or stored here.
   app.post("/share", (_req, res) => res.redirect(303, `${env.basePath}/`));
+  app.get(["/sw.js", "/registerSW.js"], (_req, res, next) => {
+    res.set("Cache-Control", "no-store");
+    next();
+  });
   app.use(express.static(env.clientDist));
   app.use((req, res) => {
     if (req.method === "GET" && !req.path.startsWith("/api")) {

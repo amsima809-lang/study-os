@@ -20,6 +20,7 @@ import { useReminderAlerts } from "./reminderAlerts.ts";
 import { setDone, REMINDERS_CHANGED } from "./components/Reminders.tsx";
 import { CourseChip } from "./components/CourseTitle.tsx";
 import { formatTime } from "./format.ts";
+import { clearLectureLink, readLectureLink, rememberLectureLink } from "./lectureLink.ts";
 
 /** What the main area shows: one of the pages, or Settings. */
 type Tab = DestId | "settings";
@@ -114,24 +115,11 @@ function usePullToRefresh(onRefresh: () => void) {
   return { pull, refreshing };
 }
 
-const lectureLink = () => new URLSearchParams(location.search).get("view") === "lectures";
-const pendingLectureLink = "studyos.openLectures";
-
 function Shell() {
   const { t, lang } = useT();
-  const [tab, setTab] = useState<Tab>(() => {
-    if (lectureLink()) return "library";
-    try { if (sessionStorage.getItem(pendingLectureLink)) return "library"; } catch { /* storage unavailable */ }
-    return "today";
-  });
-  useEffect(() => {
-    try { sessionStorage.removeItem(pendingLectureLink); } catch { /* storage unavailable */ }
-    if (lectureLink()) {
-      const url = new URL(location.href);
-      url.searchParams.delete("view");
-      window.history.replaceState(null, "", url);
-    }
-  }, []);
+  const [tab, setTab] = useState<Tab>(() => readLectureLink() ? "library" : "today");
+  // The library reads the same target on its first render, before this effect consumes the link.
+  useEffect(clearLectureLink, []);
   // The page each section was last left on: coming back to a section returns there.
   const [last, setLast] = useState<Partial<Record<SectionId, DestId>>>({});
 
@@ -570,9 +558,7 @@ function AuthGate() {
 
   useEffect(() => {
     // Google sign-in returns to the home page. Remember the intended screen across the redirect.
-    if (lectureLink()) {
-      try { sessionStorage.setItem(pendingLectureLink, "1"); } catch { /* storage unavailable */ }
-    }
+    rememberLectureLink();
     refreshUser().catch(() => setUser(null));
     // The session ended (expired, or signed out elsewhere): go back to login.
     // Unsaved note drafts are kept in the browser and offered again after sign-in.

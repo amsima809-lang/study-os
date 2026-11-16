@@ -12,6 +12,8 @@ describe("personal notes alongside a saved lecture", () => {
   let server: Server, base: string, owner: string, other: string, lecture: number;
   let calls = 0;
   const path = "/lectures/ACC1101/1/created-notes";
+  const preference = "/lectures/ACC1101/1/note-preference";
+  let whilePlacing: (() => Promise<void>) | undefined;
   beforeAll(async () => {
     seedDatabase(db, { reset: false });
     owner = findOrCreateUser(db, { email: "one@example.test", name: "One", avatar: "" });
@@ -41,6 +43,7 @@ describe("personal notes alongside a saved lecture", () => {
     app.use(
       createLectureNotesRouter(db, async (_db, inputs) => {
         calls++;
+        await whilePlacing?.();
         expect(inputs.notes.flatMap((n) => n.runs.map((r) => r.text))).toEqual([
           "my first line",
           "my second line",
@@ -63,8 +66,8 @@ describe("personal notes alongside a saved lecture", () => {
       ...(mode && { body: JSON.stringify({ mode }) }),
     });
   }
-  it("saves the account's preference and places every original passage exactly once", async () => {
-    expect((await request(owner, "PUT", "/lecture-note-preference", "combined")).ok).toBe(true);
+  it("saves this lecture's preference and places every original passage exactly once", async () => {
+    expect((await request(owner, "PUT", preference, "combined")).ok).toBe(true);
     const res = await request(owner, "POST", path, "combined");
     expect(res.status).toBe(200);
     const { blocks } = (await res.json()) as { blocks: { text?: string; runs?: { text: string }[] }[] };
@@ -78,6 +81,15 @@ describe("personal notes alongside a saved lecture", () => {
     expect(await (await request(other, "GET", path)).json()).toEqual({ mode: "separate", created: null });
     expect((await request(owner, "POST", path, "separate")).ok).toBe(true);
     expect(calls).toBe(1);
+  });
+  it("preserves a newer layout choice and the previous document when an in-flight generation finishes", async () => {
+    const old = await (await request(owner, "GET", path)).json() as {created: unknown};
+    expect((await request(owner, "PUT", preference, "combined")).ok).toBe(true);
+    whilePlacing = async () => { expect((await request(owner, "PUT", preference, "separate")).ok).toBe(true); };
+    try {
+      expect((await request(owner, "POST", path)).status).toBe(409);
+      expect(await (await request(owner, "GET", path)).json()).toEqual({mode: "separate", created: old.created});
+    } finally { whilePlacing = undefined; }
   });
   it("rejects invented indices and missing passages and keeps the saved ink shade", () => {
     const input = {

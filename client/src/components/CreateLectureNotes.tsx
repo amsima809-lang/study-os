@@ -1,30 +1,59 @@
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useState } from "react";
 import { getJSON, putJSON, postJSON, type ApiError } from "../api.ts";
 import { useT } from "../i18n.tsx";
-import { readableInk } from "../theme.ts";
+import type { CreatedLectureNotes } from "../combinedLectureNotes.ts";
+import { SavedPersonalPassage } from "./PersonalLectureNotes.tsx";
 import { Markdown } from "./Markdown.tsx";
 import "./createdLectureNotes.css";
 
-type Mode = "separate" | "combined";
-type Run = { text: string; color: string | null };
-type Block =
-  | { kind: "summary"; text: string }
-  | { kind: "mine"; id: number; source: "annotation" | "note"; runs: Run[] };
-type Created = { mode: Mode; blocks: Block[]; version: number };
-type State = { mode: Mode; created: Created | null };
+type Mode = CreatedLectureNotes["mode"];
+type State = { mode: Mode; created: CreatedLectureNotes | null };
 
-export function CreateLectureNotes({ code, sessionNo }: { code: string; sessionNo: number }) {
-  return <Composer key={code + "/" + sessionNo} code={code} sessionNo={sessionNo} />;
+export function LectureLayout({ code, sessionNo, mode, onChange }: {
+  code: string; sessionNo: number; mode: Mode; onChange: (mode: Mode) => void;
+}) {
+  const { t, lang } = useT();
+  const th = lang === "th";
+  const [pending, setPending] = useState<Mode | null>(null);
+  const selected = pending ?? mode;
+  const [error, setError] = useState(false);
+  async function choose(next: Mode) {
+    if (pending || next === mode) return;
+    setPending(next);
+    setError(false);
+    try {
+      await putJSON(`/api/lectures/${encodeURIComponent(code)}/${sessionNo}/note-preference`, { mode: next });
+      onChange(next);
+      window.dispatchEvent(new CustomEvent("lecture-note-mode-changed", { detail: { code, sessionNo, mode: next } }));
+    } catch {
+      setError(true);
+    } finally {
+      setPending(null);
+    }
+  }
+  return <fieldset disabled={!!pending} className="rounded-lg border px-3 flex flex-wrap gap-x-5 text-sm" style={{ borderColor: "var(--border)" }}>
+    <legend className="px-1 font-medium">{th ? "รูปแบบสำหรับบทเรียนนี้" : "Layout for this lecture"}</legend>
+    <label className="min-h-11 inline-flex items-center gap-2">
+      <input type="radio" name="lecture-layout" checked={selected === "separate"} onChange={() => void choose("separate")}/>
+      {th ? "แยกสรุปและโน้ต" : "Keep summary and notes separate"}
+    </label>
+    <label className="min-h-11 inline-flex items-center gap-2">
+      <input type="radio" name="lecture-layout" checked={selected === "combined"} onChange={() => void choose("combined")}/>
+      {th ? "รวมสรุปกับโน้ต" : "Combine summary and notes"}
+    </label>
+    {error && <p role="alert" className="w-full mb-2" style={{ color: "var(--danger)" }}>{t("status.failed")}</p>}
+  </fieldset>;
 }
 
-function Composer({ code, sessionNo }: { code: string; sessionNo: number }) {
+export function CreateLectureNotes({ code, sessionNo, inline, onCreated }: {
+  code: string;
+  sessionNo: number;
+  inline: boolean;
+  onCreated: (created: CreatedLectureNotes | null) => void;
+}) {
   const { t, lang } = useT();
   const th = lang === "th",
     path = `/api/lectures/${encodeURIComponent(code)}/${sessionNo}/created-notes`;
-  const labels = {
-    separate: th ? "แยกสรุปและโน้ตของฉัน" : "Keep summary and notes separate",
-    combined: th ? "รวมสรุปกับโน้ตของฉัน" : "Combine summary and notes",
-  };
   const [state, setState] = useState<State | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -35,6 +64,7 @@ function Composer({ code, sessionNo }: { code: string; sessionNo: number }) {
       .then((s) => {
         if (active) {
           setState(s);
+          onCreated(s.created);
           setError("");
         }
       })
@@ -44,27 +74,15 @@ function Composer({ code, sessionNo }: { code: string; sessionNo: number }) {
     return () => {
       active = false;
     };
-  }, [path, reload, t]);
-  async function choose(mode: Mode) {
-    if (!state || state.mode === mode) return;
-    setBusy(true);
-    setError("");
-    try {
-      await putJSON("/api/lecture-note-preference", { mode });
-      setState({ ...state, mode });
-    } catch {
-      setError(t("status.failed"));
-    } finally {
-      setBusy(false);
-    }
-  }
+  }, [path, reload, t, onCreated]);
   async function create() {
     if (!state) return;
     setBusy(true);
     setError("");
     try {
-      const created = await postJSON<Created>(path, { mode: state.mode });
+      const created = await postJSON<CreatedLectureNotes>(path, {});
       setState({ ...state, created });
+      onCreated(created);
     } catch (e) {
       setError((e as ApiError).error || t("status.failed"));
     } finally {
@@ -76,15 +94,6 @@ function Composer({ code, sessionNo }: { code: string; sessionNo: number }) {
       <h3 className="font-semibold">{th ? "สร้างโน้ตด้วย AI" : "Create notes with AI"}</h3>
       {state && (
         <>
-          <fieldset disabled={busy} className="flex flex-wrap gap-x-4 text-sm">
-            <legend className="sr-only">{th ? "รูปแบบโน้ต" : "Note layout"}</legend>
-            {(["separate", "combined"] as const).map((mode) => (
-              <label key={mode} className="min-h-11 inline-flex items-center gap-2">
-                <input type="radio" checked={state.mode === mode} onChange={() => void choose(mode)} />
-                {labels[mode]}
-              </label>
-            ))}
-          </fieldset>
           <button
             type="button"
             className="rounded-lg px-4 min-h-11 text-white"
@@ -94,10 +103,10 @@ function Composer({ code, sessionNo }: { code: string; sessionNo: number }) {
           >
             {busy ? "…" : th ? "สร้างโน้ต" : "Create notes"}
           </button>
-          {state.created && (
-            <details open key={state.created.version}>
+          {state.created && !inline && (
+            <details key={state.created.version}>
               <summary className="cursor-pointer py-2 font-medium">
-                {th ? "โน้ตที่บันทึกไว้" : "Saved notes"} · {labels[state.created.mode]}
+                {th ? "สำเนาที่สร้างไว้" : "Saved generated copy"} · {state.created.mode === "combined" ? t("lec.summaryAndNotes") : t("lec.notes")}
               </summary>
               <p className="text-xs my-2" style={{ color: "var(--warning)" }}>
                 {t("notes.disclaimer")}
@@ -119,30 +128,7 @@ function Composer({ code, sessionNo }: { code: string; sessionNo: number }) {
                       <Markdown source={b.text} />
                     </div>
                   ) : (
-                    <div key={i} className="border-l-2 pl-3" style={{ borderColor: "var(--accent)" }}>
-                      <small>
-                        {th ? "โน้ตของฉัน" : "My note"} ·{" "}
-                        {b.source === "note" ? "#" + b.id : th ? "ลายมือ" : "Handwriting"}
-                      </small>
-                      <p className="whitespace-pre-wrap">
-                        {b.runs.map((r, j) => (
-                          <span
-                            key={j}
-                            className="lecture-ink"
-                            style={
-                              (r.color
-                                ? {
-                                    "--ink-light": readableInk(r.color, "light"),
-                                    "--ink-dark": readableInk(r.color, "dark"),
-                                  }
-                                : {}) as CSSProperties
-                            }
-                          >
-                            {r.text}
-                          </span>
-                        ))}
-                      </p>
-                    </div>
+                    <SavedPersonalPassage key={i} passage={b}/>
                   ),
                 )}
               </div>

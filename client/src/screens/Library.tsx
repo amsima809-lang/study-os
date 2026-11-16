@@ -18,13 +18,54 @@ import { AddButton, Card, ConfirmDialog, ErrorBox, Loading } from "../components
 import { CourseChip } from "../components/CourseTitle.tsx";
 import { hasPendingUpload, takePendingUpload } from "../shareIntake.ts";
 import { BASE } from "../base.ts";
+import { readLectureLink } from "../lectureLink.ts";
 
 import { AnnotationSearch } from "../components/AnnotationSearch.tsx";
-import { SavedLecture, LectureShortcuts, type OpenLecture, type LectureCourse } from "../components/SavedLecture.tsx";
+import { SavedLecture, LectureShortcuts, loadLectureCourses, type OpenLecture, type LectureCourse } from "../components/SavedLecture.tsx";
 
 type View = "list" | "detail" | "pages" | "transcript";
 
 export default function Library() {
+  const [target, setTarget] = useState(readLectureLink);
+  if (target && target !== "1") {
+    return <LinkedSummary target={target} onBack={() => setTarget(null)} />;
+  }
+  return <LibraryContents />;
+}
+
+function LinkedSummary({ target, onBack }: { target: string; onBack: () => void }) {
+  const { t } = useT();
+  const [which, setWhich] = useState<OpenLecture | null>(null);
+  const [status, setStatus] = useState<"loading" | "missing" | "failed">("loading");
+  const [retry, setRetry] = useState(0);
+  useEffect(() => {
+    let active = true;
+    setStatus("loading");
+    loadLectureCourses().then(courses => {
+      if (!active) return;
+      const code = target.split("-")[0];
+      const lecture = courses.find(c => c.code === code)?.lectures.find(l => `${code}-${l.no}` === target);
+      if (lecture?.has_summary) {
+        setWhich({ code, lecture, tab: lecture.note_mode === "combined" ? "combined" : "summary" });
+      } else {
+        setStatus("missing");
+      }
+    }).catch(() => { if (active) setStatus("failed"); });
+    return () => { active = false; };
+  }, [target, retry]);
+
+  return <div className="space-y-3">
+    <button onClick={onBack} className="text-sm min-h-11" style={{ color: "var(--accent-text)" }}>
+      ← {t("lib.lectures")}
+    </button>
+    {which ? <SavedLecture which={which} onDeleted={onBack} />
+      : status === "loading" ? <Loading>{t("status.connecting")}</Loading>
+      : status === "missing" ? <ErrorBox>{t("lec.summaryUnavailable")}</ErrorBox>
+      : <ErrorBox onRetry={() => setRetry(n => n + 1)}>{t("lib.loadFailed")}</ErrorBox>}
+  </div>;
+}
+
+function LibraryContents() {
   const { t } = useT();
   const [view, setView] = useState<View>("list");
   const [materials, setMaterials] = useState<Material[]>([]);
@@ -67,7 +108,7 @@ export default function Library() {
         </button>
       )}
 
-      {view === "list" && <LectureLinks onRead={(tr) => { setTranscript(tr); setView("transcript"); }} />}
+      {view === "list" && <LectureLinks initialCourse={transcript?.code} onRead={(tr) => { setTranscript(tr); setView("transcript"); }} />}
       {view === "transcript" && transcript && (
         <SavedLecture which={transcript} onDeleted={() => { setView("list"); setTranscript(null); }} />
       )}
@@ -102,21 +143,31 @@ export default function Library() {
  *   (/collector/ru-vod.js) runs on the RU site in their signed-in browser and
  *   saves a .json file, which is imported here. See docs/LECTURE_TRANSCRIPTS_PLAN.md.
  */
-export function LectureLinks({ onRead }: { onRead: (t: OpenLecture) => void }) {
+export function LectureLinks({ onRead, initialCourse }: { onRead: (t: OpenLecture) => void; initialCourse?: string }) {
   const { t, lang } = useT();
   const [courses, setCourses] = useState<LectureCourse[]>([]);
-  const [open, setOpen] = useState<string | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [open, setOpen] = useState<string | null>(initialCourse ?? null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [showHelp, setShowHelp] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const bookmarkRef = useRef<HTMLAnchorElement>(null);
 
-  const load = useCallback(
-    () => getJSON<{ courses: LectureCourse[] }>("/api/lectures").then((r) => setCourses(r.courses)).catch(() => {}),
-    [],
-  );
-  useEffect(() => { load(); }, [load]);
+  const load = useCallback(async () => {
+    try {
+      const result = await loadLectureCourses();
+      setCourses(result);
+      setLoadFailed(false);
+    } catch {
+      setLoadFailed(true);
+    }
+  }, []);
+  useEffect(() => {
+    void load();
+    window.addEventListener("lecture-note-mode-changed", load);
+    return () => window.removeEventListener("lecture-note-mode-changed", load);
+  }, [load]);
 
   // React refuses javascript: links in JSX, so the bookmark's address is set here.
   useEffect(() => {
@@ -144,11 +195,12 @@ export function LectureLinks({ onRead }: { onRead: (t: OpenLecture) => void }) {
     }
   }
 
-  if (courses.length === 0) return null;
+  if (courses.length === 0 && !loadFailed) return null;
 
   return (
     <Card>
       <h2 className="font-semibold" style={{ color: "var(--text-primary)" }}>{t("lib.lectures")}</h2>
+      {loadFailed && <ErrorBox onRetry={load}>{t("lib.loadFailed")}</ErrorBox>}
       <p className="text-xs mt-0.5 mb-2" style={{ color: "var(--text-tertiary)" }}>{t("lib.lecturesHint")}</p>
 
       <AnnotationSearch onOpen={(code, no, annotationId) => {
@@ -160,6 +212,7 @@ export function LectureLinks({ onRead }: { onRead: (t: OpenLecture) => void }) {
         {courses.map((c) => {
           const isOpen = open === c.code;
           const saved = c.lectures.filter((l) => l.transcript).length;
+          const summaries = c.lectures.filter((l) => l.has_summary).length;
           return (
             <li key={c.code} className="rounded-xl border" style={{ borderColor: "var(--border-light)" }}>
               <button
@@ -174,6 +227,7 @@ export function LectureLinks({ onRead }: { onRead: (t: OpenLecture) => void }) {
                   </span>
                   <span className="block text-xs" style={{ color: "var(--text-tertiary)" }}>
                     {t("lib.lectureCount", { n: c.lectures.length })}
+                    {summaries > 0 && ` · ${t("lib.summaryCount", { n: summaries })}`}
                     {saved > 0 && ` · ${t("lib.transcriptCount", { n: saved })}`}
                   </span>
                 </span>
@@ -183,11 +237,11 @@ export function LectureLinks({ onRead }: { onRead: (t: OpenLecture) => void }) {
                 <ul className="px-3 pb-3 space-y-1.5">
                   {c.lectures.map((l) => (
                     <li key={l.no} className="flex flex-wrap items-center gap-2">
-                      <span className="flex-1 min-w-0 text-sm" style={{ color: "var(--text-primary)" }}>
+                      <span className="basis-full sm:basis-auto sm:flex-1 min-w-0 text-sm" style={{ color: "var(--text-primary)" }}>
                         {t("lib.lectureNo", { n: l.no })}
                         {l.transcript && (
-                          <span className="ml-2 text-xs" style={{ color: "var(--text-tertiary)" }}>
-                            {t("lib.minutes", { n: l.transcript.minutes })}
+                          <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+                            {" · "}{t("lib.minutes", { n: l.transcript.minutes })}
                           </span>
                         )}
                       </span>
@@ -196,7 +250,7 @@ export function LectureLinks({ onRead }: { onRead: (t: OpenLecture) => void }) {
                         <button
                           onClick={() => onRead({ code: c.code, lecture: l, tab: "transcript" })}
                           className="rounded-lg px-3 min-h-11 text-sm font-medium"
-                          style={{ backgroundColor: "var(--accent)", color: "#fff" }}
+                          style={{ backgroundColor: "var(--accent-light)", color: "var(--accent-text)" }}
                         >
                           {t("lec.transcript")}
                         </button>

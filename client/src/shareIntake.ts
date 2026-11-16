@@ -83,6 +83,7 @@ export async function addSharedToDraft(s: Shared, photos: File[] = []): Promise<
   const body = sharedBody(s);
   await saveNoteDraft({
     courseCode: draft?.courseCode ?? "",
+    lectureNo: draft?.lectureNo,
     title: draft?.title.trim() ? draft.title : s.title.trim(),
     text: [draft?.text.trim(), body].filter(Boolean).join("\n\n"),
     mode: "type",

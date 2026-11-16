@@ -17,11 +17,15 @@ export function AnnotatedSummary({
   courseCode,
   sessionNo,
   focusId,
+  savedInk,
+  onChanged,
   children,
 }: {
   courseCode: string;
   sessionNo: number;
   focusId?: number;
+  savedInk?: Set<number>;
+  onChanged?: () => void;
   children: ReactNode;
 }) {
   const { lang } = useT(),
@@ -54,8 +58,10 @@ export function AnnotatedSummary({
   const title = th ? "โน้ตลายมือของฉัน" : "My pen notes";
   const failed = th ? "ทำรายการไม่สำเร็จ ลองใหม่อีกครั้ง" : "Couldn’t complete that change. Try again.";
   const imageUrl = (a: Annotation) => withBase(`${path}/${a.id}/image?v=${a.revision}`);
-  const update = (row: Annotation) =>
+  const update = (row: Annotation) => {
     setRows((old) => [...old.filter((a) => a.id !== row.id), row].sort((a, b) => a.id - b.id));
+    onChanged?.();
+  };
   const failure = (e: unknown) => setError(th && typeof e === "object" && e && "error" in e ? String(e.error) : failed);
   useEffect(() => {
     let live = true;
@@ -360,7 +366,7 @@ export function AnnotatedSummary({
                   loading="lazy"
                   className="max-h-36 max-w-full rounded"
                 />
-                <p className="whitespace-pre-wrap">{a.runs.map((r) => r.text).join("")}</p>
+                {!savedInk?.has(a.id) && <p className="whitespace-pre-wrap">{a.runs.map((r) => r.text).join("")}</p>}
                 {review?.id === a.id ? (
                   <div className="space-y-2">
                     <label>{th ? "ตรวจข้อความจากลายมือ" : "Review handwritten text"}</label>
@@ -422,6 +428,7 @@ export function AnnotatedSummary({
                         try {
                           await deleteJSON(`${path}/${a.id}?revision=${a.revision}`);
                           setRows((old) => old.filter((r) => r.id !== a.id));
+                          onChanged?.();
                         } catch (e) {
                           failure(e);
                         } finally {

@@ -1,6 +1,14 @@
 import type { DB } from "./db.js";
 import { hasCatalog, programFilter } from "./api.js";
 
+export type LectureNoteMode = "separate" | "combined";
+
+export function lectureNoteMode(db: DB, user: string, lectureId: number): LectureNoteMode {
+  const row = db.prepare("SELECT mode FROM lecture_note_layouts WHERE user_id = ? AND lecture_id = ?")
+    .get(user, lectureId) as { mode: LectureNoteMode } | undefined;
+  return row?.mode ?? "separate";
+}
+
 /** Scope RU's preloaded content to the owner's trial while permission for wider release is pending. */
 export function canReadSharedLectures(userId: string) {
   const selected = process.env.SHARED_LECTURE_USERS;

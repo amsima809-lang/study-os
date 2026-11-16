@@ -2,6 +2,17 @@
 export type QuoteAnchor = { quote: string; prefix: string; suffix: string; mark: "circle" | "underline" };
 export type Point = { x: number; y: number };
 
+/** Inserted personal passages are outside the source text in which pen marks are anchored. */
+function sourceNodes(root: HTMLElement): Text[] {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode: node => node.parentElement?.closest("[data-personal-passage]")
+      ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT,
+  });
+  const nodes: Text[] = [];
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) nodes.push(node as Text);
+  return nodes;
+}
+
 function caretAt(root: HTMLElement, x: number, y: number): number | null {
   const doc = document as Document & {
     caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null;
@@ -10,11 +21,13 @@ function caretAt(root: HTMLElement, x: number, y: number): number | null {
   const caret = doc.caretPositionFromPoint?.(x, y);
   const fallback = !caret && doc.caretRangeFromPoint?.(x, y);
   const node = caret?.offsetNode ?? (fallback && fallback.startContainer);
-  if (!node || !root.contains(node)) return null;
+  if (!node || !root.contains(node) || node.parentElement?.closest("[data-personal-passage]")) return null;
   const r = document.createRange();
   r.selectNodeContents(root);
   r.setEnd(node, caret?.offset ?? (fallback ? fallback.startOffset : 0));
-  return r.toString().length;
+  const portion = r.cloneContents();
+  portion.querySelectorAll("[data-personal-passage]").forEach(passage => passage.remove());
+  return portion.textContent?.length ?? 0;
 }
 
 export function anchorFromMark(root: HTMLElement, points: Point[]): QuoteAnchor | null {
@@ -44,7 +57,7 @@ export function anchorFromMark(root: HTMLElement, points: Point[]): QuoteAnchor 
     ? caretAt(root, right - 1, Math.max(middle, bottom - lineHeight / 2))
     : caretAt(root, last.x, last.y - 5);
   if (a === null || b === null) return null;
-  const text = root.textContent ?? "";
+  const text = sourceNodes(root).map(node => node.data).join("");
   const start = Math.min(a, b),
     end = Math.max(a, b);
   const quote = text.slice(start, end).trim();
@@ -76,15 +89,15 @@ export function locateQuote(text: string, a: QuoteAnchor): number | null {
 }
 
 export function quoteRange(root: HTMLElement, a: QuoteAnchor): Range | null {
-  const offset = locateQuote(root.textContent ?? "", a);
+  const nodes = sourceNodes(root);
+  const offset = locateQuote(nodes.map(node => node.data).join(""), a);
   if (offset === null) return null;
   const end = offset + a.quote.length;
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   const r = document.createRange();
   let pos = 0,
     started = false;
-  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
-    const next = pos + (n.textContent?.length ?? 0);
+  for (const n of nodes) {
+    const next = pos + n.length;
     if (!started && offset < next) {
       r.setStart(n, offset - pos);
       started = true;

@@ -5,7 +5,7 @@
 export const PAGE_IDS = [
   "today", "reminders", "studyplan",
   "timetable", "exams", "map",
-  "notes", "library",
+  "library", "notes",
   "quiz", "review", "mock", "stats",
   "trail", "planner", "costs",
 ] as const;
@@ -15,7 +15,7 @@ export type SectionId = "today" | "classes" | "study" | "practice" | "degree";
 export const SECTIONS: { id: SectionId; icon: string; label: string; pages: DestId[] }[] = [
   { id: "today", icon: "calendar", label: "sec.today", pages: ["today", "reminders", "studyplan"] },
   { id: "classes", icon: "calendarRange", label: "sec.classes", pages: ["timetable", "exams", "map"] },
-  { id: "study", icon: "notebook", label: "sec.study", pages: ["notes", "library"] },
+  { id: "study", icon: "notebook", label: "sec.study", pages: ["library", "notes"] },
   { id: "practice", icon: "target", label: "sec.practice", pages: ["quiz", "review", "mock", "stats"] },
   { id: "degree", icon: "graduationCap", label: "sec.degree", pages: ["trail", "planner", "costs"] },
 ];

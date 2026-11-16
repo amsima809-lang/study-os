@@ -1,7 +1,8 @@
 /**
  * The unfinished note, kept in the browser (IndexedDB) so it survives a tab
  * switch, a refresh, a locked phone, a closed tab or the session ending.
- * One draft per signed-in student; it is removed when the note is saved or
+ * A general draft and separate drafts started inside each lecture, all per student.
+ * A draft is removed when the note is saved or
  * the student discards it. Nothing here is sent to the server.
  */
 import type { Stroke } from "./components/HandwritingPad.tsx";
@@ -64,11 +65,13 @@ async function run<T>(mode: IDBTransactionMode, work: (store: IDBObjectStore) =>
   }
 }
 
-const key = () => `note:${owner}`;
+export function noteDraftKey(lecture?: { code: string; sessionNo: number }): string {
+  return lecture ? `lecture-note:${owner}:${lecture.code}:${lecture.sessionNo}` : `note:${owner}`;
+}
 
-export async function loadNoteDraft(): Promise<NoteDraft | null> {
+export async function loadNoteDraft(key = noteDraftKey()): Promise<NoteDraft | null> {
   try {
-    const d = await run<NoteDraft | undefined>("readonly", (s) => s.get(key()));
+    const d = await run<NoteDraft | undefined>("readonly", (s) => s.get(key));
     return d && !isEmptyDraft(d) ? d : null;
   } catch {
     return null; // private browsing or storage blocked: the app works, just without drafts
@@ -80,19 +83,19 @@ export async function loadNoteDraft(): Promise<NoteDraft | null> {
  * safe: "saved" (all of it), "partial" (everything but the photos), "failed"
  * (nothing could be stored — private browsing, or storage blocked or full).
  */
-export async function saveNoteDraft(d: Omit<NoteDraft, "savedAt">): Promise<"saved" | "partial" | "failed"> {
+export async function saveNoteDraft(d: Omit<NoteDraft, "savedAt">, key = noteDraftKey()): Promise<"saved" | "partial" | "failed"> {
   if (isEmptyDraft(d)) {
-    await clearNoteDraft();
+    await clearNoteDraft(key);
     return "saved";
   }
   const draft: NoteDraft = { ...d, savedAt: Date.now() };
   let outcome: "saved" | "partial" | "failed" = "saved";
   try {
-    await run("readwrite", (s) => s.put(draft, key()));
+    await run("readwrite", (s) => s.put(draft, key));
   } catch {
     // Photos are the usual reason a save fails (storage full): keep the rest.
     try {
-      await run("readwrite", (s) => s.put({ ...draft, files: [] }, key()));
+      await run("readwrite", (s) => s.put({ ...draft, files: [] }, key));
       outcome = draft.files.length > 0 ? "partial" : "saved";
     } catch {
       outcome = "failed";
@@ -102,7 +105,7 @@ export async function saveNoteDraft(d: Omit<NoteDraft, "savedAt">): Promise<"sav
   return outcome;
 }
 
-export async function clearNoteDraft(): Promise<void> {
-  try { await run("readwrite", (s) => s.delete(key())); } catch { /* nothing to remove */ }
+export async function clearNoteDraft(key = noteDraftKey()): Promise<void> {
+  try { await run("readwrite", (s) => s.delete(key)); } catch { /* nothing to remove */ }
   window.dispatchEvent(new Event(DRAFT_CHANGED));
 }

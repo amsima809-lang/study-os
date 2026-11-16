@@ -9,6 +9,7 @@ import { openDb } from "../src/db.js";
 import { seedDatabase } from "../src/seed.js";
 import { importSavedLectures } from "../src/importSavedLectures.js";
 import { createLecturesRouter, importBundle } from "../src/lectures.js";
+import { createLectureNotesRouter } from "../src/createdLectureNotes.js";
 import { createNotesRouter } from "../src/notes.js";
 import { createUploadsRouter } from "../src/uploads.js";
 
@@ -50,7 +51,7 @@ beforeAll(async () => {
   app.use(express.json());
   app.use((req, _res, next) => { req.user = { id: String(req.headers["x-test-user"]) } as Express.User; next(); });
   app.use("/uploads", createUploadsRouter(db, root));
-  app.use(createLecturesRouter(db), createNotesRouter(db));
+  app.use(createLecturesRouter(db), createLectureNotesRouter(db), createNotesRouter(db));
   server = app.listen(0, "127.0.0.1");
   await new Promise<void>((done) => server.once("listening", done));
   base = "http://127.0.0.1:" + (server.address() as AddressInfo).port;
@@ -116,11 +117,90 @@ describe("saved lectures", () => {
     expect((await request("/uploads/original-file.jpg",b)).status).toBe(404);
     expect((await request("/uploads/original-file.jpg")).status).toBe(200);
   });
+  it("keeps each lecture's layout across the list, saved generation and reader, independently for each account", async () => {
+    async function modes(user: string) {
+      const { courses } = await (await request("/lectures", user)).json() as {
+        courses: {code: string; lectures: {no: number; note_mode: string}[]}[]
+      };
+      return courses.find(c => c.code === "MGT3204")!.lectures.slice(0, 2).map(l => l.note_mode);
+    }
+    const first = "/lectures/MGT3204/1", second = "/lectures/MGT3204/2";
+    expect(await modes(a)).toEqual(["separate", "separate"]);
+    expect((await request(first+"/note-preference", a, "PUT", {mode: "combined"})).ok).toBe(true);
+    expect(await modes(a)).toEqual(["combined", "separate"]);
+    expect(await modes(b)).toEqual(["separate", "separate"]);
+    expect(await (await request(first+"/created-notes", a)).json()).toMatchObject({mode: "combined", created: null});
+    expect(await (await request(first+"/created-notes", a, "POST", {})).json()).toMatchObject({mode: "combined"});
+    expect(await (await request(second+"/created-notes", b, "POST", {mode:"combined"})).json()).toMatchObject({mode:"combined"});
+    // Old cached clients sent the mode to this unscoped URL before generation.
+    expect((await request("/lecture-note-preference", a, "PUT", {mode:"separate"})).ok).toBe(true);
+    expect(await modes(a)).toEqual(["combined", "separate"]);
+    expect(await modes(b)).toEqual(["separate", "combined"]);
+    expect((await request(second+"/note-preference", outside, "PUT", {mode: "combined"})).status).toBe(404);
+    expect((await request(first+"/note-preference", a, "PUT", {mode: "invalid"})).status).toBe(400);
+    expect((await request(first+"/note-preference", a, "PUT", {mode:"separate"})).ok).toBe(true);
+    expect(await (await request(first+"/created-notes", a)).json()).toMatchObject({mode:"separate",created:{mode:"combined"}});
+  });
+  it("shows just this student's personal text, pictures and pen marks for the requested lecture", async () => {
+    const code = "MGT3204";
+    const path = "/lectures/MGT3204/1/personal-notes";
+    const { id } = db.prepare("SELECT id FROM course_lectures WHERE course_code=? AND session_no=1").get(code) as {id:number};
+    const { id: second } = db.prepare("SELECT id FROM course_lectures WHERE course_code=? AND session_no=2").get(code) as {id:number};
+    const add = db.prepare("INSERT INTO notes(user_id,lecture_id,raw_text,title,image_paths,created_at) VALUES (?,?,?,?,?,'today')");
+    const photos = ["/api/uploads/first.jpg", "/api/uploads/second.jpg"];
+    const note = add.run(a, id, "My typed note", "My title", JSON.stringify(photos));
+    const sketch = { reading: { notes: { blocks: [{type:"text",runs:[
+      {text:"Verified writing", ink:"#872161", authored:true}, {text:"Inferred", ink:"#123456", authored:false},
+    ]}] } } };
+    const addSketch = db.prepare("INSERT INTO sketch_pages(note_id,image_index,document_json,verified) VALUES(?,?,?,?)");
+    addSketch.run(note.lastInsertRowid, 0, JSON.stringify(sketch), 1);
+    addSketch.run(note.lastInsertRowid, 1, JSON.stringify(sketch), 0);
+    add.run(a, second, "Another lecture", null, null);
+    add.run(b, id, "Another student", null, null);
+    const pen = db.prepare(`INSERT INTO lecture_annotations(user_id,lecture_id,client_key,quote,prefix,suffix,mark,png,colors,runs)
+      VALUES(?,?,'fixture',?,'','','circle',x'00','["#872161"]',?)`);
+    const runs = [{ text: "My ink", color: "#872161" }];
+    const mark = pen.run(a, id, "Marked phrase", JSON.stringify(runs));
+    pen.run(a, second, "Other lecture's quote", "[]");
+    pen.run(b, id, "Other student's quote", "[]");
+    expect(await (await request(path, a)).json()).toEqual({
+      notes: [{ id: Number(note.lastInsertRowid), raw_text: "My typed note", title: "My title", image_paths: photos, created_at: "today",
+        sketch_passages: [{runs:[{text:"Verified writing",color:"#872161"}]}] }],
+      annotations: [{ id: Number(mark.lastInsertRowid), quote: "Marked phrase", runs,
+        image_url: `/api/lectures/MGT3204/1/annotations/${mark.lastInsertRowid}/image?v=1` }],
+    });
+    expect(await (await request(path, b)).json()).toMatchObject({
+      notes: [{ raw_text: "Another student", image_paths: [] }], annotations: [{ quote: "Other student's quote", runs: [] }],
+    });
+    expect((await request(path, outside)).status).toBe(404);
+    expect((await request("/lectures/MGT3204/99/personal-notes", a)).status).toBe(404);
+  });
   it("rolls back a partial re-import when the last catalogue bundle has no summary", () => {
     writeFileSync(join(root,"lecture-summary/summaries/ACC1101_L01.md"),"Replacement");
     writeFileSync(join(root,"lecture-summary/summaries/RAM1132_L01.md"),"");
     expect(()=>importSavedLectures(db,root)).toThrow(/Empty summary/);
     const row = db.prepare("SELECT summary_md FROM shared_lecture_summaries LIMIT 1").get();
     expect(row).toEqual({summary_md:"Original [00:02]"});
+  });
+  it("migrates only known per-lecture choices from saved documents and keeps those documents intact", () => {
+    const path = join(root, "old-layouts.sqlite");
+    const old = openDb(path);
+    seedDatabase(old, { reset: false });
+    old.exec("DROP TABLE lecture_note_layouts; DELETE FROM _migrations WHERE name='049_lecture_note_layouts.sql'");
+    const lectures = old.prepare("SELECT id FROM course_lectures WHERE course_code='MGT3204' ORDER BY session_no LIMIT 2")
+      .all() as {id:number}[];
+    for (const user of [a, b]) {
+      old.prepare("INSERT INTO users(id,email,name,created_at,last_login_at) VALUES(?,?,?,'today','today')").run(user,user+"@test.invalid",user);
+      old.prepare("INSERT INTO lecture_note_preferences VALUES(?,'combined')").run(user);
+    }
+    old.prepare("INSERT INTO created_lecture_notes VALUES(?,?,'combined','[]',4)").run(a,lectures[0].id);
+    old.prepare("INSERT INTO created_lecture_notes VALUES(?,?,'separate','[]',2)").run(a,lectures[1].id);
+    old.close();
+    const updated = openDb(path);
+    try {
+      expect(updated.prepare("SELECT user_id,lecture_id,mode FROM lecture_note_layouts ORDER BY lecture_id").all())
+        .toEqual([{user_id:a,lecture_id:lectures[0].id,mode:"combined"},{user_id:a,lecture_id:lectures[1].id,mode:"separate"}]);
+      expect(updated.prepare("SELECT version FROM created_lecture_notes ORDER BY lecture_id").all()).toEqual([{version:4},{version:2}]);
+    } finally { updated.close(); }
   });
 });

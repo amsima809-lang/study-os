@@ -22,6 +22,10 @@ describe("Phase 62 — the app's five sections", () => {
     for (const id of PAGE_IDS) expect(sectionOf(id).pages).toContain(id);
   });
 
+  it("opens Documents & lectures first in Study and keeps Notes selectable", () => {
+    expect(sectionOf("library").pages).toEqual(["library", "notes"]);
+  });
+
   it("keeps a section to a handful of tabs", () => {
     for (const s of SECTIONS) {
       expect(s.pages.length, s.id).toBeGreaterThanOrEqual(1);

@@ -18,7 +18,7 @@ import { consumeNoteFormRequest } from "../shareIntake.ts";
 import { formatDate, formatTime } from "../format.ts";
 import { PrivateNoteSummary } from "../components/PrivateNoteSummary.tsx";
 import { AddButton, Card, ConfirmDialog, ErrorBox, Loading } from "../components/ui.tsx";
-import { DRAFT_CHANGED, clearNoteDraft, isEmptyDraft, loadNoteDraft, saveNoteDraft, type Drawing, type NoteDraft } from "../noteDraft.ts";
+import { DRAFT_CHANGED, clearNoteDraft, isEmptyDraft, loadNoteDraft, noteDraftKey, saveNoteDraft, type Drawing, type NoteDraft } from "../noteDraft.ts";
 import { SketchNotes } from "../components/SketchNotes.tsx";
 import { Markdown } from "../components/Markdown.tsx";
 import Icon from "../components/Icon.tsx";
@@ -675,17 +675,30 @@ function NoteView({ noteId, onBack, onDeleted, onOpenLecture }: { onOpenLecture:
   );
 }
 
+/** The same note form, with its own draft for the lecture being read. */
+export function LectureNoteForm({ code, sessionNo, onSaved, onCancel }: {
+  code: string;
+  sessionNo: number;
+  onSaved: () => void;
+  onCancel: () => void;
+}) {
+  return <AddNote key={`${code}/${sessionNo}`} lecture={{ code, sessionNo }} onCreated={onSaved} onCancel={onCancel}/>;
+}
+
 function AddNote({
+  lecture,
   onCreated,
   onCancel,
 }: {
+  lecture?: { code: string; sessionNo: number };
   onCreated: (r: NoteLearning) => void;
   onCancel: () => void;
 }) {
   const { t } = useT();
   const [courses, setCourses] = useState<Course[]>([]);
-  const [courseCode, setCourseCode] = useState("");
-  const [lectureNo, setLectureNo] = useState("");
+  const [draftKey] = useState(() => noteDraftKey(lecture));
+  const [courseCode, setCourseCode] = useState(lecture?.code ?? "");
+  const [lectureNo, setLectureNo] = useState(lecture ? String(lecture.sessionNo) : "");
   const lectureCourses = useLectureCourses();
   const lectureCourse = lectureCourses.find((c) => c.code === courseCode);
   const noteCourses = [...courses, ...lectureCourses.filter((l) => !courses.some((c) => c.code === l.code))];
@@ -736,7 +749,7 @@ function AddNote({
   // Bring back an unfinished note (after a tab switch, refresh, lock or sign-out).
   useEffect(() => {
     let alive = true;
-    loadNoteDraft().then((d) => {
+    loadNoteDraft(draftKey).then((d) => {
       if (!alive) return;
       if (d) {
         setCourseCode(d.courseCode);
@@ -762,7 +775,7 @@ function AddNote({
     const timer = setTimeout(() => {
       if (saved.current) return;
       // If the draft cannot be kept on this device, leaving would lose the note: say so before it happens.
-      void saveNoteDraft(latest.current).then((outcome) => {
+      void saveNoteDraft(latest.current, draftKey).then((outcome) => {
         setDraftState(outcome);
         if (!saved.current) setUnsaved("note", outcome === "failed" ? "leave.note" : outcome === "partial" ? "leave.notePhotos" : null);
       });
@@ -771,7 +784,7 @@ function AddNote({
   }, [ready, courseCode, lectureNo, title, text, mode, drawing, files]);
   useEffect(() => {
     if (!ready) return;
-    const flush = () => { if (!saved.current) void saveNoteDraft(latest.current); };
+    const flush = () => { if (!saved.current) void saveNoteDraft(latest.current, draftKey); };
     const onHide = () => document.visibilityState === "hidden" && flush();
     document.addEventListener("visibilitychange", onHide);
     window.addEventListener("pagehide", flush);
@@ -795,7 +808,7 @@ function AddNote({
     setPadKey((k) => k + 1);
     setRestoredAt(null);
     setConfirmDiscard(false);
-    void clearNoteDraft();
+    void clearNoteDraft(draftKey);
   }
 
   function addFiles(list: FileList | File[] | null) {
@@ -855,7 +868,7 @@ function AddNote({
     try {
       const r = await postForm<NoteLearning>("/api/notes", form);
       saved.current = true; // the note is on the server: the draft is no longer needed
-      await clearNoteDraft();
+      await clearNoteDraft(draftKey);
       onCreated(r);
     } catch (e) {
       const err = e as ApiError;
@@ -905,24 +918,28 @@ function AddNote({
           </div>
         )}
 
-        <label className="block text-xs">
-          <span style={{ color: "var(--text-tertiary)" }}>{t("notes.course")}</span>
-          <select
-            value={courseCode}
-            onChange={(e) => { setCourseCode(e.target.value); setLectureNo(""); }}
-            className="mt-1 w-full rounded-lg border px-3 py-2 min-h-11"
-            style={selectStyle}
-          >
-            <option value="">{t("notes.selectCourse")}</option>
-            {noteCourses.map((c) => (
-              <option key={c.code} value={c.code}>
-                {c.code} {c.name_th}
-              </option>
-            ))}
-          </select>
-        </label>
+        {lecture ? <p className="text-sm">
+          <CourseChip code={courseCode} className="mr-2"/>{t("lib.lectureNo", { n: lecture.sessionNo })}
+        </p> : <>
+          <label className="block text-xs">
+            <span style={{ color: "var(--text-tertiary)" }}>{t("notes.course")}</span>
+            <select
+              value={courseCode}
+              onChange={(e) => { setCourseCode(e.target.value); setLectureNo(""); }}
+              className="mt-1 w-full rounded-lg border px-3 py-2 min-h-11"
+              style={selectStyle}
+            >
+              <option value="">{t("notes.selectCourse")}</option>
+              {noteCourses.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.code} {c.name_th}
+                </option>
+              ))}
+            </select>
+          </label>
 
-        <LecturePicker lectures={lectureCourse?.lectures} value={lectureNo} onChange={setLectureNo}/>
+          <LecturePicker lectures={lectureCourse?.lectures} value={lectureNo} onChange={setLectureNo}/>
+        </>}
 
         <input
           value={title}

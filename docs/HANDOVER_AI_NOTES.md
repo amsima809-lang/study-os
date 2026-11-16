@@ -5,7 +5,9 @@ Written at the end of a long session so another session can continue. Read this,
 
 ## Delivery update, 16 November 2026
 
-Open [Recorded lectures](https://termtrail.com/?view=lectures) and sign in with a trial account. From the app, open **Study → Documents & lectures → Recorded lectures**, expand a course and tap **AI notes** or **Transcript**. The Thai buttons read **สรุป AI** and **คำบรรยาย**. A timestamp opens the cited transcript line.
+From a trial account, open **Study → Documents & lectures → Recorded lectures**. Expand a course and tap **Summary** (**สรุป**) beside a lecture. It opens the prebuilt AI summary immediately. **Notes** (**โน้ต**) opens your own notes for that lecture. **Transcript** (**คำบรรยาย**) includes a summary preview and a button to read the full summary. To open an example directly, sign in with the same trial account. [Open MGT3204 lecture 1](https://termtrail.com/api/open/lectures?view=lectures&summary=MGT3204-1)
+
+Under **Layout for this lecture**, choose **Combine summary and notes** to show one **Summary and notes** (**สรุปและโน้ต**) button for that lecture. The choice is saved for your account. If you generated a copy for a lecture before this change, the reader starts in the layout you used for that copy and preserves its contents. Other lectures start with separate Summary and Notes buttons until you choose a layout for them.
 
 The Mac mini holds all 42 prebuilt transcript/summary pairs. Both designated accounts were verified against all 42 across ACC1103 (the same recording as ACC1101), MGT3204, RAM1103 and RAM1132. The two shared-lecture releases are `dd9589c` and `f354ddc`. The production allowlist is in `SHARED_LECTURE_USERS`; ask RU before widening it. The other 70 recordings remain outside this release. A database backup was taken before import.
 
@@ -92,7 +94,7 @@ Pen mode on a summary: an underline or circle selects the text under it (`docume
 A plugin using Apple's `SFSpeechRecognizer` with `th-TH` (Apple lists Thai for Dictation incl. on-device). Needs microphone + speech-recognition permission strings (Thai + English) and a TestFlight build. Feed the same `onDictated` path as web Speak.
 
 ### 5.5 Create notes with AI
-Toggle "Keep separate" / "Combine", saved per account at its last position. Combine: pass her notes and the lecture summary as two labelled sources; keep her lines word for word (tidy only), each tagged as hers; the server checks every "hers" passage really comes from her notes; show hers in her own ink colours (PencilKit gives exact stroke colours; adjust lightness for light/dark mode), with a small side marker so hers stands apart.
+Toggle "Keep separate" / "Combine". The original plan kept one setting per account. The delivery update above records the later decision to remember it for each lecture. Combine: pass her notes and the lecture summary as two labelled sources; keep her lines word for word (tidy only), each tagged as hers; the server checks every "hers" passage really comes from her notes; show hers in her own ink colours (PencilKit gives exact stroke colours; adjust lightness for light/dark mode), with a small side marker so hers stands apart.
 
 ### 5.6 Drawings → clean notes (tested, not built)
 Pipeline that worked on the two test pages (Instruction sketchnote; Boaler "Seeing as Understanding"):

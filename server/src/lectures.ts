@@ -10,8 +10,9 @@ import { Router } from "express";
 import { z } from "zod";
 import type { DB } from "./db.js";
 import { hasCatalog, programFilter } from "./api.js";
+import { sketchSources } from "./sketchRoutes.js";
 
-import { canReadSharedLectures, getLecture, getLectureSummary, lectureFilter } from "./savedLectures.js";
+import { canReadSharedLectures, getLecture, getLectureSummary, lectureFilter, type LectureNoteMode } from "./savedLectures.js";
 
 const Cue = z.object({
   startMs: z.number().int().min(0),
@@ -90,25 +91,27 @@ export function createLecturesRouter(db: DB): Router {
                 COALESCE(st.cue_count, lt.cue_count) AS cue_count,
                 COALESCE(st.duration_ms, lt.duration_ms) AS duration_ms,
                 summary.transcript_id IS NOT NULL AS has_summary,
+                COALESCE(layout.mode, 'separate') AS note_mode,
                 (SELECT count(*) FROM notes n, json_each(n.image_paths) image
                   WHERE n.user_id = ? AND n.lecture_id = cl.id AND image.type = 'text') AS image_count
          FROM course_lectures cl
          JOIN courses c ON c.code = cl.course_code
          LEFT JOIN shared_lecture_transcripts st ON st.id = cl.shared_transcript_id AND ? = 1
          LEFT JOIN shared_lecture_summaries summary ON summary.transcript_id = st.id
+         LEFT JOIN lecture_note_layouts layout ON layout.user_id = ? AND layout.lecture_id = cl.id
          LEFT JOIN lecture_transcripts lt
            ON lt.user_id = ? AND lt.course_code = cl.course_code AND lt.session_no = cl.session_no
          WHERE 1 = 1${mine.sql}
          ORDER BY cl.course_code, cl.session_no`,
       )
-      .all(userId, Number(canReadSharedLectures(userId)), userId, ...mine.params) as Array<{
+      .all(userId, Number(canReadSharedLectures(userId)), userId, userId, ...mine.params) as Array<{
       course_code: string; name_th: string; name_en: string | null; session_no: number; url: string;
-      has_summary: number; image_count: number; cue_count: number | null; duration_ms: number | null;
+      has_summary: number; note_mode: LectureNoteMode; image_count: number; cue_count: number | null; duration_ms: number | null;
     }>;
 
     type Course = {
       code: string; name_th: string; name_en: string | null;
-      lectures: { no: number; url: string; has_summary: boolean; image_count: number; transcript: { cues: number; minutes: number } | null }[];
+      lectures: { no: number; url: string; has_summary: boolean; note_mode: LectureNoteMode; image_count: number; transcript: { cues: number; minutes: number } | null }[];
     };
     const byCourse = new Map<string, Course>();
     for (const r of rows) {
@@ -117,7 +120,7 @@ export function createLecturesRouter(db: DB): Router {
       }
       byCourse.get(r.course_code)!.lectures.push({
         no: r.session_no,
-        url: r.url, has_summary: Boolean(r.has_summary), image_count: r.image_count,
+        url: r.url, has_summary: Boolean(r.has_summary), note_mode: r.note_mode, image_count: r.image_count,
         transcript: r.cue_count ? { cues: r.cue_count, minutes: Math.round((r.duration_ms ?? 0) / 60000) } : null,
       });
     }
@@ -204,6 +207,31 @@ export function createLecturesRouter(db: DB): Router {
       WHERE n.user_id = ? AND n.lecture_id = ? AND image.type = 'text'
       ORDER BY n.created_at, n.id, image.key`).all(id, lecture.id);
     res.json({ images });
+  });
+
+  router.get("/lectures/:code/:no/personal-notes", (req, res) => {
+    const user = req.user!.id;
+    const { code, no } = req.params;
+    const lecture = getLecture(db, user, code, Number(no));
+    if (!lecture) return res.status(404).json({ error: "ไม่พบบทเรียน" });
+    const notes = db.prepare(`SELECT id, title, raw_text, created_at,
+        CASE WHEN json_valid(image_paths) AND json_type(image_paths) = 'array' THEN image_paths ELSE '[]' END AS images
+      FROM notes WHERE user_id = ? AND lecture_id = ? ORDER BY created_at, id`)
+      .all(user, lecture.id) as { id: number; title: string | null; raw_text: string | null; created_at: string; images: string }[];
+    // A pen annotation contains a quotation. Give it the same visibility as the shared summary it marks.
+    const annotations = canReadSharedLectures(user) ? db.prepare(`SELECT a.id, a.quote, a.runs, a.revision
+      FROM lecture_annotations a JOIN shared_lecture_summaries s ON s.transcript_id = ?
+      WHERE a.user_id = ? AND a.lecture_id = ? ORDER BY a.id`)
+      .all(lecture.shared_transcript_id, user, lecture.id) as { id: number; quote: string; runs: string; revision: number }[] : [];
+    res.json({
+      notes: notes.map(({ images, ...note }) => ({
+        ...note, image_paths: JSON.parse(images), sketch_passages: sketchSources(db, user, note.id),
+      })),
+      annotations: annotations.map(({ id, quote, runs, revision }) => ({
+        id, quote, runs: JSON.parse(runs),
+        image_url: `/api/lectures/${encodeURIComponent(code)}/${Number(no)}/annotations/${id}/image?v=${revision}`,
+      })),
+    });
   });
 
   return router;

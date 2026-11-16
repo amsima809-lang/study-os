@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import type { DB } from "./db.js";
 import { callAnthropic, checkAiSubscription, isAiConfigured, AiSubscriptionRequired } from "./ai.js";
-import { getLectureSummary } from "./savedLectures.js";
+import { getLectureSummary, lectureNoteMode } from "./savedLectures.js";
 import { annotationSources } from "./lectureAnnotations.js";
 import { sketchSources } from "./sketchRoutes.js";
 
@@ -87,6 +87,19 @@ export function createLectureNotesRouter(db: DB, place = placeNotes): Router {
       .get(user, id) as { mode: Mode; blocks_json: string; version: number } | undefined;
     return row && { mode: row.mode, blocks: JSON.parse(row.blocks_json) as Block[], version: row.version };
   };
+  const saveLayout = db.prepare(`INSERT INTO lecture_note_layouts(user_id,lecture_id,mode) VALUES (?,?,?)
+    ON CONFLICT(user_id,lecture_id) DO UPDATE SET mode=excluded.mode`);
+  router.put("/lectures/:code/:no/note-preference", (req, res) => {
+    const user = req.user!.id;
+    const lecture = getLectureSummary(db, user, req.params.code, Number(req.params.no));
+    if (!lecture) return res.sendStatus(404);
+    const parsed = modeSchema.safeParse(req.body?.mode);
+    if (!parsed.success) return res.sendStatus(400);
+    saveLayout.run(user, lecture.lecture_id, parsed.data);
+    res.json({ mode: parsed.data });
+  });
+  // Older cached readers send no lecture identifier with their preference. Their
+  // subsequent Create request does identify the lecture and supplies its selected mode.
   router.put("/lecture-note-preference", (req, res) => {
     const parsed = modeSchema.safeParse(req.body?.mode);
     if (!parsed.success) return res.sendStatus(400);
@@ -99,19 +112,18 @@ export function createLectureNotesRouter(db: DB, place = placeNotes): Router {
     const user = req.user!.id;
     const lecture = getLectureSummary(db, user, req.params.code, Number(req.params.no));
     if (!lecture) return res.sendStatus(404);
-    const pref = db.prepare("SELECT mode FROM lecture_note_preferences WHERE user_id=?").get(user) as
-      { mode: Mode } | undefined;
-    res.json({ mode: pref?.mode ?? "separate", created: readSaved(user, lecture.lecture_id) ?? null });
+    res.json({ mode: lectureNoteMode(db, user, lecture.lecture_id), created: readSaved(user, lecture.lecture_id) ?? null });
   });
   router.post(route, async (req, res) => {
-    const parsed = modeSchema.safeParse(req.body?.mode);
+    const parsed = modeSchema.optional().safeParse(req.body?.mode);
     if (!parsed.success) return res.sendStatus(400);
-    const mode = parsed.data;
     const user = req.user!.id,
       code = req.params.code,
       no = Number(req.params.no);
     const source = readInputs(db, user, code, no);
     if (!source) return res.sendStatus(404);
+    const mode = parsed.data ?? lectureNoteMode(db, user, source.id);
+    if (parsed.data) saveLayout.run(user, source.id, mode);
     const version = readSaved(user, source.id)?.version ?? 0;
     const { inputs } = source;
     try {
@@ -127,7 +139,8 @@ export function createLectureNotesRouter(db: DB, place = placeNotes): Router {
       const current = readInputs(db, user, code, no);
       if (
         JSON.stringify(current) !== JSON.stringify(source) ||
-        (readSaved(user, source.id)?.version ?? 0) !== version
+        (readSaved(user, source.id)?.version ?? 0) !== version ||
+        lectureNoteMode(db, user, source.id) !== mode
       ) {
         return res.status(409).json({ error: "ข้อมูลมีการเปลี่ยนแปลง กรุณาสร้างโน้ตอีกครั้ง" });
       }

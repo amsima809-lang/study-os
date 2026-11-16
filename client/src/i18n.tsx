@@ -17,8 +17,14 @@ type Dict = Record<string, string>;
 // One flat dictionary per language. Add keys as new phases add screens.
 const STRINGS: Record<Lang, Dict> = {
   th: {
-    "lec.aiNotes": "สรุป AI",
+    "lec.summary": "สรุป",
+    "lec.notes": "โน้ต",
+    "lec.summaryAndNotes": "สรุปและโน้ต",
+    "lec.aiSummary": "สรุป AI",
+    "lec.readSummary": "อ่านสรุป AI",
+    "lib.summaryCount": "มีสรุป AI {n} ครั้ง",
     "lec.imageCount": "รูปโน้ต ({n})",
+    "lec.summaryUnavailable": "บัญชีนี้ไม่มีสรุปสำหรับบทบรรยายนี้",
     "lec.noImages": "ยังไม่มีรูปโน้ต",
     "lec.noteImage": "รูปโน้ตที่ {n}",
     "lec.previous": "รูปก่อนหน้า",
@@ -1076,8 +1082,14 @@ const STRINGS: Record<Lang, Dict> = {
     "sub.free": "Free",
   },
   en: {
-    "lec.aiNotes": "AI notes",
+    "lec.summary": "Summary",
+    "lec.notes": "Notes",
+    "lec.summaryAndNotes": "Summary and notes",
+    "lec.aiSummary": "AI summary",
+    "lec.readSummary": "Read AI summary",
+    "lib.summaryCount": "{n} with AI summary",
     "lec.imageCount": "Note images ({n})",
+    "lec.summaryUnavailable": "This lecture summary is unavailable for this account.",
     "lec.noImages": "No note images yet.",
     "lec.noteImage": "Note image {n}",
     "lec.previous": "Previous image",
@@ -1657,7 +1669,7 @@ const STRINGS: Record<Lang, Dict> = {
     // library (Phase 1)
     "lib.title": "Document Library",
     "lib.lectures": "Recorded lectures",
-    "lib.lecturesHint": "Choose a course to read its saved transcripts and AI notes. To watch a recording, sign in on the university site with your e-service account.",
+    "lib.lecturesHint": "Choose a course to read its AI summaries and transcripts. To watch a recording, sign in on the university site with your e-service account.",
     "lib.lectureCount": "{n} lectures",
     "lib.lectureNo": "No. {n}",
     "lib.transcriptCount": "{n} with transcript",
