@@ -44,7 +44,9 @@ function transcriptText(text: string, search: RegExp | null, focused: boolean) {
     : part);
 }
 
-export function LectureShortcuts({ code, lecture, onOpen }: { code: string; lecture: Lecture; onOpen: (v: OpenLecture) => void }) {
+export function LectureShortcuts({ code, lecture, onOpen, showImageShortcut = false }: {
+  code: string; lecture: Lecture; onOpen: (v: OpenLecture) => void; showImageShortcut?: boolean;
+}) {
   const { t } = useT();
   return <>
     <button type="button" className="inline-flex items-center gap-1.5 text-sm font-medium px-3 min-h-11 rounded-lg"
@@ -52,7 +54,7 @@ export function LectureShortcuts({ code, lecture, onOpen }: { code: string; lect
       onClick={() => onOpen({ code, lecture, tab: "notes" })}>
       <Icon name="fileText" size={16}/>{t("lec.notes")}
     </button>
-    {lecture.image_count > 0 && <button className="text-sm px-2 min-h-11" style={{ color: "var(--accent-text)" }} onClick={() => onOpen({ code, lecture, tab: "images" })}>{t("lec.imageCount", { n: lecture.image_count })}</button>}
+    {showImageShortcut && lecture.image_count > 0 && <button className="text-sm px-2 min-h-11" style={{ color: "var(--accent-text)" }} onClick={() => onOpen({ code, lecture, tab: "images" })}>{t("lec.imageCount", { n: lecture.image_count })}</button>}
   </>;
 }
 

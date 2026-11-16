@@ -11,6 +11,8 @@ Under **Layout for this lecture**, **Keep summary and notes separate** shows the
 
 The Mac mini holds all 42 prebuilt transcript/summary pairs. Both designated accounts were verified against all 42 across ACC1103 (the same recording as ACC1101), MGT3204, RAM1103 and RAM1132. The two shared-lecture releases are `dd9589c` and `f354ddc`. The production allowlist is in `SHARED_LECTURE_USERS`; ask RU before widening it. The other 70 recordings remain outside this release. A database backup was taken before import.
 
+To view saved pictures, open the lecture and tap **Note images**, or open the individual note that contains them.
+
 The follow-up adds private summary editing and restoration, lecture photo galleries, anchored pen annotations, reviewed handwriting search, separate/combined study notes and drawing review. In Combine, Flash chooses where a student's passage goes; the server retrieves its exact words and colours. A note with photos also has an action to read a sketchnote, review its arrows and see the original page. Details of the original requirements and source material follow.
 
 To annotate a sentence in the summary or transcript, underline or circle it and save your handwriting. Its transcription appears under the sentence as a pale yellow sub-bullet. Tap the note to edit its ink, rewrite its text or delete it.

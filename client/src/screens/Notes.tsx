@@ -558,7 +558,7 @@ function NoteView({ noteId, onBack, onDeleted, onOpenLecture }: { onOpenLecture:
           finally { setLinkBusy(false); }
         }}/>
       {linkError && <ErrorBox>{linkError}</ErrorBox>}
-      {linked && note.course_code && <LectureShortcuts code={note.course_code} lecture={{ ...linked, image_count: Math.max(linked.image_count, note.image_paths.length) }} onOpen={onOpenLecture}/>}
+      {linked && note.course_code && <LectureShortcuts code={note.course_code} lecture={{ ...linked, image_count: Math.max(linked.image_count, note.image_paths.length) }} onOpen={onOpenLecture} showImageShortcut/>}
       {(!handwritten || note.raw_text) && <Card>
         <h3 className="font-semibold mb-2 flex items-center gap-1.5" style={{ color: "var(--text-primary)" }}><Icon name="edit" size={16} /> {t("notes.text")}</h3>
         {note.raw_text ? (
