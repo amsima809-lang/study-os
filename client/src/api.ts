@@ -176,6 +176,7 @@ export type NoteLearning = {
 
 export type NoteListItem = {
   id: number;
+  lecture_no: number | null;
   course_code: string | null;
   course_name: string | null;
   course_name_en: string | null;
@@ -185,6 +186,7 @@ export type NoteListItem = {
 
 export type NoteDetail = {
   id: number;
+  lecture_no: number | null;
   course_code: string | null;
   created_at: string;
   title: string | null;

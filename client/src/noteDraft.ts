@@ -12,6 +12,7 @@ export type NativeInk = { drawing: string; png: string; colors: string[] };
 export type Drawing = { strokes: Stroke[]; pages: number; ink?: NativeInk };
 export type NoteDraft = {
   courseCode: string;
+  lectureNo?: string;
   title: string;
   text: string;
   mode: "type" | "draw";

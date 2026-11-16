@@ -574,3 +574,7 @@ AI ช่วยเรา "ฝึก" ไม่ใช่ "ทำแทน" — �
 - **Starting goal.** `trailRoutes.ts`: `entryYearOf` (69, 2569, Thai digits, 2026 → "69"; stored normalised by PUT /api/profile); `storedGoal`; `startingTarget(input, entryGuess)`; `trailGoal` and `trailPayload` use it when she has set no target. `failEffect(db, user, failed)` is returned by POST `/trail/term-check` and drives `FailSheet` in `TermCourses.tsx`.
 - **Reminders from her exams.** `examReminders(db, user, today)` in `universityReminders.ts` (keys `final:`, `etbooked:`, `own:`, `seat:`, `leave:` + term), merged into `syncUniversityReminders`; untouched reminders follow wording changes; personal ones no longer wanted (dropped course, removed booking) are deleted if untouched and still ahead.
 - **Clashes.** `findExamClashes` compares periods when both have one, else hours (`ownExamRows`). The preview's `finalsInBusyTime` gets `ownBusy(commitments)` as well as calendar busy blocks.
+
+### บทเรียนที่เตรียมไว้ล่วงหน้า
+
+หน้าเรียนเปิดคลังบทเรียนได้โดยตรงที่ `?view=lectures` ตาราง `shared_lecture_transcripts` และ `shared_lecture_summaries` เก็บต้นฉบับหนึ่งชุดต่อวิดีโอ รหัสวิชาที่ใช้วิดีโอเดียวกันชี้ไปยังต้นฉบับเดียวกัน นักศึกษาทดลองอ่านได้ตามรายชื่อใน `SHARED_LECTURE_USERS` ส่วนสรุปที่แก้เอง โน้ต และรูปของแต่ละคนผูกกับบัญชีตนเอง รายละเอียดการนำเข้าอยู่ใน `docs/LECTURE_TRANSCRIPTS_PLAN.md`

@@ -1,55 +1,25 @@
-# Lecture transcripts plan
+# Saved lectures and transcript imports
 
-Status: direction decided 2026-11-14. Steps 1 and 2 (web) are built; steps 3 to 5 are not started.
+The owner approved preloading the four catalogue recordings on 16 November 2026. A trial student can open the Study section in Notes or Documents & lectures, choose a course, and open its transcript or AI notes. The source video opens on RU's site with the student's own e-service login.
 
-## Decision
+## Shared material
 
-Lecture transcripts come into StudyOS through an **in-app browser**. The student signs in on the university's own page inside the app; the app then reads the transcripts from the pages it is showing. StudyOS never sees or stores the university password.
+ACC1101 and ACC1103 use the same ten recordings. MGT3204, RAM1103 and RAM1132 have their own recordings. Forty-two transcript/summary pairs serve 52 catalogue lecture links. The 70 other collected lectures belong to courses outside this catalogue.
 
-Ruled out:
-- The student giving StudyOS their e-service password (breach risk, likely against university rules, easy for the university to block).
-- The server fetching lecture pages (it is not signed in as the student).
-- Reading the pages from the plain web app (browsers block one site from reading another).
+RU transcripts, derived summaries, and the private notes directory stay out of git. Copy just the four matching bundles and the summaries directory to the host, preserving subdirectories and file timestamps. With the app migrations installed, run this from the repository root on the host:
 
-## What this commits us to
+```sh
+node_modules/.bin/tsx server/src/importSavedLectures.ts "/path/to/private-notes" "/path/to/existing-database.sqlite"
+```
 
-- **A native app.** An in-app browser that can read the page it shows only exists in a native shell. The route that fits is wrapping the existing web app (Capacitor), not a rewrite. This settles the "native apps" item in `UX_REVIEW_PLAN.md`; offline sync is still open.
-- **The right kind of in-app browser.** The standard Capacitor Browser plugin opens the system browser tab, which cannot read pages. This needs a web view the app controls, with script injection and a message channel back to the app. Which plugin: to be confirmed in a small spike (step 3).
-- **The web app keeps deep links only.** In a normal browser the Library lecture buttons still just open the university site.
+The importer checks the manifest against each course, session, URL and cue count. It replaces shared originals in one transaction, preserves student edits and links both accounting codes to the same original. The SQLite database and its daily backups contain the resulting transcripts and summaries.
 
-## What we know about the source
+In production, set `SHARED_LECTURE_USERS` to a comma-separated list of the trial students' account IDs. An empty list grants no shared access. Wider release is an owner decision after asking RU. An explicit `*` enables all eligible signed-in students. Programme and university filters still apply.
 
-See `ARCHITECTURE.md` (Phase 30) and `research/ru-lecture-links.json`.
-- `sub-demo.ru.ac.th/student/`: `index.php` lists subjects, `subject.php?subject_id=N` lists sessions, `watch.php?session_id=N` is one lecture.
-- Each watch page embeds the timed Thai transcript: `var CUES = [{ startMs, endMs, text }, ...]`.
-- The host name says "demo". Expect it to move or change.
+Timestamps in a summary open the matching transcript line. Return chips link the line to every point that cites it. Manual edits and restoration affect only the signed-in student's copy. Choosing a lecture on a new or existing course note adds its photos to that student's lecture gallery.
 
-## Flow
+## Student imports
 
-1. The student taps "Download lectures" on a course.
-2. The app opens that course's subject page in the in-app browser. If the site redirects to its login, the student signs in there.
-3. A small collector script, injected by the app, reads the session list, then loads each watch page in turn (with a pause between pages) and reads `CUES`.
-4. The collector hands each transcript to the app, which uploads it to StudyOS under the student's account.
-5. The in-app browser closes and the course shows its lectures as downloaded.
+The existing collector works in the student's signed-in RU tab. It reads the session list at `subject.php?subject_id=N`, visits each recording at `watch.php?session_id=N` with a pause, and saves the `CUES` as a bundle for import. StudyOS never handles RU credentials. A missing transcript is skipped and reported. Source links and the collector may need updating if RU moves its pilot site.
 
-## Rules
-
-- **Per student.** A transcript belongs to the student who downloaded it and is never served to another user.
-- **Gentle.** One page at a time, with pauses, only for the course the student asked for.
-- **Honest failure.** If the page layout changes and `CUES` is missing, say so and stop; do not guess.
-- **Ask the university.** Bulk-saving transcripts is a bigger ask than linking. Their agreement, or an official feed, would replace steps 2 to 4.
-- **Repo principle.** "AI helps me practise, never does it for me": decide what the app does with a transcript (searchable text, outline, quiz questions, or written notes) before building that part.
-
-## Build order
-
-1. **Receiving end (web, testable now).** Table for per-student lecture transcripts, an upload endpoint, and a transcript view on the course's lecture list.
-2. **Collector script (testable now).** One script that works on the subject and watch pages. It can be run by hand in a desktop browser against a signed-in tab, which proves steps 3 and 4 before any native work.
-3. **Native shell spike.** Wrap the web app with Capacitor, pick the web-view plugin, and prove sign-in, script injection and the message channel on one iPhone simulator and one Android emulator.
-4. **Wire it together** in the native app: the "Download lectures" button, progress, and errors.
-5. **Notes and action items from a transcript**, once the principle question above is answered.
-
-## Risks
-
-- The site is a pilot and may change without notice.
-- App store review: an app that is only a wrapped website can be rejected, and a web view that reads a third-party site may draw questions. The app needs real native value (offline notes, reminders with notifications, pencil input).
-- If the university adds a captcha or two-step sign-in, the student still signs in themselves, so the flow survives; only the collector needs to cope with the extra page.
+Privately imported bundles remain account-scoped. The viewer prefers a shared transcript where the account has access and otherwise reads that account's own copy. Deleting a private copy never removes a shared original. Native in-app collection remains a possible convenience for courses without shared material.

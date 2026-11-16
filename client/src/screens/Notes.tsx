@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useT } from "../i18n.tsx";
 import {
   getJSON,
+  putJSON,
   postForm,
   postJSON,
   deleteJSON,
@@ -26,6 +27,9 @@ import { drawWithPencilKit, hasNativeInk, inkBlob } from "../nativeInk.ts";
 import { useSubscription, handleSubscriptionError } from "../components/SubscriptionGate.tsx";
 import { withBase } from "../base.ts";
 
+import { LectureLinks } from "./Library.tsx";
+import { SavedLecture, LecturePicker, LectureShortcuts, useLectureCourses, type OpenLecture } from "../components/SavedLecture.tsx";
+
 type CourseGroup = {
   code: string | null;
   name_th: string | null;
@@ -44,6 +48,7 @@ export default function Notes() {
   // Opens straight on the form when something was just shared into the app.
   const [view, setView] = useState<View>(() => (consumeNoteFormRequest() ? { screen: "add" } : { screen: "courses" }));
   const [result, setResult] = useState<NoteLearning | null>(null);
+  const [openLecture, setOpenLecture] = useState<OpenLecture | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [query, setQuery] = useState(""); // kept here so it survives opening a result and coming back
   // An unfinished note waiting in this browser (see noteDraft.ts).
@@ -63,6 +68,11 @@ export default function Notes() {
       setResult(null);
     }
   }
+
+  if (openLecture) return <div className="space-y-3">
+    <button className="min-h-11" onClick={() => setOpenLecture(null)}>← {t("notes.title")}</button>
+    <SavedLecture which={openLecture} onDeleted={() => setOpenLecture(null)}/>
+  </div>;
 
   return (
     <div className="space-y-4">
@@ -97,6 +107,7 @@ export default function Notes() {
 
       {view.screen === "courses" && (
         <>
+          {!query.trim() && <LectureLinks onRead={setOpenLecture}/>}
           <NoteSearch query={query} onQuery={setQuery} onOpen={(id) => setView({ screen: "view", noteId: id })} />
           {!query.trim() && (
             <CourseList
@@ -110,6 +121,7 @@ export default function Notes() {
       {view.screen === "course-notes" && (
         <CourseNotes
           group={view.group}
+          onOpenLecture={setOpenLecture}
           onBack={() => setView({ screen: "courses" })}
           onSelectNote={(id) => setView({ screen: "view", noteId: id, group: view.group })}
         />
@@ -118,6 +130,7 @@ export default function Notes() {
       {view.screen === "view" && (
         <NoteView
           noteId={view.noteId}
+          onOpenLecture={setOpenLecture}
           onBack={goBack}
           onDeleted={() => {
             setRefreshKey((k) => k + 1);
@@ -282,13 +295,16 @@ function CourseNotes({
   group,
   onBack,
   onSelectNote,
+  onOpenLecture,
 }: {
   group: CourseGroup;
   onBack: () => void;
   onSelectNote: (id: number) => void;
+  onOpenLecture: (l: OpenLecture) => void;
 }) {
   const { t, lang } = useT();
   const { showPaywall } = useSubscription();
+  const lectureCourse = useLectureCourses().find((c) => c.code === group.code);
   const [summaryBusy, setSummaryBusy] = useState(false);
   const [summary, setSummary] = useState<CourseSummaryResult | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
@@ -399,7 +415,9 @@ function CourseNotes({
       {summaryError && <ErrorBox>{summaryError}</ErrorBox>}
 
       <ul className="space-y-2">
-        {group.notes.map((n) => (
+        {group.notes.map((n) => {
+          const lecture = lectureCourse?.lectures.find((l) => l.no === n.lecture_no);
+          return (
           <li key={n.id}>
             <button
               onClick={() => onSelectNote(n.id)}
@@ -413,18 +431,23 @@ function CourseNotes({
                 {formatDate(n.created_at.slice(0, 10), lang)}
               </div>
             </button>
+            {lecture && group.code && <LectureShortcuts code={group.code} lecture={lecture} onOpen={onOpenLecture}/>}
           </li>
-        ))}
+        ); })}
       </ul>
     </div>
   );
 }
 
-function NoteView({ noteId, onBack, onDeleted }: { noteId: number; onBack: () => void; onDeleted: () => void }) {
+function NoteView({ noteId, onBack, onDeleted, onOpenLecture }: { onOpenLecture: (l: OpenLecture) => void; noteId: number; onBack: () => void; onDeleted: () => void }) {
   const { t, lang } = useT();
   const [note, setNote] = useState<NoteDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
+  const [linkBusy, setLinkBusy] = useState(false);
+  const [linkError, setLinkError] = useState("");
+  const lectureCourse = useLectureCourses().find((c) => c.code === note?.course_code);
+  const linked = lectureCourse?.lectures.find((l) => l.no === note?.lecture_no);
 
   useEffect(() => {
     setLoading(true);
@@ -514,6 +537,15 @@ function NoteView({ noteId, onBack, onDeleted }: { noteId: number; onBack: () =>
         </p>
       </div>
 
+      <LecturePicker lectures={lectureCourse?.lectures} value={String(note.lecture_no ?? "")} disabled={linkBusy}
+        onChange={async (value) => {
+          setLinkBusy(true); setLinkError("");
+          try { setNote(await putJSON<NoteDetail>(`/api/notes/${noteId}/lecture`, { lecture_no: value ? Number(value) : null })); }
+          catch (e) { setLinkError((e as ApiError).error || t("status.failed")); }
+          finally { setLinkBusy(false); }
+        }}/>
+      {linkError && <ErrorBox>{linkError}</ErrorBox>}
+      {linked && note.course_code && <LectureShortcuts code={note.course_code} lecture={{ ...linked, image_count: Math.max(linked.image_count, note.image_paths.length) }} onOpen={onOpenLecture}/>}
       <Card>
         <h3 className="font-semibold mb-2 flex items-center gap-1.5" style={{ color: "var(--text-primary)" }}><Icon name="edit" size={16} /> {t("notes.text")}</h3>
         {note.raw_text ? (
@@ -649,6 +681,8 @@ function AddNote({
   const { t } = useT();
   const [courses, setCourses] = useState<Course[]>([]);
   const [courseCode, setCourseCode] = useState("");
+  const [lectureNo, setLectureNo] = useState("");
+  const lectureCourse = useLectureCourses().find((c) => c.code === courseCode);
   const [title, setTitle] = useState("");
   const [text, setText] = useState("");
   const [mode, setMode] = useState<"type" | "draw">("type");
@@ -699,6 +733,7 @@ function AddNote({
       if (!alive) return;
       if (d) {
         setCourseCode(d.courseCode);
+        setLectureNo(d.lectureNo ?? "");
         setTitle(d.title);
         setText(d.text);
         setMode(d.mode);
@@ -713,8 +748,8 @@ function AddNote({
 
   // Keep the draft up to date: shortly after each change, and at once when the
   // form goes away (another tab, the session ending) or the page is hidden.
-  const latest = useRef({ courseCode, title, text, mode, drawing, files });
-  latest.current = { courseCode, title, text, mode, drawing, files };
+  const latest = useRef({ courseCode, lectureNo, title, text, mode, drawing, files });
+  latest.current = { courseCode, lectureNo, title, text, mode, drawing, files };
   useEffect(() => {
     if (!ready) return;
     const timer = setTimeout(() => {
@@ -726,7 +761,7 @@ function AddNote({
       });
     }, 400);
     return () => clearTimeout(timer);
-  }, [ready, courseCode, title, text, mode, drawing, files]);
+  }, [ready, courseCode, lectureNo, title, text, mode, drawing, files]);
   useEffect(() => {
     if (!ready) return;
     const flush = () => { if (!saved.current) void saveNoteDraft(latest.current); };
@@ -801,6 +836,7 @@ function AddNote({
     }
     const form = new FormData();
     if (courseCode) form.append("course_code", courseCode);
+    if (lectureNo) form.append("lecture_no", lectureNo);
     if (title) form.append("title", title);
     if (hasText) form.append("raw_text", text);
     for (const f of files) form.append("images", f);
@@ -864,7 +900,7 @@ function AddNote({
           <span style={{ color: "var(--text-tertiary)" }}>{t("notes.course")}</span>
           <select
             value={courseCode}
-            onChange={(e) => setCourseCode(e.target.value)}
+            onChange={(e) => { setCourseCode(e.target.value); setLectureNo(""); }}
             className="mt-1 w-full rounded-lg border px-3 py-2 min-h-11"
             style={selectStyle}
           >
@@ -876,6 +912,8 @@ function AddNote({
             ))}
           </select>
         </label>
+
+        <LecturePicker lectures={lectureCourse?.lectures} value={lectureNo} onChange={setLectureNo}/>
 
         <input
           value={title}

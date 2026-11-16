@@ -8,6 +8,7 @@ import sharp from "sharp";
 import { writeFile, mkdir, readFile } from "node:fs/promises";
 import { join, basename } from "node:path";
 import type { DB } from "./db.js";
+import { getLecture } from "./savedLectures.js";
 import { env } from "./env.js";
 import {
   generateNoteLearning,
@@ -106,8 +107,9 @@ export function createNotesRouter(db: DB): Router {
     const rows = db
       .prepare(
         `SELECT n.id, n.course_code, c.name_th AS course_name, c.name_en AS course_name_en,
-              n.title, n.created_at
+              n.title, n.created_at, cl.session_no AS lecture_no
          FROM notes n LEFT JOIN courses c ON c.code = n.course_code
+         LEFT JOIN course_lectures cl ON cl.id = n.lecture_id
          WHERE n.user_id = ?
          ORDER BY n.created_at DESC`,
       )
@@ -123,7 +125,8 @@ export function createNotesRouter(db: DB): Router {
   // Read one note with all AI fields.
   type NoteRow = { id: number; course_code: string | null; raw_text: string | null } & Record<string, unknown>;
   function noteDetail(id: unknown, userId: string) {
-    const row = db.prepare("SELECT * FROM notes WHERE id = ? AND user_id = ?").get(id, userId) as NoteRow | undefined;
+    const row = db.prepare(`SELECT n.*, cl.session_no AS lecture_no FROM notes n LEFT JOIN course_lectures cl ON cl.id = n.lecture_id
+      WHERE n.id = ? AND n.user_id = ?`).get(id, userId) as NoteRow | undefined;
     if (!row) return undefined;
     return {
       ...row,
@@ -137,6 +140,20 @@ export function createNotesRouter(db: DB): Router {
     const note = noteDetail(req.params.id, req.user!.id);
     if (!note) return res.status(404).json({ error: "ไม่พบโน้ตนี้" });
     res.json(note);
+  });
+
+  router.put("/notes/:id/lecture", (req, res) => {
+    const userId = req.user!.id;
+    const note = noteDetail(req.params.id, userId);
+    if (!note) return res.status(404).json({ error: "ไม่พบโน้ตนี้" });
+    let lectureId: number | null = null;
+    if (req.body?.lecture_no !== null) {
+      const lecture = note.course_code && getLecture(db, userId, note.course_code, Number(req.body?.lecture_no));
+      if (!lecture) return res.status(400).json({ error: "ไม่พบบทเรียนของวิชานี้" });
+      lectureId = lecture.id;
+    }
+    db.prepare("UPDATE notes SET lecture_id = ? WHERE id = ? AND user_id = ?").run(lectureId, note.id, userId);
+    res.json(noteDetail(note.id, userId));
   });
 
   // Summarise a saved note with AI (a note saved while AI was off, or one she wants redone).
@@ -241,6 +258,12 @@ export function createNotesRouter(db: DB): Router {
       const title = (req.body.title as string) || null;
       const rawText = (req.body.raw_text as string) || "";
       const files = (req.files as Express.Multer.File[] | undefined) ?? [];
+      let lectureId: number | null = null;
+      if (req.body.lecture_no !== undefined) {
+        const lecture = courseCode && getLecture(db, req.user!.id, courseCode, Number(req.body.lecture_no));
+        if (!lecture) return res.status(400).json({ error: "ไม่พบบทเรียนของวิชานี้" });
+        lectureId = lecture.id;
+      }
 
       if (!rawText.trim() && files.length === 0) {
         return res.status(400).json({ error: "กรุณาพิมพ์ข้อความหรือแนบรูปโน้ตอย่างน้อย 1 อย่าง" });
@@ -284,14 +307,15 @@ export function createNotesRouter(db: DB): Router {
       const info = db
         .prepare(
           `INSERT INTO notes
-             (user_id, course_code, created_at, title, raw_text, image_paths,
+             (user_id, course_code, lecture_id, created_at, title, raw_text, image_paths,
               ai_summary_md, ai_mindmap_md, ai_terms_json, ai_topics_json)
-           VALUES (@user_id, @course_code, @created_at, @title, @raw_text, @image_paths,
+           VALUES (@user_id, @course_code, @lecture_id, @created_at, @title, @raw_text, @image_paths,
                    @ai_summary_md, @ai_mindmap_md, @ai_terms_json, @ai_topics_json)`,
         )
         .run({
           user_id: userId,
           course_code: courseCode,
+          lecture_id: lectureId,
           created_at: new Date().toISOString(),
           title,
           raw_text: rawText || null,

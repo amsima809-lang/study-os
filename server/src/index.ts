@@ -17,6 +17,7 @@ import { setupAuth, requireAuth } from "./auth.js";
 import { scheduleDailyBackups } from "./backup.js";
 import { AI_IS_FREE } from "./ai.js";
 import { createApiRouter } from "./api.js";
+import { createUploadsRouter } from "./uploads.js";
 import { createNotesRouter } from "./notes.js";
 import { createQuizRouter } from "./quiz.js";
 import { createFlashcardsRouter } from "./flashcards.js";
@@ -84,7 +85,7 @@ app.use("/api", setupAuth(db));
 // --- everything else under /api needs auth ---
 app.use("/api", requireAuth);
 
-app.use("/api/uploads", express.static(env.uploadDir));
+app.use("/api/uploads", createUploadsRouter(db, env.uploadDir));
 
 app.get("/api/stats", (req, res) => {
   const userId = req.user!.id;

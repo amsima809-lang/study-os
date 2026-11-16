@@ -19,6 +19,8 @@ import { CourseChip } from "../components/CourseTitle.tsx";
 import { hasPendingUpload, takePendingUpload } from "../shareIntake.ts";
 import { BASE } from "../base.ts";
 
+import { SavedLecture, LectureShortcuts, type OpenLecture, type LectureCourse } from "../components/SavedLecture.tsx";
+
 type View = "list" | "detail" | "pages" | "transcript";
 
 export default function Library() {
@@ -27,7 +29,7 @@ export default function Library() {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [selected, setSelected] = useState<Material | null>(null);
-  const [transcript, setTranscript] = useState<OpenTranscript | null>(null);
+  const [transcript, setTranscript] = useState<OpenLecture | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -66,7 +68,7 @@ export default function Library() {
 
       {view === "list" && <LectureLinks onRead={(tr) => { setTranscript(tr); setView("transcript"); }} />}
       {view === "transcript" && transcript && (
-        <TranscriptView which={transcript} onDeleted={() => { setView("list"); setTranscript(null); }} />
+        <SavedLecture which={transcript} onDeleted={() => { setView("list"); setTranscript(null); }} />
       )}
       {view === "list" && (
         <MaterialList
@@ -92,17 +94,6 @@ export default function Library() {
   );
 }
 
-type Lecture = { no: number; url: string; transcript: { cues: number; minutes: number } | null };
-type LectureCourse = { code: string; name_th: string; name_en: string | null; lectures: Lecture[] };
-type Cue = { startMs: number; endMs: number; text: string };
-type OpenTranscript = { code: string; no: number };
-
-const clock = (ms: number) => {
-  const s = Math.floor(ms / 1000);
-  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
-  return (h ? `${h}:${String(m).padStart(2, "0")}` : `${m}`) + `:${String(sec).padStart(2, "0")}`;
-};
-
 /**
  * The university's recorded lectures for the student's courses.
  * - "Watch" opens the lecture on the RU site (the student signs in there).
@@ -110,7 +101,7 @@ const clock = (ms: number) => {
  *   (/collector/ru-vod.js) runs on the RU site in their signed-in browser and
  *   saves a .json file, which is imported here. See docs/LECTURE_TRANSCRIPTS_PLAN.md.
  */
-function LectureLinks({ onRead }: { onRead: (t: OpenTranscript) => void }) {
+export function LectureLinks({ onRead }: { onRead: (t: OpenLecture) => void }) {
   const { t, lang } = useT();
   const [courses, setCourses] = useState<LectureCourse[]>([]);
   const [open, setOpen] = useState<string | null>(null);
@@ -185,7 +176,7 @@ function LectureLinks({ onRead }: { onRead: (t: OpenTranscript) => void }) {
               {isOpen && (
                 <ul className="px-3 pb-3 space-y-1.5">
                   {c.lectures.map((l) => (
-                    <li key={l.no} className="flex items-center gap-2">
+                    <li key={l.no} className="flex flex-wrap items-center gap-2">
                       <span className="flex-1 min-w-0 text-sm" style={{ color: "var(--text-primary)" }}>
                         {t("lib.lectureNo", { n: l.no })}
                         {l.transcript && (
@@ -194,13 +185,14 @@ function LectureLinks({ onRead }: { onRead: (t: OpenTranscript) => void }) {
                           </span>
                         )}
                       </span>
+                      <LectureShortcuts code={c.code} lecture={l} onOpen={onRead}/>
                       {l.transcript && (
                         <button
-                          onClick={() => onRead({ code: c.code, no: l.no })}
+                          onClick={() => onRead({ code: c.code, lecture: l, tab: "transcript" })}
                           className="rounded-lg px-3 min-h-11 text-sm font-medium"
                           style={{ backgroundColor: "var(--accent)", color: "#fff" }}
                         >
-                          {t("lib.read")}
+                          {t("lec.transcript")}
                         </button>
                       )}
                       <a
@@ -275,92 +267,6 @@ function LectureLinks({ onRead }: { onRead: (t: OpenTranscript) => void }) {
         </div>
       )}
     </Card>
-  );
-}
-
-/** One imported transcript: time-stamped text with a search box. */
-function TranscriptView({ which, onDeleted }: { which: OpenTranscript; onDeleted: () => void }) {
-  const { t } = useT();
-  const [cues, setCues] = useState<Cue[] | null>(null);
-  const [sourceUrl, setSourceUrl] = useState<string | null>(null);
-  const [query, setQuery] = useState("");
-  const [confirming, setConfirming] = useState(false);
-  const [error, setError] = useState("");
-  const path = `/api/lectures/transcripts/${which.code}/${which.no}`;
-
-  useEffect(() => {
-    getJSON<{ cues: Cue[]; source_url: string | null }>(path)
-      .then((r) => { setCues(r.cues); setSourceUrl(r.source_url); })
-      .catch(() => setError(t("lib.transcriptMissing")));
-  }, [path, t]);
-
-  if (error) return <ErrorBox>{error}</ErrorBox>;
-  if (!cues) return <Loading>{t("status.connecting")}</Loading>;
-
-  const q = query.trim().toLowerCase();
-  const shown = q ? cues.filter((c) => c.text.toLowerCase().includes(q)) : cues;
-
-  return (
-    <div className="space-y-3">
-      <h1 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
-        <CourseChip code={which.code} className="mr-2" />
-        {t("lib.lectureNo", { n: which.no })}
-      </h1>
-      <input
-        type="search"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder={t("lib.searchTranscript")}
-        aria-label={t("lib.searchTranscript")}
-        className="w-full rounded-xl border px-4 py-3 min-h-11"
-        style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-light)", color: "var(--text-primary)" }}
-      />
-      <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
-        {q ? t("lib.matches", { n: shown.length }) : t("lib.transcriptNote")}
-      </p>
-      <Card>
-        <ul className="space-y-3">
-          {shown.map((c) => (
-            <li key={c.startMs} className="flex gap-3">
-              <span className="shrink-0 w-14 text-xs pt-1 tabular-nums" style={{ color: "var(--text-tertiary)" }}>
-                {clock(c.startMs)}
-              </span>
-              <span className="text-base leading-relaxed" style={{ color: "var(--text-primary)" }}>{c.text}</span>
-            </li>
-          ))}
-          {shown.length === 0 && <li className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t("lib.noMatches")}</li>}
-        </ul>
-      </Card>
-      <div className="flex flex-wrap items-center gap-2">
-        {sourceUrl && (
-          <a
-            href={sourceUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center rounded-lg px-3 min-h-11 text-sm font-medium"
-            style={{ backgroundColor: "var(--accent-light)", color: "var(--accent-text)" }}
-          >
-            {t("lib.watch")} ↗
-          </a>
-        )}
-        <button onClick={() => setConfirming(true)} className="min-h-11 px-3 text-sm" style={{ color: "var(--danger)" }}>
-          {t("lib.deleteTranscript")}
-        </button>
-        {confirming && (
-          <ConfirmDialog
-            title={t("lib.deleteTranscriptTitle")}
-            message={t("confirm.cannotUndo")}
-            confirmLabel={t("confirm.delete")}
-            cancelLabel={t("nav.cancel")}
-            onConfirm={async () => {
-              try { await deleteJSON(path); onDeleted(); }
-              catch (e) { setConfirming(false); setError((e as ApiError)?.error ?? t("status.failed")); }
-            }}
-            onCancel={() => setConfirming(false)}
-          />
-        )}
-      </div>
-    </div>
   );
 }
 

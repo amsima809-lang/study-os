@@ -322,7 +322,7 @@ if (report) process.exit(0);
 
 // ---------- write the migration ----------
 // Every table that points at a course (server/test/curriculum.test.ts checks this list is complete).
-const REFERRING = ["chapter_mastery", "chapters", "class_sessions", "course_lectures", "enrollments", "etesting_bookings", "etesting_courses", "exams", "lecture_transcripts", "materials", "mock_exams", "my_exams", "notes", "plan_items", "prerequisites", "prerequisites.requires_code", "questions", "reminders", "study_sessions", "study_tasks", "topics"];
+const REFERRING = ["chapter_mastery", "chapters", "class_sessions", "course_lectures", "enrollments", "etesting_bookings", "etesting_courses", "exams", "lecture_transcripts", "materials", "mock_exams", "my_exams", "notes", "plan_items", "prerequisites", "prerequisites.requires_code", "questions", "reminders", "shared_lecture_transcripts", "study_sessions", "study_tasks", "topics"];
 const q = (v) => (v === null || v === undefined || v === "" ? "NULL" : `'${String(v).replace(/'/g, "''")}'`);
 const sha = createHash("sha256").update(readFileSync(pdfPath)).digest("hex");
 const all = [...names.values()].sort((a, b) => a.code.localeCompare(b.code));
@@ -366,7 +366,7 @@ writeFileSync(`server/migrations/${outName}`, sql + `
 DELETE FROM courses
 WHERE (name_th IS NULL OR name_th = '')
   AND code NOT IN (SELECT course_code FROM program_courses)
-${REFERRING.map((t) => `  AND code NOT IN (SELECT ${t.includes(".") ? t.split(".")[1] : "course_code"} FROM ${t.split(".")[0]} WHERE ${t.includes(".") ? t.split(".")[1] : "course_code"} IS NOT NULL)`).join("\n")};
+${REFERRING.filter((t) => t !== "shared_lecture_transcripts" || Number(outName.slice(0, 3)) > 44).map((t) => `  AND code NOT IN (SELECT ${t.includes(".") ? t.split(".")[1] : "course_code"} FROM ${t.split(".")[0]} WHERE ${t.includes(".") ? t.split(".")[1] : "course_code"} IS NOT NULL)`).join("\n")};
 
 -- The catalogue has gained courses, so the timetable and exams of every term the app plans
 -- (plan_terms) are rebuilt: the new courses get the class times and exam dates the registrar
