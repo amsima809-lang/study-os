@@ -14,6 +14,7 @@ import {
   type ApiError,
 } from "../api.ts";
 import { Card, ErrorBox, Loading } from "../components/ui.tsx";
+import { CourseMockExams } from "../components/CourseMockExams.tsx";
 import { CourseTitle } from "../components/CourseTitle.tsx";
 import Icon from "../components/Icon.tsx";
 import { ChooseCoursesCard } from "../components/TermCourses.tsx";
@@ -65,12 +66,13 @@ type Tab = "exam" | "history" | "settings";
 export default function Mock() {
   const { t } = useT();
   const [tab, setTab] = useState<Tab>("exam");
+  const [readingPaper, setReadingPaper] = useState(false);
 
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{t("mock.title")}</h1>
 
-      <div className="flex gap-1 rounded-lg p-1" style={{ backgroundColor: "var(--bg-surface-hover)" }}>
+      {!readingPaper && <div className="flex gap-1 rounded-lg p-1" style={{ backgroundColor: "var(--bg-surface-hover)" }}>
         {(["exam", "history", "settings"] as Tab[]).map((tb) => (
           <button
             key={tb}
@@ -85,10 +87,10 @@ export default function Mock() {
             {t(`mock.tab.${tb}`)}
           </button>
         ))}
-      </div>
+      </div>}
 
-      {tab === "exam" && <ExamTab />}
-      {tab === "history" && <HistoryTab />}
+      {tab !== "settings" && <CourseMockExams key={tab} history={tab === "history"} onReading={setReadingPaper}
+        legacy={tab === "exam" ? <ExamTab /> : <HistoryTab />} />}
       {tab === "settings" && <SettingsTab />}
     </div>
   );

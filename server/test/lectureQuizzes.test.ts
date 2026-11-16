@@ -11,6 +11,7 @@ type Question = {
   options: string[];
   session_no: number;
   correct_index?: number;
+  correct?: boolean;
   choice?: number;
   evidence_quote?: string;
   evidence_ms?: number;
@@ -149,6 +150,71 @@ async function grade(quiz: Quiz, missed: number[] = []) {
 const ids = (quiz: Quiz) => quiz.questions.map((q) => q.id);
 
 describe("lecture and course transcript quizzes", () => {
+  it.each([1, null])("checks each answer once and reveals only requested feedback in scope %s", async (session) => {
+    shared("MGT3204", 1);
+    shared("MGT3204", 2);
+    const quiz = await start(session, 1);
+    const path = "/attempts/" + quiz.id;
+    const misses = [quiz.questions[0].id];
+    const submitted = answers(quiz, misses);
+    const first = submitted[0];
+    const explanation = (id: number) => path + "/questions/" + id + "/explanation";
+    expect((await request(explanation(first.question_id))).status).toBe(404);
+    expect((await request(path + "/answer", first, other)).status).toBe(404);
+    expect((await request(path + "/answer", { ...first, question_id: -1 })).status).toBe(400);
+    expect((await request(path + "/answer", { ...first, question_id: 99999 })).status).toBe(400);
+    expect((await request(path + "/answer", { ...first, choice: 4 })).status).toBe(400);
+
+    const repetitions = await Promise.all([request(path + "/answer", first), request(path + "/answer", first)]);
+    expect(repetitions.map(r => r.status)).toEqual([200, 200]);
+    const checked = (await repetitions[0].json()) as Quiz;
+    expect(await repetitions[1].json()).toEqual(checked);
+    expect(checked.score).toBeNull();
+    expect(checked.questions[0]).toMatchObject({ choice: first.choice, correct: false });
+    expect(checked.questions.slice(1)).toEqual(quiz.questions.slice(1));
+    for (const key of ["correct_index", "explanation", "evidence_quote", "evidence_ms"]) {
+      expect(checked.questions.every(q => !(key in q))).toBe(true);
+    }
+    expect(await (await request(path + "?feedback=on-demand")).json()).toEqual(checked);
+    expect(await start(session, 1)).toEqual(checked);
+    expect((await request(path + "/answer", { ...first, choice: (first.choice + 1) % 4 })).status).toBe(409);
+    expect((await request(path + "/submit", { answers: answers(quiz) })).status).toBe(409);
+    expect(await (await request(path + "?feedback=on-demand")).json()).toEqual(checked);
+    expect((await request(explanation(first.question_id), undefined, other)).status).toBe(404);
+    expect((await request(explanation(submitted[1].question_id))).status).toBe(404);
+    expect(await (await request(explanation(first.question_id))).json()).toEqual({
+      correct_index: answers(quiz)[0].choice, explanation: "Explanation", evidence_ms: 1234, evidence_quote: "Evidence",
+    });
+    const slot = (c: Course) => session === null ? c.course_quiz : c.lectures[0].quizzes[0];
+    expect(slot((await list())[0]).stats.quizzes_taken).toBe(0);
+
+    for (const a of submitted.slice(1)) expect((await request(path + "/answer", a)).status).toBe(200);
+    const completed = await (await request(path + "?feedback=on-demand")).json() as Quiz;
+    expect(completed).toMatchObject({ status: "completed", score: submitted.length - 1 });
+    expect(completed.questions.every(q => q.choice !== undefined && q.correct === !misses.includes(q.id) && !("explanation" in q) && !("correct_index" in q))).toBe(true);
+    expect(await (await request(path + "/answer", submitted[submitted.length - 1])).json()).toEqual(completed);
+    expect((await request(path + "/submit", { answers: submitted })).status).toBe(200);
+    expect(slot((await list())[0]).stats).toMatchObject({ quizzes_taken: 1, correct_questions: submitted.length - 1, incorrect_questions: 1 });
+    expect(await (await request("/start?feedback=on-demand", { course_code: "MGT3204", session_no: session, slot: 1 })).json()).toEqual(completed);
+    const retry = await start(session, 1, quiz.id);
+    expect(retry.questions.filter(q => ids(quiz).includes(q.id)).map(q => q.id)).toEqual(misses);
+    expect(retry.questions.every(q => !("choice" in q) && !("correct" in q))).toBe(true);
+    expect((await request("/attempts/" + retry.id + "/questions/" + first.question_id + "/explanation")).status).toBe(404);
+    vi.stubEnv("SHARED_LECTURE_USERS", other);
+    expect((await request(explanation(first.question_id))).status).toBe(404);
+  });
+
+  it("lets an existing client submit a partially checked round without replacing checked answers", async () => {
+    shared("MGT3204", 1);
+    const quiz = await start(1, 1);
+    const valid = answers(quiz);
+    const path = "/attempts/" + quiz.id;
+    expect((await request(path + "/answer", valid[0])).status).toBe(200);
+    const completed = await grade(quiz);
+    expect(completed.score).toBe(5);
+    expect(completed.questions.every(q => q.correct_index === q.choice && q.explanation === "Explanation")).toBe(true);
+  });
+
   it("counts completed rounds and distinct questions for each student's quiz across retakes", async () => {
     shared("MGT3204", 1);
     const fresh = { quizzes_taken: 0, correct_questions: 0, incorrect_questions: 0, total_questions: 25 };

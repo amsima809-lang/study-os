@@ -35,3 +35,14 @@ it("opens the old library link and cleans a fresh-launch address under a subpath
   browser.location = new URL("https://example.test/app/?view=lectures");
   expect(readLectureLink()).toBe("1");
 });
+
+it("opens a timestamped practice source and cleans only the lecture parameters", () => {
+  const replaceState = vi.fn();
+  const browser = { location: new URL("https://example.test/app/?view=lectures&transcript=MGT3204-7&at=0&other=keep"), history: { replaceState } };
+  vi.stubGlobal("window", browser);
+  expect(readLectureLink()).toBe("MGT3204-7@0");
+  clearLectureLink();
+  expect(String(replaceState.mock.calls[0][2])).toBe("https://example.test/app/?other=keep");
+  browser.location = new URL("https://example.test/app/?view=lectures&transcript=MGT3204-7&at=-1");
+  expect(readLectureLink()).toBe("1");
+});

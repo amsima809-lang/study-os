@@ -21,7 +21,7 @@ export async function loadLectureCourses(): Promise<LectureCourse[]> {
   return courses;
 }
 type Tab = "notes" | "transcript";
-export type OpenLecture = { code: string; lecture: Lecture; tab: Tab; annotationId?: number };
+export type OpenLecture = { code: string; lecture: Lecture; tab: Tab; annotationId?: number; atMs?: number };
 type Summary = { summary_md: string; edited: boolean };
 type Transcript = { cues: Cue[]; source_url: string | null; shared: boolean };
 type Target = { tab: "summary" | "transcript"; idx: number };
@@ -67,6 +67,7 @@ function LectureReader({ which, onDeleted }: { which: OpenLecture; onDeleted: ()
   const [notesRevision, setNotesRevision] = useState(0);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [transcript, setTranscript] = useState<Transcript | null>(null);
+  const initialTime = useRef(which.atMs);
   const [query, setQuery] = useState("");
   const [draft, setDraft] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -107,6 +108,15 @@ function LectureReader({ which, onDeleted }: { which: OpenLecture; onDeleted: ()
     if (lecture.has_summary) getJSON<Summary>(summaryPath).then((r) => { if (alive) setSummary(r); }).catch(() => { if (alive) setError(t("lib.loadFailed")); });
     return () => { alive = false; };
   }, [trPath, summaryPath, lecture.has_summary, lecture.transcript, t]);
+
+  useEffect(() => {
+    const at = initialTime.current;
+    if (!transcript || at === undefined) return;
+    initialTime.current = undefined;
+    const exact = transcript.cues.findIndex(c => c.startMs === at);
+    const idx = exact >= 0 ? exact : nearestCue(transcript.cues, clock(at));
+    if (idx >= 0) setFocus({ tab: "transcript", idx });
+  }, [transcript]);
 
   // Opening a long lecture from a scrolled course list should show its heading and tabs.
   // Timestamp links and pen-note search handle their own scroll destinations.

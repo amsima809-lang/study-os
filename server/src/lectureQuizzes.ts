@@ -209,7 +209,16 @@ function drawQuestions(db: DB, user: string, banks: Bank[], session: number, slo
   return chosen.length === count ? shuffled(chosen) : null;
 }
 
-function present(attempt: Attempt, items: Item[], banks: Bank[]) {
+function feedback(item: Item) {
+  return {
+    correct_index: (JSON.parse(item.option_order) as number[]).indexOf(item.correct_index),
+    explanation: item.explanation,
+    evidence_ms: item.evidence_ms,
+    evidence_quote: item.evidence_quote,
+  };
+}
+
+function present(attempt: Attempt, items: Item[], banks: Bank[], legacyReview: boolean) {
   const sessions = new Map(banks.map((b) => [b.bank_id, b.no]));
   return {
     id: attempt.id,
@@ -226,15 +235,8 @@ function present(attempt: Attempt, items: Item[], banks: Bank[]) {
         stem: item.stem,
         options: order.map((i) => options[i]),
         session_no: sessions.get(item.bank_id)!,
-        ...(attempt.score === null
-          ? {}
-          : {
-              choice: item.choice,
-              correct_index: order.indexOf(item.correct_index),
-              explanation: item.explanation,
-              evidence_ms: item.evidence_ms,
-              evidence_quote: item.evidence_quote,
-            }),
+        ...(item.choice === null ? {} : { choice: item.choice, correct: order[item.choice] === item.correct_index }),
+        ...(legacyReview && attempt.score !== null ? feedback(item) : {}),
       };
     }),
   };
@@ -248,19 +250,13 @@ const startSchema = z
     previous_attempt_id: z.number().int().positive().nullable().default(null),
   })
   .refine((s) => s.session_no !== null || s.slot === 1);
-const answersSchema = z.object({
-  answers: z
-    .array(
-      z.object({
-        question_id: z.number().int().positive(),
-        choice: z.number().int().min(0).max(3),
-      })
-    )
-    .min(lectureSize)
-    .max(bankSize),
+const answerSchema = z.object({
+  question_id: z.number().int().positive(),
+  choice: z.number().int().min(0).max(3),
 });
+const answersSchema = z.object({ answers: z.array(answerSchema).min(lectureSize).max(bankSize) });
 
-function startAttempt(db: DB, user: string, request: z.infer<typeof startSchema>) {
+function startAttempt(db: DB, user: string, request: z.infer<typeof startSchema>, legacyReview: boolean) {
   const session = request.session_no ?? 0;
   const banks = visibleBanks(db, user, request.course_code).filter((b) => !session || b.no === session);
   if (!banks.length) return null;
@@ -277,7 +273,7 @@ function startAttempt(db: DB, user: string, request: z.infer<typeof startSchema>
     return null;
   // Two tabs or a lost HTTP response resume the same attempt. A retake must name its graded parent.
   if (latest && (latest.score === null || latest.id !== request.previous_attempt_id)) {
-    return present(latest, itemsFor(db, latest.id), banks);
+    return present(latest, itemsFor(db, latest.id), banks, legacyReview);
   }
   const ids = drawQuestions(db, user, banks, session, request.slot, latest);
   if (!ids) return null;
@@ -296,7 +292,8 @@ function startAttempt(db: DB, user: string, request: z.infer<typeof startSchema>
   return present(
     { id, course_code: request.course_code, session_no: session, slot: request.slot, score: null },
     itemsFor(db, id),
-    banks
+    banks,
+    legacyReview
   );
 }
 
@@ -315,6 +312,31 @@ function ownedAttempt(db: DB, user: string, id: number) {
   return { attempt, items, banks };
 }
 
+function saveAnswers(db: DB, user: string, id: number, answers: z.infer<typeof answerSchema>[], wholeQuiz: boolean) {
+  const state = ownedAttempt(db, user, id);
+  if (!state) return { status: 404, data: { error: "ไม่พบแบบทดสอบ" } };
+  const { attempt, items, banks } = state;
+  const choices = new Map(answers.map(a => [a.question_id, a.choice]));
+  const selected = items.filter(i => choices.has(i.question_id));
+  if (selected.length !== answers.length || (wholeQuiz && selected.length !== items.length)) {
+    return { status: 400, data: { error: "คำตอบไม่ตรงกับข้อในแบบทดสอบนี้" } };
+  }
+  if (selected.some(i => i.choice !== null && i.choice !== choices.get(i.question_id))) {
+    return { status: 409, data: { error: "บันทึกคำตอบข้อนี้แล้ว" } };
+  }
+  const update = db.prepare("UPDATE lecture_quiz_items SET choice=? WHERE attempt_id=? AND question_id=?");
+  for (const item of selected) {
+    if (item.choice !== null) continue;
+    item.choice = choices.get(item.question_id)!;
+    update.run(item.choice, id, item.question_id);
+  }
+  if (attempt.score === null && items.every(i => i.choice !== null)) {
+    attempt.score = items.filter(i => JSON.parse(i.option_order)[i.choice!] === i.correct_index).length;
+    db.prepare("UPDATE lecture_quiz_attempts SET score=?,submitted_at=datetime('now') WHERE id=?").run(attempt.score, id);
+  }
+  return { status: 200, data: present(attempt, items, banks, wholeQuiz) };
+}
+
 export function createLectureQuizRouter(db: DB): Router {
   // Catalog totals and past answers use the same question identity as the randomized draws.
   db.function("lecture_quiz_stem", { deterministic: true }, stemKey);
@@ -323,52 +345,35 @@ export function createLectureQuizRouter(db: DB): Router {
   router.post("/start", (req, res) => {
     const request = startSchema.safeParse(req.body);
     if (!request.success) return res.status(400).json({ error: "ข้อมูลแบบทดสอบไม่ถูกต้อง" });
-    const attempt = db.transaction(() => startAttempt(db, req.user!.id, request.data)).immediate();
+    const attempt = db.transaction(() => startAttempt(db, req.user!.id, request.data, req.query.feedback !== "on-demand")).immediate();
     return attempt ? res.json(attempt) : res.status(404).json({ error: "ไม่พบแบบทดสอบ" });
   });
   router.get("/attempts/:id", (req, res) => {
     const result = db.transaction(() => {
       const state = ownedAttempt(db, req.user!.id, Number(req.params.id));
-      return state && present(state.attempt, state.items, state.banks);
+      return state && present(state.attempt, state.items, state.banks, req.query.feedback !== "on-demand");
     })();
     return result ? res.json(result) : res.status(404).json({ error: "ไม่พบแบบทดสอบ" });
   });
+  router.get("/attempts/:id/questions/:questionId/explanation", (req, res) => {
+    const result = db.transaction(() => {
+      const state = ownedAttempt(db, req.user!.id, Number(req.params.id));
+      const item = state?.items.find(i => i.question_id === Number(req.params.questionId));
+      return item && item.choice !== null ? feedback(item) : null;
+    })();
+    return result ? res.json(result) : res.status(404).json({ error: "ไม่พบคำอธิบายของคำตอบนี้" });
+  });
+  router.post("/attempts/:id/answer", (req, res) => {
+    const parsed = answerSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "คำตอบไม่ถูกต้อง" });
+    const result = db.transaction(() => saveAnswers(db, req.user!.id, Number(req.params.id), [parsed.data], false)).immediate();
+    return res.status(result.status).json(result.data);
+  });
+  // Older clients send their saved draft as one submission.
   router.post("/attempts/:id/submit", (req, res) => {
     const parsed = answersSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "กรุณาตอบคำถามทุกข้อ" });
-    const answers = new Map(parsed.data.answers.map((a) => [a.question_id, a.choice]));
-    const result = db
-      .transaction(() => {
-        const state = ownedAttempt(db, req.user!.id, Number(req.params.id));
-        if (!state) return { status: 404, data: { error: "ไม่พบแบบทดสอบ" } };
-        const { attempt, items, banks } = state;
-        if (
-          answers.size !== parsed.data.answers.length ||
-          answers.size !== items.length ||
-          items.some((i) => !answers.has(i.question_id))
-        ) {
-          return { status: 400, data: { error: "กรุณาตอบทุกข้อในแบบทดสอบนี้" } };
-        }
-        if (attempt.score !== null && items.some((i) => answers.get(i.question_id) !== i.choice)) {
-          return { status: 409, data: { error: "บันทึกผลของรอบนี้แล้ว" } };
-        }
-        if (attempt.score === null) {
-          const update = db.prepare("UPDATE lecture_quiz_items SET choice=? WHERE attempt_id=? AND question_id=?");
-          let score = 0;
-          for (const item of items) {
-            item.choice = answers.get(item.question_id)!;
-            if (JSON.parse(item.option_order)[item.choice] === item.correct_index) score++;
-            update.run(item.choice, attempt.id, item.question_id);
-          }
-          db.prepare("UPDATE lecture_quiz_attempts SET score=?,submitted_at=datetime('now') WHERE id=?").run(
-            score,
-            attempt.id
-          );
-          attempt.score = score;
-        }
-        return { status: 200, data: present(attempt, items, banks) };
-      })
-      .immediate();
+    const result = db.transaction(() => saveAnswers(db, req.user!.id, Number(req.params.id), parsed.data.answers, true)).immediate();
     return res.status(result.status).json(result.data);
   });
   return router;

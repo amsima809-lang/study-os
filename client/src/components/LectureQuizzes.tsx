@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { getJSON, postJSON } from "../api.ts";
+import { withBase } from "../base.ts";
 import { useT } from "../i18n.tsx";
 import { draftOwner } from "../noteDraft.ts";
 import { Card, ErrorBox, Loading } from "./ui.tsx";
@@ -20,7 +21,10 @@ type Course = {
 };
 type Question = {
   id: number; stem: string; options: string[]; session_no: number;
-  choice?: number; correct_index?: number; explanation?: string; evidence_ms?: number; evidence_quote?: string;
+  choice?: number; correct?: boolean;
+};
+type Explanation = {
+  correct_index: number; explanation: string; evidence_ms: number; evidence_quote: string;
 };
 type Attempt = {
   id: number; course_code: string; session_no: number | null; slot: number;
@@ -66,7 +70,7 @@ export default function LectureQuizzes({ onTaking, onEmpty }: { onTaking: (takin
     try { id = Number(sessionStorage.getItem(recentKey())); } catch { /* optional */ }
     if (id > 0) {
       setBusy(true);
-      getJSON<Attempt>(`${api}/attempts/${id}`).then(restored => {
+      getJSON<Attempt>(`${api}/attempts/${id}?feedback=on-demand`).then(restored => {
         if (!active) return;
         setCourseCode(restored.course_code);
         setScope(String(restored.session_no ?? "course"));
@@ -88,8 +92,8 @@ export default function LectureQuizzes({ onTaking, onEmpty }: { onTaking: (takin
     lock.current = true; setBusy(true); setActionFailed(false);
     try {
       const next = id !== null && !retake
-        ? await getJSON<Attempt>(`${api}/attempts/${id}`)
-        : await postJSON<Attempt>(api + "/start", { course_code: code, session_no: no, slot, previous_attempt_id: id });
+        ? await getJSON<Attempt>(`${api}/attempts/${id}?feedback=on-demand`)
+        : await postJSON<Attempt>(api + "/start?feedback=on-demand", { course_code: code, session_no: no, slot, previous_attempt_id: id });
       rememberOpen(next.id); setAttempt(next);
     } catch { setActionFailed(true); setRefresh(n => n + 1); }
     finally { lock.current = false; setBusy(false); }
@@ -183,7 +187,7 @@ function loadChoices(attempt: Attempt): Record<number, number> {
     const saved = JSON.parse(localStorage.getItem(draftKey(attempt.id)) ?? "{}");
     for (const q of attempt.questions) {
       const choice = saved?.[q.id];
-      if (Number.isInteger(choice) && choice >= 0 && choice < q.options.length) choices[q.id] = choice;
+      if (q.choice === undefined && Number.isInteger(choice) && choice >= 0 && choice < q.options.length) choices[q.id] = choice;
     }
   } catch { /* start with an unanswered sheet */ }
   return choices;
@@ -193,18 +197,24 @@ function AttemptForm({ attempt, title, busy, onBusy, onGraded }: {
   attempt: Attempt; title: string; busy: boolean; onBusy: (busy: boolean) => void; onGraded: (graded: Attempt) => void;
 }) {
   const { t } = useT();
+  const [saved, setSaved] = useState(attempt);
   const [choices, setChoices] = useState(() => loadChoices(attempt));
   const [index, setIndex] = useState(() => {
-    const first = attempt.questions.findIndex(q => choices[q.id] === undefined);
+    const first = attempt.questions.findIndex(q => q.choice === undefined);
     return first < 0 ? attempt.questions.length - 1 : first;
   });
   const [failed, setFailed] = useState(false);
   const [draftFailed, setDraftFailed] = useState(false);
   const lock = useRef(false);
   const heading = useRef<HTMLHeadingElement>(null);
-  const question = attempt.questions[index];
-  const final = index === attempt.questions.length - 1;
+  const question = saved.questions[index];
+  const checked = question.choice !== undefined;
+  const choice = question.choice ?? choices[question.id];
+  const final = index === saved.questions.length - 1;
   useEffect(() => { heading.current?.focus(); }, [index]);
+  function goTo(next: number) {
+    setFailed(false); setDraftFailed(false); setIndex(next);
+  }
   function choose(value: number) {
     const next = { ...choices, [question.id]: value };
     setChoices(next); setFailed(false);
@@ -212,19 +222,20 @@ function AttemptForm({ attempt, title, busy, onBusy, onGraded }: {
     catch { setDraftFailed(true); }
   }
 
-  async function submit() {
-    if (lock.current) return;
-    const missing = attempt.questions.findIndex(q => choices[q.id] === undefined);
-    if (missing !== -1) { setIndex(missing); return; }
+  async function check() {
+    if (lock.current || checked || choice === undefined) return;
     lock.current = true; onBusy(true); setFailed(false);
     const path = `${api}/attempts/${attempt.id}`;
     try {
-      const answers = attempt.questions.map(q => ({ question_id: q.id, choice: choices[q.id] }));
-      // Another tab may already have submitted it, or the response may have been lost.
-      const graded = await postJSON<Attempt>(path + "/submit", { answers }).catch(() => getJSON<Attempt>(path));
-      if (graded.status !== "completed") { setFailed(true); return; }
-      try { localStorage.removeItem(draftKey(attempt.id)); } catch { /* optional */ }
-      onGraded(graded);
+      // Recover the first accepted answer after an interrupted request or a check on another device.
+      const updated = await postJSON<Attempt>(path + "/answer", { question_id: question.id, choice })
+        .catch(() => getJSON<Attempt>(path + "?feedback=on-demand"));
+      setSaved(updated);
+      if (updated.questions[index].choice === undefined) { setFailed(true); return; }
+      setDraftFailed(false);
+      if (updated.status === "completed") {
+        try { localStorage.removeItem(draftKey(attempt.id)); } catch { /* optional */ }
+      }
     } catch { setFailed(true); }
     finally { lock.current = false; onBusy(false); }
   }
@@ -233,25 +244,70 @@ function AttemptForm({ attempt, title, busy, onBusy, onGraded }: {
     <div className="flex flex-wrap justify-between gap-x-2 gap-y-1 text-sm text-[var(--text-secondary)]">
       <span>{title}</span><span>{t("quiz.question", { n: index + 1, total: attempt.questions.length })}</span>
     </div>
-    <fieldset disabled={busy} className="min-w-0 space-y-2" aria-labelledby="lecture-question">
+    <fieldset disabled={busy || checked} className="min-w-0 space-y-2" aria-labelledby="lecture-question">
       <h2 id="lecture-question" ref={heading} tabIndex={-1} className="mb-3 text-lg font-semibold">{question.stem}</h2>
       {question.options.map((option, i) => <label key={question.id + "/" + i}
-        className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3 py-2 text-sm"
-        style={{ borderColor: choices[question.id] === i ? "var(--accent)" : "var(--border)",
-          backgroundColor: choices[question.id] === i ? "var(--accent-light)" : undefined }}>
-        <input type="radio" name={`lecture-q-${question.id}`} checked={choices[question.id] === i} onChange={() => choose(i)}/>
+        className={`flex min-h-11 items-center gap-3 rounded-lg border px-3 py-2 text-sm ${checked ? "" : "cursor-pointer"}`}
+        style={{ borderColor: choice === i ? "var(--accent)" : "var(--border)",
+          backgroundColor: choice === i ? "var(--accent-light)" : undefined }}>
+        <input type="radio" name={`lecture-q-${question.id}`} checked={choice === i} onChange={() => choose(i)}/>
         <span>{option}</span>
       </label>)}
     </fieldset>
+    {checked && <div className="space-y-1">
+      <p role="status" className="font-semibold" style={{ color: question.correct ? "var(--success)" : "var(--danger)" }}>
+        {t(question.correct ? "quiz.correct" : "quiz.incorrect")}
+      </p>
+      <QuestionExplanation key={question.id} attempt={saved} question={question}/>
+    </div>}
     {failed && <ErrorBox/>}
     {draftFailed && <p role="alert" className={subtle}>{t("quiz.draftUnavailable")}</p>}
     <div className="flex items-center justify-between gap-3">
       <button type="button" className={secondary} disabled={index === 0 || busy}
-        onClick={() => setIndex(i => i - 1)}>{t("quiz.previousQuestion")}</button>
-      <button type="button" className={primary} disabled={choices[question.id] === undefined || busy}
-        onClick={() => final ? void submit() : setIndex(i => i + 1)}>{t(final ? "quiz.gradeQuiz" : "quiz.next")}</button>
+        onClick={() => goTo(index - 1)}>{t("quiz.previousQuestion")}</button>
+      {checked
+        ? <button type="button" className={primary} disabled={busy}
+            onClick={() => final ? onGraded(saved) : goTo(index + 1)}>{t(final ? "quiz.finish" : "quiz.next")}</button>
+        : <button type="button" className={primary} disabled={choice === undefined || busy}
+            onClick={() => void check()}>{t("quiz.checkAnswer")}</button>}
     </div>
   </div></Card>;
+}
+
+function QuestionExplanation({ attempt, question }: { attempt: Attempt; question: Question }) {
+  const { t } = useT();
+  const [details, setDetails] = useState<Explanation | null>(null);
+  const [open, setOpen] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const [loading, setLoading] = useState(false);
+  async function toggle() {
+    if (open) { setOpen(false); return; }
+    setOpen(true); setFailed(false);
+    if (details) return;
+    setLoading(true);
+    try {
+      setDetails(await getJSON<Explanation>(`${api}/attempts/${attempt.id}/questions/${question.id}/explanation`));
+    } catch { setFailed(true); setOpen(false); }
+    finally { setLoading(false); }
+  }
+  const seconds = Math.floor((details?.evidence_ms ?? 0) / 1000);
+  const time = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+  return <div className="space-y-1 text-sm">
+    <button type="button" className="min-h-11 font-semibold text-[var(--accent-text)]" disabled={loading} aria-expanded={open}
+      onClick={() => void toggle()}>{t(open ? "quiz.hideExplanation" : "quiz.showExplanation")}</button>
+    {failed && <ErrorBox/>}
+    {open && details && <div className="space-y-2">
+      {question.choice !== undefined && !question.correct && <p><strong>{t("quiz.yourAnswer")}</strong> · {question.options[question.choice]}</p>}
+      <p><strong>{t("quiz.correctAnswer")}</strong> · {question.options[details.correct_index]}</p>
+      <p>{details.explanation}</p>
+      <blockquote className="border-l-2 border-[var(--border)] pl-3 text-[var(--text-secondary)]">
+        <p>{details.evidence_quote}</p>
+        <footer><a className="inline-flex min-h-11 items-center font-medium text-[var(--accent-text)] underline"
+          href={withBase(`/?view=lectures&transcript=${attempt.course_code}-${question.session_no}&at=${details.evidence_ms}`)}
+          target="_blank" rel="noopener noreferrer">{t("quiz.openPassage", { n: question.session_no, time })}</a></footer>
+      </blockquote>
+    </div>}
+  </div>;
 }
 
 function Results({ attempt, title, busy, onRetake }: { attempt: Attempt; title: string; busy: boolean; onRetake: () => void }) {
@@ -266,25 +322,13 @@ function Results({ attempt, title, busy, onRetake }: { attempt: Attempt; title: 
       <button type="button" disabled={busy} className={primary} onClick={onRetake}>{t("quiz.retake")}</button>
     </div></Card>
     <Card><h2 className="mb-2 font-semibold">{t("quiz.review")}</h2>
-      {attempt.questions.map((q, i) => {
-        const correct = q.choice === q.correct_index;
-        const seconds = Math.floor((q.evidence_ms ?? 0) / 1000);
-        const time = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
-        return <details key={q.id} open={!correct} className="border-t border-[var(--border-light)]">
-          <summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold">
-            <span className="mr-2" style={{ color: correct ? "var(--success)" : "var(--danger)" }}>{t(correct ? "quiz.correct" : "quiz.missed")}</span>
-            {i + 1}. {q.stem}
-          </summary>
-          <div className="mb-4 space-y-2 text-sm">
-            {!correct && q.choice !== undefined && <p><strong>{t("quiz.yourAnswer")}</strong> · {q.options[q.choice]}</p>}
-            {q.correct_index !== undefined && <p><strong>{t("quiz.correctAnswer")}</strong> · {q.options[q.correct_index]}</p>}
-            {q.explanation && <p>{q.explanation}</p>}
-            {q.evidence_quote && <blockquote className="border-l-2 border-[var(--border)] pl-3 text-[var(--text-secondary)]">
-              <p>{q.evidence_quote}</p><footer className="mt-1 text-xs">{t("quiz.lectureN", { n: q.session_no })}{q.evidence_ms != null && ` · ${time}`}</footer>
-            </blockquote>}
-          </div>
-        </details>;
-      })}
+      <ol className="divide-y divide-[var(--border-light)]">{attempt.questions.map((q, i) =>
+        <li key={q.id} className="py-3 text-sm">
+          <p className="font-semibold">{i + 1}. {q.stem}</p>
+          <p style={{ color: q.correct ? "var(--success)" : "var(--danger)" }}>{t(q.correct ? "quiz.correct" : "quiz.incorrect")}</p>
+          <QuestionExplanation attempt={attempt} question={q}/>
+        </li>
+      )}</ol>
     </Card>
   </div>;
 }

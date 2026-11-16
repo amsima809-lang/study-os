@@ -322,7 +322,7 @@ if (report) process.exit(0);
 
 // ---------- write the migration ----------
 // Every table that points at a course (server/test/curriculum.test.ts checks this list is complete).
-const REFERRING = ["chapter_mastery", "chapters", "class_sessions", "course_lectures", "enrollments", "etesting_bookings", "etesting_courses", "exams", "lecture_quiz_attempts", "lecture_transcripts", "materials", "mock_exams", "my_exams", "notes", "plan_items", "prerequisites", "prerequisites.requires_code", "questions", "reminders", "shared_lecture_transcripts", "study_sessions", "study_tasks", "topics"];
+const REFERRING = ["chapter_mastery", "chapters", "class_sessions", "course_lectures", "course_mock_papers", "enrollments", "etesting_bookings", "etesting_courses", "exams", "lecture_quiz_attempts", "lecture_transcripts", "materials", "mock_exams", "my_exams", "notes", "plan_items", "prerequisites", "prerequisites.requires_code", "questions", "reminders", "shared_lecture_transcripts", "study_sessions", "study_tasks", "topics"];
 const q = (v) => (v === null || v === undefined || v === "" ? "NULL" : `'${String(v).replace(/'/g, "''")}'`);
 const sha = createHash("sha256").update(readFileSync(pdfPath)).digest("hex");
 const all = [...names.values()].sort((a, b) => a.code.localeCompare(b.code));

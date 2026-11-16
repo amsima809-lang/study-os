@@ -28,12 +28,12 @@ type View = "list" | "detail" | "pages" | "transcript";
 export default function Library() {
   const [target, setTarget] = useState(readLectureLink);
   if (target && target !== "1") {
-    return <LinkedSummary target={target} onBack={() => setTarget(null)} />;
+    return <LinkedLecture target={target} onBack={() => setTarget(null)} />;
   }
   return <LibraryContents />;
 }
 
-function LinkedSummary({ target, onBack }: { target: string; onBack: () => void }) {
+function LinkedLecture({ target, onBack }: { target: string; onBack: () => void }) {
   const { t } = useT();
   const [which, setWhich] = useState<OpenLecture | null>(null);
   const [status, setStatus] = useState<"loading" | "missing" | "failed">("loading");
@@ -43,9 +43,12 @@ function LinkedSummary({ target, onBack }: { target: string; onBack: () => void 
     setStatus("loading");
     loadLectureCourses().then(courses => {
       if (!active) return;
-      const code = target.split("-")[0];
-      const lecture = courses.find(c => c.code === code)?.lectures.find(l => `${code}-${l.no}` === target);
-      if (lecture?.has_summary) {
+      const [session, at] = target.split("@");
+      const code = session.split("-")[0];
+      const lecture = courses.find(c => c.code === code)?.lectures.find(l => `${code}-${l.no}` === session);
+      if (at !== undefined && lecture?.transcript) {
+        setWhich({ code, lecture, tab: "transcript", atMs: Number(at) });
+      } else if (at === undefined && lecture?.has_summary) {
         setWhich({ code, lecture, tab: "notes" });
       } else {
         setStatus("missing");
@@ -60,7 +63,7 @@ function LinkedSummary({ target, onBack }: { target: string; onBack: () => void 
     </button>
     {which ? <SavedLecture which={which} onDeleted={onBack} />
       : status === "loading" ? <Loading>{t("status.connecting")}</Loading>
-      : status === "missing" ? <ErrorBox>{t("lec.summaryUnavailable")}</ErrorBox>
+      : status === "missing" ? <ErrorBox>{t(target.includes("@") ? "lib.transcriptMissing" : "lec.summaryUnavailable")}</ErrorBox>
       : <ErrorBox onRetry={() => setRetry(n => n + 1)}>{t("lib.loadFailed")}</ErrorBox>}
   </div>;
 }

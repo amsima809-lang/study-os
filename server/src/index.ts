@@ -22,6 +22,7 @@ import { createSketchRouter } from "./sketchRoutes.js";
 import { createUploadsRouter } from "./uploads.js";
 import { createNotesRouter } from "./notes.js";
 import { createQuizRouter } from "./quiz.js";
+import { createCourseMockRouter, expireCourseMocks } from "./courseMocks.js";
 import { createLectureQuizRouter } from "./lectureQuizzes.js";
 import { createFlashcardsRouter } from "./flashcards.js";
 import { createAnalyticsRouter } from "./analytics.js";
@@ -222,6 +223,11 @@ app.use("/api", createLectureNotesRouter(db, undefined, combinedNotes));
 app.use("/api", sketches);
 app.use("/api", createQuizRouter(db));
 app.use("/api/lecture-quizzes", createLectureQuizRouter(db));
+app.use("/api/course-mocks", createCourseMockRouter(db));
+setInterval(() => {
+  try { expireCourseMocks(db); }
+  catch (error) { console.error("Could not finalize expired course mocks", error); }
+}, 30000).unref();
 app.use("/api", createFlashcardsRouter(db));
 app.use("/api", createAnalyticsRouter(db));
 app.use("/api", createPlannerRouter(db));
