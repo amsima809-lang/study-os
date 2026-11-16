@@ -368,13 +368,19 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
         {/* The iPhone app, and the way down to what the app does. */}
         <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
           <AppStoreButton compact />
-          {/* Not a jump: the page glides down until the top of the mountain is near the top of the
-              screen, so she sees where the trail begins (owner 2026-11-16). */}
-          <button onClick={scrollToMountain} className="inline-flex items-center gap-1.5 rounded-xl px-3 min-h-11 text-sm font-medium" style={{ color: "rgba(255,255,255,0.8)" }}>
-            {t("land.scrollDown")}
-            <Icon name="chevronDown" size={16} />
-          </button>
         </div>
+
+        {/* The way down to what the app does, hard to miss (owner 2026-11-16): in the trail's amber,
+            with a caret bouncing under it. Not a jump: the page glides down until the top of the
+            mountain is near the top of the screen, so she sees where the trail begins. */}
+        <button
+          onClick={scrollToMountain}
+          className="mx-auto mt-6 flex flex-col items-center gap-0.5 rounded-xl px-4 min-h-11 text-base font-semibold"
+          style={{ color: BRAND.secondary }}
+        >
+          {t("land.preview")}
+          <span className="preview-caret" aria-hidden="true"><Icon name="chevronDown" size={22} /></span>
+        </button>
 
         {/* Bottom text: school colours (as the university names them) */}
         <div className="text-center text-xs mt-5 space-y-1" style={{ color: "rgba(255,255,255,0.65)" }}>
@@ -411,6 +417,12 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
           0%, 100% { transform: translateY(0px) scale(1); }
           50% { transform: translateY(-20px) scale(1.05); }
         }
+        @keyframes caret-bounce {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(6px); }
+        }
+        .preview-caret { display: inline-flex; animation: caret-bounce 1.4s ease-in-out infinite; }
+        @media (prefers-reduced-motion: reduce) { .preview-caret { animation: none; } }
       `}</style>
     </div>
   );
