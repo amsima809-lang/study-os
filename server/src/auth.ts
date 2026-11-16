@@ -173,6 +173,7 @@ export function setupAuth(db: DB): Router {
         res.status(400).json({ error: "คำขอเข้าสู่ระบบจากแอปไม่ถูกต้อง", code: "BAD_APP_SIGNIN" });
         return;
       }
+      signInLog(req, app ? "app: sheet opened, to Google" : "web: to Google");
       passport.authenticate("google", {
         scope: ["profile", "email"],
         ...(app ? { state: appState(app) } : {}),
@@ -184,6 +185,7 @@ export function setupAuth(db: DB): Router {
     router.get("/auth/google/callback", (req: Request, res: Response, next: NextFunction) => {
       const challenge = challengeFromState(req.query.state);
       passport.authenticate("google", (err: unknown, user: Express.User | false) => {
+        signInLog(req, `${challenge ? "app" : "web"}: back from Google, ${err ? "error" : user ? `user ${(user as { id: string }).id.slice(0, 8)}` : "refused"}`);
         if (challenge) {
           // This browser is the sign-in sheet, not the app: it gets no session. It
           // goes back to the app with a one-time code for the app's web view.
@@ -199,6 +201,7 @@ export function setupAuth(db: DB): Router {
     router.post("/auth/app/redeem", (req: Request, res: Response) => {
       const { code, verifier } = (req.body ?? {}) as { code?: unknown; verifier?: unknown };
       const userId = handoffs.redeem(code, verifier);
+      signInLog(req, `app: code ${userId ? `redeemed for ${userId.slice(0, 8)}` : "REFUSED (expired, reused or wrong verifier)"}`);
       if (!userId) {
         res.status(403).json({ error: "การเข้าสู่ระบบจากแอปหมดอายุหรือถูกใช้ไปแล้ว ลองใหม่อีกครั้ง", code: "BAD_HANDOFF" });
         return;
@@ -219,6 +222,11 @@ export function setupAuth(db: DB): Router {
   }
 
   router.get("/auth/me", (req: Request, res: Response) => {
+    // Only the app's checks are logged (its web view says "Termtrail" nowhere, so: requests
+    // without a Safari/Chrome version but with "Mobile/"), to follow an app sign-in through.
+    if (/Mobile\//.test(req.get("user-agent") ?? "") && !/Version\/|CriOS|FxiOS/.test(req.get("user-agent") ?? "")) {
+      signInLog(req, `app: who am I? ${req.user ? `signed in as ${(req.user as { id: string }).id.slice(0, 8)}` : `NOT signed in (cookie sent: ${/connect\.sid|studyos/.test(req.get("cookie") ?? "") ? "yes" : "no"})`}`);
+    }
     res.json(req.user ?? null);
   });
 
@@ -227,6 +235,17 @@ export function setupAuth(db: DB): Router {
   });
 
   return router;
+}
+
+/**
+ * One line per sign-in step, to find where a sign-in fails (owner 2026-11-16: a student stuck in
+ * a loop in the iPhone app). No names or emails: the first 8 characters of an account id at most,
+ * and the kind of device.
+ */
+function signInLog(req: Request, step: string): void {
+  const ua = req.get("user-agent") ?? "";
+  const device = /iPhone|iPad/.test(ua) ? (/Version\/|CriOS|FxiOS/.test(ua) ? "iOS browser" : "iOS app web view") : /Android/.test(ua) ? "Android" : "desktop";
+  console.log(`[StudyOS] sign-in ${new Date().toISOString()} ${device}: ${step}`);
 }
 
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
