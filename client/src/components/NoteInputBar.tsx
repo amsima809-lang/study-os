@@ -51,6 +51,7 @@ export function NoteInputBar({
   onMode,
   textRef,
   penUsed,
+  attachmentActions,
   onDictated,
   onListeningChange,
 }: {
@@ -59,6 +60,7 @@ export function NoteInputBar({
   textRef: RefObject<HTMLTextAreaElement | null>;
   /** A pen has been used on this note (the pad or the text box). */
   penUsed: boolean;
+  attachmentActions?: { takePhoto: () => void; addImage: () => void };
   /** Finished words from dictation, to add to the note's text. */
   onDictated: (words: string) => void;
   onListeningChange: (pending: boolean) => void;
@@ -197,23 +199,35 @@ export function NoteInputBar({
 
   return (
     <div>
-      <div className="flex gap-2" role="group" aria-label={t("input.label")}>
+      <div className={attachmentActions ? "flex items-center gap-0.5 sm:gap-2" : "flex gap-2"} role="group" aria-label={t("input.label")}>
         {items.filter((i) => !i.hidden).map((i) => (
           <button
             key={i.key}
             type="button"
             onClick={i.tap}
             aria-pressed={i.on}
-            className="flex-1 rounded-lg py-1.5 min-h-11 flex flex-col items-center justify-center gap-0.5 text-xs font-medium"
+            aria-label={i.label}
+            title={i.label}
+            className="min-w-0 flex-1 self-stretch rounded-lg py-1.5 min-h-11 flex flex-col items-center justify-center gap-0.5 text-xs font-medium"
             style={{
               backgroundColor: i.on ? "var(--accent)" : "var(--bg-surface-hover)",
               color: i.on ? "#fff" : "var(--text-secondary)",
             }}
           >
             <Icon name={i.icon} size={18} />
-            <span>{i.label}</span>
+            <span className={attachmentActions ? "hidden min-[375px]:inline" : undefined}>{i.label}</span>
           </button>
         ))}
+        {attachmentActions && <>
+          <span role="separator" aria-orientation="vertical" className="h-7 shrink-0 border-l mx-0.5" style={{ borderColor: "var(--border)" }}/>
+          {[
+            { icon: "camera", label: t("notes.camera"), tap: attachmentActions.takePhoto },
+            { icon: "imagePlus", label: t("notes.gallery"), tap: attachmentActions.addImage },
+          ].map(action => <button key={action.icon} type="button" onClick={action.tap} aria-label={action.label} title={action.label}
+            className="grid size-11 shrink-0 place-items-center rounded-lg" style={{ backgroundColor: "var(--bg-surface-hover)", color: "var(--text-secondary)" }}>
+            <Icon name={action.icon} size={19}/>
+          </button>)}
+        </>}
       </div>
 
       {speakOpen && (

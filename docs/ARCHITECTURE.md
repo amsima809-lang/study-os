@@ -599,7 +599,7 @@ The production entry at `/api/open/lectures?view=lectures&summary=MGT3204-1` ser
 
 ## Phase 80 — Handwritten notes
 
-The note input opens the annotation editor full screen, using PencilKit in the iOS app and the shared canvas in browsers. Browser drafts keep editable strokes. Migration 050 records which private attachment is the handwritten original. The server preserves its uploaded PNG or JPEG and skips automatic summarisation for the note. Tapping **Generate notes from handwriting** runs the existing DeepSeek sketch-v4 reading for that page. The reader keeps the original thumbnail available before and after generation. Transcript timestamp targets, search matches and text selections use a pale yellow highlight.
+Standalone notes open the pen editor full screen. Lecture notes open the pen inside the tray’s writing field. Browser drafts keep editable strokes. Migration 050 records which private attachment is the handwritten original. The server preserves its uploaded PNG or JPEG. A handwritten lecture note starts the DeepSeek sketch reading on save. Standalone notes offer **Generate notes from handwriting**. The reader keeps the original thumbnail available before and after generation. Transcript timestamp targets, search matches and text selections use a pale yellow highlight.
 
 ## Phase 81 — Inline annotations
 
@@ -616,6 +616,8 @@ Migration 051 identifies the source and records the transcription status. Saving
 
 ## Lecture note editing and automatic updates
 
-The summary and transcript share one **My Notes** list for a lecture. Each saved note keeps its own identity for edits and deletion. Linked images share the gallery after the list. Opening the editor puts the reading and writing areas in independently scrollable panes. Expanding the editor keeps the current draft.
+The summary and transcript share one **My Notes** list for a lecture. Each entry opens directly on its content and has its own edit and delete actions. Images share the gallery after the list. The note tray starts at half height. Dragging its divider or using the arrow keys changes the room available for typing or handwriting. The summary and saved notes can scroll above it. Keyboard, pen, camera and image controls share one row.
+
+When iOS registers the inline field methods, a clipped PencilKit canvas tracks the writing field as the tray moves. Earlier builds and browsers draw in the field with the shared web canvas.
 
 Saving lecture notes updates the combined document in the background. Clarifying answers become eligible when saved. Matching sources are linked to their summary points from the list. Margin annotations retain their positions at the marked sentences.

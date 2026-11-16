@@ -6,6 +6,7 @@ import { currentCombinedReading, type CreatedLectureNotes, type InkRun, type Per
 import { ConfirmDialog, ErrorBox, Loading } from "./ui.tsx";
 import Icon from "./Icon.tsx";
 import { LectureNoteGallery } from "./LectureNoteGallery.tsx";
+import { CreateLectureNotes } from "./CreateLectureNotes.tsx";
 import type { AnnotationSource } from "../summaryAnchors.ts";
 import "./createdLectureNotes.css";
 
@@ -40,9 +41,9 @@ export function InkText({ runs }: { runs: InkRun[] }) {
   ))}</p>;
 }
 
-export function PersonalLectureNotes({ result, created, summaryMarkdown, onAdd, onEdit, onChanged, onShowAnnotation, onShowSummaryLine }: {
+export function PersonalLectureNotes({ result, combinedPath, summaryMarkdown, onAdd, onEdit, onChanged, onShowAnnotation, onShowSummaryLine }: {
   result: ReturnType<typeof usePersonalLectureNotes>;
-  created: CreatedLectureNotes | null;
+  combinedPath?: string;
   summaryMarkdown: string;
   onAdd: () => void;
   onEdit: (note: PersonalNote) => void;
@@ -53,6 +54,7 @@ export function PersonalLectureNotes({ result, created, summaryMarkdown, onAdd, 
   const { t, lang } = useT();
   const th = lang === "th";
   const { data, failed, retry } = result;
+  const [created, setCreated] = useState<CreatedLectureNotes | null>(null);
   const [deleting, setDeleting] = useState<PersonalNote | null>(null);
   const [busy, setBusy] = useState(false);
   const [deleteFailed, setDeleteFailed] = useState(false);
@@ -80,7 +82,7 @@ export function PersonalLectureNotes({ result, created, summaryMarkdown, onAdd, 
     return links;
   }, [summaryMarkdown, created, data]);
   const photos = useMemo(() => (data?.notes ?? []).flatMap(note => note.image_paths.map((src, index) => ({
-    key: note.id + "/" + index, noteId: note.id, index, src, title: note.title, handwritten: index === note.handwriting_image_index,
+    key: note.id + "/" + index, noteId: note.id, index, src, handwritten: index === note.handwriting_image_index,
   }))), [data]);
   async function remove() {
     if (!deleting || busy) return;
@@ -96,6 +98,7 @@ export function PersonalLectureNotes({ result, created, summaryMarkdown, onAdd, 
     className="lecture-my-notes space-y-3">
     <h3 id="lecture-personal-notes-title" className="font-semibold">{th ? t("notes.title") : "My Notes"}</h3>
     {failed ? <ErrorBox onRetry={retry}/> : !data && <Loading>{t("status.connecting")}</Loading>}
+    {data && combinedPath && <CreateLectureNotes path={combinedPath} sources={data} onCreated={setCreated}/>}
     {data && <>
       {!data.notes.length && !data.annotations.length && <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
         {th ? "ยังไม่มีโน้ตสำหรับบทเรียนนี้" : "You haven’t added any notes to this lecture yet."}
@@ -113,10 +116,9 @@ export function PersonalLectureNotes({ result, created, summaryMarkdown, onAdd, 
       {data.notes.length > 0 && <ol className="lecture-note-entries">
         {data.notes.map(note => <li key={note.id} data-lecture-note-id={note.id} tabIndex={-1} className="lecture-note-entry">
           <div className="min-w-0 space-y-1">
-            {note.title && <h4 className="font-medium break-words">{note.title}</h4>}
             {note.raw_text && <p className="whitespace-pre-wrap break-words">{note.raw_text}</p>}
             {note.sketch_passages?.map((p, i) => <InkText key={i} runs={p.runs}/>)}
-            {!note.title && !note.raw_text?.trim() && !note.sketch_passages?.length ? <p>
+            {!note.raw_text?.trim() && !note.sketch_passages?.length ? <p>
               {note.handwriting_image_index != null
                 ? th ? "ลายมือ" : "Handwriting"
                 : th ? "รูปภาพ" : "Photo note"}
@@ -143,7 +145,7 @@ export function PersonalLectureNotes({ result, created, summaryMarkdown, onAdd, 
       <Icon name="plus" size={18}/>{t("notes.addShort")}
     </button>
     {photos.length > 0 && <LectureNoteGallery photos={photos} onSourcesChanged={onChanged}/>}
-    {deleting && <ConfirmDialog title={t("notes.deleteTitle")} message={deleting.title ?? t("confirm.cannotUndo")}
+    {deleting && <ConfirmDialog title={t("notes.deleteTitle")} message={t("confirm.cannotUndo")}
       confirmLabel={t("confirm.delete")} cancelLabel={t("nav.cancel")} busy={busy}
       onCancel={() => { if (!busy) setDeleting(null); }} onConfirm={() => void remove()}/>}
   </section>;

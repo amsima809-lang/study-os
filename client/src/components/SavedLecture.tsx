@@ -5,9 +5,8 @@ import { LectureNoteTray } from "./LectureNoteTray.tsx";
 import { AnnotatedSummary } from "./AnnotatedSummary.tsx";
 import type { AnnotationSource } from "../summaryAnchors.ts";
 import { LectureSentences } from "./LectureSentences.tsx";
-import { CreateLectureNotes } from "./CreateLectureNotes.tsx";
 import { PersonalLectureNotes, usePersonalLectureNotes } from "./PersonalLectureNotes.tsx";
-import type { CreatedLectureNotes, PersonalNote } from "../combinedLectureNotes.ts";
+import type { PersonalNote } from "../combinedLectureNotes.ts";
 import Icon from "./Icon.tsx";
 import { Markdown } from "./Markdown.tsx";
 import { Card, ConfirmDialog, ErrorBox, Loading } from "./ui.tsx";
@@ -66,7 +65,6 @@ function LectureReader({ which, onDeleted }: { which: OpenLecture; onDeleted: ()
   const [writingAnnotation, setWritingAnnotation] = useState(false);
   const [savedNoteId, setSavedNoteId] = useState<number | null>(null);
   const [notesRevision, setNotesRevision] = useState(0);
-  const [created, setCreated] = useState<CreatedLectureNotes | null>(null);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [transcript, setTranscript] = useState<Transcript | null>(null);
   const [query, setQuery] = useState("");
@@ -158,7 +156,7 @@ function LectureReader({ which, onDeleted }: { which: OpenLecture; onDeleted: ()
     <p className="min-w-0 text-xs" style={{ color: "var(--text-secondary)" }}>{t("lec.disclaimer")}</p>
   </div>;
   return <div ref={container} data-lecture-reader="">
-    <fieldset disabled={writingAnnotation} className="min-w-0 border-0 p-0 space-y-3">
+    <fieldset disabled={writingAnnotation || !!editor} className="min-w-0 border-0 p-0 space-y-3">
     <h2 className="text-lg font-bold"><CourseChip code={code} className="mr-2"/>{t("lib.lectureNo", { n: lecture.no })}</h2>
     <div className="flex flex-wrap items-center gap-2">
       {(["notes", "transcript"] as const).filter(v => v === "notes" || lecture.transcript).map(v =>
@@ -218,11 +216,9 @@ function LectureReader({ which, onDeleted }: { which: OpenLecture; onDeleted: ()
       </ul></AnnotatedSummary></Card>
       {!transcript.shared && <button className="min-h-11" style={{ color: "var(--danger)" }} onClick={() => setConfirm("delete")}>{t("lib.deleteTranscript")}</button>}
     </> : !error && <Loading>{t("status.connecting")}</Loading>)}
-    {lecture.has_summary && <CreateLectureNotes code={code} sessionNo={lecture.no}
-      revision={notesRevision} sources={personal.data} onCreated={setCreated}/>}
-    <fieldset className="min-w-0 border-0 p-0" disabled={!!editor}
-      hidden={(!!editor && (lecture.has_summary || !!lecture.transcript)) || (readingSummary && draft !== null)}>
-      <PersonalLectureNotes result={personal} created={created} summaryMarkdown={summary?.summary_md ?? ""}
+    <fieldset className="min-w-0 border-0 p-0" disabled={readingSummary && draft !== null}>
+      <PersonalLectureNotes result={personal} summaryMarkdown={summary?.summary_md ?? ""}
+        combinedPath={lecture.has_summary ? `/api/lectures/${suffix}/combined-notes` : undefined}
         onAdd={() => openEditor()} onEdit={openEditor} onChanged={() => setNotesRevision(n => n + 1)}
         onShowSummaryLine={idx => go({ tab: "summary", idx }, null)}
         onShowAnnotation={(source, id) => {

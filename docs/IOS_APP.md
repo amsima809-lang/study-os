@@ -201,6 +201,6 @@ in the wrapper bundle that App Store iPhone apps use on a Mac.
 
 ### Notes and lectures, 16 November 2026
 
-Build `202611160932` adds a half-screen PencilKit editor for summary annotations. Underline or circle words to open it, then scroll the summary and **My Notes** above the canvas. Older builds use the same layout with the web pen tools. Full-page notes still use PencilKit. Build `202611160616` introduced native Thai and English dictation. The web app serves the prebuilt lecture library to the two trial accounts.
+In build `202611160958`, **My Notes → + Add note → Pen** opens PencilKit inside the writing field. Dragging the top of the tray changes its height. Build `202611160932` introduced the half-screen PencilKit editor for summary annotations. Older builds use the web pen tools where needed. Standalone notes use the full-page editor. Build `202611160616` introduced native Thai and English dictation. The web app serves the prebuilt lecture library to the two trial accounts.
 
 On a physical iPad, open Pen, rest a palm while writing, tap Done, reopen the ink, save and check the image. In a lecture summary, underline a phrase with the Pencil, scroll to **My Notes** above the editor, then save and reopen the annotation. Tap Speak, dictate a sentence, stop and check the saved note. These device checks remain open.

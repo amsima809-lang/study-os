@@ -22,8 +22,100 @@ public class AppInkPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "draw", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "drawInSheet", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "closeSheet", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "openField", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "layoutField", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "readField", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "closeField", returnType: CAPPluginReturnPromise),
     ]
     private var sheet: (id: String, page: InkPageController)?
+    private var field: (id: String, clip: UIView, page: InkPageController)?
+
+    @objc func openField(_ call: CAPPluginCall) {
+        guard let id = call.getString("sessionID") else { call.reject("NO_SESSION"); return }
+        var drawing = PKDrawing()
+        if let saved = call.getString("drawing"), !saved.isEmpty {
+            guard let data = Data(base64Encoded: saved), let prior = try? PKDrawing(data: data) else {
+                call.reject("BAD_DRAWING"); return
+            }
+            drawing = prior
+        }
+        DispatchQueue.main.async { [weak self] in
+            guard let self, let host = self.bridge?.viewController, let web = self.bridge?.webView else {
+                call.reject("NO_VIEW"); return
+            }
+            self.removeField()
+            let page = InkPageController(drawing: drawing, title: "", done: "", cancel: "", compact: false,
+                embedded: true, pencilOnly: call.getBool("pencilOnly") ?? false, accent: call.getString("accent")) { _ in }
+            let clip = UIView()
+            clip.clipsToBounds = true
+            clip.isHidden = true
+            host.addChild(page)
+            host.view.addSubview(clip)
+            clip.addSubview(page.view)
+            page.didMove(toParent: host)
+            self.field = (id, clip, page)
+            page.onFieldChange = { [weak self] ink in
+                self?.notifyListeners("fieldChange", data: ["sessionID": id, "ink": ink])
+            }
+            self.positionField(call, web: web)
+            call.resolve()
+        }
+    }
+
+    @objc func layoutField(_ call: CAPPluginCall) {
+        DispatchQueue.main.async { [weak self] in
+            if let self, self.field?.id == call.getString("sessionID"), let web = self.bridge?.webView {
+                self.positionField(call, web: web)
+            }
+            call.resolve()
+        }
+    }
+
+    private func positionField(_ call: CAPPluginCall, web: UIView) {
+        guard let field, let parent = field.clip.superview else { return }
+        let scale = web.bounds.width / max(1, call.getDouble("viewportWidth") ?? 1)
+        func rect(_ key: String) -> CGRect {
+            guard let values = call.getArray(key, Double.self), values.count == 4 else { return .zero }
+            return CGRect(x: values[0] * scale, y: values[1] * scale, width: values[2] * scale, height: values[3] * scale)
+        }
+        let paper = web.convert(rect("paper"), to: parent)
+        let clip = web.convert(rect("clip"), to: parent)
+        let wasHidden = field.clip.isHidden
+        field.clip.isHidden = clip.isEmpty
+        if clip.isEmpty {
+            if !wasHidden { field.page.hideTools() }
+            return
+        }
+        field.clip.frame = clip
+        field.page.view.frame = paper.offsetBy(dx: -clip.minX, dy: -clip.minY)
+        field.page.view.layoutIfNeeded()
+        if wasHidden { field.page.activateCanvas() }
+    }
+
+    @objc func readField(_ call: CAPPluginCall) {
+        DispatchQueue.main.async { [weak self] in
+            guard let field = self?.field, field.id == call.getString("sessionID") else { call.reject("NO_FIELD"); return }
+            call.resolve(field.page.inkPayload())
+        }
+    }
+
+    @objc func closeField(_ call: CAPPluginCall) {
+        DispatchQueue.main.async { [weak self] in
+            if self?.field?.id == call.getString("sessionID") { self?.removeField() }
+            call.resolve()
+        }
+    }
+
+    private func removeField() {
+        guard let field else { return }
+        self.field = nil
+        field.page.onFieldChange = nil
+        field.page.hideTools()
+        field.page.willMove(toParent: nil)
+        field.page.view.removeFromSuperview()
+        field.page.removeFromParent()
+        field.clip.removeFromSuperview()
+    }
 
     @objc func draw(_ call: CAPPluginCall) {
         presentInk(call, sheetID: nil)
@@ -117,6 +209,9 @@ final class InkPageController: UIViewController, PKCanvasViewDelegate, PKToolPic
     private let embedded: Bool
     private let pencilOnly: Bool
     private let initialColor: UIColor?
+    var onFieldChange: (([String: Any]) -> Void)?
+    private var toolInUse = false
+    private var lastPublished: PKDrawing?
 
     init(drawing: PKDrawing, title: String, done: String, cancel: String, compact: Bool, embedded: Bool, pencilOnly: Bool, accent: String?, finish: @escaping ([String: Any]) -> Void) {
         self.startDrawing = drawing
@@ -170,8 +265,14 @@ final class InkPageController: UIViewController, PKCanvasViewDelegate, PKToolPic
     }
 
     func activateCanvas() {
+        picker.setVisible(true, forFirstResponder: canvas)
         canvas.becomeFirstResponder() // the tool picker shows for the canvas while it is first responder
         growPage()
+    }
+
+    func hideTools() {
+        picker.setVisible(false, forFirstResponder: canvas)
+        canvas.resignFirstResponder()
     }
 
     override func viewDidLayoutSubviews() {
@@ -193,6 +294,21 @@ final class InkPageController: UIViewController, PKCanvasViewDelegate, PKToolPic
 
     func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
         growPage()
+        if !toolInUse { publishFieldInk() }
+    }
+
+    func canvasViewDidBeginUsingTool(_ canvasView: PKCanvasView) { toolInUse = true }
+
+    func canvasViewDidEndUsingTool(_ canvasView: PKCanvasView) {
+        toolInUse = false
+        // PencilKit commits the final stroke at the end of this event.
+        DispatchQueue.main.async { [weak self] in self?.publishFieldInk() }
+    }
+
+    private func publishFieldInk() {
+        guard let onFieldChange, canvas.drawing != (lastPublished ?? startDrawing) else { return }
+        lastPublished = canvas.drawing
+        onFieldChange(inkPayload())
     }
 
     @objc fileprivate func cancelTapped() {
@@ -200,12 +316,13 @@ final class InkPageController: UIViewController, PKCanvasViewDelegate, PKToolPic
     }
 
     @objc private func doneTapped() {
+        if embedded && canvas.drawing == startDrawing { cancelTapped(); return }
+        close(inkPayload())
+    }
+
+    func inkPayload() -> [String: Any] {
         let drawing = canvas.drawing
-        if embedded && drawing == startDrawing { cancelTapped(); return }
-        if drawing.strokes.isEmpty {
-            close(["cancelled": false, "empty": true])
-            return
-        }
+        if drawing.strokes.isEmpty { return ["empty": true] }
         // The picture: the full page width, from the top to just under the ink, on white,
         // drawn as in light mode (PencilKit shows black ink as white in dark mode).
         let width = embedded ? max(canvas.bounds.width, drawing.bounds.maxX + 4) : canvas.bounds.width
@@ -237,14 +354,14 @@ final class InkPageController: UIViewController, PKCanvasViewDelegate, PKToolPic
             guard !box.isNull, !box.isEmpty else { return nil }
             return [box.minX / rect.width, box.minY / rect.height, box.maxX / rect.width, box.maxY / rect.height]
         }
-        close([
+        return [
             "strokeBounds": strokeBounds,
             "drawing": drawing.dataRepresentation().base64EncodedString(),
             "png": image.pngData()?.base64EncodedString() ?? "",
             "width": Int(rect.width * 2),
             "height": Int(rect.height * 2),
             "colors": colors,
-        ])
+        ]
     }
 
     func adaptivePresentationStyle(for controller: UIPresentationController) -> UIModalPresentationStyle { .none }

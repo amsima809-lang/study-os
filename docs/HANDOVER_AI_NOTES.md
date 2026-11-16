@@ -7,7 +7,7 @@ Written at the end of a long session so another session can continue. Read this,
 
 From a trial account, open **Study → Lecture notes** in the sidebar. It opens the recorded lecture list and also gives access to documents and personal notes. Expand a course and tap **Notes** (**โน้ต**) beside a lecture. The Notes tab opens the prebuilt AI summary, when available, and your own notes. **Transcript** (**คำบรรยาย**) includes a summary preview and a link back to Notes. [Open MGT3204 lecture 1](https://termtrail.com/api/open/lectures?view=lectures&summary=MGT3204-1)
 
-Each lecture has one **My Notes** section under the reading. New notes appear in order, with Edit and Delete on each entry. **+ Add note** opens a half-screen tray with a scrollable reading pane above it. Expand the tray for more writing room. Saved images are together in the gallery at the bottom of the section.
+Each lecture has one **My Notes** section under the reading. New notes appear there in order, with Edit and Delete on each entry. **+ Add note** opens a half-screen tray where you can type or write directly with the pen. Drag its top edge to resize the writing field. The summary and saved notes scroll above it. Camera and image buttons sit beside the input choices. Notes open directly on their content, and saved images are together in the gallery at the bottom.
 
 Saving a lecture note updates the combined notes automatically. For a page with handwriting or drawings, review any clarifying questions and tap **Save** to include your answers. Sentence annotations still appear at the marked passage.
 
@@ -19,9 +19,9 @@ The reader also supports private summary editing and restoration, handwriting se
 
 In the summary, underline or circle the words directly. The mark appears on those words and opens a handwriting editor in the bottom half of the screen. You can scroll the summary and **My Notes** above it. Save to keep the mark and show its transcription as a pale yellow sub-bullet. Tap the note to edit its ink, rewrite its text or delete it. The transcript has its own annotation control.
 
-To keep a page handwritten, choose **Pen**, write on the full-screen canvas, then tap **Done** and **Save note**. A new lecture page starts its handwriting reading automatically. Standalone notes offer **Generate notes from handwriting**. Tap the original thumbnail to see it full screen.
+For a handwritten lecture note, choose **Pen**, write in the tray and tap **Save note**. Reading the handwriting starts automatically. Standalone notes open a full-screen canvas and offer **Generate notes from handwriting**. Tap the original thumbnail to see it full screen.
 
-Internal TestFlight build `202611160932` adds Apple’s PencilKit tools to the lower half of the summary reader. Previous iOS builds can use the same layout with the web pen tools. Build `202611160616` introduced native Thai and English dictation. The physical iPad, Pencil, palm rejection and microphone checks are still open. Pricing and the optional v4 lecture format remain owner decisions.
+Internal TestFlight build `202611160958` adds Apple’s PencilKit tools inside the resizable lecture note field. Build `202611160932` introduced PencilKit in the half-screen editor for sentence annotations. Older builds use the web pen tools where needed. Build `202611160616` introduced native Thai and English dictation. The physical iPad, Pencil, palm rejection and microphone checks are still open. Pricing and the optional v4 lecture format remain owner decisions.
 
 The two reference pages were also run through the live drawing model. Instruction produced nine inline crops and the graph point (1, 2). Confirming its hub arrows restores both two-way links. One marked speech bubble was described as two dots instead of an ellipsis; a free-text correction can fix that in the same review batch. Boaler produced eight crops, the brain-systems group, the leftward Math connection and purple digits on yellow. Confirming the brain arrows restores all three two-way links.
 

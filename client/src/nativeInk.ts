@@ -9,11 +9,19 @@ import type { NativeInk } from "./noteDraft.ts";
 type InkLabels = { title: string; done: string; cancel: string; anchorX?: number; anchorY?: number; accent?: string };
 
 type Result = { cancelled: true } | { empty: true } | NativeInk;
+export type InkFieldFrame = { viewportWidth: number; paper: number[]; clip: number[] };
+type InkField = {
+  openField: (o: InkFieldFrame & { sessionID: string; accent: string; pencilOnly: boolean; drawing?: string }) => Promise<void>;
+  layoutField: (o: InkFieldFrame & { sessionID: string }) => Promise<void>;
+  readField: (o: { sessionID: string }) => Promise<NativeInk | { empty: true }>;
+  closeField: (o: { sessionID: string }) => Promise<void>;
+  addListener: (event: "fieldChange", handler: (change: { sessionID: string; ink: NativeInk | { empty: true } }) => void) => { remove: () => Promise<void> };
+};
 type AppInkPlugin = {
   draw: (o: InkLabels & { drawing?: string }) => Promise<Result>;
   drawInSheet: (o: InkLabels & { sessionID: string; drawing?: string; pencilOnly: boolean }) => Promise<Result>;
   closeSheet: (o: { sessionID: string }) => Promise<void>;
-};
+} & InkField;
 
 function bridge() {
   return (window as { Capacitor?: {
@@ -32,6 +40,15 @@ export function hasNativeInkSheet(): boolean {
   const cap = bridge();
   const methods = cap?.PluginHeaders?.find(header => header.name === "AppInk")?.methods;
   return !!cap?.Plugins?.AppInk && !!methods?.some(m => m.name === "drawInSheet") && methods.some(m => m.name === "closeSheet");
+}
+
+/** A fixed sheet belongs to annotations; the note form needs a canvas that follows its writing field. */
+export function nativeInkField(): InkField | undefined {
+  const cap = bridge();
+  const methods = cap?.PluginHeaders?.find(header => header.name === "AppInk")?.methods;
+  if (["openField", "layoutField", "readField", "closeField"].every(name => methods?.some(m => m.name === name))) {
+    return cap?.Plugins?.AppInk;
+  }
 }
 
 function inkResult(result: Result): NativeInk | null | undefined {

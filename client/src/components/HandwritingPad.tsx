@@ -76,7 +76,7 @@ function paintPage(ctx: CanvasRenderingContext2D, drawing: VectorDrawing, width:
   const height = pageHeight * drawing.pages;
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, width, Math.max(height, ctx.canvas.height));
-  if (background) ctx.drawImage(background, 0, 0, width, height);
+  if (background) ctx.drawImage(background, 0, 0, width, width * background.naturalHeight / background.naturalWidth);
   ctx.strokeStyle = "#e2e8f0";
   ctx.lineWidth = 2;
   ctx.setLineDash([12, 10]);
@@ -91,13 +91,21 @@ function paintPage(ctx: CanvasRenderingContext2D, drawing: VectorDrawing, width:
   for (const stroke of drawing.strokes) paintStroke(ctx, stroke);
 }
 
-/** Render a closed editor's vector draft at its original resolution for note submission. */
-export async function exportHandwriting(drawing: VectorDrawing | null): Promise<Blob | null> {
+export async function handwritingBackground(png: string) {
+  const image = new Image();
+  image.src = `data:image/png;base64,${png}`;
+  await image.decode();
+  return image;
+}
+
+/** Export the editable strokes together with any original PencilKit image under them. */
+export async function exportHandwriting(drawing: Drawing | null): Promise<Blob | null> {
   if (!drawing?.strokes.length) return null;
   const canvas = document.createElement("canvas");
   canvas.width = CANVAS_W;
-  canvas.height = CANVAS_H * drawing.pages;
-  paintPage(canvas.getContext("2d")!, drawing, CANVAS_W, CANVAS_H);
+  const background = drawing.ink && await handwritingBackground(drawing.ink.png);
+  canvas.height = Math.max(CANVAS_H * drawing.pages, background ? Math.ceil(CANVAS_W * background.naturalHeight / background.naturalWidth) : 0);
+  paintPage(canvas.getContext("2d")!, drawing, CANVAS_W, CANVAS_H, background);
   try {
     return await new Promise<Blob>((resolve, reject) => canvas.toBlob(
       blob => blob ? resolve(blob) : reject(new Error("Could not export handwriting")), "image/png",
@@ -199,7 +207,8 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
 
   // On tall phones the first sheet can end above the bottom edge. Extend the active
   // writing surface, and count a new page only when its first stroke is committed.
-  const logicalHeight = Math.max(pageHeight * pages, viewportPaperHeight);
+  const backgroundHeight = background ? Math.ceil(logicalWidth * background.naturalHeight / background.naturalWidth) : 0;
+  const logicalHeight = Math.max(pageHeight * pages, viewportPaperHeight, backgroundHeight);
 
   // Tell the owner about every change so it can keep a draft.
   const onChangeRef = useRef(onChange);

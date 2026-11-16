@@ -6,7 +6,7 @@ import { OriginalPageThumbnail } from "./OriginalPageThumbnail.tsx";
 import { SketchNotePage } from "./SketchNotes.tsx";
 
 type GalleryPage = {
-  key: string; noteId: number; index: number; src: string; title: string | null; handwritten: boolean;
+  key: string; noteId: number; index: number; src: string; handwritten: boolean;
 };
 
 export function LectureNoteGallery({ photos, onSourcesChanged }: {
@@ -51,7 +51,6 @@ export function LectureNoteGallery({ photos, onSourcesChanged }: {
         if (photos.length > 1 && Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) go(dx < 0 ? 1 : -1);
       }}>
       <OriginalPageThumbnail key={current.key} src={withBase(current.src)} label={openLabel}/>
-      {current.title && <figcaption className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>{current.title}</figcaption>}
     </figure>
     <SketchNotePage key={current.key} noteId={current.noteId} index={current.index} src={current.src}
       handwritten={current.handwritten} showOriginal={false} onSourcesChanged={onSourcesChanged}/>

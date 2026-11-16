@@ -25,6 +25,7 @@ import Icon from "../components/Icon.tsx";
 import { CourseChip, CourseTitle } from "../components/CourseTitle.tsx";
 import { HandwritingPreview, exportHandwriting, handwritingStrokeBounds } from "../components/HandwritingPad.tsx";
 import { FullScreenNotePad } from "../components/AnnotationPad.tsx";
+import { LectureInkField, type LectureInkHandle } from "../components/LectureInkField.tsx";
 import { OriginalPageViewer } from "../components/OriginalPageThumbnail.tsx";
 import { NoteInputBar, type NoteMode } from "../components/NoteInputBar.tsx";
 import { drawWithPencilKit, hasNativeInk, inkBlob, penAccent } from "../nativeInk.ts";
@@ -723,6 +724,8 @@ function AddNote({
   const [dictating, setDictating] = useState(false);
   const textRef = useRef<HTMLTextAreaElement>(null);
   const [drawing, setDrawing] = useState<Drawing | null>(null);
+  const inkField = useRef<LectureInkHandle>(null);
+  const [openedLecturePen, setOpenedLecturePen] = useState(false);
   const [webEditor, setWebEditor] = useState<{ original: Drawing | null; accent: string } | null>(null);
   const [viewOriginal, setViewOriginal] = useState(false);
   const nativeOpen = useRef(false);
@@ -731,6 +734,7 @@ function AddNote({
     if (nativeOpen.current || webEditor) return;
     textRef.current?.blur();
     setMode("draw");
+    if (lecture) { setOpenedLecturePen(true); return; }
     const accent = penAccent();
     if (!hasNativeInk() || drawing?.strokes.length) {
       if (drawing?.ink) setViewOriginal(true);
@@ -780,8 +784,13 @@ function AddNote({
       if (d) {
         setCourseCode(d.courseCode);
         setLectureNo(d.lectureNo ?? "");
-        setTitle(d.title);
-        setText(d.text);
+        if (lecture && d.title.trim()) {
+          // Keep any words written in the old title field when reopening an unfinished lecture note.
+          setText([d.title, d.text].filter(Boolean).join("\n\n"));
+        } else {
+          setTitle(d.title);
+          setText(d.text);
+        }
         setMode(d.mode);
         setDrawing(d.drawing);
         setFiles(d.files ?? []);
@@ -872,9 +881,22 @@ function AddNote({
 
   async function submit() {
     if (submitting.current) return;
+    submitting.current = true;
     setError(null);
     const hasText = text.trim().length > 0;
-    if (!hasText && files.length === 0 && !hasHandwriting) {
+    let page = drawing;
+    if (inkField.current) {
+      try {
+        page = await inkField.current.read();
+        setDrawing(page);
+      } catch {
+        submitting.current = false;
+        setError(t("ink.failed"));
+        return;
+      }
+    }
+    if (!hasText && files.length === 0 && !(page?.ink || page?.strokes.length)) {
+      submitting.current = false;
       setError(t("notes.needInput"));
       return;
     }
@@ -882,20 +904,20 @@ function AddNote({
     if (lecture) form.append("lecture_tray", "1");
     if (courseCode) form.append("course_code", courseCode);
     if (lectureNo) form.append("lecture_no", lectureNo);
-    if (title) form.append("title", title);
+    if (!lecture && title) form.append("title", title);
     if (hasText) form.append("raw_text", text);
     for (const f of files) form.append("images", f);
-    submitting.current = true;
     setBusy(true);
     onBusyChange?.(true);
     try {
-      if (drawing && hasHandwriting) {
-        const image = drawing.ink ? inkBlob(drawing.ink) : await exportHandwriting(drawing);
+      if (page && (page.ink || page.strokes.length)) {
+        const image = page.ink && !page.strokes.length ? inkBlob(page.ink) : await exportHandwriting(page);
         if (!image) throw new Error("Could not export the drawing");
         form.append("images", image, "handwriting.png");
         form.append("handwriting_image_index", String(files.length));
-        const bounds = drawing.ink ? drawing.ink.strokeBounds : handwritingStrokeBounds(drawing);
-        if (bounds?.length) form.append("handwriting_strokes", JSON.stringify(bounds));
+        // A raster original with new web strokes has no single set of accurate vector bounds.
+        const bounds = page.ink ? (!page.strokes.length && page.ink.strokeBounds) : handwritingStrokeBounds(page);
+        if (bounds && bounds.length) form.append("handwriting_strokes", JSON.stringify(bounds));
       }
       const r = await postForm<NoteLearning & { id: number }>("/api/notes", form);
       saved.current = true; // the note is on the server: the draft is no longer needed
@@ -919,7 +941,7 @@ function AddNote({
   const FormSurface = lecture ? Fragment : Card;
 
   return (
-    <div {...dropHandlers} className="relative rounded-2xl" style={dragging ? { outline: "2px dashed var(--accent-text)", outlineOffset: 2 } : undefined}>
+    <div {...dropHandlers} className={`relative rounded-2xl${lecture ? " lecture-compose" : ""}`} style={dragging ? { outline: "2px dashed var(--accent-text)", outlineOffset: 2 } : undefined}>
     {dragging && (
       <div
         className="absolute inset-0 z-10 rounded-2xl flex items-center justify-center text-lg font-semibold pointer-events-none"
@@ -929,7 +951,7 @@ function AddNote({
       </div>
     )}
     <FormSurface>
-      <div className="space-y-3">
+      <div className={lecture ? "lecture-compose-fields" : "space-y-3"}>
         {!lecture && <div className="flex items-center gap-2">
           <button onClick={onCancel} className="text-sm min-h-11" style={{ color: "var(--accent-text)" }}>
             {t("notes.backToCourse")}
@@ -975,20 +997,24 @@ function AddNote({
           <LecturePicker lectures={lectureCourse?.lectures} value={lectureNo} onChange={setLectureNo}/>
         </>}
 
-        <input
+        {!lecture && <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           aria-label={t("notes.noteTitle")}
           placeholder={t("notes.noteTitle")}
           className="w-full rounded-lg border px-3 py-2 text-sm min-h-11"
           style={inputStyle}
-        />
+        />}
 
         <NoteInputBar
           mode={mode}
           onMode={chooseMode}
           textRef={textRef}
           penUsed={penUsed}
+          attachmentActions={lecture ? {
+            takePhoto: () => cameraRef.current?.click(),
+            addImage: () => galleryRef.current?.click(),
+          } : undefined}
           onListeningChange={active => { setDictating(active); onBusyChange?.(active || submitting.current); }}
           onDictated={(words) => setText((prev) => (prev && !/\s$/.test(prev) ? `${prev} ${words}` : prev + words))}
         />
@@ -1007,11 +1033,16 @@ function AddNote({
             placeholder={t("notes.textPlaceholder")}
             aria-label={t("notes.textPlaceholder")}
             rows={5}
-            className="note-text w-full rounded-lg border px-3 py-2 text-sm"
+            className={`note-text w-full rounded-lg border px-3 py-2 text-sm${lecture ? " lecture-writing-field" : ""}`}
             style={inputStyle}
           />
         )}
-        {(mode === "draw" || hasHandwriting) && <button
+        {lecture && (openedLecturePen || mode === "draw" || hasHandwriting) &&
+          <LectureInkField ref={inkField} visible={mode === "draw"} drawing={drawing} onChange={setDrawing} onPen={() => setPenUsed(true)}
+            onClosingInk={ink => {
+              if (!saved.current && !submitting.current) void saveNoteDraft({ ...latest.current, drawing: ink }, draftKey);
+            }}/>}
+        {!lecture && (mode === "draw" || hasHandwriting) && <button
           type="button" onClick={() => void openInk()}
           className="flex items-center gap-3 text-sm min-h-11"
           style={{ color: "var(--accent-text)" }}
@@ -1030,7 +1061,7 @@ function AddNote({
         />}
         {viewOriginal && drawing?.ink && <OriginalPageViewer src={`data:image/png;base64,${drawing.ink.png}`} onClose={() => setViewOriginal(false)}/>}
 
-        <div className="flex gap-2">
+        <div hidden>
           <input
             ref={cameraRef}
             type="file"
@@ -1053,6 +1084,8 @@ function AddNote({
               e.target.value = "";
             }}
           />
+        </div>
+        {!lecture && <div className="flex gap-2">
           <button
             onClick={() => cameraRef.current?.click()}
             className="flex-1 rounded-lg py-2 text-sm font-medium min-h-11"
@@ -1067,7 +1100,7 @@ function AddNote({
           >
             {t("notes.gallery")}
           </button>
-        </div>
+        </div>}
 
         {/* Only where there is a mouse: phones have the two buttons above. */}
         <p className="pointer-fine-only text-xs" style={{ color: "var(--text-tertiary)" }}>{t("notes.dropHint")}</p>
