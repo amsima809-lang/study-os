@@ -17,7 +17,7 @@ To view saved pictures, open the lecture and tap **Note images**, or open the in
 
 The reader also supports private summary editing and restoration, handwriting search and reviewed drawings. The automatically generated references connect a saved note to related summary points and preserve the student's wording.
 
-To annotate a sentence in the summary or transcript, underline or circle it and save your handwriting. Its transcription appears under the sentence as a pale yellow sub-bullet. Tap the note to edit its ink, rewrite its text or delete it.
+In the summary, underline or circle the words directly. The mark appears on those words and opens a handwriting editor in the bottom half of the screen. You can scroll the summary and **My Notes** above it. Save to keep the mark and show its transcription as a pale yellow sub-bullet. Tap the note to edit its ink, rewrite its text or delete it. The transcript has its own annotation control.
 
 To keep a page handwritten, choose **Pen**, write on the full-screen canvas, then tap **Done** and **Save note**. A new lecture page starts its handwriting reading automatically. Standalone notes offer **Generate notes from handwriting**. Tap the original thumbnail to see it full screen.
 

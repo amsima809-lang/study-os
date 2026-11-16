@@ -16,7 +16,7 @@ type Annotation = QuoteAnchor & {
   id: number; revision: number; native: boolean; colors: string[]; runs: Run[];
   ocr_status: "pending" | "ready" | "failed";
 };
-type Editor = { key: string; anchor: QuoteAnchor; point: Point; accent: string; previous?: Annotation };
+type Editor = { key: string; anchor: QuoteAnchor; point: Point; accent: string; previous?: Annotation; allowFinger: boolean };
 type Pending = { editor: Editor; ink: AnnotationInk };
 type Rect = { left: number; top: number; width: number; height: number };
 type Placement = { id: number; slot: HTMLElement | null; rects: Rect[] };
@@ -52,13 +52,16 @@ function InlineNote({ row, open, retry, working, retryFailed }: {
   </span>;
 }
 
-export function AnnotatedSummary({ courseCode, sessionNo, source = "summary", filtered = false, focusId, onChanged, children }: {
+export function AnnotatedSummary({ courseCode, sessionNo, source = "summary", filtered = false, focusId, onChanged,
+  readOnly = false, onWritingChange, children }: {
   courseCode: string;
   sessionNo: number;
   source?: AnnotationSource;
   filtered?: boolean;
   focusId?: number;
   onChanged?: () => void;
+  readOnly?: boolean;
+  onWritingChange?: (open: boolean) => void;
   children: ReactNode;
 }) {
   const { lang } = useT(), th = lang === "th";
@@ -67,9 +70,11 @@ export function AnnotatedSummary({ courseCode, sessionNo, source = "summary", fi
   const listURL = url();
   const imageURL = (a: Annotation) => withBase(url(`/${a.id}/image`, `&v=${a.revision}`));
   const section = useRef<HTMLElement>(null), content = useRef<HTMLDivElement>(null), layer = useRef<HTMLDivElement>(null);
-  const gesture = useRef<{ pointer: number; points: Point[] } | null>(null);
+  const gesture = useRef<{ pointer: number; type: string; points: Point[]; path: string } | null>(null);
+  const trace = useRef<SVGPolylineElement>(null);
+  const lastPen = useRef(-Infinity);
+  const lastTool = useRef("");
   const suppressClick = useRef(false);
-  const [trace, setTrace] = useState("");
   const [pen, setPen] = useState(false);
   const [rows, setRows] = useState<Annotation[]>([]);
   const currentRows = useRef<Annotation[]>([]);
@@ -85,6 +90,14 @@ export function AnnotatedSummary({ courseCode, sessionNo, source = "summary", fi
   const [confirmDelete, setConfirmDelete] = useState(false), [actionError, setActionError] = useState("");
   const focusNext = useRef(focusId);
   const [retryFailed, setRetryFailed] = useState<number | null>(null);
+  const summary = source === "summary";
+  const activeEditor = !!editor && summary;
+  const draftMark = summary && editor && !editor.previous ? editor.anchor : undefined;
+  useLayoutEffect(() => {
+    if (!activeEditor) return;
+    onWritingChange?.(true);
+    return () => onWritingChange?.(false);
+  }, [activeEditor, onWritingChange]);
   const title = th ? "โน้ตลายมือของฉัน" : "My pen note";
   const failed = th ? "ทำรายการไม่สำเร็จ ลองใหม่อีกครั้ง" : "Couldn’t complete that change. Try again.";
   const reloadList = () => setReload(n => n + 1);
@@ -128,14 +141,15 @@ export function AnnotatedSummary({ courseCode, sessionNo, source = "summary", fi
   }, [listURL, reload]);
 
   useLayoutEffect(() => {
-    if (!rows.length) { setPlacements(current => current.length ? [] : current); return; }
+    if (!rows.length && !draftMark) { setPlacements(current => current.length ? [] : current); return; }
     const root = content.current!, wrap = layer.current!;
     let frame = 0;
     const measure = () => {
       const index = indexSource(root);
       const box = wrap.getBoundingClientRect();
       let legacy: ReturnType<typeof indexSource> | undefined;
-      setPlacements(rows.map(row => {
+      const marks = draftMark ? [...rows, { ...draftMark, id: 0 }] : rows;
+      setPlacements(marks.map(row => {
         let mark = locateMark(index, row, filtered || (source === "transcript" && !!row.block_key));
         // Earlier summary marks could include the text of an intervening timestamp button.
         if (!mark && !row.block_key && source === "summary" && !filtered) {
@@ -155,7 +169,7 @@ export function AnnotatedSummary({ courseCode, sessionNo, source = "summary", fi
     mo.observe(root, { childList: true, characterData: true, subtree: true });
     document.fonts?.addEventListener("loadingdone", schedule);
     return () => { ro.disconnect(); mo.disconnect(); cancelAnimationFrame(frame); document.fonts?.removeEventListener("loadingdone", schedule); };
-  }, [rows, filtered, source]);
+  }, [rows, filtered, source, draftMark]);
 
   useEffect(() => { focusNext.current = focusId; }, [focusId]);
   useEffect(() => {
@@ -185,12 +199,12 @@ export function AnnotatedSummary({ courseCode, sessionNo, source = "summary", fi
   }
 
   async function openInk(anchor: QuoteAnchor, point: Point, previous?: Annotation) {
-    if (busy || pending || editor) return;
+    if (readOnly || busy || pending || editor) return;
     const accent = penAccent();
-    const ed: Editor = { key: crypto.randomUUID(), anchor, point, accent, previous };
+    const ed: Editor = { key: crypto.randomUUID(), anchor, point, accent, previous, allowFinger: lastTool.current === "touch" };
     setMenu(null); setError("");
     // Old web ink reopens in its own editor, including when viewed in the native app.
-    if (!hasNativeInk() || (previous && !previous.native)) {
+    if (summary || !hasNativeInk() || (previous && !previous.native)) {
       setEditor(ed); return;
     }
     setBusy(true);
@@ -205,28 +219,92 @@ export function AnnotatedSummary({ courseCode, sessionNo, source = "summary", fi
       if (ink) await save({ editor: ed, ink: { drawing: ink.drawing, png: ink.png, colors: ink.colors.length ? ink.colors : [accent] } });
     } catch { setError(failed); } finally { setBusy(false); }
   }
-  function drawPoint(e: PointerEvent<HTMLDivElement>) {
-    const g = gesture.current;
-    if (g?.pointer !== e.pointerId) return;
-    g.points.push({ x: e.clientX, y: e.clientY });
-    const box = layer.current!.getBoundingClientRect();
-    setTrace(g.points.map(q => `${q.x-box.left},${q.y-box.top}`).join(" "));
+  function stopStroke() {
+    gesture.current = null;
+    trace.current?.removeAttribute("points");
   }
+
+  function sample(e: PointerEvent<HTMLDivElement>, coalesced = false) {
+    const g = gesture.current;
+    if (!g || g.pointer !== e.pointerId) return;
+    const box = layer.current!.getBoundingClientRect();
+    const add = (x: number, y: number) => {
+      const last = g.points.at(-1);
+      if (last?.x === x && last.y === y) return;
+      g.points.push({ x, y });
+      g.path += ` ${x - box.left},${y - box.top}`;
+    };
+    if (coalesced) {
+      for (const event of e.nativeEvent.getCoalescedEvents?.() ?? []) add(event.clientX, event.clientY);
+    }
+    add(e.clientX, e.clientY);
+    trace.current?.setAttribute("points", g.path);
+  }
+
+  // Safari can take a vertical Pencil stroke for page panning. Cancel only the
+  // stylus touch's native action, leaving fingers free to scroll and pinch.
+  useEffect(() => {
+    const root = content.current;
+    if (!summary || readOnly || activeEditor || !root) return;
+    const protectPencilStroke = (event: TouchEvent) => {
+      if (event.cancelable && Array.from(event.changedTouches).some(t =>
+        (t as Touch & { touchType?: string }).touchType === "stylus") &&
+        !(event.target as Element).closest("button,a,[data-personal-passage]")) event.preventDefault();
+    };
+    root.addEventListener("touchstart", protectPencilStroke, { passive: false });
+    return () => root.removeEventListener("touchstart", protectPencilStroke);
+  }, [summary, readOnly, activeEditor]);
+
+  function beginStroke(e: PointerEvent<HTMLDivElement>) {
+    if (readOnly || busy || pending || editor || menu || e.button !== 0) return;
+    const target = e.target as Element;
+    const control = target.closest("button, a");
+    if (target.closest("[data-personal-passage]") || (control && !control.closest("[data-annotation-text]"))) return;
+    const type = e.pointerType;
+    if (type === "pen") {
+      lastPen.current = performance.now();
+      if (gesture.current?.type === "touch") stopStroke();
+    } else if (type === "touch") {
+      if (!summary || performance.now() - lastPen.current < 800) return;
+      if (!e.isPrimary || Math.max(e.width, e.height) > 48) {
+        if (gesture.current?.type === "touch") stopStroke();
+        return;
+      }
+      try { if (localStorage.getItem("studyos.penOnly") === "1") return; } catch { /* Storage may be unavailable. */ }
+    } else if (type !== "mouse" || (!summary && !pen)) return;
+    if (gesture.current) return;
+    suppressClick.current = false;
+    gesture.current = { pointer: e.pointerId, type, points: [], path: "" };
+    // A plain tap on a timestamp must still reach that button.
+    if (!control) {
+      e.currentTarget.setPointerCapture(e.pointerId);
+      if (type !== "touch") e.preventDefault();
+    }
+    sample(e);
+  }
+
   function lift(e: PointerEvent<HTMLDivElement>) {
     const g = gesture.current;
-    if (g?.pointer !== e.pointerId) return;
-    gesture.current = null; setTrace("");
-    const point = { x: e.clientX, y: e.clientY };
-    // A short Pencil tap still activates the sentence, time link or existing note.
-    if (!g.points.some(p => Math.hypot(point.x-p.x, point.y-p.y) >= 4)) return;
+    if (!g || g.pointer !== e.pointerId) return;
+    sample(e, true);
+    stopStroke();
+    const point = g.points[g.points.length - 1];
+    const threshold = g.type === "touch" ? 9 : 4;
+    if (!g.points.some(p => Math.hypot(point.x - p.x, point.y - p.y) >= threshold)) return;
+    if (g.type === "touch") {
+      const first = g.points[0];
+      if (Math.abs(point.y - first.y) > Math.abs(point.x - first.x) * 1.5 + 8) return;
+    }
+    if (g.type === "pen") lastPen.current = performance.now();
+    lastTool.current = g.type;
     suppressClick.current = true;
-    g.points.push(point);
     const anchor = anchorFromMark(content.current!, g.points, source === "transcript" && filtered);
     if (anchor) void openInk(anchor, point);
     else setError(th ? "ขีดเส้นใต้หรือวงข้อความที่ต้องการอีกครั้ง" : "Underline or circle the words you want to annotate.");
   }
 
   const openMenu = (row: Annotation, button: HTMLElement) => {
+    if (readOnly || editor || pending) return;
     const rect = button.getBoundingClientRect();
     setReview(null); setActionError(""); setConfirmDelete(false);
     setMenu({ id: row.id, anchor: button, point: { x: rect.left, y: rect.bottom } });
@@ -270,58 +348,69 @@ export function AnnotatedSummary({ courseCode, sessionNo, source = "summary", fi
     group.push(row); bySlot.set(p.slot, group);
   }
   const note = (a: Annotation) => <InlineNote key={a.id} row={a} open={openMenu} retry={retry} working={workingId === a.id} retryFailed={retryFailed === a.id}/>;
-  return <section ref={section}>
-    <button type="button" aria-pressed={pen} disabled={busy || !!pending}
-      className="inline-flex items-center gap-1.5 min-h-11 px-2 rounded-lg text-sm font-medium"
-      style={{ color: "var(--accent-text)", background: pen ? "var(--accent-light)" : undefined }}
-      onClick={() => { setPen(v => !v); setError(""); }}>
-      <Icon name="pen" size={16}/>{source === "summary" ? th ? "เขียนบนสรุป" : "Annotate summary" : th ? "เขียนบนคำบรรยาย" : "Annotate transcript"}
-    </button>
-    {pen && <p className="text-sm mb-2">{th ? "ใช้ปากกาหรือเมาส์ขีดเส้นใต้หรือวงข้อความ" : "Use a pen or mouse to underline or circle a passage."}</p>}
+  const activeId = editor?.previous?.id ?? (draftMark ? 0 : undefined);
+  const markRect = () => editor && content.current
+    ? locateMark(indexSource(content.current), editor.anchor, false)?.rects[0] : undefined;
+  const passage = editor?.anchor.block_key && content.current
+    ? content.current.querySelector<HTMLElement>(`[data-annotation-block="${CSS.escape(editor.anchor.block_key)}"]`)
+    : null;
+  return <section ref={section} onPointerDownCapture={e => { lastTool.current = e.pointerType; suppressClick.current = false; }}>
+    {!summary && <>
+      <button type="button" aria-pressed={pen} disabled={readOnly || busy || !!pending}
+        className="inline-flex items-center gap-1.5 min-h-11 px-2 rounded-lg text-sm font-medium"
+        style={{ color: "var(--accent-text)", background: pen ? "var(--accent-light)" : undefined }}
+        onClick={() => { setPen(v => !v); setError(""); }}>
+        <Icon name="pen" size={16}/>{th ? "เขียนบนคำบรรยาย" : "Annotate transcript"}
+      </button>
+      {pen && <p className="text-sm mb-2">{th ? "ใช้ปากกาหรือเมาส์ขีดเส้นใต้หรือวงข้อความ" : "Use a pen or mouse to underline or circle a passage."}</p>}
+    </>}
     {error && !pending && <p role="alert" className="text-sm">{error}</p>}
     {loadFailed && <p role="alert" className="text-sm">{th ? "โหลดโน้ตลายมือไม่สำเร็จ" : "Couldn’t load your pen notes."} <button type="button" onClick={reloadList} className="min-h-11 underline">{th ? "ลองอีกครั้ง" : "Try again"}</button></p>}
     {unplaced.length > 0 && <details className="my-2 text-sm"><summary className="cursor-pointer min-h-11 py-2">
       {th ? "โน้ตที่หาข้อความเดิมไม่พบ" : "Notes whose original passage changed"} ({unplaced.length})
     </summary>{unplaced.map(a => <div key={a.id}><q>{a.quote}</q><span role="list" className="lecture-inline-notes">{note(a)}</span></div>)}</details>}
     <div ref={layer} className="relative">
-      <div ref={content} className="lecture-source-text" style={{ touchAction: pen ? "none" : undefined, userSelect: pen ? "none" : undefined }}
+      <div ref={content} className="lecture-source-text" data-annotation-surface={source} style={{
+        touchAction: readOnly || editor ? undefined : summary ? "pan-y pinch-zoom" : pen ? "none" : undefined,
+        userSelect: !readOnly && !editor && (summary || pen) ? "none" : undefined,
+      }}
         onClickCapture={e => {
-          if ((e.target as Element).closest("[data-personal-passage], button, a")) return;
           if (suppressClick.current) { suppressClick.current = false; e.stopPropagation(); e.preventDefault(); return; }
+          if (readOnly || editor || (e.target as Element).closest("[data-personal-passage], button, a")) return;
           const box = layer.current!.getBoundingClientRect(), x=e.clientX-box.left, y=e.clientY-box.top;
           const hit = placements.find(p => p.rects.some(r => x>=r.left && x<=r.left+r.width && y>=r.top && y<=r.top+r.height+4));
           const row = hit && byId.get(hit.id);
           const button = hit?.slot?.querySelector<HTMLElement>(`button[data-annotation="${hit.id}"]`);
           if (row && button) { e.stopPropagation(); openMenu(row, button); }
         }}
-        onPointerDown={e => {
-          if (e.pointerType === "touch") { suppressClick.current = false; return; }
-          suppressClick.current = false;
-          if ((!pen && e.pointerType !== "pen") || busy || pending || gesture.current || e.button !== 0) return;
-          if ((e.target as Element).closest("[data-personal-passage], button, a")) return;
-          gesture.current = { pointer: e.pointerId, points: [] };
-          e.currentTarget.setPointerCapture(e.pointerId); e.preventDefault(); drawPoint(e);
-        }} onPointerMove={drawPoint} onPointerUp={lift} onLostPointerCapture={e => {
-          if (gesture.current?.pointer === e.pointerId) { gesture.current = null; setTrace(""); }
+        onPointerDown={beginStroke} onPointerMove={e => sample(e, true)} onPointerUp={lift}
+        onPointerCancel={e => { if (gesture.current?.pointer === e.pointerId) stopStroke(); }}
+        onLostPointerCapture={e => {
+          if (e.target === e.currentTarget && gesture.current?.pointer === e.pointerId) stopStroke();
         }}>
         {children}
       </div>
       <div aria-hidden className="absolute inset-0 pointer-events-none overflow-hidden">
-        {placements.flatMap(m => m.rects.map((box, i) => <span key={`${m.id}-${i}`} style={{
-          position: "absolute", ...box, borderColor: "var(--accent)", borderStyle: "solid",
-          borderWidth: byId.get(m.id)?.mark === "circle" ? "2px" : "0 0 2px", borderRadius: byId.get(m.id)?.mark === "circle" ? "50%" : undefined,
-        }}/>))}
-        {trace && <svg width="100%" height="100%"><polyline points={trace} stroke="var(--accent)" strokeWidth="2" fill="none"/></svg>}
+        {placements.flatMap(m => {
+          const kind = m.id === 0 ? draftMark?.mark : byId.get(m.id)?.mark;
+          if (!kind) return [];
+          return m.rects.map((box, i) => <span key={`${m.id}-${i}`} data-annotation-mark={kind}
+            data-active-mark={m.id === activeId ? "" : undefined} className="lecture-passage-mark" style={box}/>);
+        })}
+        <svg width="100%" height="100%"><polyline ref={trace} stroke="var(--accent)" strokeWidth="2" fill="none"/></svg>
       </div>
     </div>
     {Array.from(bySlot, ([slot, annotations]) => createPortal(
       <span role="list" aria-label={th ? "โน้ตสำหรับข้อความนี้" : "Notes on this passage"} className="lecture-inline-notes">{annotations.map(note)}</span>,
       slot, String(annotations[0].id),
     ))}
-    {editor && !pending && <AnnotationPad point={editor.point} quote={editor.anchor.quote} accent={editor.accent}
+    {editor && (summary || !pending) && <AnnotationPad point={editor.point}
+      reader={summary ? section.current?.closest<HTMLElement>("[data-lecture-reader]") ?? undefined : undefined}
+      passage={passage ?? undefined} getMarkRect={markRect} allowFinger={editor.allowFinger}
+      saving={busy} saveError={pending ? error : undefined} quote={editor.anchor.quote} accent={editor.accent}
       colors={editor.previous?.colors ?? []} previous={editor.previous && imageURL(editor.previous)}
-      cancel={() => setEditor(null)} save={ink => void save({ editor, ink })}/>}
-    {pending && !busy && <InkDialog point={pending.editor.point} label={title} cancel={() => { setPending(null); setEditor(null); }}>
+      cancel={() => { if (!busy) { setEditor(null); setPending(null); setError(""); } }} save={ink => void save({ editor, ink })}/>}
+    {pending && !busy && (!summary || !editor) && <InkDialog point={pending.editor.point} label={title} cancel={() => { setPending(null); setEditor(null); }}>
       <p role="alert">{error}</p>
       <button type="button" className="min-h-11 px-2" onClick={() => void save(pending)}>{th ? "ลองบันทึกอีกครั้ง" : "Retry saving ink"}</button>
       <button type="button" className="min-h-11 px-2" onClick={() => { setPending(null); setEditor(null); }}>{th ? "ทิ้ง" : "Discard"}</button>

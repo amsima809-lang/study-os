@@ -63,6 +63,7 @@ function LectureReader({ which, onDeleted }: { which: OpenLecture; onDeleted: ()
   const [annotationTarget, setAnnotationTarget] = useState<{ source: AnnotationSource; id: number } | null>(() =>
     which.annotationId ? { source: which.tab === "transcript" ? "transcript" : "summary", id: which.annotationId } : null);
   const [editor, setEditor] = useState<{ note?: PersonalNote } | null>(null);
+  const [writingAnnotation, setWritingAnnotation] = useState(false);
   const [savedNoteId, setSavedNoteId] = useState<number | null>(null);
   const [notesRevision, setNotesRevision] = useState(0);
   const [created, setCreated] = useState<CreatedLectureNotes | null>(null);
@@ -152,7 +153,8 @@ function LectureReader({ which, onDeleted }: { which: OpenLecture; onDeleted: ()
     return term ? new RegExp("(" + term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ")", "iu") : null;
   }, [query]);
   const shown = (transcript?.cues ?? []).map((c, idx) => ({ c, idx })).filter(({ c }) => !q || c.text.toLowerCase().includes(q));
-  return <div ref={container} className="space-y-3">
+  return <div ref={container} data-lecture-reader="">
+    <fieldset disabled={writingAnnotation} className="min-w-0 border-0 p-0 space-y-3">
     <h2 className="text-lg font-bold"><CourseChip code={code} className="mr-2"/>{t("lib.lectureNo", { n: lecture.no })}</h2>
     <div className="flex flex-wrap items-center gap-2">
       {(["notes", "transcript"] as const).filter(v => v === "notes" || lecture.transcript).map(v =>
@@ -170,6 +172,7 @@ function LectureReader({ which, onDeleted }: { which: OpenLecture; onDeleted: ()
         {summary.edited && <span>{t("lec.edited")}</span>}
         {draft === null ? <>
           <button className="min-h-11" style={ { color: "var(--accent-text)" } } onClick={() => setDraft(summary.summary_md)}>{t("lec.edit")}</button>
+          <span style={{ color: "var(--text-secondary)" }}>{t("lec.markToAnnotate")}</span>
           {summary.edited && <button className="min-h-11" onClick={() => setConfirm("restore")}>{t("lec.restore")}</button>}
         </> : <>
           <button className="min-h-11" disabled={busy || !draft.trim()} onClick={() => void save(false)}>{t("lec.save")}</button>
@@ -178,7 +181,8 @@ function LectureReader({ which, onDeleted }: { which: OpenLecture; onDeleted: ()
       </div>
       {draft !== null ? <textarea className="w-full rounded-lg p-3" rows={18} style={{ background: "var(--bg-surface)" }}
         aria-label={t("lec.edit")} maxLength={120000} value={draft} onChange={(e) => setDraft(e.target.value)}/> :
-        <Card><AnnotatedSummary key={suffix} courseCode={code} sessionNo={lecture.no}
+        <Card><AnnotatedSummary key={suffix} courseCode={code} sessionNo={lecture.no} readOnly={!!editor}
+          onWritingChange={setWritingAnnotation}
           focusId={annotationTarget?.source === "summary" ? annotationTarget.id : undefined}
           onChanged={() => setNotesRevision(n => n + 1)}><div className="space-y-2">
           {summary.summary_md.split("\n").map((line, i) => line.trim() && (
@@ -200,7 +204,7 @@ function LectureReader({ which, onDeleted }: { which: OpenLecture; onDeleted: ()
       <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("lib.searchTranscript")}
         aria-label={t("lib.searchTranscript")} className="w-full rounded-xl border px-4 py-3 min-h-11" style={{ background: "var(--bg-surface)", borderColor: "var(--border-light)" }} />
       <p className="text-xs">{q ? t("lib.matches", { n: shown.length }) : t("lib.transcriptNote")}</p>
-      <Card><AnnotatedSummary key={`transcript/${suffix}`} courseCode={code} sessionNo={lecture.no} source="transcript" filtered={!!q}
+      <Card><AnnotatedSummary key={`transcript/${suffix}`} courseCode={code} sessionNo={lecture.no} source="transcript" filtered={!!q} readOnly={!!editor}
         focusId={annotationTarget?.source === "transcript" ? annotationTarget.id : undefined} onChanged={() => setNotesRevision(n => n + 1)}>
         <ul className="space-y-3">{shown.map(({ c, idx }) => (
         <li key={idx} tabIndex={-1} data-lecture-target={`transcript-${idx}`} className="flex gap-3">
@@ -223,6 +227,7 @@ function LectureReader({ which, onDeleted }: { which: OpenLecture; onDeleted: ()
           switchTab(source === "transcript" ? "transcript" : "notes");
           setQuery(""); setAnnotationTarget({ source, id });
         }}/>
+    </fieldset>
     </fieldset>
     {editor && <LectureNoteTray key={editor.note?.id ?? "add"} code={code} sessionNo={lecture.no}
       readerRef={container} note={editor.note} onCancel={() => setEditor(null)}

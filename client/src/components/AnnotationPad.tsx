@@ -4,6 +4,7 @@ import { useT } from "../i18n.tsx";
 import type { Drawing } from "../noteDraft.ts";
 import type { Point } from "../summaryAnchors.ts";
 import { HandwritingPad, type HandwritingHandle } from "./HandwritingPad.tsx";
+import { useLectureSplitPane } from "./useLectureSplitPane.ts";
 
 export type AnnotationInk = { png: string; drawing?: string; colors: string[] };
 
@@ -71,24 +72,31 @@ export function InkDialog({ point, anchor, label, cancel, children }: {
   </dialog>, document.body);
 }
 
-function InkActions({ cancel, save, disabled, title, done }: {
+function InkActions({ cancel, save, disabled, saving, title, done }: {
   cancel: () => void;
   save: () => void;
   disabled?: boolean;
+  saving?: boolean;
   title?: string;
   done: string;
 }) {
   const { t } = useT();
   return <div className={title ? "flex items-center gap-2 px-3 py-1 border-b shrink-0" : "flex gap-2 justify-end"}
     style={{ borderColor: "var(--border)" }}>
-    <button type="button" onClick={cancel} className="px-3 min-h-11">{t("ink.cancel")}</button>
+    <button type="button" onClick={cancel} disabled={saving} className="px-3 min-h-11">{t("ink.cancel")}</button>
     {title && <h2 className="flex-1 truncate text-center font-semibold">{title}</h2>}
-    <button type="button" onClick={save} disabled={disabled} className="px-3 min-h-11 rounded-lg disabled:opacity-50"
+    <button type="button" onClick={save} disabled={saving || disabled} className="px-3 min-h-11 rounded-lg disabled:opacity-50"
       style={{ background: "var(--accent)", color: "#fff" }}>{done}</button>
   </div>;
 }
 
-export function AnnotationPad({ point, quote, previous, colors, accent, save, cancel }: {
+export function AnnotationPad({ point, quote, previous, colors, accent, save, cancel, reader, passage, getMarkRect, allowFinger = false, saving = false, saveError }: {
+  reader?: HTMLElement | null;
+  passage?: HTMLElement | null;
+  getMarkRect?: () => DOMRectReadOnly | null | undefined;
+  allowFinger?: boolean;
+  saving?: boolean;
+  saveError?: string;
   point: Point;
   quote: string;
   previous?: string;
@@ -111,16 +119,37 @@ export function AnnotationPad({ point, quote, previous, colors, accent, save, ca
     image.src = previous;
     return () => { live = false; };
   }, [previous]);
-  return <InkDialog point={point} label={th ? "เขียนโน้ต" : "Write a pen note"} cancel={cancel}>
+  const label = th ? "เขียนโน้ต" : "Write a pen note";
+  const panel = useRef<HTMLElement>(null);
+  useLectureSplitPane(reader, panel, root => getMarkRect?.()
+    ?? root.querySelector("[data-active-mark]")?.getBoundingClientRect()
+    ?? passage?.getBoundingClientRect(), "center",
+    () => passage?.closest<HTMLElement>("[data-lecture-target]") ?? null,
+  );
+  const actions = <InkActions cancel={cancel} disabled={!hasStroke && !background} saving={saving}
+    title={reader ? quote : undefined}
+    done={saving ? th ? "กำลังบันทึก…" : "Saving…" : th ? "บันทึก" : "Save"}
+    save={() => {
+      if (!hasStroke && background) { cancel(); return; }
+      if (pad.current) save({ png: pad.current.png(), colors: [...new Set([...colors, ...pad.current.colors()])] });
+    }}/>;
+  const writing = (!previous || background) && <HandwritingPad ref={pad} compact fitAnnotationPane={!!reader}
+    allowFinger={allowFinger} accent={accent} background={background ?? undefined}
+    onChange={d => setHasStroke(d.strokes.length > 0)}/>;
+  const error = failed ? th ? "เปิดลายมือเดิมไม่สำเร็จ" : "Couldn’t open the saved ink." : saveError;
+  if (reader) return createPortal(<section ref={panel} role="dialog" aria-label={label} aria-modal={false}
+    aria-busy={saving} tabIndex={-1} className="lecture-note-tray annotation-sheet" onKeyDown={e => {
+      if (e.key === "Escape") { e.stopPropagation(); if (!saving) cancel(); }
+    }}>
+    {actions}
+    <div className="annotation-sheet-paper" inert={saving}>{writing}</div>
+    {error && <p role="alert" className="text-sm px-3">{error}</p>}
+  </section>, document.body);
+  return <InkDialog point={point} label={label} cancel={cancel}>
     <blockquote className="text-sm line-clamp-2 border-l-2 pl-2" style={{ borderColor: accent }}>{quote}</blockquote>
-    {(!previous || background) && <HandwritingPad ref={pad} compact accent={accent} background={background ?? undefined}
-      onChange={d => setHasStroke(d.strokes.length > 0)}/>}
-    {failed && <p role="alert">{th ? "เปิดลายมือเดิมไม่สำเร็จ" : "Couldn’t open the saved ink."}</p>}
-    <InkActions cancel={cancel} disabled={!hasStroke && !background} done={th ? "บันทึก" : "Save"}
-      save={() => {
-        if (!hasStroke && background) { cancel(); return; }
-        if (pad.current) save({ png: pad.current.png(), colors: [...new Set([...colors, ...pad.current.colors()])] });
-      }}/>
+    {writing}
+    {error && <p role="alert">{error}</p>}
+    {actions}
   </InkDialog>;
 }
 

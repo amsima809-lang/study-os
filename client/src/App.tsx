@@ -74,7 +74,7 @@ function usePullToRefresh(onRefresh: () => void) {
     let pulled = 0;
     const blocked = (target: EventTarget | null) => {
       for (let el = target instanceof Element ? target : null; el && el !== document.body; el = el.parentElement) {
-        if (el.matches("canvas, input, textarea, select, [role=dialog], [role=alertdialog], .timegrid-scroll")) return true;
+        if (el.matches("canvas, input, textarea, select, [role=dialog], [role=alertdialog], .timegrid-scroll, [data-annotation-surface=summary], .lecture-tray-reader")) return true;
         if (el.scrollTop > 0) return true;
       }
       return false;

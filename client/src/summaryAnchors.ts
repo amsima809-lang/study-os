@@ -22,36 +22,128 @@ export function indexSource(root: HTMLElement, legacy = false) {
 }
 type Index = ReturnType<typeof indexSource>;
 
-function caretAt(index: Index, x: number, y: number) {
-  const doc = document as Document & {
-    caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null;
-    caretRangeFromPoint?: (x: number, y: number) => Range | null;
-  };
-  const caret = doc.caretPositionFromPoint?.(x, y);
-  const fallback = !caret && doc.caretRangeFromPoint?.(x, y);
-  const node = caret?.offsetNode ?? (fallback && fallback.startContainer);
-  const piece = index.pieces.find(p => p.node === node);
-  return piece ? piece.start + (caret?.offset ?? (fallback ? fallback.startOffset : 0)) : null;
+type Glyph = { start: number; end: number; rect: DOMRect };
+type Bounds = { left: number; right: number; top: number; bottom: number };
+const graphemes = typeof Intl.Segmenter === "function" ? new Intl.Segmenter(undefined, { granularity: "grapheme" }) : null;
+
+/** Measure only chunks near the stroke, even when a long transcript cue occupies many lines. */
+function glyphsNear(index: Index, stroke: Bounds): Glyph[] {
+  const glyphs: Glyph[] = [];
+  const range = document.createRange();
+  const near = (r: DOMRect) => r.width > 0 && r.height > 0 &&
+    r.right > stroke.left && r.left < stroke.right &&
+    r.top <= stroke.bottom + 2 && r.bottom + Math.max(14, r.height * .85) >= stroke.top;
+  for (const { node, start } of index.pieces) {
+    range.selectNodeContents(node);
+    if (!near(range.getBoundingClientRect())) continue;
+    // A Thai base and tone marks, or a joined emoji, is one selectable character.
+    const offsets = graphemes
+      ? Array.from(graphemes.segment(node.data), g => g.index)
+      : Array.from(node.data.matchAll(/\P{M}\p{M}*(?:\u200d\P{M}\p{M}*)*|\p{M}+/gu), m => m.index!);
+    offsets.push(node.length);
+    for (let i = 0; i < offsets.length - 1; i += 64) {
+      const end = Math.min(i + 64, offsets.length - 1);
+      range.setStart(node, offsets[i]); range.setEnd(node, offsets[end]);
+      if (!near(range.getBoundingClientRect())) continue;
+      for (let j = i; j < end; j++) {
+        range.setStart(node, offsets[j]); range.setEnd(node, offsets[j + 1]);
+        const rect = range.getBoundingClientRect();
+        if (near(rect)) glyphs.push({ start: start + offsets[j], end: start + offsets[j + 1], rect });
+      }
+    }
+  }
+  return glyphs;
+}
+
+function insideLoop(points: Point[], x: number, y: number) {
+  let inside = false;
+  for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+    const a = points[i], b = points[j];
+    if ((a.y > y) !== (b.y > y) && x < (b.x - a.x) * (y - a.y) / (b.y - a.y) + a.x) inside = !inside;
+  }
+  return inside;
+}
+
+/** Distance from ink to the bottom of a printed row, allowing normal space below an underline. */
+function underlineGap(rect: DOMRect, y: number) {
+  const dy = y - rect.bottom;
+  if (dy < -rect.height * .75 || dy > Math.max(14, rect.height * .85)) return Infinity;
+  // In a gap between rows, an underline usually belongs to the text above the ink.
+  return Math.abs(dy * (dy > 0 ? .7 : 1.1));
+}
+
+function underlineOffset(glyphs: Glyph[], point: Point) {
+  let best = Infinity, offset: number | null = null;
+  for (const g of glyphs) {
+    const r = g.rect;
+    const dx = Math.max(r.left - point.x, point.x - r.right, 0);
+    const distance = Math.hypot(dx * .65, underlineGap(r, point.y));
+    if (distance < best) {
+      best = distance;
+      offset = point.x < (r.left + r.right) / 2 ? g.start : g.end;
+    }
+  }
+  return offset;
+}
+
+/** A nearly level stroke selects from one visual row, even if one end extends into its margin. */
+function underlinedRow(glyphs: Glyph[], y: number, left: number, right: number) {
+  let best = Infinity, row: DOMRect | null = null;
+  for (const { rect } of glyphs) {
+    const distance = underlineGap(rect, y);
+    if (distance < best) { best = distance; row = rect; }
+  }
+  if (!row) return [];
+  return glyphs.filter(({ rect: r }) => {
+    const overlap = Math.min(row.bottom, r.bottom) - Math.max(row.top, r.top);
+    const center = (r.left + r.right) / 2;
+    return overlap > Math.min(row.height, r.height) / 2 && left <= center && center <= right;
+  });
+}
+
+/** The geometry is in viewport coordinates; glyphs stay in document order across visual lines. */
+export function markedGlyphRange(points: Point[], bounds: Bounds, glyphs: Glyph[]): { start: number; end: number; mark: QuoteAnchor["mark"] } | null {
+  if (!glyphs.length || points.length < 2) return null;
+  const { left, right, top, bottom } = bounds, width = right - left, height = bottom - top;
+  const first = points[0], last = points[points.length - 1];
+  let twiceArea = 0, previous = last;
+  for (const p of points) {
+    twiceArea += previous.x * p.y - p.x * previous.y;
+    previous = p;
+  }
+  const circle = height >= 8 && Math.hypot(last.x - first.x, last.y - first.y) < Math.max(14, width * .5)
+    && Math.abs(twiceArea) > .4 * width * height;
+  let start: number, end: number;
+  if (!circle && height > glyphs[0].rect.height * .65) {
+    // A stroke across wrapped lines or transcript cues keeps its distinct endpoints.
+    const a = underlineOffset(glyphs, first), b = underlineOffset(glyphs, last);
+    if (a === null || b === null || a === b) return null;
+    start = Math.min(a, b); end = Math.max(a, b);
+  } else {
+    // The median keeps a small hook or lift at the end from changing the selected row.
+    const selected = circle
+      ? glyphs.filter(({ rect: r }) => insideLoop(points, (r.left + r.right) / 2, (r.top + r.bottom) / 2))
+      : underlinedRow(glyphs, points.map(p => p.y).sort((a, b) => a - b)[Math.floor(points.length / 2)], left, right);
+    if (!selected.length) return null;
+    start = selected[0].start; end = selected[selected.length - 1].end;
+  }
+  return { start, end, mark: circle ? "circle" : "underline" };
 }
 
 export function anchorFromMark(root: HTMLElement, points: Point[], oneCue = false): QuoteAnchor | null {
   if (points.length < 2) return null;
-  const first = points[0], last = points[points.length - 1];
-  let left = first.x, right = first.x, top = first.y, bottom = first.y;
+  const first = points[0];
+  const bounds = { left: first.x, right: first.x, top: first.y, bottom: first.y };
   for (const p of points) {
-    left = Math.min(left, p.x); right = Math.max(right, p.x);
-    top = Math.min(top, p.y); bottom = Math.max(bottom, p.y);
+    bounds.left = Math.min(bounds.left, p.x); bounds.right = Math.max(bounds.right, p.x);
+    bounds.top = Math.min(bounds.top, p.y); bounds.bottom = Math.max(bounds.bottom, p.y);
   }
-  if (right - left < 4) return null;
-  const circle = bottom - top >= 10 && Math.hypot(last.x - first.x, last.y - first.y) < Math.max(14, (right - left) * 0.45);
-  const lineHeight = parseFloat(getComputedStyle(root).lineHeight) || 22;
-  const middle = (top + bottom) / 2;
+  if (bounds.right - bounds.left < 4) return null;
   const index = indexSource(root);
-  const a = circle ? caretAt(index, left + 1, Math.min(middle, top + lineHeight / 2)) : caretAt(index, first.x, first.y - 5);
-  const b = circle ? caretAt(index, right - 1, Math.max(middle, bottom - lineHeight / 2)) : caretAt(index, last.x, last.y - 5);
-  if (a === null || b === null) return null;
-  const start = Math.min(a,b);
-  let end = Math.max(a,b);
+  const hit = markedGlyphRange(points, bounds, glyphsNear(index, bounds));
+  if (!hit) return null;
+  const { start, mark } = hit;
+  let end = hit.end;
   if (oneCue) {
     const first = index.pieces.find(p => p.start <= start && p.end > start);
     const cue = first?.node.parentElement?.closest("[data-lecture-target]");
@@ -70,7 +162,7 @@ export function anchorFromMark(root: HTMLElement, points: Point[], oneCue = fals
   const block = index.pieces.find(p => p.start <= i && p.end > i)?.block;
   return {
     quote, prefix: index.text.slice(Math.max(0, i - 64), i), suffix: index.text.slice(i + quote.length, i + quote.length + 64),
-    mark: circle ? "circle" : "underline", block_key: block?.dataset.annotationBlock,
+    mark, block_key: block?.dataset.annotationBlock,
   };
 }
 

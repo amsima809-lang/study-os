@@ -164,3 +164,4 @@ study-os/
 - [x] Phase 81 — Inline annotations. Mark a sentence in the summary or transcript and save the ink. The automatic transcription appears as a yellow sub-bullet at the mark. Tap it to edit the ink, rewrite the text or delete the annotation.
 
 - [x] Lecture note editing — One **My Notes** section per lecture, chronological entries with edit and delete, a shared image gallery, and a half-screen editor above which the lecture stays scrollable. Saving a note or its clarifying answers automatically updates the combined notes.
+- [x] Summary marking — Underline or circle words directly to open a half-screen annotation editor. The reader measures rendered characters, including Thai combining marks, and keeps the chosen passage marked while writing and after saving.

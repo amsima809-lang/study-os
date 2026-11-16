@@ -603,6 +603,8 @@ The note input opens the annotation editor full screen, using PencilKit in the i
 
 A saved underline or circle belongs to one student and one source. Each rendered sentence has a stable key and a place for its annotations. The reader reconciles the key, quote and surrounding text when the page changes. A transcript search excludes hidden cues, and an inserted personal note stays outside the text used for locating marks.
 
+The summary accepts marks directly. Underlines use the visible character boxes on the marked line, including when the stroke extends into a margin or below the letters. Circles use the characters inside the loop. The selected words show their mark immediately and the handwriting editor opens below the scrollable lecture.
+
 Migration 051 identifies the source and records the transcription status. Saving ink stores the original before starting recognition. Successful recognition displays a pale yellow sub-bullet at the marked sentence. Revising the text or ink uses the current revision so an older recognition result cannot overwrite a correction. Search opens the matching annotation in its source.
 
 

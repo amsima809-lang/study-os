@@ -46,3 +46,13 @@
 @media (forced-colors: active) {
   .lecture-note-button { border: 1px solid ButtonText; }
 }
+.lecture-passage-mark {
+  position: absolute;
+  box-sizing: border-box;
+  border: solid var(--accent);
+  border-width: 0 0 2px;
+}
+.lecture-passage-mark[data-annotation-mark="circle"] {
+  border-width: 2px;
+  border-radius: 50%;
+}

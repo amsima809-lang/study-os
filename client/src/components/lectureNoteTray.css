@@ -74,3 +74,15 @@ html.keyboard-open .lecture-note-tray[role="dialog"] {
   max-height: none !important;
   overflow: hidden;
 }
+
+.annotation-sheet {
+  padding-inline: max(.5rem, calc((100% - 54rem) / 2), env(safe-area-inset-left)) max(.5rem, calc((100% - 54rem) / 2), env(safe-area-inset-right));
+  padding-bottom: max(.5rem, env(safe-area-inset-bottom));
+}
+.annotation-sheet-paper {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}

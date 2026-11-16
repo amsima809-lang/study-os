@@ -6,7 +6,7 @@ import { useT } from "../i18n.tsx";
 import { LectureNoteForm } from "../screens/Notes.tsx";
 import { setUnsaved, unsavedReason } from "../unsaved.ts";
 import { ConfirmDialog } from "./ui.tsx";
-import "./lectureNoteTray.css";
+import { useLectureSplitPane } from "./useLectureSplitPane.ts";
 
 type TrayProps = {
   code: string;
@@ -26,61 +26,10 @@ export function LectureNoteTray({ code, sessionNo, readerRef, note, onSaved, onC
   const tray = useRef<HTMLElement>(null);
   const noteId = note?.id;
 
-  useLayoutEffect(() => {
-    const reader = readerRef.current, panel = tray.current;
-    if (!reader || !panel) return;
-    const page = document.documentElement;
-    const start = window.scrollY, opener = document.activeElement;
-    const inert: HTMLElement[] = [];
-    // Leave the upper reader keyboard-accessible while the rest of the shell is covered.
-    for (let node: HTMLElement | null = reader; node && node !== document.body; node = node.parentElement) {
-      for (const sibling of Array.from(node.parentElement?.children ?? [])) {
-        if (sibling instanceof HTMLElement && sibling !== node && !sibling.contains(panel) && !sibling.inert) {
-          sibling.inert = true; inert.push(sibling);
-        }
-      }
-    }
-    page.classList.add("lecture-writing");
-    reader.classList.add("lecture-tray-reader");
-    const viewport = window.visualViewport;
-    const resize = () => {
-      page.style.setProperty("--lecture-vh", (viewport?.height ?? window.innerHeight) + "px");
-      page.style.setProperty("--lecture-vw", (viewport?.width ?? window.innerWidth) + "px");
-      page.style.setProperty("--lecture-vtop", (viewport?.offsetTop ?? 0) + "px");
-      page.style.setProperty("--lecture-vleft", (viewport?.offsetLeft ?? 0) + "px");
-    };
-    resize();
-    viewport?.addEventListener("scroll", resize);
-    viewport?.addEventListener("resize", resize);
-    window.addEventListener("resize", resize);
-    const showPassage = () => {
-      const target = reader.querySelector<HTMLElement>("[data-lecture-target]");
-      if (!target) return;
-      reader.scrollTop += target.getBoundingClientRect().top - reader.getBoundingClientRect().top - 12;
-      observer.disconnect();
-    };
-    const observer = new MutationObserver(showPassage);
-    observer.observe(reader, { childList: true, subtree: true });
-    showPassage();
-    panel.focus({ preventScroll: true });
-    return () => {
-      observer.disconnect();
-      viewport?.removeEventListener("scroll", resize);
-      viewport?.removeEventListener("resize", resize);
-      window.removeEventListener("resize", resize);
-      for (const el of inert) el.inert = false;
-      reader.inert = false;
-      reader.classList.remove("lecture-tray-reader");
-      page.classList.remove("lecture-writing");
-      for (const variable of ["--lecture-vh", "--lecture-vw", "--lecture-vtop", "--lecture-vleft"]) {
-        page.style.removeProperty(variable);
-      }
-      window.scrollTo({ top: start, behavior: "instant" });
-      const trigger = opener instanceof HTMLElement && opener !== document.body && opener.isConnected
-        ? opener : reader.querySelector<HTMLElement>(noteId ? `[data-lecture-edit-note="${noteId}"]` : "[data-lecture-add-note]");
-      trigger?.focus({ preventScroll: true });
-    };
-  }, [readerRef, noteId]);
+  useLectureSplitPane(readerRef.current, tray,
+    reader => reader.querySelector("[data-lecture-target]")?.getBoundingClientRect(), "start",
+    reader => reader.querySelector<HTMLElement>(noteId ? `[data-lecture-edit-note="${noteId}"]` : "[data-lecture-add-note]"),
+  );
   useLayoutEffect(() => {
     if (readerRef.current) readerRef.current.inert = full;
   }, [full, readerRef]);

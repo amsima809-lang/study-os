@@ -149,6 +149,8 @@ export function HandwritingPreview({ drawing }: { drawing: VectorDrawing }) {
 
 type Props = {
   compact?: boolean;
+  fitAnnotationPane?: boolean;
+  allowFinger?: boolean;
   accent?: string;
   background?: HTMLImageElement;
   /** Strokes and page count to start from (a restored draft). Read once, on mount. */
@@ -164,7 +166,7 @@ type Props = {
  * zoom in/out, and multiple pages. Compact annotations start on the same pen.
  * Note drafts keep editable vectors and export original strokes as a PNG.
  */
-export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, onChange, onPen, compact = false, accent = COLORS[0], background }, ref) => {
+export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, onChange, onPen, compact = false, fitAnnotationPane = false, allowFinger = false, accent = COLORS[0], background }, ref) => {
   const { lang, t } = useT();
   // A web edit of a PencilKit annotation paints on its exact saved image, including its original aspect ratio.
   const logicalWidth = compact ? background?.naturalWidth || 680 : CANVAS_W;
@@ -173,16 +175,19 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
   const scroller = useRef<HTMLDivElement>(null);
   const [viewportPaperHeight, setViewportPaperHeight] = useState(0);
   useLayoutEffect(() => {
-    if (compact) return;
+    if (compact && (!fitAnnotationPane || background)) return;
     const sc = scroller.current!;
     const measure = () => {
-      if (sc.clientWidth) setViewportPaperHeight(Math.ceil(sc.clientHeight / sc.clientWidth * CANVAS_W));
+      if (!sc.clientWidth) return;
+      const height = Math.ceil(sc.clientHeight / sc.clientWidth * logicalWidth);
+      // A rotation may give the sheet more paper. Never crop ink already drawn near the bottom.
+      setViewportPaperHeight(previous => fitAnnotationPane ? Math.max(previous, height) : height);
     };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(sc);
     return () => observer.disconnect();
-  }, [compact]);
+  }, [compact, fitAnnotationPane, background, logicalWidth]);
   const [strokes, setStrokes] = useState<Stroke[]>(() => initial?.strokes ?? []);
   const [redoStack, setRedoStack] = useState<Stroke[]>([]);
   const [tool, setTool] = useState<Tool>("pen");
@@ -310,7 +315,10 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
     const sincePen = Date.now() - lastPenAt.current;
     if (palm || penDown.current || sincePen < (penOnly ? 1000 : 400)) return;
     touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (compact) return;
+    if (compact) {
+      if (allowFinger && !penOnly && touches.current.size === 1) beginStroke(e);
+      return;
+    }
     if (touches.current.size === 2) {
       // A second finger means zoom, not a line: drop the stroke the first finger began.
       if (activePointer.current !== null) {
@@ -359,7 +367,13 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
   function down(e: React.PointerEvent) {
     if (e.button !== 0) return;
     if (e.pointerType === "touch") return touchDown(e);
-    if (!compact && e.pointerType === "pen") sawPen();
+    if (e.pointerType === "pen" && (!compact || fitAnnotationPane)) {
+      sawPen();
+      if (fitAnnotationPane && activePointer.current !== null && touches.current.has(activePointer.current)) {
+        activePointer.current = null; drawing.current = false; current.current = null; last.current = null;
+        redraw();
+      }
+    }
     // The pen (or mouse) always wins over fingers already on the glass.
     touches.current.clear();
     pinch.current = null;
@@ -452,9 +466,9 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
   });
 
   return (
-    <div className={compact ? "overflow-hidden rounded border" : "flex flex-col flex-1 min-h-0"} style={{ borderColor: "var(--border)" }}>
+    <div className={compact && !fitAnnotationPane ? "overflow-hidden rounded border" : "flex flex-col flex-1 min-h-0"} style={{ borderColor: "var(--border)" }}>
       {/* toolbar */}
-      {compact && <div className="flex gap-1 px-1 border-b" style={{ borderColor: "var(--border)" }}>
+      {compact && <div className="flex shrink-0 gap-1 px-1 border-b" style={{ borderColor: "var(--border)" }}>
         <button type="button" title={t("draw.pen")} aria-pressed={tool === "pen"} onClick={() => setTool("pen")} className={toolBtn(true)} style={toolStyle(tool === "pen")}><Icon name="pen" size={16}/></button>
         <button type="button" title={t("draw.eraser")} aria-pressed={tool === "eraser"} onClick={() => setTool("eraser")} className={toolBtn(true)} style={toolStyle(tool === "eraser")}>🧽</button>
         <button type="button" title={t("draw.undo")} aria-label={t("draw.undo")} disabled={!strokes.length} onClick={undo} className={toolBtn(false)}>↩︎</button>
@@ -593,7 +607,7 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
       </details>}
 
       {/* scrollable canvas area */}
-      <div ref={scroller} className={compact ? "overflow-auto overscroll-contain max-h-[45dvh]" : "flex-1 min-h-0 overflow-auto overscroll-contain bg-white"}>
+      <div ref={scroller} className={compact && !fitAnnotationPane ? "overflow-auto overscroll-contain max-h-[45dvh]" : "flex-1 min-h-0 overflow-auto overscroll-contain bg-white"}>
         <canvas
           ref={canvasRef}
           aria-label={lang === "th" ? "พื้นที่เขียน" : "Writing pad"}
