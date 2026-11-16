@@ -6,7 +6,10 @@
  */
 import type { Stroke } from "./components/HandwritingPad.tsx";
 
-export type Drawing = { strokes: Stroke[]; pages: number };
+/** Handwriting from Apple's PencilKit page in the iOS app (client/src/nativeInk.ts). */
+export type NativeInk = { drawing: string; png: string; colors: string[] };
+/** The web drawing pad's strokes, or (in the iOS app) `ink` from PencilKit with no strokes. */
+export type Drawing = { strokes: Stroke[]; pages: number; ink?: NativeInk };
 export type NoteDraft = {
   courseCode: string;
   title: string;
@@ -33,7 +36,7 @@ export function draftOwner(): string {
 
 /** A draft with nothing in it is not worth keeping (a chosen course alone does not count). */
 export function isEmptyDraft(d: Pick<NoteDraft, "title" | "text" | "drawing" | "files">): boolean {
-  return !d.title.trim() && !d.text.trim() && !(d.drawing && d.drawing.strokes.length > 0) && d.files.length === 0;
+  return !d.title.trim() && !d.text.trim() && !(d.drawing && (d.drawing.strokes.length > 0 || d.drawing.ink)) && d.files.length === 0;
 }
 
 function open(): Promise<IDBDatabase> {

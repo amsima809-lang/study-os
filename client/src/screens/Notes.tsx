@@ -21,6 +21,8 @@ import { Markdown } from "../components/Markdown.tsx";
 import Icon from "../components/Icon.tsx";
 import { CourseChip, CourseTitle } from "../components/CourseTitle.tsx";
 import { HandwritingPad, type HandwritingHandle } from "../components/HandwritingPad.tsx";
+import { NoteInputBar, type NoteMode } from "../components/NoteInputBar.tsx";
+import { drawWithPencilKit, hasNativeInk, inkBlob } from "../nativeInk.ts";
 import { useSubscription, handleSubscriptionError } from "../components/SubscriptionGate.tsx";
 import { withBase } from "../base.ts";
 
@@ -650,6 +652,24 @@ function AddNote({
   const [title, setTitle] = useState("");
   const [text, setText] = useState("");
   const [mode, setMode] = useState<"type" | "draw">("type");
+  const [penUsed, setPenUsed] = useState(false);
+  const textRef = useRef<HTMLTextAreaElement>(null);
+  // In the iOS app, handwriting is Apple's PencilKit page (nativeInk.ts); in a browser, the web pad.
+  const native = hasNativeInk();
+  async function openInk() {
+    try {
+      const ink = await drawWithPencilKit(drawing?.ink, { title: title || t("notes.modeDraw"), done: t("ink.done"), cancel: t("ink.cancel") });
+      if (ink === undefined) return; // cancelled: keep what was there
+      setDrawing(ink ? { strokes: [], pages: 1, ink } : null);
+      if (ink) setPenUsed(true);
+    } catch {
+      setError(t("ink.failed"));
+    }
+  }
+  function chooseMode(m: NoteMode) {
+    setMode(m);
+    if (m === "draw" && native) void openInk();
+  }
   const [files, setFiles] = useState<File[]>([]);
   const [drawing, setDrawing] = useState<Drawing | null>(null);
   const [busy, setBusy] = useState(false);
@@ -772,7 +792,8 @@ function AddNote({
 
   async function submit() {
     setError(null);
-    const handwriting = mode === "draw" ? await padRef.current?.exportBlob() : null;
+    const handwriting =
+      mode !== "draw" ? null : native ? (drawing?.ink ? inkBlob(drawing.ink) : null) : await padRef.current?.exportBlob();
     const hasText = mode === "type" && text.trim().length > 0;
     if (!hasText && files.length === 0 && !handwriting) {
       setError(t("notes.needInput"));
@@ -783,7 +804,7 @@ function AddNote({
     if (title) form.append("title", title);
     if (hasText) form.append("raw_text", text);
     for (const f of files) form.append("images", f);
-    if (handwriting) form.append("images", handwriting, "handwriting.jpg");
+    if (handwriting) form.append("images", handwriting, native ? "handwriting.png" : "handwriting.jpg");
 
     setBusy(true);
     try {
@@ -864,35 +885,51 @@ function AddNote({
           style={inputStyle}
         />
 
-        <div className="flex gap-2">
-          {(["type", "draw"] as const).map((m) => (
-            <button
-              key={m}
-              onClick={() => setMode(m)}
-              className="flex-1 rounded-lg py-2 text-sm font-medium min-h-11"
-              style={{
-                backgroundColor: mode === m ? "var(--accent)" : "var(--bg-surface-hover)",
-                color: mode === m ? "var(--text-inverse)" : "var(--text-tertiary)",
-              }}
-            >
-              {t(m === "type" ? "notes.modeType" : "notes.modeDraw")}
-            </button>
-          ))}
-        </div>
+        <NoteInputBar
+          mode={mode}
+          onMode={chooseMode}
+          textRef={textRef}
+          penUsed={penUsed}
+          onDictated={(words) => setText((prev) => (prev && !/\s$/.test(prev) ? `${prev} ${words}` : prev + words))}
+        />
 
         {mode === "type" ? (
           <textarea
+            ref={textRef}
             value={text}
             onChange={(e) => setText(e.target.value)}
+            // A pen writing in the box (iPad Scribble turns it into text) lights up the Pen icon.
+            onPointerDown={(e) => { if (e.pointerType === "pen") setPenUsed(true); }}
             placeholder={t("notes.textPlaceholder")}
+            aria-label={t("notes.textPlaceholder")}
             rows={5}
-            className="w-full rounded-lg border px-3 py-2 text-sm"
+            className="note-text w-full rounded-lg border px-3 py-2 text-sm"
             style={inputStyle}
           />
         ) : (
           <div>
-            <p className="text-xs mb-1" style={{ color: "var(--text-tertiary)" }}>{t("notes.drawHint")}</p>
-            <HandwritingPad key={padKey} ref={padRef} initial={drawing} onChange={setDrawing} />
+            {!native && <p className="text-xs mb-1" style={{ color: "var(--text-tertiary)" }}>{t("notes.drawHint")}</p>}
+            {native ? (
+              <button
+                type="button"
+                onClick={() => void openInk()}
+                className="w-full rounded-lg border overflow-hidden flex flex-col items-center justify-center gap-1 min-h-32"
+                style={{ borderColor: "var(--border)", backgroundColor: drawing?.ink ? "#fff" : "var(--bg-surface-hover)" }}
+                aria-label={t(drawing?.ink ? "ink.edit" : "ink.open")}
+              >
+                {drawing?.ink ? (
+                  <img src={`data:image/png;base64,${drawing.ink.png}`} alt="" className="w-full max-h-80 object-contain object-top" />
+                ) : (
+                  <>
+                    <Icon name="pen" size={28} style={{ color: "var(--accent-text)" }} />
+                    <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{t("ink.open")}</span>
+                  </>
+                )}
+              </button>
+            ) : (
+              <HandwritingPad key={padKey} ref={padRef} initial={drawing} onChange={setDrawing} onPen={() => setPenUsed(true)} />
+            )}
+            {native && drawing?.ink && <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>{t("ink.tapToEdit")}</p>}
           </div>
         )}
 

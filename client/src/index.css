@@ -319,3 +319,11 @@ html.keyboard-open [role="alertdialog"] {
 .trail-path .trail-steps { animation: trail-climb 2.4s linear infinite; }
 @keyframes trail-climb { to { stroke-dashoffset: 11.1; } }
 @media (prefers-reduced-motion: reduce) { .trail-path .trail-steps { animation: none; } }
+
+/* ── Note input bar: the big mic while it listens, and the note's text box above the keyboard ── */
+@keyframes mic-ring { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); } 100% { box-shadow: 0 0 0 22px transparent; } }
+.mic-live { animation: mic-ring 1.4s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) { .mic-live { animation: none; outline: 4px solid color-mix(in srgb, var(--accent) 40%, transparent); } }
+/* While the on-screen keyboard is up, the note's text box is never taller than the
+   space left above it, so the line being typed stays in sight (it scrolls inside). */
+html.keyboard-open .note-text:focus { max-height: calc(100dvh - var(--keyboard-inset, 0px) - 7rem); }

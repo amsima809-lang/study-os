@@ -43,6 +43,8 @@ type Props = {
   initial?: { strokes: Stroke[]; pages: number } | null;
   /** Called after every finished stroke, undo, redo, clear or page change. */
   onChange?: (drawing: { strokes: Stroke[]; pages: number }) => void;
+  /** Called the first time a pen (Apple Pencil, stylus) touches the pad, so the note form can show it is in use. */
+  onPen?: () => void;
 };
 
 /**
@@ -50,7 +52,7 @@ type Props = {
  * zoom in/out, and an expand toggle. Strokes are stored as vectors (light +
  * redo-friendly) and exported as a JPEG for the AI to read.
  */
-export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, onChange }, ref) => {
+export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, onChange, onPen }, ref) => {
   const { t } = useT();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [strokes, setStrokes] = useState<Stroke[]>(() => initial?.strokes ?? []);
@@ -183,6 +185,29 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
       return !on;
     });
   }
+  // PEN ONLY. A browser on an iPad does not say how big a touch is, so a palm
+  // looks like a finger: one landing before the pen scrolled the page, and with
+  // "draw with a finger" on it drew. Once a pen has touched the pad on this
+  // device, pen-only is on: a single touch does nothing at all (no line, no
+  // scroll); two fingers still zoom and pan, but never while the pen is down or
+  // for a second after it lifts. It can be switched off for a finger or a mouse.
+  const [penOnly, setPenOnly] = useState(() => {
+    try { return localStorage.getItem("studyos.penOnly") === "1"; } catch { return false; }
+  });
+  function savePenOnly(on: boolean) {
+    setPenOnly(on);
+    try { localStorage.setItem("studyos.penOnly", on ? "1" : "0"); } catch { /* not saved */ }
+  }
+  const penSeen = useRef(false);
+  function sawPen() {
+    if (penSeen.current) return;
+    penSeen.current = true;
+    onPen?.();
+    try {
+      // Turn pen-only on by itself only the first time; after that the student's own choice stands.
+      if (localStorage.getItem("studyos.penOnly") === null) savePenOnly(true);
+    } catch { savePenOnly(true); }
+  }
   const spread = () => {
     const [a, b] = [...touches.current.values()];
     return Math.hypot(a.x - b.x, a.y - b.y);
@@ -199,7 +224,8 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
 
   function touchDown(e: React.PointerEvent) {
     const palm = Math.max(e.width, e.height) > 44;
-    if (palm || penDown.current || Date.now() - lastPenAt.current < 400) return;
+    const sincePen = Date.now() - lastPenAt.current;
+    if (palm || penDown.current || sincePen < (penOnly ? 1000 : 400)) return;
     touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (touches.current.size === 2) {
       // A second finger means zoom, not a line: drop the stroke the first finger began.
@@ -211,7 +237,7 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
         redraw();
       }
       pinch.current = { dist: spread() || 1, zoom };
-    } else if (touches.current.size === 1 && fingerDraw) {
+    } else if (touches.current.size === 1 && fingerDraw && !penOnly) {
       beginStroke(e);
     }
   }
@@ -223,6 +249,7 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
     const dy = e.clientY - prev.y;
     touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (touches.current.size === 1) {
+      if (penOnly) return; // a lone touch is the palm, or a finger resting: it moves nothing
       sc.scrollLeft -= dx;
       sc.scrollTop -= dy;
     } else if (touches.current.size === 2 && pinch.current) {
@@ -247,6 +274,7 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
 
   function down(e: React.PointerEvent) {
     if (e.pointerType === "touch") return touchDown(e);
+    if (e.pointerType === "pen") sawPen();
     // The pen (or mouse) always wins over fingers already on the glass.
     touches.current.clear();
     pinch.current = null;
@@ -460,14 +488,24 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
         </div>
         <div className="flex items-center gap-2 text-xs" style={{ color: "var(--text-tertiary)" }}>
           <button
-            className={`${toolBtn(fingerDraw)} inline-flex items-center gap-1.5`} style={toolStyle(fingerDraw)}
-            onClick={toggleFingerDraw}
-            aria-pressed={fingerDraw}
+            className={`${toolBtn(penOnly)} inline-flex items-center gap-1.5`} style={toolStyle(penOnly)}
+            onClick={() => savePenOnly(!penOnly)}
+            aria-pressed={penOnly}
           >
-            <Icon name="hand" size={16} />
-            {t("draw.finger")}
+            <Icon name="pen" size={16} />
+            {t("draw.penOnly")}
           </button>
-          <span className="flex-1 min-w-0">{t("draw.gestureHint")}</span>
+          {!penOnly && (
+            <button
+              className={`${toolBtn(fingerDraw)} inline-flex items-center gap-1.5`} style={toolStyle(fingerDraw)}
+              onClick={toggleFingerDraw}
+              aria-pressed={fingerDraw}
+            >
+              <Icon name="hand" size={16} />
+              {t("draw.finger")}
+            </button>
+          )}
+          <span className="flex-1 min-w-0">{t(penOnly ? "draw.penOnlyHint" : "draw.gestureHint")}</span>
           <span className="whitespace-nowrap">{t("draw.pages", { n: pages })}</span>
         </div>
       </div>
