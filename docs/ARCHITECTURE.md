@@ -621,3 +621,26 @@ The summary and transcript share one **My Notes** list for a lecture. Each entry
 When iOS registers the inline field methods, a clipped PencilKit canvas tracks the writing field as the tray moves. Earlier builds and browsers draw in the field with the shared web canvas.
 
 Saving lecture notes updates the combined document in the background. Clarifying answers become eligible when saved. Matching sources are linked to their summary points from the list. Margin annotations retain their positions at the marked sentences.
+
+## Lecture transcript quizzes
+
+The Quiz screen opens on **Lecture transcripts** when the student has access to a bank. Other students start with their personal study materials. Each recording has five numbered sets of five. The first attempt at each set draws a different part of the student's 25-question lecture bank. **Whole course** draws 25 distinct questions across the course's available lectures. Retakes bring back every miss from the preceding attempt in that set. They fill the remaining places with unseen questions first, then revisit older material as the pool runs out. Question order and answer order are shuffled for each attempt.
+
+Migration 054 links a bank to a shared recording or a student's private transcript. Course aliases resolve through the same recording and programme permissions as the lecture reader. Attempts record the selected question IDs, displayed option order and submitted choices. The API grades those choices on the server and returns the key, explanation, lecture number, timestamp and excerpt once the student submits. An interrupted submission or repeated start resumes the existing attempt.
+
+`scripts/lecture-quiz-bank.py` sends transcripts to DeepSeek V4 Pro offline with `scripts/lecture-quiz-prompt.txt`. The prompt calls for questions on applying a principle, reasoning through a change of circumstances or diagnosing an error. Each question cites the relevant transcript passage. The generator checks the returned model, exact source excerpts, question and choice counts, and duplicate stems. `scripts/lecture-quiz-review.mjs` independently asks V4 Pro to solve the questions using the transcript and shuffled choices. It withholds the proposed key and explanation, flags ambiguous or repetitive items and checks changed questions again. Bank files and reviews live with the private lecture materials outside git.
+
+For a release, run these commands from the project root with the paths to the private notes folder, bank files and database supplied in the environment. Generation, answer-choice editing and new blind reviews require `DEEPSEEK_API_KEY`. The source check, cached review check and import run locally.
+
+```sh
+python3 scripts/lecture-quiz-bank.py generate --notes-folder "$NOTES_DIR" --output "$BANK_DIR"
+python3 scripts/lecture-quiz-bank.py polish --notes-folder "$NOTES_DIR" --output "$BANK_DIR"
+node --import tsx scripts/lecture-quiz-review.mjs --notes-folder "$NOTES_DIR" --banks "$BANK_DIR"
+python3 scripts/lecture-quiz-bank.py check --notes-folder "$NOTES_DIR" --output "$BANK_DIR"
+python3 scripts/lecture-quiz-bank.py import --database "$DB_PATH" --output "$BANK_DIR" --dry-run
+python3 scripts/lecture-quiz-bank.py import --database "$DB_PATH" --output "$BANK_DIR"
+```
+
+Review reports list the slot and reason for each issue. Pass a JSON map of bank names to slot numbers and reasons to `generate --repairs FILE` for a targeted rewrite. Repeat the blind review after editing. Its `--check-only` option verifies the cached answers against the current question content.
+
+The importer validates each bank against the destination transcript inside a transaction. Re-importing identical questions preserves attempts and grades. The importer reports a conflict if a changed bank already has attempts.

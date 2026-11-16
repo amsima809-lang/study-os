@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useT } from "../i18n.tsx";
 import {
   getJSON,
@@ -15,6 +15,7 @@ import { draftOwner } from "../noteDraft.ts";
 import { setUnsaved } from "../unsaved.ts";
 import Icon from "../components/Icon.tsx";
 import { useSubscription, handleSubscriptionError } from "../components/SubscriptionGate.tsx";
+import LectureQuizzes from "../components/LectureQuizzes.tsx";
 
 type Phase = "setup" | "loading" | "quiz" | "done";
 
@@ -46,6 +47,10 @@ export default function Quiz() {
   const { t } = useT();
   const [resumed] = useState(loadProgress);
   const [phase, setPhase] = useState<Phase>(resumed ? "quiz" : "setup");
+  const [source, setSource] = useState<"auto" | "transcripts" | "personal">(resumed ? "personal" : "auto");
+  const selectedSource = source === "auto" ? "transcripts" : source;
+  const onEmptyCatalog = useCallback(() => setSource(s => s === "auto" ? "personal" : s), []);
+  const [takingLectureQuiz, setTakingLectureQuiz] = useState(false);
   const [questions, setQuestions] = useState<QuizQuestion[]>(resumed?.questions ?? []);
   const [results, setResults] = useState<AnswerResult[]>([]);
 
@@ -66,7 +71,20 @@ export default function Quiz() {
     <div className="space-y-4">
       <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{t("quiz.title")}</h1>
 
-      {(phase === "setup" || phase === "loading") && (
+      {phase === "setup" && !takingLectureQuiz && (
+        <div className="flex gap-1 rounded-xl p-1" role="group" aria-label={t("quiz.pickSource")}
+          style={{ backgroundColor: "var(--bg-surface-hover)" }}>
+          {(["transcripts", "personal"] as const).map(id => (
+            <button type="button" key={id} aria-pressed={selectedSource === id} onClick={() => setSource(id)}
+              className="min-h-11 flex-1 rounded-lg px-2 text-sm font-semibold"
+              style={selectedSource === id ? { background: "var(--bg-surface)", color: "var(--accent-text)" } : { color: "var(--text-secondary)" }}>
+              {t(id === "transcripts" ? "quiz.transcripts" : "quiz.personal")}
+            </button>
+          ))}
+        </div>
+      )}
+      {phase === "setup" && selectedSource === "transcripts" && <LectureQuizzes onTaking={setTakingLectureQuiz} onEmpty={onEmptyCatalog}/>}
+      {source === "personal" && (phase === "setup" || phase === "loading") && (
         // Stay mounted while loading so the error message and picked source survive a failed request.
         <div hidden={phase === "loading"}>
           <Setup
@@ -150,7 +168,7 @@ function Setup({
     return [...map.entries()];
   }, [notes]);
 
-  if (!notes) return <Loading>{t("status.connecting")}</Loading>;
+  if (!notes) return loadFailed ? <ErrorBox onRetry={() => setAttempt(n => n + 1)}/> : <Loading>{t("status.connecting")}</Loading>;
 
   async function start() {
     setError(null);

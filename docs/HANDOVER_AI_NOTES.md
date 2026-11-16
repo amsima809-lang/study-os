@@ -11,6 +11,8 @@ Each lecture has one **My Notes** section under the reading. New notes appear th
 
 Saving a lecture note updates the combined notes automatically. For a page with handwriting or drawings, review any clarifying questions and tap **Save** to include your answers. Sentence annotations still appear at the marked passage.
 
+Open **Quiz → Lecture transcripts**, choose a course, then choose a lecture for five quizzes of five questions, or **Whole course** for a quiz of 25. DeepSeek V4 Pro wrote 25 four-choice questions for each of the 42 released transcripts. Retaking a quiz brings back each question missed on the last attempt, with fresh questions filling the remaining places while available. The scored review includes explanations and timestamped excerpts. The private banks and blind answer checks are under `lecture-quiz/banks` and `lecture-quiz/reviews` in the shared notes folder. Release commands are in `docs/ARCHITECTURE.md`.
+
 The Mac mini holds all 42 prebuilt transcript/summary pairs. Both designated accounts were verified against all 42 across ACC1103 (the same recording as ACC1101), MGT3204, RAM1103 and RAM1132. The two shared-lecture releases are `dd9589c` and `f354ddc`. The production allowlist is in `SHARED_LECTURE_USERS`; ask RU before widening it. The other 70 recordings remain outside this release. A database backup was taken before import.
 
 To view saved pictures, open the lecture and tap **Note images**, or open the individual note that contains them.

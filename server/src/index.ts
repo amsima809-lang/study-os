@@ -22,6 +22,7 @@ import { createSketchRouter } from "./sketchRoutes.js";
 import { createUploadsRouter } from "./uploads.js";
 import { createNotesRouter } from "./notes.js";
 import { createQuizRouter } from "./quiz.js";
+import { createLectureQuizRouter } from "./lectureQuizzes.js";
 import { createFlashcardsRouter } from "./flashcards.js";
 import { createAnalyticsRouter } from "./analytics.js";
 import { createPlannerRouter } from "./planner.js";
@@ -220,6 +221,7 @@ app.use("/api", createNotesRouter(db, combinedNotes.changed, sketches.startLectu
 app.use("/api", createLectureNotesRouter(db, undefined, combinedNotes));
 app.use("/api", sketches);
 app.use("/api", createQuizRouter(db));
+app.use("/api/lecture-quizzes", createLectureQuizRouter(db));
 app.use("/api", createFlashcardsRouter(db));
 app.use("/api", createAnalyticsRouter(db));
 app.use("/api", createPlannerRouter(db));

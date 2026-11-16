@@ -28,7 +28,7 @@ Starts semester 2/2569 (Nov 2026), target graduation ~Oct 2573.
 - Client: React 19 + Vite + TypeScript + Tailwind CSS v4. Mobile-first, PWA.
 - Server: Express 5 + TypeScript, run with `tsx`.
 - DB: SQLite (better-sqlite3), migrations as plain SQL files.
-- AI: DeepSeek V4 Flash (the owner's account) through DeepSeek's Anthropic-compatible API, using the Anthropic SDK; one client, `aiClient()` in `server/src/ai.ts`. `DEEPSEEK_API_KEY` set → DeepSeek; otherwise `ANTHROPIC_API_KEY`. AI is free for now (`AI_IS_FREE`).
+- AI: DeepSeek V4 Flash (the owner's account) through DeepSeek's Anthropic-compatible API, using the Anthropic SDK; one client, `aiClient()` in `server/src/ai.ts`. `DEEPSEEK_API_KEY` set → DeepSeek; otherwise `ANTHROPIC_API_KEY`. AI is free for now (`AI_IS_FREE`). The offline lecture quiz generator uses DeepSeek V4 Pro.
 - Timezone: `Asia/Bangkok`. Store ISO dates; display พ.ศ. in the UI.
 - Deploy: Fly.io (Singapore), persistent volume at `/data`.
 - i18n: in-house, no library. Dictionary in `client/src/i18n.tsx`, `useT()` hook,
@@ -165,3 +165,5 @@ study-os/
 
 - [x] Lecture note editing — Untitled entries appear in one **My Notes** section per lecture with edit, delete and a shared image gallery. The tray opens at half height and resizes the active typing or pen field. Camera and image controls sit beside the input choices. Saving a note or its clarifying answers automatically updates related references in My Notes.
 - [x] Summary marking — Underline or circle words directly to open a half-screen annotation editor. The reader measures rendered characters, including Thai combining marks, and keeps the chosen passage marked while writing and after saving.
+
+- [x] Lecture transcript quizzes — Each released recording supplies 25 four-choice questions written by DeepSeek V4 Pro. Students can take five sets of five or a whole-course quiz of 25. A retake includes every question missed on the preceding attempt and draws replacements from the available pool. The answer key and timestamped transcript evidence appear after submission.
