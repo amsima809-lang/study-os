@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { getJSON, putJSON, deleteJSON, type ApiError } from "../api.ts";
 import { useT } from "../i18n.tsx";
 import { withBase } from "../base.ts";
+import { AnnotatedSummary } from "./AnnotatedSummary.tsx";
+import { CreateLectureNotes } from "./CreateLectureNotes.tsx";
 import { Markdown } from "./Markdown.tsx";
 import { Card, ConfirmDialog, ErrorBox, Loading } from "./ui.tsx";
 import { CourseChip } from "./CourseTitle.tsx";
@@ -10,7 +12,7 @@ import { nearestCue, stampPattern, summaryCitations, type Cue } from "../lecture
 export type Lecture = { no: number; url: string; has_summary: boolean; image_count: number; transcript: { cues: number; minutes: number } | null };
 export type LectureCourse = { code: string; name_th: string; name_en: string | null; lectures: Lecture[] };
 type Tab = "summary" | "transcript" | "images";
-export type OpenLecture = { code: string; lecture: Lecture; tab: Tab };
+export type OpenLecture = { code: string; lecture: Lecture; tab: Tab; annotationId?: number };
 type Summary = { summary_md: string; edited: boolean };
 type Transcript = { cues: Cue[]; source_url: string | null; shared: boolean };
 type Photo = { note_id: number; title: string | null; path: string };
@@ -97,6 +99,7 @@ export function SavedLecture({ which, onDeleted }: { which: OpenLecture; onDelet
     if (target) { target.scrollIntoView({ block: "center" }); target.focus({ preventScroll: true }); }
   }, [focus, tab, transcript, summary]);
   function go(target: Target, from: Target | null) {
+    if (target.tab === "summary") setDraft(null);
     setTab(target.tab); setBack(from); setFocus(target); setQuery("");
   }
   async function save(restore: boolean) {
@@ -147,14 +150,15 @@ export function SavedLecture({ which, onDeleted }: { which: OpenLecture; onDelet
       </div>
       {draft !== null ? <textarea className="w-full rounded-lg p-3" rows={18} style={{ background: "var(--bg-surface)" }}
         aria-label={t("lec.edit")} maxLength={120000} value={draft} onChange={(e) => setDraft(e.target.value)}/> :
-        <Card><div className="space-y-2">
+        <Card><AnnotatedSummary key={suffix} courseCode={code} sessionNo={lecture.no} focusId={which.annotationId}><div className="space-y-2">
           {summary.summary_md.split("\n").map((line, i) => line.trim() && (
             <div key={i} tabIndex={-1} data-lecture-target={`summary-${i}`} style={mark("summary", i)}>
               <Markdown source={line} renderText={(part) => renderSummaryPart(part, i)}/>
               {focus?.tab === "summary" && focus.idx === i && backButton}
             </div>
           ))}
-        </div></Card>}
+        </div></AnnotatedSummary></Card>}
+      {draft === null && <CreateLectureNotes code={code} sessionNo={lecture.no}/>}
     </> : !error && <Loading>{t("status.connecting")}</Loading>)}
     {tab === "transcript" && (transcript ? <>
       <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("lib.searchTranscript")}

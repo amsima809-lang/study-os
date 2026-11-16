@@ -1,0 +1,11 @@
+.lecture-ink {
+  color: var(--ink-light, var(--text-primary));
+}
+:root[data-theme="dark"] .lecture-ink {
+  color: var(--ink-dark, var(--text-primary));
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .lecture-ink {
+    color: var(--ink-dark, var(--text-primary));
+  }
+}

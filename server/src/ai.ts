@@ -108,18 +108,19 @@ export function logUsage(db: DB, purpose: string, usage: Usage): void {
 }
 
 /** Run one Anthropic message call, log usage, and return the text block. */
-async function callAnthropic(
+export async function callAnthropic(
   db: DB,
   purpose: string,
   content: Content,
   maxTokens: number,
 ): Promise<{ text: string; usage: Usage }> {
-  const res = await aiClient().messages.create({
+  const stream = aiClient().messages.stream({
     model: env.aiModel,
     max_tokens: aiMaxTokens(maxTokens),
     system: SYSTEM_PROMPT,
     messages: [{ role: "user", content }],
   });
+  const res = await stream.finalMessage();
   const usage = { input_tokens: res.usage.input_tokens, output_tokens: res.usage.output_tokens };
   logUsage(db, purpose, usage);
   const textBlock = res.content.find((b) => b.type === "text");

@@ -6,9 +6,11 @@
  */
 import type { NativeInk } from "./noteDraft.ts";
 
+type InkLabels = { title: string; done: string; cancel: string; anchorX?: number; anchorY?: number; accent?: string };
+
 type AppInkPlugin = {
-  draw: (o: { drawing?: string; title?: string; done?: string; cancel?: string }) => Promise<
-    { cancelled: true } | { cancelled?: false; empty: true } | { drawing: string; png: string; width: number; height: number; colors: string[] }
+  draw: (o: InkLabels & { drawing?: string }) => Promise<
+    { cancelled: true } | { cancelled?: false; empty: true } | { drawing: string; png: string; width: number; height: number; colors: string[]; strokeBounds?: number[][] }
   >;
 };
 
@@ -28,7 +30,7 @@ export function hasNativeInk(): boolean {
  */
 export async function drawWithPencilKit(
   previous: NativeInk | undefined,
-  labels: { title: string; done: string; cancel: string },
+  labels: InkLabels,
 ): Promise<NativeInk | null | undefined> {
   const p = plugin();
   if (!p) return undefined;
@@ -36,7 +38,7 @@ export async function drawWithPencilKit(
   if ("cancelled" in r && r.cancelled) return undefined;
   if ("empty" in r) return null;
   if (!("png" in r) || !r.png) return undefined;
-  return { drawing: r.drawing, png: r.png, colors: r.colors ?? [] };
+  return { drawing: r.drawing, png: r.png, colors: r.colors ?? [], strokeBounds: r.strokeBounds };
 }
 
 /** The ink's picture as a file to send with the note. */

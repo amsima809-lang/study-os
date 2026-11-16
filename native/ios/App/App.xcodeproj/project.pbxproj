@@ -14,6 +14,7 @@
 		A65A00022C6500000000AA02 /* AppSignIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = A65A00012C6500000000AA01 /* AppSignIn.swift */; };
 		A65A00042C6500000000AA04 /* AppCalendar.swift in Sources */ = {isa = PBXBuildFile; fileRef = A65A00032C6500000000AA03 /* AppCalendar.swift */; };
 		A65A00062C6500000000AA06 /* AppInk.swift in Sources */ = {isa = PBXBuildFile; fileRef = A65A00052C6500000000AA05 /* AppInk.swift */; };
+		A65A00162C6500000000AA06 /* AppDictation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A65A00152C6500000000AA05 /* AppDictation.swift */; };
 		504EC30D1FED79650016851F /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30B1FED79650016851F /* Main.storyboard */; };
 		504EC30F1FED79650016851F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30E1FED79650016851F /* Assets.xcassets */; };
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
@@ -29,6 +30,7 @@
 		A65A00012C6500000000AA01 /* AppSignIn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSignIn.swift; sourceTree = "<group>"; };
 		A65A00032C6500000000AA03 /* AppCalendar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCalendar.swift; sourceTree = "<group>"; };
 		A65A00052C6500000000AA05 /* AppInk.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppInk.swift; sourceTree = "<group>"; };
+		A65A00152C6500000000AA05 /* AppDictation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDictation.swift; sourceTree = "<group>"; };
 		504EC30C1FED79650016851F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		504EC30E1FED79650016851F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		504EC3111FED79650016851F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
@@ -76,6 +78,7 @@
 				A65A00012C6500000000AA01 /* AppSignIn.swift */,
 				A65A00032C6500000000AA03 /* AppCalendar.swift */,
 				A65A00052C6500000000AA05 /* AppInk.swift */,
+				A65A00152C6500000000AA05 /* AppDictation.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
 				504EC30E1FED79650016851F /* Assets.xcassets */,
 				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
@@ -171,6 +174,7 @@
 				A65A00022C6500000000AA02 /* AppSignIn.swift in Sources */,
 				A65A00042C6500000000AA04 /* AppCalendar.swift in Sources */,
 				A65A00062C6500000000AA06 /* AppInk.swift in Sources */,
+				A65A00162C6500000000AA06 /* AppDictation.swift in Sources */,
 				9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

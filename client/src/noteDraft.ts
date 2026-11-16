@@ -7,7 +7,7 @@
 import type { Stroke } from "./components/HandwritingPad.tsx";
 
 /** Handwriting from Apple's PencilKit page in the iOS app (client/src/nativeInk.ts). */
-export type NativeInk = { drawing: string; png: string; colors: string[] };
+export type NativeInk = { drawing: string; png: string; colors: string[]; strokeBounds?: number[][] };
 /** The web drawing pad's strokes, or (in the iOS app) `ink` from PencilKit with no strokes. */
 export type Drawing = { strokes: Stroke[]; pages: number; ink?: NativeInk };
 export type NoteDraft = {

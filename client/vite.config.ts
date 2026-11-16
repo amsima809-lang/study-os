@@ -52,6 +52,8 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // The local diagram renderer loads on demand only when opening a sketchnote.
+        globIgnores: ["**/mermaid.tiny*.js", "**/node_modules/**/*", "**/sw.js", "**/workbox-*.js"],
         // Extra code for the generated worker: receiving "Share → StudyOS" (see
         // share_target above), and showing notifications when the app is closed.
         importScripts: ["share-sw.js", "push-sw.js"],

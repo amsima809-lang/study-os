@@ -17,6 +17,8 @@ import { setupAuth, requireAuth } from "./auth.js";
 import { scheduleDailyBackups } from "./backup.js";
 import { AI_IS_FREE } from "./ai.js";
 import { createApiRouter } from "./api.js";
+import { createLectureNotesRouter } from "./createdLectureNotes.js";
+import { createSketchRouter } from "./sketchRoutes.js";
 import { createUploadsRouter } from "./uploads.js";
 import { createNotesRouter } from "./notes.js";
 import { createQuizRouter } from "./quiz.js";
@@ -26,6 +28,7 @@ import { createPlannerRouter } from "./planner.js";
 import { createMockRouter } from "./mock.js";
 import { createMaterialsRouter } from "./materials.js";
 import { createStudyPlanRouter } from "./studyplan.js";
+import { createLectureAnnotationsRouter } from "./lectureAnnotations.js";
 import { createLecturesRouter } from "./lectures.js";
 import { createRemindersRouter } from "./reminders.js";
 import { createTrailRouter, entryYearOf } from "./trailRoutes.js";
@@ -71,7 +74,7 @@ app.use(passport.session());
 
 // --- public routes ---
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, app: "StudyOS", phase: 74, tz: env.tz, time: new Date().toISOString() });
+  res.json({ ok: true, app: "StudyOS", phase: 78, tz: env.tz, time: new Date().toISOString() });
 });
 // A student's private calendar feed, for Google or iPhone Calendar to subscribe to (calendarFeed.ts).
 // Public: a calendar app cannot sign in; the random token in the address is the key.
@@ -206,6 +209,8 @@ app.put("/api/profile", (req, res) => {
 
 app.use("/api", createApiRouter(db));
 app.use("/api", createNotesRouter(db));
+app.use("/api", createLectureNotesRouter(db));
+app.use("/api", createSketchRouter(db));
 app.use("/api", createQuizRouter(db));
 app.use("/api", createFlashcardsRouter(db));
 app.use("/api", createAnalyticsRouter(db));
@@ -214,6 +219,7 @@ app.use("/api", createMockRouter(db));
 app.use("/api", createMaterialsRouter(db));
 app.use("/api", createStudyPlanRouter(db));
 app.use("/api", createLecturesRouter(db));
+app.use("/api", createLectureAnnotationsRouter(db));
 app.use("/api", createRemindersRouter(db));
 app.use("/api", createTrailRouter(db));
 app.use("/api", createEtestingRouter(db));

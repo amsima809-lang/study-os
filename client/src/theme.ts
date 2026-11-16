@@ -245,3 +245,11 @@ export function loadFontPreviews(): void {
   const families = FONTS.filter((f) => f.id !== DEFAULT_FONT).map((f) => param(f.family) + ":wght@500").join("");
   loadStylesheet("font-previews", `${GOOGLE}${families}&text=${encodeURIComponent(letters)}`);
 }
+
+/** Preserve the written colour, adjusting its brightness only when it would disappear on the page. */
+export function readableInk(hex: string, mode: Mode): string {
+  if (!/^#[0-9a-f]{6}$/i.test(hex)) return "var(--text-primary)";
+  const rgb = toRgb(hex), bg = toRgb(SURFACE[mode]);
+  if (contrast(rgb, bg) >= 4.5) return hex;
+  return toHex(shift(rgb, mode === "light" ? BLACK : WHITE, c => contrast(c, bg) >= 4.6));
+}

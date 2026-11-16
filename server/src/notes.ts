@@ -8,6 +8,7 @@ import sharp from "sharp";
 import { writeFile, mkdir, readFile } from "node:fs/promises";
 import { join, basename } from "node:path";
 import type { DB } from "./db.js";
+import { saveSketchStrokes } from "./sketchRoutes.js";
 import { getLecture } from "./savedLectures.js";
 import { env } from "./env.js";
 import {
@@ -27,7 +28,7 @@ import {
 // Keep uploads in memory so we can resize before writing to disk.
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 12 * 1024 * 1024, files: 5 },
+  limits: { fileSize: 12 * 1024 * 1024, fieldSize: 3_000_000, files: 5 },
 });
 
 // Anthropic recommends the long edge be <= 1568px.
@@ -123,13 +124,15 @@ export function createNotesRouter(db: DB): Router {
   });
 
   // Read one note with all AI fields.
-  type NoteRow = { id: number; course_code: string | null; raw_text: string | null } & Record<string, unknown>;
+  type NoteRow = { id: number; course_code: string | null; raw_text: string | null; ai_summary_md: string | null; ai_summary_original_md: string | null } & Record<string, unknown>;
   function noteDetail(id: unknown, userId: string) {
     const row = db.prepare(`SELECT n.*, cl.session_no AS lecture_no FROM notes n LEFT JOIN course_lectures cl ON cl.id = n.lecture_id
       WHERE n.id = ? AND n.user_id = ?`).get(id, userId) as NoteRow | undefined;
     if (!row) return undefined;
+    const { ai_summary_original_md, ...fields } = row;
     return {
-      ...row,
+      ...fields,
+      summary_edited: ai_summary_original_md !== null,
       key_terms: safeParse(row.ai_terms_json as string | null, []),
       topics: safeParse(row.ai_topics_json as string | null, []),
       image_paths: safeParse(row.image_paths as string | null, []) as string[],
@@ -140,6 +143,29 @@ export function createNotesRouter(db: DB): Router {
     const note = noteDetail(req.params.id, req.user!.id);
     if (!note) return res.status(404).json({ error: "ไม่พบโน้ตนี้" });
     res.json(note);
+  });
+
+  router.put("/notes/:id/summary", (req, res) => {
+    const id = Number(req.params.id), user = req.user!.id;
+    const current = noteDetail(id, user);
+    if (!current) return res.status(404).json({ error: "ไม่พบโน้ตนี้" });
+    const { summary_md: next, previous_md: previous } = req.body ?? {};
+    if (!current.ai_summary_md || typeof previous !== "string" ||
+        (next !== null && (typeof next !== "string" || !next.trim() || next.length > 120000))) {
+      return res.status(400).json({ error: "ข้อมูลสรุปไม่ถูกต้อง" });
+    }
+    // A retry after a lost response may already have saved the requested result.
+    if (current.ai_summary_md === next || (next === null && !current.summary_edited)) return res.json(current);
+    // Null restores the model version; an edit that exactly matches it also clears the edited label.
+    const updated = db.prepare(`UPDATE notes SET
+      ai_summary_md = COALESCE(@next, ai_summary_original_md, ai_summary_md),
+      ai_summary_original_md = CASE WHEN @next IS NULL OR @next = COALESCE(ai_summary_original_md, ai_summary_md)
+        THEN NULL ELSE COALESCE(ai_summary_original_md, ai_summary_md) END
+      WHERE id = @id AND user_id = @user AND ai_summary_md = @previous`).run({ next, id, user, previous });
+    if (!updated.changes) {
+      return res.status(409).json({ code: "SUMMARY_CHANGED", error: "สรุปมีการเปลี่ยนแปลงแล้ว", note: noteDetail(id,user) });
+    }
+    res.json(noteDetail(id, user));
   });
 
   router.put("/notes/:id/lecture", (req, res) => {
@@ -171,7 +197,7 @@ export function createNotesRouter(db: DB): Router {
       for (const p of note.image_paths) {
         const name = basename(String(p)); // stored as /api/uploads/<file>; never leave the upload folder
         try {
-          images.push({ media_type: "image/jpeg", data_base64: (await readFile(join(env.uploadDir, name))).toString("base64") });
+          images.push({ media_type: "image/jpeg", data_base64: (await resizeToJpeg(await readFile(join(env.uploadDir, name)))).toString("base64") });
         } catch {
           // a missing photo is skipped; the rest of the note is still summarised
         }
@@ -182,10 +208,14 @@ export function createNotesRouter(db: DB): Router {
 
       const learning = await generateNoteLearning(noteModelCall(db, { text: rawText, images }));
       db.prepare(
-        `UPDATE notes SET ai_summary_md = ?, ai_mindmap_md = ?, ai_terms_json = ?, ai_topics_json = ?
+        `UPDATE notes SET
+          ai_summary_md = CASE WHEN ai_summary_original_md IS NULL THEN ? ELSE ai_summary_md END,
+          ai_summary_original_md = CASE WHEN ai_summary_original_md IS NULL THEN NULL ELSE ? END,
+          ai_mindmap_md = ?, ai_terms_json = ?, ai_topics_json = ?
           WHERE id = ? AND user_id = ?`,
       ).run(
-        learning.summary_md || null,
+        learning.summary_md,
+        learning.summary_md,
         learning.mindmap_md || null,
         JSON.stringify(learning.key_terms),
         JSON.stringify(learning.topics),
@@ -274,9 +304,12 @@ export function createNotesRouter(db: DB): Router {
       const imagePaths: string[] = [];
       const aiImages: ImageInput[] = [];
       for (const f of files) {
-        const jpeg = await resizeToJpeg(f.buffer);
+        // Keep the uploaded page at a reading resolution for zoomed handwriting recognition.
+        const page = await sharp(f.buffer).rotate().flatten({ background: "#fff" })
+          .resize({ width: 4800, height: 4800, fit: "inside", withoutEnlargement: true }).jpeg({ quality: 91 }).toBuffer();
+        const jpeg = await resizeToJpeg(page);
         const filename = `note_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
-        await writeFile(join(env.uploadDir, filename), jpeg);
+        await writeFile(join(env.uploadDir, filename), page);
         imagePaths.push(`/api/uploads/${filename}`);
         aiImages.push({ media_type: "image/jpeg", data_base64: jpeg.toString("base64") });
       }
@@ -326,6 +359,7 @@ export function createNotesRouter(db: DB): Router {
           ai_topics_json: JSON.stringify(learning.topics),
         });
 
+      saveSketchStrokes(db, Number(info.lastInsertRowid), files.length - 1, req.body.handwriting_strokes);
       if (courseCode) {
         const insTopic = db.prepare(
           "INSERT OR IGNORE INTO topics (course_code, name, mastery, user_id) VALUES (?, ?, 0, ?)",

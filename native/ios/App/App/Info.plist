@@ -35,6 +35,10 @@
 	<string>อ่านเฉพาะเวลาที่คุณไม่ว่างจากปฏิทินในเครื่อง เพื่อเทียบกับเวลาเรียนและวันสอบ ไม่อ่านชื่อหรือรายละเอียดนัดหมาย และไม่ส่งออกจากเครื่อง · Reads only when you're busy in your calendars, to compare with your classes and exams. Never event names or details, and never sent off this phone.</string>
 	<key>NSCalendarsUsageDescription</key>
 	<string>อ่านเฉพาะเวลาที่คุณไม่ว่างจากปฏิทินในเครื่อง เพื่อเทียบกับเวลาเรียนและวันสอบ ไม่อ่านชื่อหรือรายละเอียดนัดหมาย และไม่ส่งออกจากเครื่อง · Reads only when you're busy in your calendars, to compare with your classes and exams. Never event names or details, and never sent off this phone.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>ใช้ไมโครโฟนเมื่อคุณแตะพูดเพื่อเขียนโน้ต · Use the microphone when you tap Speak to dictate a note.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>แปลงเสียงของคุณเป็นข้อความในโน้ตด้วยบริการเสียงพูดของ Apple · Use Apple speech recognition to turn your words into note text.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>ใช้กล้องเพื่อถ่ายรูปโน้ตและเอกสารการเรียนของคุณ · The camera takes photos of your notes and study documents.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>

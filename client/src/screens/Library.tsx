@@ -19,6 +19,7 @@ import { CourseChip } from "../components/CourseTitle.tsx";
 import { hasPendingUpload, takePendingUpload } from "../shareIntake.ts";
 import { BASE } from "../base.ts";
 
+import { AnnotationSearch } from "../components/AnnotationSearch.tsx";
 import { SavedLecture, LectureShortcuts, type OpenLecture, type LectureCourse } from "../components/SavedLecture.tsx";
 
 type View = "list" | "detail" | "pages" | "transcript";
@@ -149,6 +150,11 @@ export function LectureLinks({ onRead }: { onRead: (t: OpenLecture) => void }) {
     <Card>
       <h2 className="font-semibold" style={{ color: "var(--text-primary)" }}>{t("lib.lectures")}</h2>
       <p className="text-xs mt-0.5 mb-2" style={{ color: "var(--text-tertiary)" }}>{t("lib.lecturesHint")}</p>
+
+      <AnnotationSearch onOpen={(code, no, annotationId) => {
+        const lecture = courses.find((c) => c.code === code)?.lectures.find((l) => l.no === no);
+        if (lecture?.has_summary) onRead({ code, lecture, tab: "summary", annotationId });
+      }}/>
 
       <ul className="space-y-1.5">
         {courses.map((c) => {

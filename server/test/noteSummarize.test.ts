@@ -3,6 +3,7 @@
  * (one saved while AI was off). The model is stubbed: this checks what is sent and stored.
  */
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
+import sharp from "sharp";
 import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { mkdtempSync, writeFileSync } from "node:fs";
@@ -65,7 +66,7 @@ const summarize = (id: number) => fetch(`${base}/api/notes/${id}/summarize`, { m
 describe("summarising a saved note with AI", () => {
   it("fills the note's AI fields from its own text and photos and returns the note", async () => {
     as = findOrCreateUser(db, { email: "a@example.com", name: "A", avatar: "" });
-    writeFileSync(join(uploadDir, "note_1.jpg"), Buffer.from([0xff, 0xd8, 0xff]));
+    writeFileSync(join(uploadDir, "note_1.jpg"), await sharp({ create: { width: 4, height: 4, channels: 3, background: "white" } }).jpeg().toBuffer());
     const id = addNote(as, "Future Uses", ["/api/uploads/note_1.jpg"]);
     seen.length = 0;
     const r = await summarize(id);
@@ -97,5 +98,39 @@ describe("summarising a saved note with AI", () => {
   it("says so when there is nothing to summarise", async () => {
     const id = addNote(as, "  ", ["/api/uploads/gone.jpg"]);
     expect((await summarize(id)).status).toBe(400);
+  });
+});
+
+describe("editing a saved note's AI summary", () => {
+  const edit = (id: number, previous: string, summary: string | null) => fetch(`${base}/api/notes/${id}/summary`, {
+    method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ previous_md: previous, summary_md: summary }),
+  });
+  it("uses the personal copy in detail and search, and restores the exact model text", async () => {
+    as = findOrCreateUser(db, { email: "editor@example.com", name: "Editor", avatar: "" });
+    const id = addNote(as, "my original note");
+    db.prepare("UPDATE notes SET ai_summary_md = 'AI **original**' WHERE id=?").run(id);
+    expect(await (await edit(id, "AI **original**", "my correction")).json()).toMatchObject({
+      ai_summary_md: "my correction", summary_edited: true, raw_text: "my original note",
+    });
+    expect(await (await fetch(`${base}/api/notes/search?q=correction`)).json()).toMatchObject({ notes: [{id}] });
+    expect((await edit(id, "AI **original**", "stale edit")).status).toBe(409);
+    expect((await edit(id, "my correction", "  ")).status).toBe(400);
+    const me = as;
+    as = findOrCreateUser(db, { email: "another-editor@example.com", name: "Other", avatar: "" });
+    expect((await edit(id, "my correction", null)).status).toBe(404);
+    as = me;
+    expect(await (await edit(id, "my correction", null)).json()).toMatchObject({
+      ai_summary_md: "AI **original**", summary_edited: false, raw_text: "my original note",
+    });
+  });
+  it("preserves an edit when the model regenerates a photo summary", async () => {
+    as = findOrCreateUser(db, { email: "editor@example.com", name: "Editor", avatar: "" });
+    const photo = await sharp({ create: { width: 4, height: 4, channels: 3, background: "white" } }).jpeg().toBuffer();
+    writeFileSync(join(uploadDir, "edit-photo.jpg"), photo);
+    const id = addNote(as, null, ["/api/uploads/edit-photo.jpg"]);
+    db.prepare("UPDATE notes SET ai_summary_md = 'first model text' WHERE id=?").run(id);
+    expect((await edit(id, "first model text", "photo correction")).status).toBe(200);
+    expect(await (await summarize(id)).json()).toMatchObject({ ai_summary_md:"photo correction", summary_edited:true });
+    expect(await (await edit(id,"photo correction", null)).json()).toMatchObject({ ai_summary_md:"สรุปทดสอบ", summary_edited:false });
   });
 });

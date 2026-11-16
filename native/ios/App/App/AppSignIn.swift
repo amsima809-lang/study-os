@@ -8,6 +8,7 @@ class MainViewController: CAPBridgeViewController {
     override open func capacitorDidLoad() {
         bridge?.registerPluginInstance(AppSignInPlugin())
         bridge?.registerPluginInstance(AppCalendarPlugin()) // busy times from the phone's calendars (AppCalendar.swift)
+        bridge?.registerPluginInstance(AppDictationPlugin())
         bridge?.registerPluginInstance(AppInkPlugin()) // writing by hand with Apple's PencilKit (AppInk.swift)
     }
 }

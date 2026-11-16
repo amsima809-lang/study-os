@@ -16,8 +16,10 @@ import {
 import { setUnsaved } from "../unsaved.ts";
 import { consumeNoteFormRequest } from "../shareIntake.ts";
 import { formatDate, formatTime } from "../format.ts";
+import { PrivateNoteSummary } from "../components/PrivateNoteSummary.tsx";
 import { AddButton, Card, ConfirmDialog, ErrorBox, Loading } from "../components/ui.tsx";
 import { DRAFT_CHANGED, clearNoteDraft, isEmptyDraft, loadNoteDraft, saveNoteDraft, type Drawing, type NoteDraft } from "../noteDraft.ts";
+import { SketchNotes } from "../components/SketchNotes.tsx";
 import { Markdown } from "../components/Markdown.tsx";
 import Icon from "../components/Icon.tsx";
 import { CourseChip, CourseTitle } from "../components/CourseTitle.tsx";
@@ -501,7 +503,7 @@ function NoteView({ noteId, onBack, onDeleted, onOpenLecture }: { onOpenLecture:
       `# ${note!.title || `#${note!.id}`}`,
       [note!.course_code, note!.created_at.slice(0, 10)].filter(Boolean).join(" · "),
       note!.raw_text ? `## ${t("notes.text")}\n\n${note!.raw_text}` : "",
-      note!.ai_summary_md ? `## ${t("notes.result.summary")} (AI)\n\n> ${t("notes.disclaimer")}\n\n${note!.ai_summary_md}` : "",
+      note!.ai_summary_md ? `## ${t("notes.result.summary")} (AI${note!.summary_edited ? ", " + t("lec.edited") : ""})\n\n> ${t("notes.disclaimer")}\n\n${note!.ai_summary_md}` : "",
       note!.key_terms.length ? `## ${t("notes.result.terms")} (AI)\n\n${note!.key_terms.map((k) => `- **${k.term}**: ${k.definition}`).join("\n")}` : "",
       note!.ai_mindmap_md ? `## ${t("notes.result.mindmap")} (AI)\n\n${note!.ai_mindmap_md}` : "",
     ].filter(Boolean);
@@ -572,6 +574,8 @@ function NoteView({ noteId, onBack, onDeleted, onOpenLecture }: { onOpenLecture:
         </Card>
       )}
 
+      {note.image_paths.length > 0 && <SketchNotes noteId={note.id} imagePaths={note.image_paths} />}
+
       {hasAi ? (
         <>
           <div className="rounded-lg text-xs px-3 py-2 flex items-center gap-1" style={{ backgroundColor: "var(--warning-bg)", color: "var(--warning)" }}>
@@ -583,7 +587,7 @@ function NoteView({ noteId, onBack, onDeleted, onOpenLecture }: { onOpenLecture:
               <h3 className="font-semibold mb-2" style={{ color: "var(--text-primary)" }}>
                 {t("notes.result.summary")}
               </h3>
-              <Markdown source={note.ai_summary_md} />
+              <PrivateNoteSummary key={note.id} note={note} onSaved={setNote} />
             </Card>
           )}
 
@@ -689,6 +693,7 @@ function AddNote({
   const [text, setText] = useState("");
   const [mode, setMode] = useState<"type" | "draw">("type");
   const [penUsed, setPenUsed] = useState(false);
+  const [dictating, setDictating] = useState(false);
   const textRef = useRef<HTMLTextAreaElement>(null);
   // In the iOS app, handwriting is Apple's PencilKit page (nativeInk.ts); in a browser, the web pad.
   const native = hasNativeInk();
@@ -829,9 +834,8 @@ function AddNote({
 
   async function submit() {
     setError(null);
-    const handwriting =
-      mode !== "draw" ? null : native ? (drawing?.ink ? inkBlob(drawing.ink) : null) : await padRef.current?.exportBlob();
-    const hasText = mode === "type" && text.trim().length > 0;
+    const handwriting = drawing?.ink ? inkBlob(drawing.ink) : await padRef.current?.exportBlob();
+    const hasText = text.trim().length > 0;
     if (!hasText && files.length === 0 && !handwriting) {
       setError(t("notes.needInput"));
       return;
@@ -842,7 +846,10 @@ function AddNote({
     if (title) form.append("title", title);
     if (hasText) form.append("raw_text", text);
     for (const f of files) form.append("images", f);
-    if (handwriting) form.append("images", handwriting, native ? "handwriting.png" : "handwriting.jpg");
+    if (handwriting) {
+      form.append("images", handwriting, drawing?.ink ? "handwriting.png" : "handwriting.jpg");
+      if (drawing?.ink?.strokeBounds) form.append("handwriting_strokes", JSON.stringify(drawing.ink.strokeBounds));
+    }
 
     setBusy(true);
     try {
@@ -930,10 +937,11 @@ function AddNote({
           onMode={chooseMode}
           textRef={textRef}
           penUsed={penUsed}
+          onListeningChange={setDictating}
           onDictated={(words) => setText((prev) => (prev && !/\s$/.test(prev) ? `${prev} ${words}` : prev + words))}
         />
 
-        {mode === "type" ? (
+        {mode === "type" && (
           <textarea
             ref={textRef}
             value={text}
@@ -946,8 +954,9 @@ function AddNote({
             className="note-text w-full rounded-lg border px-3 py-2 text-sm"
             style={inputStyle}
           />
-        ) : (
-          <div>
+        )}
+        {(mode === "draw" || !!drawing?.strokes.length) && (
+          <div hidden={mode !== "draw"}>
             {!native && <p className="text-xs mb-1" style={{ color: "var(--text-tertiary)" }}>{t("notes.drawHint")}</p>}
             {native ? (
               <button
@@ -1046,7 +1055,8 @@ function AddNote({
         <div className="flex gap-2 pt-1">
           <button
             onClick={submit}
-            className="flex-1 font-medium rounded-lg py-2 min-h-11"
+            disabled={dictating}
+            className="disabled:opacity-50 flex-1 font-medium rounded-lg py-2 min-h-11"
             style={{ backgroundColor: "var(--accent)", color: "#fff" }}
           >
             {t("notes.submit")}
@@ -1059,7 +1069,7 @@ function AddNote({
             {t("notes.cancel")}
           </button>
         </div>
-        <p className="text-xs text-center" style={{ color: "var(--text-tertiary)" }}>{t("notes.saveHint")}</p>
+        <p className="text-xs text-center" style={{ color: "var(--text-tertiary)" }}>{t(dictating ? "input.finishDictation" : "notes.saveHint")}</p>
         {hasContent && draftState === "saved" && <p className="text-xs text-center" style={{ color: "var(--text-tertiary)" }}>{t("notes.draftKept")}</p>}
         {hasContent && draftState !== "saved" && (
           <p role="alert" className="text-xs text-center font-medium" style={{ color: "var(--danger)" }}>

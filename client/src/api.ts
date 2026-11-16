@@ -193,6 +193,7 @@ export type NoteDetail = {
   raw_text: string | null;
   image_paths: string[];
   ai_summary_md: string | null;
+  summary_edited: boolean;
   ai_mindmap_md: string | null;
   key_terms: KeyTerm[];
   topics: string[];

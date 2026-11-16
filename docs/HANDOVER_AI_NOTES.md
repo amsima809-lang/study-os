@@ -3,6 +3,20 @@
 Written at the end of a long session so another session can continue. Read this, then
 `CLAUDE.md` (Phases 75 and 76), then the notes folder README listed below.
 
+## Delivery update, 16 November 2026
+
+Open [Recorded lectures](https://termtrail.com/?view=lectures) and sign in with a trial account. From the app, open **Study → Documents & lectures → Recorded lectures**, expand a course and tap **AI notes** or **Transcript**. The Thai buttons read **สรุป AI** and **คำบรรยาย**. A timestamp opens the cited transcript line.
+
+The Mac mini holds all 42 prebuilt transcript/summary pairs. Both designated accounts were verified against all 42 across ACC1103 (the same recording as ACC1101), MGT3204, RAM1103 and RAM1132. The two shared-lecture releases are `dd9589c` and `f354ddc`. The production allowlist is in `SHARED_LECTURE_USERS`; ask RU before widening it. The other 70 recordings remain outside this release. A database backup was taken before import.
+
+The follow-up adds private summary editing and restoration, lecture photo galleries, anchored pen annotations, reviewed handwriting search, separate/combined study notes and drawing review. In Combine, Flash chooses where a student's passage goes; the server retrieves its exact words and colours. A note with photos also has an action to read a sketchnote, review its arrows and see the original page. Details of the original requirements and source material follow.
+
+The internal TestFlight upload is build `202611160616`. It carries the PencilKit popover and native Thai/English dictation. Existing iOS builds can open the server-hosted lecture library. The physical iPad, Pencil, palm rejection and microphone checks are still open. Pricing and the optional v4 lecture format remain owner decisions.
+
+The two reference pages were also run through the live drawing model. Instruction produced nine inline crops and the graph point (1, 2). Confirming its hub arrows restores both two-way links. One marked speech bubble was described as two dots instead of an ellipsis; a free-text correction can fix that in the same review batch. Boaler produced eight crops, the brain-systems group, the leftward Math connection and purple digits on yellow. Confirming the brain arrows restores all three two-way links.
+
+**Original handover follows.** The state and deployment references below describe the start of this work.
+
 ## 1. Where things stand
 
 | What | State |

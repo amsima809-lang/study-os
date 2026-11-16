@@ -198,3 +198,9 @@ in the wrapper bundle that App Store iPhone apps use on a Mac.
 - **Not checked: what the app shows.** Nobody has looked at its window yet, so sign-in, the
   links that leave the app, the camera and location prompts, and the "cannot connect" page
   inside the real app are all untested. Nor has it run on a phone.
+
+### Notes and lectures, 16 November 2026
+
+Build `202611160616` was uploaded for internal TestFlight. The web app at `https://termtrail.com/?view=lectures` serves the prebuilt lecture library to the two trial accounts. Native dictation chooses Thai or English from the app language and adds the final words to the note text. PencilKit supports full-page drawings and a compact popover anchored to marked summary text.
+
+On a physical iPad, open Pen, rest a palm while writing, tap Done, reopen the ink, save and check the image. On a lecture summary, mark a phrase and save an annotation. Tap Speak, dictate a sentence, stop and check the saved note. These device checks remain open.

@@ -34,32 +34,55 @@ public class AppInkPlugin: CAPPlugin, CAPBridgedPlugin {
         let title = call.getString("title") ?? ""
         let done = call.getString("done") ?? "Done"
         let cancel = call.getString("cancel") ?? "Cancel"
+        let markX = call.getDouble("anchorX")
+        let markY = call.getDouble("anchorY")
+        let accent = call.getString("accent")
         DispatchQueue.main.async { [weak self] in
             guard let presenter = self?.bridge?.viewController else {
                 call.reject("NO_VIEW")
                 return
             }
-            let page = InkPageController(drawing: drawing, title: title, done: done, cancel: cancel) { result in
+            let compact = markX != nil && markY != nil
+            let page = InkPageController(drawing: drawing, title: title, done: done, cancel: cancel, compact: compact, accent: accent) { result in
                 call.resolve(result)
             }
             let nav = UINavigationController(rootViewController: page)
-            nav.modalPresentationStyle = .fullScreen
+            if let x = markX, let y = markY, let web = self?.bridge?.webView {
+                nav.modalPresentationStyle = .popover
+                nav.preferredContentSize = CGSize(width: 390, height: 260)
+                let popover = nav.popoverPresentationController
+                popover?.sourceView = web
+                popover?.sourceRect = CGRect(x: max(0, min(1, x)) * web.bounds.width,
+                                             y: max(0, min(1, y)) * web.bounds.height,
+                                             width: 1, height: 1)
+                popover?.delegate = page
+            } else {
+                nav.modalPresentationStyle = .fullScreen
+            }
             presenter.present(nav, animated: true)
         }
     }
 }
 
 /// One tall page that grows as she writes, with the tool picker always showing.
-final class InkPageController: UIViewController, PKCanvasViewDelegate, PKToolPickerObserver {
+final class InkPageController: UIViewController, PKCanvasViewDelegate, PKToolPickerObserver, UIPopoverPresentationControllerDelegate {
     private let canvas = PKCanvasView()
     private let picker = PKToolPicker()
     private let startDrawing: PKDrawing
     private let finish: ([String: Any]) -> Void
     private var finished = false
+    private let compact: Bool
+    private let initialColor: UIColor?
 
-    init(drawing: PKDrawing, title: String, done: String, cancel: String, finish: @escaping ([String: Any]) -> Void) {
+    init(drawing: PKDrawing, title: String, done: String, cancel: String, compact: Bool, accent: String?, finish: @escaping ([String: Any]) -> Void) {
         self.startDrawing = drawing
         self.finish = finish
+        self.compact = compact
+        if let accent, accent.hasPrefix("#"), accent.count == 7, let rgb = UInt32(accent.dropFirst(), radix: 16) {
+            self.initialColor = UIColor(red: CGFloat((rgb >> 16) & 255) / 255, green: CGFloat((rgb >> 8) & 255) / 255, blue: CGFloat(rgb & 255) / 255, alpha: 1)
+        } else {
+            self.initialColor = nil
+        }
         super.init(nibName: nil, bundle: nil)
         self.title = title
         navigationItem.leftBarButtonItem = UIBarButtonItem(title: cancel, style: .plain, target: self, action: #selector(cancelTapped))
@@ -81,13 +104,15 @@ final class InkPageController: UIViewController, PKCanvasViewDelegate, PKToolPic
         ])
         canvas.drawing = startDrawing
         canvas.delegate = self
-        canvas.alwaysBounceVertical = true
+        canvas.alwaysBounceVertical = !compact
         canvas.backgroundColor = .systemBackground
         // .default follows the iPad's own "Only Draw with Apple Pencil" setting (on once a Pencil is
         // paired), so a palm or finger scrolls and only the Pencil draws; the tool picker's menu can
         // switch finger drawing on. On an iPhone, a finger draws.
         canvas.drawingPolicy = UIDevice.current.userInterfaceIdiom == .pad ? .default : .anyInput
-        canvas.tool = PKInkingTool(.pen, color: .label, width: 3)
+        let tool = PKInkingTool(.pen, color: initialColor ?? .label, width: 3)
+        canvas.tool = tool
+        if initialColor != nil { picker.selectedTool = tool }
         picker.addObserver(canvas)
         picker.addObserver(self)
         picker.setVisible(true, forFirstResponder: canvas)
@@ -109,7 +134,7 @@ final class InkPageController: UIViewController, PKCanvasViewDelegate, PKToolPic
         let width = canvas.bounds.width
         guard width > 0 else { return }
         let inkBottom = canvas.drawing.bounds.isNull ? 0 : canvas.drawing.bounds.maxY
-        let height = max(canvas.bounds.height * 2, inkBottom + canvas.bounds.height)
+        let height = compact ? max(canvas.bounds.height, inkBottom + 4) : max(canvas.bounds.height * 2, inkBottom + canvas.bounds.height)
         if abs(canvas.contentSize.height - height) > 1 || canvas.contentSize.width != width {
             canvas.contentSize = CGSize(width: width, height: height)
         }
@@ -154,13 +179,28 @@ final class InkPageController: UIViewController, PKCanvasViewDelegate, PKToolPic
                 if !colors.contains(hex) { colors.append(hex) }
             }
         }
+        // Positions are normalised to the same rendered page used for the PNG.
+        let strokeBounds = drawing.strokes.prefix(20000).compactMap { stroke -> [CGFloat]? in
+            let box = stroke.renderBounds.intersection(rect)
+            guard !box.isNull, !box.isEmpty else { return nil }
+            return [box.minX / rect.width, box.minY / rect.height, box.maxX / rect.width, box.maxY / rect.height]
+        }
         close([
+            "strokeBounds": strokeBounds,
             "drawing": drawing.dataRepresentation().base64EncodedString(),
             "png": image.pngData()?.base64EncodedString() ?? "",
             "width": Int(rect.width * 2),
             "height": Int(rect.height * 2),
             "colors": colors,
         ])
+    }
+
+    func adaptivePresentationStyle(for controller: UIPresentationController) -> UIModalPresentationStyle { .none }
+
+    func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
+        guard !finished else { return }
+        finished = true
+        finish(["cancelled": true])
     }
 
     private func close(_ result: [String: Any]) {

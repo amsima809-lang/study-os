@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { useT } from "../i18n.tsx";
 import { inNativeApp } from "../native.ts";
+import { nativeDictation } from "../nativeDictation.ts";
 import Icon from "./Icon.tsx";
 
 /**
@@ -12,7 +13,7 @@ import Icon from "./Icon.tsx";
  *
  * Speak uses the browser's own speech recognition (Apple's on an iPad or
  * iPhone, in Thai or English with the app's language). It is hidden where the
- * browser has none, and inside the iOS app until its native dictation exists.
+ * browser has none. In the app, the AppDictation plugin uses Apple Speech.
  */
 export type NoteMode = "type" | "draw";
 
@@ -51,6 +52,7 @@ export function NoteInputBar({
   textRef,
   penUsed,
   onDictated,
+  onListeningChange,
 }: {
   mode: NoteMode;
   onMode: (m: NoteMode) => void;
@@ -59,16 +61,25 @@ export function NoteInputBar({
   penUsed: boolean;
   /** Finished words from dictation, to add to the note's text. */
   onDictated: (words: string) => void;
+  onListeningChange: (pending: boolean) => void;
 }) {
   const { t, lang } = useT();
   const keyboardOpen = useKeyboardOpen();
   const [external, setExternal] = useState(false);
-  const [listening, setListening] = useState(false);
+  const [listening, setListeningState] = useState(false);
   const [speakOpen, setSpeakOpen] = useState(false);
   const [interim, setInterim] = useState("");
   const [speechError, setSpeechError] = useState("");
   const rec = useRef<Recognition | null>(null);
   const Speech = speechRecognition();
+  const native = nativeDictation();
+  const nativeSession = useRef<symbol | null>(null);
+
+  // Keep Save disabled through final transcription, including the interval after Stop.
+  function setListening(active: boolean) {
+    setListeningState(active);
+    onListeningChange(active);
+  }
 
   // Keys typed while no on-screen keyboard is showing come from a connected keyboard.
   // (Listened for on the page, not the box: the box is created later than this bar.)
@@ -84,7 +95,13 @@ export function NoteInputBar({
     if (keyboardOpen) setExternal(false);
   }, [keyboardOpen]);
 
-  useEffect(() => () => rec.current?.stop(), []);
+  useEffect(() => () => {
+    rec.current?.stop();
+    if (nativeSession.current) {
+      nativeSession.current = null;
+      void nativeDictation()?.stop().catch(() => {});
+    }
+  }, []);
 
   /** Focus the text box after React has shown it (switching from the pad). */
   function focusText() {
@@ -109,9 +126,26 @@ export function NoteInputBar({
   }
 
   function startListening() {
-    if (!Speech) return;
     setSpeechError("");
     if (mode !== "type") onMode("type");
+    if (native) {
+      if (nativeSession.current) return;
+      const session = Symbol();
+      nativeSession.current = session;
+      setListening(true);
+      void native.start({ language: lang === "th" ? "th-TH" : "en-US" })
+        .then(({ text }) => {
+          if (nativeSession.current === session && text.trim()) onDictated(text.trim());
+        })
+        .catch((e) => {
+          if (nativeSession.current === session) setSpeechError(t(e?.code === "DENIED" ? "input.micDenied" : "input.micFailed"));
+        })
+        .finally(() => {
+          if (nativeSession.current === session) { nativeSession.current = null; setListening(false); }
+        });
+      return;
+    }
+    if (!Speech) return;
     const r = new Speech();
     r.lang = lang === "th" ? "th-TH" : "en-US";
     r.continuous = true;
@@ -145,6 +179,7 @@ export function NoteInputBar({
     }
   }
   function stopListening() {
+    if (nativeSession.current) void native?.stop().catch(() => setSpeechError(t("input.micFailed")));
     rec.current?.stop();
   }
   function closeSpeak() {
@@ -153,7 +188,7 @@ export function NoteInputBar({
   }
 
   const items: Array<{ key: string; icon: string; label: string; on: boolean; tap: () => void; hidden?: boolean }> = [
-    { key: "speak", icon: "mic", label: t("input.speak"), on: speakOpen, hidden: !Speech,
+    { key: "speak", icon: "mic", label: t("input.speak"), on: speakOpen, hidden: !Speech && !native,
       tap: () => { if (speakOpen) { stopListening(); setSpeakOpen(false); } else { setSpeakOpen(true); startListening(); } } },
     { key: "keyboard", icon: "keyboard", label: t("input.keyboard"), on: mode === "type" && keyboardOpen, tap: () => { closeSpeak(); keyboard(); } },
     { key: "external", icon: "bluetooth", label: t("input.external"), on: mode === "type" && external, tap: () => { closeSpeak(); onMode("type"); focusText(); } },

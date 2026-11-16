@@ -1,0 +1,97 @@
+.sketch-paper {
+  background: #fff;
+  color: #202020;
+  padding: 1rem;
+  border-radius: 0.7rem;
+  overflow-wrap: anywhere;
+}
+.sketch-paper h3 {
+  font-weight: 700;
+  font-size: 1.18rem;
+}
+.sketch-paper h4 {
+  font-weight: 650;
+  font-size: 1.05rem;
+}
+.sketch-paper section {
+  margin-top: 0.85rem;
+}
+.sketch-paper figcaption {
+  color: #555;
+  font-size: 0.85rem;
+}
+.sketch-paper figure {
+  margin-block: 0.55rem;
+}
+.sketch-underline {
+  text-decoration: underline;
+}
+.sketch-double-underline {
+  text-decoration: underline double;
+}
+.sketch-strike {
+  text-decoration: line-through;
+}
+.sketch-boxed,
+.sketch-circled,
+.sketch-answer {
+  border: 1px solid currentColor;
+  padding-inline: 0.18em;
+}
+.sketch-circled {
+  border-radius: 50%;
+}
+.sketch-equation {
+  border-inline-start: 2px solid #d0d3dc;
+  padding: 0.45rem 0.8rem;
+  overflow-x: auto;
+}
+.sketch-equation td {
+  padding: 0.25rem 1rem 0.25rem 0;
+}
+.sketch-op {
+  color: #62646c;
+  font-size: 0.88em;
+}
+.sketch-answer {
+  display: inline-block;
+  margin-top: 0.35rem;
+}
+.sketch-diagram {
+  min-width: min(100%, 12rem);
+  max-width: 100%;
+  max-height: 34rem;
+}
+.sketch-crop {
+  max-width: min(100%, 25rem);
+  height: auto;
+  max-height: 18rem;
+}
+.sketch-original {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: #393a64;
+  margin-top: 1.3rem;
+  text-decoration: underline;
+}
+.sketch-original img {
+  width: 3.5rem;
+  height: 4.5rem;
+  object-fit: contain;
+  border: 1px solid #ddd;
+}
+.sketch-button {
+  min-height: 44px;
+  padding: 0.4rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 0.65rem;
+  color: var(--accent-text);
+}
+.sketch-button:disabled {
+  opacity: 0.5;
+}
+.sketch-button[aria-pressed="true"] {
+  background: var(--accent-light);
+  border-color: var(--accent-text);
+}
