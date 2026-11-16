@@ -649,13 +649,13 @@ The importer validates each bank against the destination transcript inside a tra
 
 ## Full-length course mock exams
 
-In **Practice → Mock exam**, students with access to the lecture trial can start, resume, submit and review a course paper. Financial Accounting (ACC1101/ACC1103) has 80 items, Change Management (MGT3204) has 100, and RAM1103 and RAM1132 each have 120. Each item offers four choices. The course lecturers' descriptions of previous sittings informed the counts, linked stimuli and task types. The notes folder contains the source links in `lecture-quiz/mock-exam-benchmarks.md`.
+In **Practice → Mock exam**, students with access to the lecture trial can choose Paper A or Paper B within each course and start, resume, submit or review each independently. Financial Accounting (ACC1101/ACC1103) has 80 items, Change Management (MGT3204) has 100, and RAM1103 and RAM1132 each have 120. Each item offers four choices. The course lecturers' descriptions of previous sittings informed the counts, linked stimuli and task types. The notes folder contains the source links in `lecture-quiz/mock-exam-benchmarks.md`.
 
 The server sets one deadline 150 minutes from the start. Each choice, flag and question position is saved with its revision. The server grades the saved choices when the deadline arrives, including when the student has closed the app. An early submission uses the same key. Completed attempts keep their paper edition. A retake of the same edition presents the same paper. The personal-materials mock retains its existing settings.
 
 Migration 056 stores immutable question lists, the recordings used, and each student's attempts. Every recording used by a paper must be readable under the student's course code. Edited or removed source material invalidates the corresponding paper. Private stimuli, keys, evidence and provider receipts stay outside Git.
 
-To build an edition, use the private transcript/summary folders and released practice banks with `DEEPSEEK_API_KEY` set. Generation and blind review run in separate model calls. The first reviewer solves shuffled options against the lecture. A second reviewer sees only the question, its choices and the material displayed to the student. Both checks withhold the proposed key. Published questions retain the supporting cue. Use this sequence with the migrated destination database.
+To build a DeepSeek Paper A edition, use the private transcript/summary folders and released practice banks with `DEEPSEEK_API_KEY` set. Generation and blind review run in separate model calls. The first reviewer solves shuffled options against the lecture. A second reviewer sees only the question, its choices and the material displayed to the student. Both checks withhold the proposed key. Published questions retain the supporting cue. Use this sequence with the migrated destination database.
 
 ```sh
 python3 scripts/mock-exam-bank.py generate --notes-folder "$NOTES_DIR" --output "$NOTES_DIR/mock-exams"
@@ -668,3 +668,18 @@ node --import tsx server/src/importCourseMocks.ts --database "$DB_PATH" --papers
 ```
 
 `qualify` repeats the lecture-based review and student-screen audit for revised items. For a correction identified by a reader, `correct --corrections FILE` accepts a lecture-by-lecture list of slots and instructions. Rerun `qualify` after a correction. The publisher verifies current review results for every item. The importer validates all four files before committing the release in one transaction. Reimporting an identical edition preserves student attempts.
+
+Migration 057 preserves paper IDs and makes each course and form combination a separate active edition. The current client requests `/api/course-mocks/catalog?forms=all` and sends the chosen `form_key` on start. Older clients keep their Paper A catalogues and attempts. The importer checks new stems and shared materials against the other form before activating an edition. A sitting stays linked to the exact edition the student opened.
+
+To build Paper B, use a signed-in Codex CLI and the same lecture sources and form blueprint. Provide the original Paper A and lecture quizzes in the private notes folder so the author can avoid repeating scenarios, data and questions. Codex authors revisions. DeepSeek solves the shuffled choices against the source and separately checks the question as a student would see it. Codex sessions and private output hashes identify the authoring artifacts.
+
+```sh
+python3 scripts/codex-mock-bank.py author --notes-folder "$NOTES_DIR" --output "$NOTES_DIR/mock-exams-b"
+python3 scripts/codex-mock-bank.py review --notes-folder "$NOTES_DIR" --output "$NOTES_DIR/mock-exams-b"
+python3 scripts/codex-mock-bank.py publish --notes-folder "$NOTES_DIR" --output "$NOTES_DIR/mock-exams-b"
+python3 scripts/codex-mock-bank.py check --notes-folder "$NOTES_DIR" --output "$NOTES_DIR/mock-exams-b"
+node --import tsx server/src/importCourseMocks.ts --database "$DB_PATH" --papers "$NOTES_DIR/mock-exams-b/papers" --dry-run
+node --import tsx server/src/importCourseMocks.ts --database "$DB_PATH" --papers "$NOTES_DIR/mock-exams-b/papers"
+```
+
+The head-to-head review in the private `mock-exam-comparison` folder identifies its sample and input editions. `mock-exams` retains the original DeepSeek baseline. Corrections to A are released from `mock-exams-a-errata/papers` with the same importer. Each edit creates a new edition for that course and form.
