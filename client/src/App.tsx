@@ -559,7 +559,13 @@ function AuthGate() {
   useEffect(() => {
     // Google sign-in returns to the home page. Remember the intended screen across the redirect.
     rememberLectureLink();
-    refreshUser().catch(() => setUser(null));
+    refreshUser().catch((e) => {
+      // 403 from "who am I" = signed in with an account not invited to the trial (server/src/allowlist.ts).
+      if (String((e as Error)?.message ?? "").startsWith("403 ")) {
+        try { sessionStorage.setItem("studyos.notInvited", "1"); } catch { /* ok */ }
+      }
+      setUser(null);
+    });
     // The session ended (expired, or signed out elsewhere): go back to login.
     // Unsaved note drafts are kept in the browser and offered again after sign-in.
     const onSignedOut = () => setUser(null);

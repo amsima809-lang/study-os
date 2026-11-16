@@ -86,6 +86,14 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
     if (failed) window.history.replaceState(null, "", window.location.pathname);
     return failed;
   });
+  // Signed in with an account that is not invited to the trial (server/src/allowlist.ts).
+  const [notInvited] = useState(() => {
+    try {
+      const was = sessionStorage.getItem("studyos.notInvited") === "1";
+      sessionStorage.removeItem("studyos.notInvited");
+      return was;
+    } catch { return false; }
+  });
   const [busy, setBusy] = useState(false);
   // The whole front page, which the trail is measured against.
   const landing = useRef<HTMLDivElement>(null);
@@ -255,6 +263,9 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
               <p role="alert" className="text-sm text-center" style={{ color: "rgba(255,255,255,0.75)" }}>{t("auth.appTooOld")}</p>
             )}
 
+            {notInvited && (
+              <p role="alert" className="text-sm text-center" style={{ color: "#fca5a5" }}>{t("auth.notInvited")}</p>
+            )}
             {(googleFailed || appGoogleFailed) && (
               <p role="alert" className="text-sm text-center" style={{ color: "#fca5a5" }}>{t("auth.googleFailed")}</p>
             )}

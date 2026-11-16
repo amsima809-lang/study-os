@@ -14,6 +14,7 @@ import { env, isProd, signInMethods } from "./env.js";
 import { openDb } from "./db.js";
 import { seedDatabase, needsSeed } from "./seed.js";
 import { setupAuth, requireAuth } from "./auth.js";
+import { onlyInvited } from "./allowlist.js";
 import { scheduleDailyBackups } from "./backup.js";
 import { AI_IS_FREE } from "./ai.js";
 import { createApiRouter } from "./api.js";
@@ -73,6 +74,8 @@ app.use(
 );
 app.use(passport.initialize());
 app.use(passport.session());
+// Invite-only trial: accounts not in ALLOWED_EMAILS are signed out (allowlist.ts).
+app.use("/api", onlyInvited());
 
 // --- public routes ---
 app.get("/api/health", (_req, res) => {
