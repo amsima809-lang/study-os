@@ -22,11 +22,12 @@ type Rect = { left: number; top: number; width: number; height: number };
 type Placement = { id: number; slot: HTMLElement | null; rects: Rect[] };
 type Menu = { id: number; anchor: HTMLElement; point: Point };
 
-function InlineNote({ row, open, retry, working }: {
+function InlineNote({ row, open, retry, working, retryFailed }: {
   row: Annotation;
   open: (row: Annotation, button: HTMLElement) => void;
   retry: (row: Annotation) => void;
   working: boolean;
+  retryFailed: boolean;
 }) {
   const { lang } = useT(), th = lang === "th";
   const reading = row.ocr_status === "pending", failed = row.ocr_status === "failed";
@@ -47,6 +48,7 @@ function InlineNote({ row, open, retry, working }: {
     {failed && <button type="button" className="underline min-h-11 text-xs" disabled={working} onClick={() => retry(row)}>
       {th ? "ลองอ่านอีกครั้ง" : "Retry reading"}
     </button>}
+    {retryFailed && <span role="alert">{th ? "ส่งคำขออ่านอีกครั้งไม่สำเร็จ" : "Couldn’t request another reading."}</span>}
   </span>;
 }
 
@@ -81,7 +83,8 @@ export function AnnotatedSummary({ courseCode, sessionNo, source = "summary", fi
   const [menu, setMenu] = useState<Menu | null>(null);
   const [review, setReview] = useState<{ revision: number; runs: Run[] } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false), [actionError, setActionError] = useState("");
-  const focused = useRef<number | null>(null);
+  const focusNext = useRef(focusId);
+  const [retryFailed, setRetryFailed] = useState<number | null>(null);
   const title = th ? "โน้ตลายมือของฉัน" : "My pen note";
   const failed = th ? "ทำรายการไม่สำเร็จ ลองใหม่อีกครั้ง" : "Couldn’t complete that change. Try again.";
   const reloadList = () => setReload(n => n + 1);
@@ -133,7 +136,7 @@ export function AnnotatedSummary({ courseCode, sessionNo, source = "summary", fi
       const box = wrap.getBoundingClientRect();
       let legacy: ReturnType<typeof indexSource> | undefined;
       setPlacements(rows.map(row => {
-        let mark = locateMark(index, row, filtered);
+        let mark = locateMark(index, row, filtered || (source === "transcript" && !!row.block_key));
         // Earlier summary marks could include the text of an intervening timestamp button.
         if (!mark && !row.block_key && source === "summary" && !filtered) {
           legacy ??= indexSource(root, true);
@@ -154,15 +157,16 @@ export function AnnotatedSummary({ courseCode, sessionNo, source = "summary", fi
     return () => { ro.disconnect(); mo.disconnect(); cancelAnimationFrame(frame); document.fonts?.removeEventListener("loadingdone", schedule); };
   }, [rows, filtered, source]);
 
+  useEffect(() => { focusNext.current = focusId; }, [focusId]);
   useEffect(() => {
-    if (!focusId || focused.current === focusId) return;
-    const target = section.current?.querySelector<HTMLElement>(`button[data-annotation="${focusId}"]`);
+    if (focusNext.current === undefined) return;
+    const target = section.current?.querySelector<HTMLElement>(`button[data-annotation="${focusNext.current}"]`);
     if (!target) return;
     const details = target.closest("details");
     if (details) details.open = true;
     target.scrollIntoView({ block: "center" });
     target.focus({ preventScroll: true });
-    focused.current = focusId;
+    focusNext.current = undefined;
   }, [focusId, placements]);
 
   async function save(item: Pending) {
@@ -172,6 +176,7 @@ export function AnnotatedSummary({ courseCode, sessionNo, source = "summary", fi
       const row = ed.previous
         ? await putJSON<Annotation>(url(`/${ed.previous.id}/ink`), { ...ink, revision: ed.previous.revision })
         : await postJSON<Annotation>(listURL, { ...ink, key: ed.key, anchor: ed.anchor });
+      focusNext.current = row.id;
       update(row);
       setPending(null); setEditor(null); setPen(false);
     } catch {
@@ -228,9 +233,9 @@ export function AnnotatedSummary({ courseCode, sessionNo, source = "summary", fi
   };
   const menuRow = menu && rows.find(r => r.id === menu.id);
   async function retry(row: Annotation) {
-    setWorkingId(row.id); setActionError(""); setError("");
+    setWorkingId(row.id); setActionError(""); setRetryFailed(null);
     try { update(await postJSON<Annotation>(url(`/${row.id}/retry`), { revision: row.revision })); }
-    catch { if (menu) setActionError(failed); else setError(failed); reloadList(); }
+    catch { if (menu) setActionError(failed); else setRetryFailed(row.id); reloadList(); }
     finally { setWorkingId(null); }
   }
   async function saveText(row: Annotation) {
@@ -264,7 +269,7 @@ export function AnnotatedSummary({ courseCode, sessionNo, source = "summary", fi
     const group = bySlot.get(p.slot) ?? [];
     group.push(row); bySlot.set(p.slot, group);
   }
-  const note = (a: Annotation) => <InlineNote key={a.id} row={a} open={openMenu} retry={retry} working={workingId === a.id}/>;
+  const note = (a: Annotation) => <InlineNote key={a.id} row={a} open={openMenu} retry={retry} working={workingId === a.id} retryFailed={retryFailed === a.id}/>;
   return <section ref={section}>
     <button type="button" aria-pressed={pen} disabled={busy || !!pending}
       className="inline-flex items-center gap-1.5 min-h-11 px-2 rounded-lg text-sm font-medium"
