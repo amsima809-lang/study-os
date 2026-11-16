@@ -35,7 +35,12 @@ export type PersonalNote = {
   handwriting_image_index?: number | null;
   sketch_passages?: { runs: InkRun[] }[];
 };
+export function personalNoteText(note: PersonalNote): string {
+  const sketchLines = (note.sketch_passages ?? []).map(p => p.runs.map(r => r.text).join(""));
+  return [note.raw_text, ...sketchLines].filter(Boolean).join("\n");
+}
 export type LectureSources = {
+  reading_images?: boolean;
   notes: PersonalNote[];
   annotations: { id: number; source?: AnnotationSource; quote: string; runs: InkRun[]; image_url: string }[];
 };

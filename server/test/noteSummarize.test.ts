@@ -207,3 +207,45 @@ describe("editing a saved note's AI summary", () => {
     expect(await (await edit(id,"photo correction", null)).json()).toMatchObject({ ai_summary_md:"สรุปทดสอบ", summary_edited:false });
   });
 });
+
+describe("editing lecture note entries", () => {
+  const put = (id: number, body: Record<string, unknown>) => fetch(base + "/api/notes/" + id + "/content", {
+    method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(body),
+  });
+
+  it("updates the original entry once and rejects stale or cross-account edits", async () => {
+    as = findOrCreateUser(db, { email: "lecture-editor@example.com", name: "Editor", avatar: "" });
+    const id = addNote(as, "first draft");
+    const change = { title: "A", raw_text: "revised", previous_title: "t", previous_raw_text: "first draft", previous_text: "first draft" };
+    expect(await (await put(id, change)).json()).toMatchObject({ id, title: "A", raw_text: "revised" });
+    expect((await put(id, change)).status).toBe(200);
+    expect((await put(id, { ...change, raw_text: "another edit" })).status).toBe(409);
+    expect((await put(id, { ...change, raw_text: null })).status).toBe(400);
+    as = findOrCreateUser(db, { email: "other-lecture-editor@example.com", name: "Other", avatar: "" });
+    expect((await put(id, change)).status).toBe(404);
+  });
+
+  it("replaces the reviewed words once while preserving the saved drawing and its original reading", async () => {
+    as = findOrCreateUser(db, { email: "lecture-sketch-editor@example.com", name: "Editor", avatar: "" });
+    const src = "/api/uploads/handwriting.png";
+    const id = addNote(as, null, [src]);
+    const document = JSON.stringify({ reading: { notes: { blocks: [{ type: "text", runs: [
+      { text: "Old reading", ink: "#123456", authored: true },
+    ] }] } } });
+    db.prepare("INSERT INTO sketch_pages (note_id, image_index, verified, revision, document_json) VALUES (?, 0, 1, 1, ?)").run(id, document);
+    const original = { title: "Updated title", raw_text: null, previous_title: "t", previous_raw_text: null, previous_text: "Old reading", replace_text: false };
+    expect(await (await put(id, original)).json()).toMatchObject({ id, title: "Updated title" });
+    const rewrite = { ...original, previous_title: "Updated title", raw_text: "Correct reading", replace_text: true };
+    expect(await (await put(id, { ...rewrite, previous_text: "Outdated recognition" })).json()).toMatchObject({
+      code: "NOTE_CHANGED", note: { id, sketch_passages: [{ runs: [{ text: "Old reading" }] }] },
+    });
+    expect(await (await put(id, rewrite)).json()).toMatchObject({ id, raw_text: "Correct reading", image_paths: [src] });
+    expect((await put(id, rewrite)).status).toBe(200);
+    expect(db.prepare("SELECT document_json, text_replaced FROM sketch_pages WHERE note_id=?").get(id)).toEqual({ document_json: document, text_replaced: 1 });
+    const { sketchSources } = await import("../src/sketchRoutes.js");
+    expect(sketchSources(db, as, id)).toEqual([]);
+    const nextPage = document.replace("Old reading", "Second page approved later");
+    db.prepare("INSERT INTO sketch_pages (note_id, image_index, verified, revision, document_json) VALUES (?, 1, 1, 1, ?)").run(id, nextPage);
+    expect(sketchSources(db, as, id)).toMatchObject([{ runs: [{ text: "Second page approved later" }] }]);
+  });
+});

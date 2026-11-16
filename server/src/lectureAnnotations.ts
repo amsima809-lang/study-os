@@ -1,3 +1,4 @@
+import type { LectureChanged } from "./createdLectureNotes.js";
 import { Router, type Request, type Response } from "express";
 import { z } from "zod";
 import { env } from "./env.js";
@@ -167,7 +168,7 @@ export function createAnnotationReader(db: DB, transcribe = readInk) {
   return schedule;
 }
 
-export function createLectureAnnotationsRouter(db: DB, transcribe = readInk, schedule = createAnnotationReader(db, transcribe)): Router {
+export function createLectureAnnotationsRouter(db: DB, transcribe = readInk, schedule = createAnnotationReader(db, transcribe), onLectureChanged?: LectureChanged): Router {
   const router = Router({ mergeParams: true });
   const outer = Router();
   outer.get("/lectures/annotation-search", (req, res) => {
@@ -286,6 +287,7 @@ export function createLectureAnnotationsRouter(db: DB, transcribe = readInk, sch
         body.data.revision,
       );
     if (!update.changes) return conflict(res);
+    onLectureChanged?.(req.user!.id, res.locals.lecture);
     const row = entry(req, res, id)!;
     void schedule(id, req.user!.id, row.revision);
     res.json(present(row));
@@ -339,6 +341,7 @@ export function createLectureAnnotationsRouter(db: DB, transcribe = readInk, sch
       body.data.revision,
     );
     if (!saved.changes) return conflict(res);
+    onLectureChanged?.(req.user!.id, res.locals.lecture);
     res.json(present(entry(req, res, id)!));
   });
   router.delete("/:id", (req, res) => {
@@ -350,6 +353,7 @@ export function createLectureAnnotationsRouter(db: DB, transcribe = readInk, sch
         .run(...owner(req, res), id, Number(req.query.revision)).changes
     )
       return conflict(res);
+    onLectureChanged?.(req.user!.id, res.locals.lecture);
     res.json({ ok: true });
   });
   return outer;

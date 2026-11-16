@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { createHash } from "node:crypto";
 import { z } from "zod";
 import type { DB } from "./db.js";
 import { callAnthropic, checkAiSubscription, isAiConfigured, AiSubscriptionRequired } from "./ai.js";
@@ -76,8 +77,103 @@ async function placeNotes(db: DB, inputs: Inputs) {
   return z.object({ after: z.array(z.number().int()) }).parse(data).after;
 }
 
-export function createLectureNotesRouter(db: DB, place = placeNotes): Router {
+export type LectureChanged = (user: string, lectureId: number | null) => void;
+type CombinedState = {
+  status: "ready" | "pending" | "failed";
+  created: { mode: "combined"; blocks: Block[]; version: number } | null;
+};
+
+export function createAutomaticLectureNotes(db: DB, place = placeNotes) {
+  const working = new Set<string>();
+  const failures = new Map<string, string>();
+  const digest = (inputs: Inputs) => createHash("sha256").update(JSON.stringify(inputs)).digest("hex");
+  const read = db.prepare("SELECT source_hash,blocks_json,version FROM automatic_lecture_notes WHERE user_id=? AND lecture_id=?");
+  const legacy = db.prepare("SELECT blocks_json FROM created_lecture_notes WHERE user_id=? AND lecture_id=? AND mode='combined'");
+  const save = db.prepare(`INSERT INTO automatic_lecture_notes(user_id,lecture_id,source_hash,blocks_json) VALUES(?,?,?,?)
+    ON CONFLICT(user_id,lecture_id) DO UPDATE SET source_hash=excluded.source_hash,blocks_json=excluded.blocks_json,
+      version=automatic_lecture_notes.version+1 WHERE automatic_lecture_notes.source_hash!=excluded.source_hash`);
+
+  function state(user: string, code: string, no: number, retry = false): CombinedState | null {
+    const source = readInputs(db, user, code, no);
+    if (!source) return null;
+    const { id, inputs } = source, key = JSON.stringify([user, id]);
+    if (!inputs.notes.length) {
+      db.prepare("DELETE FROM automatic_lecture_notes WHERE user_id=? AND lecture_id=?").run(user, id);
+      failures.delete(key);
+      return { status: "ready", created: null };
+    }
+    const hash = digest(inputs);
+    const saved = read.get(user, id) as { source_hash: string; blocks_json: string; version: number } | undefined;
+    if (saved?.source_hash === hash) return { status: "ready", created: {
+      mode: "combined", blocks: JSON.parse(saved.blocks_json), version: saved.version,
+    }};
+    // An earlier reader may already have arranged exactly these passages.
+    if (!saved) {
+      const old = legacy.get(user, id) as { blocks_json: string } | undefined;
+      if (old) {
+        const blocks = JSON.parse(old.blocks_json) as Block[];
+        const summary = blocks.filter(b => b.kind === "summary").map(b => b.text);
+        const signature = (p: Passage) => JSON.stringify([p.source, p.id, p.runs.map(r => [r.text, r.color])]);
+        const passages = blocks.filter(b => b.kind === "mine").map(signature).sort();
+        if (JSON.stringify(summary) === JSON.stringify(inputs.summary) &&
+            JSON.stringify(passages) === JSON.stringify(inputs.notes.map(signature).sort())) {
+          save.run(user, id, hash, old.blocks_json);
+          return { status: "ready", created: { mode: "combined", blocks, version: 1 } };
+        }
+      }
+    }
+    if (working.has(key)) return { status: "pending", created: null };
+    if (!retry && failures.get(key) === hash) return { status: "failed", created: null };
+
+    working.add(key);
+    failures.delete(key);
+    void (async () => {
+      let changed = false;
+      try {
+        checkAiSubscription(db, user);
+        if (place === placeNotes && !isAiConfigured()) throw new Error("AI unavailable");
+        const after = await place(db, inputs);
+        const blocks = assembleLectureNotes(inputs, after);
+        const current = readInputs(db, user, code, no);
+        changed = !!current && digest(current.inputs) !== hash;
+        if (current && !changed) save.run(user, id, hash, JSON.stringify(blocks));
+      } catch {
+        const current = readInputs(db, user, code, no);
+        changed = !!current && digest(current.inputs) !== hash;
+        if (!changed) {
+          failures.set(key, hash);
+          if (failures.size > 2000) failures.delete(failures.keys().next().value!);
+        }
+      } finally {
+        working.delete(key);
+        if (changed) state(user, code, no);
+      }
+    })();
+    return { status: "pending", created: null };
+  }
+
+  const changed: LectureChanged = (user, id) => {
+    if (id == null) return;
+    const lecture = db.prepare("SELECT course_code, session_no FROM course_lectures WHERE id=?").get(id) as
+      { course_code: string; session_no: number } | undefined;
+    if (lecture) state(user, lecture.course_code, lecture.session_no);
+  };
+  return { state, changed };
+}
+
+export function createLectureNotesRouter(db: DB, place = placeNotes, automatic = createAutomaticLectureNotes(db, place)): Router {
   const router = Router();
+  const autoRoute = "/lectures/:code/:no/combined-notes";
+  router.get(autoRoute, (req, res) => {
+    const result = automatic.state(req.user!.id, String(req.params.code), Number(req.params.no));
+    if (!result) return res.sendStatus(404);
+    res.json(result);
+  });
+  router.post(autoRoute + "/retry", (req, res) => {
+    const result = automatic.state(req.user!.id, String(req.params.code), Number(req.params.no), true);
+    if (!result) return res.sendStatus(404);
+    res.json(result);
+  });
   const route = "/lectures/:code/:no/created-notes";
   const readSaved = (user: string, id: number) => {
     const row = db

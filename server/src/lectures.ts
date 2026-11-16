@@ -9,6 +9,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import type { DB } from "./db.js";
+import type { LectureChanged } from "./createdLectureNotes.js";
 import { hasCatalog, programFilter } from "./api.js";
 import { sketchSources } from "./sketchRoutes.js";
 import { createAnnotationReader, visibleAnnotations } from "./lectureAnnotations.js";
@@ -80,7 +81,8 @@ export function importBundle(db: DB, userId: string, bundle: Bundle): { courses:
   return { courses, saved };
 }
 
-export function createLecturesRouter(db: DB, schedule = createAnnotationReader(db)): Router {
+export function createLecturesRouter(db: DB, schedule = createAnnotationReader(db), onLectureChanged?: LectureChanged,
+  lectureReading?: (user: string, lectureId: number) => boolean): Router {
   const router = Router();
 
   // Lecture links for the student's own courses, with which ones they hold a transcript for.
@@ -189,6 +191,7 @@ export function createLecturesRouter(db: DB, schedule = createAnnotationReader(d
     }
     db.prepare(`INSERT INTO student_lecture_summaries (user_id, lecture_id, summary_md) VALUES (?, ?, ?)
       ON CONFLICT(user_id, lecture_id) DO UPDATE SET summary_md = excluded.summary_md`).run(id, current.lecture_id, parsed.data.summary_md);
+    onLectureChanged?.(id, current.lecture_id);
     res.json(getLectureSummary(db, id, req.params.code, no));
   });
 
@@ -198,6 +201,7 @@ export function createLecturesRouter(db: DB, schedule = createAnnotationReader(d
     const current = getLectureSummary(db, id, req.params.code, no);
     if (!current) return res.status(404).json({ error: "ไม่พบสรุปบทเรียน" });
     db.prepare("DELETE FROM student_lecture_summaries WHERE user_id = ? AND lecture_id = ?").run(id, current.lecture_id);
+    onLectureChanged?.(id, current.lecture_id);
     res.json(getLectureSummary(db, id, req.params.code, no));
   });
 
@@ -228,6 +232,7 @@ export function createLecturesRouter(db: DB, schedule = createAnnotationReader(d
       if (mark.ocr_status === "pending") void schedule(mark.id, user, mark.revision);
     }
     res.json({
+      reading_images: lectureReading?.(user, lecture.id) ?? false,
       notes: notes.map(({ images, ...note }) => ({
         ...note, image_paths: JSON.parse(images), sketch_passages: sketchSources(db, user, note.id),
       })),

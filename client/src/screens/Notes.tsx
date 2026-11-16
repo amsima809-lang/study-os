@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { useT } from "../i18n.tsx";
 import {
   getJSON,
@@ -558,7 +558,7 @@ function NoteView({ noteId, onBack, onDeleted, onOpenLecture }: { onOpenLecture:
           finally { setLinkBusy(false); }
         }}/>
       {linkError && <ErrorBox>{linkError}</ErrorBox>}
-      {linked && note.course_code && <LectureShortcuts code={note.course_code} lecture={{ ...linked, image_count: Math.max(linked.image_count, note.image_paths.length) }} onOpen={onOpenLecture} showImageShortcut/>}
+      {linked && note.course_code && <LectureShortcuts code={note.course_code} lecture={linked} onOpen={onOpenLecture}/>}
       {(!handwritten || note.raw_text) && <Card>
         <h3 className="font-semibold mb-2 flex items-center gap-1.5" style={{ color: "var(--text-primary)" }}><Icon name="edit" size={16} /> {t("notes.text")}</h3>
         {note.raw_text ? (
@@ -687,23 +687,26 @@ function NoteView({ noteId, onBack, onDeleted, onOpenLecture }: { onOpenLecture:
 }
 
 /** The same note form, with its own draft for the lecture being read. */
-export function LectureNoteForm({ code, sessionNo, onSaved, onCancel }: {
+export function LectureNoteForm({ code, sessionNo, onSaved, onCancel, onBusyChange }: {
   code: string;
   sessionNo: number;
-  onSaved: () => void;
+  onSaved: (noteId: number) => void;
   onCancel: () => void;
+  onBusyChange?: (busy: boolean) => void;
 }) {
-  return <AddNote key={`${code}/${sessionNo}`} lecture={{ code, sessionNo }} onCreated={onSaved} onCancel={onCancel}/>;
+  return <AddNote key={`${code}/${sessionNo}`} lecture={{ code, sessionNo }} onCreated={saved => onSaved(saved.id)} onCancel={onCancel} onBusyChange={onBusyChange}/>;
 }
 
 function AddNote({
   lecture,
   onCreated,
   onCancel,
+  onBusyChange,
 }: {
   lecture?: { code: string; sessionNo: number };
-  onCreated: (r: NoteLearning) => void;
+  onCreated: (r: NoteLearning & { id: number }) => void;
   onCancel: () => void;
+  onBusyChange?: (busy: boolean) => void;
 }) {
   const { t } = useT();
   const [courses, setCourses] = useState<Course[]>([]);
@@ -876,6 +879,7 @@ function AddNote({
       return;
     }
     const form = new FormData();
+    if (lecture) form.append("lecture_tray", "1");
     if (courseCode) form.append("course_code", courseCode);
     if (lectureNo) form.append("lecture_no", lectureNo);
     if (title) form.append("title", title);
@@ -883,6 +887,7 @@ function AddNote({
     for (const f of files) form.append("images", f);
     submitting.current = true;
     setBusy(true);
+    onBusyChange?.(true);
     try {
       if (drawing && hasHandwriting) {
         const image = drawing.ink ? inkBlob(drawing.ink) : await exportHandwriting(drawing);
@@ -892,7 +897,7 @@ function AddNote({
         const bounds = drawing.ink ? drawing.ink.strokeBounds : handwritingStrokeBounds(drawing);
         if (bounds?.length) form.append("handwriting_strokes", JSON.stringify(bounds));
       }
-      const r = await postForm<NoteLearning>("/api/notes", form);
+      const r = await postForm<NoteLearning & { id: number }>("/api/notes", form);
       saved.current = true; // the note is on the server: the draft is no longer needed
       await clearNoteDraft(draftKey);
       onCreated(r);
@@ -902,6 +907,7 @@ function AddNote({
     } finally {
       submitting.current = false;
       setBusy(false);
+      onBusyChange?.(false);
     }
   }
 
@@ -910,6 +916,7 @@ function AddNote({
 
   const selectStyle = { backgroundColor: "var(--bg-surface)", borderColor: "var(--border)", color: "var(--text-primary)" };
   const inputStyle = { borderColor: "var(--border)", backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" };
+  const FormSurface = lecture ? Fragment : Card;
 
   return (
     <div {...dropHandlers} className="relative rounded-2xl" style={dragging ? { outline: "2px dashed var(--accent-text)", outlineOffset: 2 } : undefined}>
@@ -921,14 +928,14 @@ function AddNote({
         {t("notes.dropHere")}
       </div>
     )}
-    <Card>
+    <FormSurface>
       <div className="space-y-3">
-        <div className="flex items-center gap-2">
+        {!lecture && <div className="flex items-center gap-2">
           <button onClick={onCancel} className="text-sm min-h-11" style={{ color: "var(--accent-text)" }}>
             {t("notes.backToCourse")}
           </button>
           <h2 className="font-semibold" style={{ color: "var(--text-primary)" }}>{t("notes.newTitle")}</h2>
-        </div>
+        </div>}
 
         {restoredAt && (
           <div
@@ -971,6 +978,7 @@ function AddNote({
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
+          aria-label={t("notes.noteTitle")}
           placeholder={t("notes.noteTitle")}
           className="w-full rounded-lg border px-3 py-2 text-sm min-h-11"
           style={inputStyle}
@@ -981,7 +989,7 @@ function AddNote({
           onMode={chooseMode}
           textRef={textRef}
           penUsed={penUsed}
-          onListeningChange={setDictating}
+          onListeningChange={active => { setDictating(active); onBusyChange?.(active || submitting.current); }}
           onDictated={(words) => setText((prev) => (prev && !/\s$/.test(prev) ? `${prev} ${words}` : prev + words))}
         />
 
@@ -1103,13 +1111,14 @@ function AddNote({
           </button>
           <button
             onClick={() => (hasContent ? setConfirmDiscard(true) : onCancel())}
+            disabled={!!lecture && dictating}
             className="px-4 min-h-11"
             style={{ color: "var(--text-tertiary)" }}
           >
             {t("notes.cancel")}
           </button>
         </div>
-        <p className="text-xs text-center" style={{ color: "var(--text-tertiary)" }}>{t(dictating ? "input.finishDictation" : hasHandwriting ? "ink.saveHint" : "notes.saveHint")}</p>
+        {(dictating || !lecture) && <p className="text-xs text-center" style={{ color: "var(--text-tertiary)" }}>{t(dictating ? "input.finishDictation" : hasHandwriting ? "ink.saveHint" : "notes.saveHint")}</p>}
         {hasContent && draftState === "saved" && <p className="text-xs text-center" style={{ color: "var(--text-tertiary)" }}>{t("notes.draftKept")}</p>}
         {hasContent && draftState !== "saved" && (
           <p role="alert" className="text-xs text-center font-medium" style={{ color: "var(--danger)" }}>
@@ -1127,7 +1136,7 @@ function AddNote({
           />
         )}
       </div>
-    </Card>
+    </FormSurface>
     </div>
   );
 }

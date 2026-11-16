@@ -2,7 +2,7 @@
 
 The owner approved preloading recordings for the four catalogue subjects on 16 November 2026. In the sidebar, **Study → Lecture notes** opens the lecture list, with access to documents and personal notes. Expand a course under **Recorded lectures** and tap **Notes** beside a session. The Notes tab opens the student's own notes and any prebuilt AI summary for that lecture. **Transcript** includes a preview and link to the full summary. **Watch** opens the source video on RU's site with the student's e-service login. A direct summary link returns to the requested lecture after sign-in. [Open MGT3204 lecture 1](https://termtrail.com/api/open/lectures?view=lectures&summary=MGT3204-1)
 
-In the reader, **Keep summary and notes separate** shows the summary followed by a section for the student's notes. **Combine summary and notes** displays saved personal passages beside the summary points they relate to. The server remembers the choice independently for each student and lecture. An older generated copy sets the initial layout for that lecture. Lectures without a known choice default to Separate. Changing a layout preserves the saved copy until the student creates a replacement.
+The reader displays **My Notes** below the summary or transcript. A student can add, edit and delete entries. Images from those notes share a gallery at the bottom. The half-screen editor leaves the lecture readable and can expand to full screen. Saving a note or its clarifying answers updates the combined notes automatically.
 
 ## Shared material
 

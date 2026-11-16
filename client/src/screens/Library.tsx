@@ -165,8 +165,6 @@ export function LectureLinks({ onRead, initialCourse }: { onRead: (t: OpenLectur
   }, []);
   useEffect(() => {
     void load();
-    window.addEventListener("lecture-note-mode-changed", load);
-    return () => window.removeEventListener("lecture-note-mode-changed", load);
   }, [load]);
 
   // React refuses javascript: links in JSX, so the bookmark's address is set here.

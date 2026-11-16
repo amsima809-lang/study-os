@@ -84,6 +84,7 @@ export type SketchState = {
   document: SketchPage | null;
   revision: number;
   verified: boolean;
+  included?: boolean;
   busy: boolean;
   failed: boolean;
 };

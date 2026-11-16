@@ -9,3 +9,60 @@
     color: var(--ink-dark, var(--text-primary));
   }
 }
+
+.lecture-my-notes {
+  padding: 1rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: 1rem;
+  scroll-margin-block-start: 4.5rem;
+}
+.lecture-note-entries {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.lecture-note-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: .25rem;
+  padding-block: .55rem;
+  border-bottom: 1px solid var(--border-light);
+  font-size: .9375rem;
+  scroll-margin-block: 5rem;
+}
+.lecture-note-action,
+.lecture-summary-link,
+.lecture-add-note {
+  min-height: 44px;
+  color: var(--accent-text);
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+}
+.lecture-note-action {
+  min-width: 44px;
+  justify-content: center;
+  border-radius: .5rem;
+}
+.lecture-note-action:hover,
+.lecture-note-action:focus-visible {
+  background: var(--accent-light);
+}
+.lecture-summary-link {
+  font-size: .8125rem;
+  display: flex;
+  max-width: 100%;
+  text-align: start;
+}
+.lecture-add-note {
+  padding-inline: .85rem;
+  border-radius: .7rem;
+  background: var(--accent-light);
+  font-weight: 600;
+}
+.lecture-note-gallery {
+  padding-top: .75rem;
+  border-top: 1px solid var(--border-light);
+}

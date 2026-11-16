@@ -165,6 +165,7 @@ describe("saved lectures", () => {
     pen.run(a, second, "Other lecture's quote", "[]");
     pen.run(b, id, "Other student's quote", "[]");
     expect(await (await request(path, a)).json()).toEqual({
+      reading_images: false,
       notes: [{ id: Number(note.lastInsertRowid), raw_text: "My typed note", title: "My title", image_paths: photos, handwriting_image_index: 1, created_at: "today",
         sketch_passages: [{runs:[{text:"Verified writing",color:"#872161"}]}] }],
       annotations: [{ id: Number(mark.lastInsertRowid), quote: "Marked phrase", runs, source: "summary", ocr_status: "ready",

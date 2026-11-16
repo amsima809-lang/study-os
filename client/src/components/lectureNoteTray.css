@@ -1,0 +1,76 @@
+html.lecture-writing { overflow: hidden; }
+
+.lecture-tray-reader,
+.lecture-note-tray {
+  position: fixed;
+  box-sizing: border-box;
+  left: var(--lecture-vleft, 0px);
+  width: var(--lecture-vw, 100vw);
+  height: calc(var(--lecture-vh, 100dvh) / 2);
+  margin: 0;
+  background: var(--bg-base);
+  color: var(--text-primary);
+}
+.lecture-tray-reader {
+  top: var(--lecture-vtop, 0px);
+  z-index: 40;
+  padding: max(.75rem, env(safe-area-inset-top)) max(1rem, calc((100% - 54rem) / 2), env(safe-area-inset-right)) 1rem
+    max(1rem, calc((100% - 54rem) / 2), env(safe-area-inset-left));
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.lecture-note-tray {
+  top: calc(var(--lecture-vtop, 0px) + var(--lecture-vh, 100dvh) / 2);
+  z-index: 41;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border);
+  border-radius: 1rem 1rem 0 0;
+  background: var(--bg-surface);
+  box-shadow: 0 -2px 12px rgb(0 0 0 / .08);
+  overflow: hidden;
+}
+.lecture-note-tray[data-full="true"] {
+  top: var(--lecture-vtop, 0px);
+  height: var(--lecture-vh, 100dvh);
+  padding-top: env(safe-area-inset-top);
+  border-radius: 0;
+}
+.lecture-tray-header,
+.lecture-tray-form {
+  padding-inline: max(1rem, calc((100% - 54rem) / 2), env(safe-area-inset-left)) max(1rem, calc((100% - 54rem) / 2), env(safe-area-inset-right));
+}
+.lecture-tray-header {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  min-height: 3rem;
+  border-bottom: 1px solid var(--border-light);
+}
+.lecture-tray-header button { min-width: 2.75rem; min-height: 2.75rem; color: var(--accent-text); }
+.lecture-tray-header button:last-child { font-size: 1.5rem; color: var(--text-secondary); }
+.lecture-tray-form {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-top: .75rem;
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+.lecture-tray-form form label { display: block; font-size: .875rem; }
+.lecture-tray-form form :is(input, textarea) {
+  display: block;
+  width: 100%;
+  min-height: 2.75rem;
+  margin-block-start: .25rem;
+  padding: .5rem .75rem;
+  border: 1px solid var(--border);
+  border-radius: .5rem;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+html.keyboard-open .lecture-note-tray[role="dialog"] {
+  max-height: none !important;
+  overflow: hidden;
+}

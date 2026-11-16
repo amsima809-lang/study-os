@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { getJSON, postJSON } from "../api.ts";
 import { useT } from "../i18n.tsx";
 import { withBase } from "../base.ts";
@@ -9,13 +9,20 @@ import "./sketchNotes.css";
 
 const PageView = lazy(() => import("./SketchPageView.tsx"));
 
-function Page({ noteId, index, src, handwritten, onSourcesChanged }: {
-  noteId: number; index: number; src: string; handwritten: boolean; onSourcesChanged?: () => void;
+export function SketchNotePage({ noteId, index, src, handwritten, showOriginal = true, onSourcesChanged }: {
+  noteId: number; index: number; src: string; handwritten: boolean; showOriginal?: boolean; onSourcesChanged?: () => void;
 }) {
   const { lang } = useT();
   const tr = (en: string, th: string) => (lang === "th" ? th : en);
   const base = `/api/notes/${noteId}/sketch/${index}`;
   const [state, setState] = useState<SketchState | null>(null);
+  const previous = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (!state) return;
+    const signature = [base, state.revision, state.verified].join("/");
+    if (previous.current && previous.current !== signature) onSourcesChanged?.();
+    previous.current = signature;
+  }, [base, state, onSourcesChanged]);
   const [error, setError] = useState("");
   const [posting, setPosting] = useState(false);
   const [reload, setReload] = useState(0);
@@ -52,7 +59,7 @@ function Page({ noteId, index, src, handwritten, onSourcesChanged }: {
       const s = await postJSON<SketchState>(base + action, body);
       setState(s);
       setReload((x) => x + 1);
-      if (action) onSourcesChanged?.();
+      if (s.busy) onSourcesChanged?.();
     } catch {
       setError(action
         ? tr("Could not save this change. Refresh and try again.", "บันทึกการแก้ไขไม่สำเร็จ โหลดใหม่แล้วลองอีกครั้ง")
@@ -63,9 +70,12 @@ function Page({ noteId, index, src, handwritten, onSourcesChanged }: {
   }
   const checks = state?.document?.checks ?? [];
   const disabled = posting || state?.busy;
+  const page = state?.document && <Suspense fallback={<Loading>{tr("Loading…", "กำลังโหลด…")}</Loading>}>
+    <PageView page={state.document} original={src} />
+  </Suspense>;
   return (
     <div className="space-y-3">
-      {(handwritten || state?.document) && <OriginalPageThumbnail src={withBase(src)}
+      {showOriginal && (handwritten || state?.document) && <OriginalPageThumbnail src={withBase(src)}
         label={handwritten ? undefined : tr("Open the original page", "ดูหน้าต้นฉบับ")}/>}
       {error && (
         <p role="alert">
@@ -94,9 +104,10 @@ function Page({ noteId, index, src, handwritten, onSourcesChanged }: {
       )}
       {state?.document && (
         <>
-          <Suspense fallback={<Loading>{tr("Loading…", "กำลังโหลด…")}</Loading>}>
-            <PageView page={state.document} original={src} />
-          </Suspense>
+          {showOriginal || !state.included ? page : <details>
+            <summary className="min-h-11 cursor-pointer">{tr("View page reading", "ดูผลการอ่านหน้านี้")}</summary>
+            {page}
+          </details>}
           <fieldset disabled={disabled} className="space-y-3">
             {checks.length > 0 && <legend className="font-semibold">{tr("Please check", "ช่วยตรวจสอบ")}</legend>}
             {checks.map((q, i) => (
@@ -155,16 +166,17 @@ function Page({ noteId, index, src, handwritten, onSourcesChanged }: {
                     revision: state.revision,
                     answers: checks.map((_, i) => answers[i]),
                     correction,
+                    save: true,
                   })
                 }
               >
-                {checks.length ? tr("Apply all answers", "ใช้คำตอบทั้งหมด") : tr("Apply correction", "ใช้คำแก้ไข")}
+                {tr("Save", "บันทึก")}
               </button>
             )}
           </fieldset>
           {!checks.length &&
-            (state.verified ? (
-              <p>{tr("Transcription checked by you", "คุณตรวจข้อความแล้ว")}</p>
+            (state.included ? (
+              <p>{state.verified ? tr("Transcription checked by you", "คุณตรวจข้อความแล้ว") : tr("Added to lecture notes", "เพิ่มในโน้ตเลกเชอร์แล้ว")}</p>
             ) : (
               <button
                 className="sketch-button"
@@ -172,8 +184,8 @@ function Page({ noteId, index, src, handwritten, onSourcesChanged }: {
                 onClick={() => void post("/verify", { revision: state.revision })}
               >
                 {tr(
-                  "I checked the transcription. Use my words in combined notes.",
-                  "ตรวจข้อความแล้ว ใช้คำของฉันในโน้ตรวมได้",
+                  "Save checked transcription",
+                  "บันทึกข้อความที่ตรวจแล้ว",
                 )}
               </button>
             ))}
@@ -207,7 +219,7 @@ export function SketchNotes({ noteId, imagePaths, handwritingIndex, onSourcesCha
             </select>
           </label>
         )}
-        <Page key={noteId + "/" + active} noteId={noteId} index={active} src={imagePaths[active]}
+        <SketchNotePage key={noteId + "/" + active} noteId={noteId} index={active} src={imagePaths[active]}
           handwritten={active === handwritingIndex} onSourcesChanged={onSourcesChanged}/>
     </section>
   );

@@ -6,10 +6,12 @@ import { Router } from "express";
 import { randomUUID } from "node:crypto";
 import multer from "multer";
 import sharp from "sharp";
+import { z } from "zod";
 import { writeFile, mkdir, readFile, unlink } from "node:fs/promises";
 import { join, basename } from "node:path";
 import type { DB } from "./db.js";
-import { parseSketchStrokes } from "./sketchRoutes.js";
+import type { LectureChanged } from "./createdLectureNotes.js";
+import { parseSketchStrokes, sketchPagePassages } from "./sketchRoutes.js";
 import { getLecture } from "./savedLectures.js";
 import { env } from "./env.js";
 import {
@@ -34,6 +36,12 @@ const upload = multer({
 
 // Anthropic recommends the long edge be <= 1568px.
 const MAX_EDGE = 1568;
+
+const noteField = z.string().max(3_000_000).nullable();
+const editNoteContent = z.object({
+  title: noteField, raw_text: noteField, previous_title: noteField, previous_raw_text: noteField,
+  previous_text: z.string().optional(), replace_text: z.boolean().optional(),
+});
 
 async function resizeToJpeg(buffer: Buffer): Promise<Buffer> {
   return sharp(buffer)
@@ -82,7 +90,7 @@ export function searchNotes(db: DB, userId: string, query: string): NoteHit[] {
   });
 }
 
-export function createNotesRouter(db: DB): Router {
+export function createNotesRouter(db: DB, onLectureChanged?: LectureChanged, startLecturePages?: (user: string, id: number) => void): Router {
   const router = Router();
 
   // Course list for the dropdown — filtered by user's program if set.
@@ -125,7 +133,7 @@ export function createNotesRouter(db: DB): Router {
   });
 
   // Read one note with all AI fields.
-  type NoteRow = { id: number; course_code: string | null; raw_text: string | null; ai_summary_md: string | null; ai_summary_original_md: string | null } & Record<string, unknown>;
+  type NoteRow = { id: number; course_code: string | null; lecture_id: number | null; title: string | null; raw_text: string | null; ai_summary_md: string | null; ai_summary_original_md: string | null } & Record<string, unknown>;
   function noteDetail(id: unknown, userId: string) {
     const row = db.prepare(`SELECT n.*, cl.session_no AS lecture_no FROM notes n LEFT JOIN course_lectures cl ON cl.id = n.lecture_id
       WHERE n.id = ? AND n.user_id = ?`).get(id, userId) as NoteRow | undefined;
@@ -144,6 +152,35 @@ export function createNotesRouter(db: DB): Router {
     const note = noteDetail(req.params.id, req.user!.id);
     if (!note) return res.status(404).json({ error: "ไม่พบโน้ตนี้" });
     res.json(note);
+  });
+
+  router.put("/notes/:id/content", (req, res) => {
+    const user = req.user!.id;
+    const current = noteDetail(req.params.id, user);
+    if (!current) return res.status(404).json({ error: "ไม่พบโน้ตนี้" });
+    const parsed = editNoteContent.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "ข้อมูลโน้ตไม่ถูกต้อง" });
+    const title = parsed.data.title || null, raw = parsed.data.raw_text || null;
+    if (!raw?.trim() && !current.image_paths.length) {
+      return res.status(400).json({ error: "กรุณาพิมพ์ข้อความหรือแนบรูปโน้ตอย่างน้อย 1 อย่าง" });
+    }
+    const passages = sketchPagePassages(db, user, current.id);
+    const visible = [current.raw_text, ...passages.map(p => p.runs.map(r => r.text).join(""))].filter(Boolean).join("\n");
+    const rewrite = parsed.data.replace_text ?? (raw !== parsed.data.previous_raw_text);
+    if (title === current.title && raw === current.raw_text && (!rewrite || !passages.length)) return res.json(current);
+    if (current.title !== parsed.data.previous_title || current.raw_text !== parsed.data.previous_raw_text ||
+      (rewrite && parsed.data.previous_text !== undefined && visible !== parsed.data.previous_text)) {
+      return res.status(409).json({ code: "NOTE_CHANGED", error: "โน้ตมีการเปลี่ยนแปลงแล้ว", note: { ...current, sketch_passages: passages } });
+    }
+    db.transaction(() => {
+      db.prepare("UPDATE notes SET title=?, raw_text=? WHERE id=? AND user_id=?").run(title, raw, current.id, user);
+      if (rewrite && passages.length) {
+        const replace = db.prepare("UPDATE sketch_pages SET text_replaced=1 WHERE note_id=? AND image_index=?");
+        for (const index of new Set(passages.map(p => p.image_index))) replace.run(current.id, index);
+      }
+    })();
+    onLectureChanged?.(user, current.lecture_id);
+    res.json(noteDetail(current.id, user));
   });
 
   router.put("/notes/:id/summary", (req, res) => {
@@ -180,6 +217,8 @@ export function createNotesRouter(db: DB): Router {
       lectureId = lecture.id;
     }
     db.prepare("UPDATE notes SET lecture_id = ? WHERE id = ? AND user_id = ?").run(lectureId, note.id, userId);
+    onLectureChanged?.(userId, note.lecture_id as number | null);
+    if (lectureId !== note.lecture_id) onLectureChanged?.(userId, lectureId);
     res.json(noteDetail(note.id, userId));
   });
 
@@ -275,9 +314,11 @@ export function createNotesRouter(db: DB): Router {
   // Delete a note.
   router.delete("/notes/:id", (req, res) => {
     const userId = req.user!.id;
-    const row = db.prepare("SELECT id FROM notes WHERE id = ? AND user_id = ?").get(req.params.id, userId);
+    const row = db.prepare("SELECT lecture_id FROM notes WHERE id = ? AND user_id = ?").get(req.params.id, userId) as
+      { lecture_id: number | null } | undefined;
     if (!row) return res.status(404).json({ error: "ไม่พบโน้ตนี้" });
     db.prepare("DELETE FROM notes WHERE id = ? AND user_id = ?").run(req.params.id, userId);
+    onLectureChanged?.(userId, row.lecture_id);
     res.json({ ok: true });
   });
 
@@ -325,7 +366,10 @@ export function createNotesRouter(db: DB): Router {
       }
 
       const userId = req.user!.id;
-      const summarizeOnSave = handwritingIndex === null && isAiConfigured() && hasAiSubscription(db, userId);
+      // The lecture tray uses the combined reader's background job. An independent
+      // note created from the general Notes screen retains its own learning material.
+      const lectureTray = lectureId !== null && req.body.lecture_tray === "1";
+      const summarizeOnSave = !lectureTray && handwritingIndex === null && isAiConfigured() && hasAiSubscription(db, userId);
       await mkdir(env.uploadDir, { recursive: true });
       const imagePaths: string[] = [];
       const aiImages: ImageInput[] = [];
@@ -388,7 +432,10 @@ export function createNotesRouter(db: DB): Router {
           });
 
         const noteId = Number(info.lastInsertRowid);
-        if (handwritingIndex !== null && strokes) {
+        if (lectureId !== null && files.length) {
+          const page = db.prepare("INSERT INTO sketch_pages(note_id,image_index,stroke_bounds,auto_read) VALUES(?,?,?,1)");
+          for (const index of files.keys()) page.run(noteId, index, index === handwritingIndex && strokes ? JSON.stringify(strokes) : null);
+        } else if (handwritingIndex !== null && strokes) {
           db.prepare("INSERT INTO sketch_pages(note_id,image_index,stroke_bounds) VALUES (?,?,?)")
             .run(noteId, handwritingIndex, JSON.stringify(strokes));
         }
@@ -399,6 +446,8 @@ export function createNotesRouter(db: DB): Router {
         return noteId;
       })();
       unattached.length = 0;
+      if (lectureId !== null && files.length) startLecturePages?.(userId, id);
+      onLectureChanged?.(userId, lectureId);
 
       res.status(201).json({
         id,

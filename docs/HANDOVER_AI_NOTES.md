@@ -7,17 +7,19 @@ Written at the end of a long session so another session can continue. Read this,
 
 From a trial account, open **Study → Lecture notes** in the sidebar. It opens the recorded lecture list and also gives access to documents and personal notes. Expand a course and tap **Notes** (**โน้ต**) beside a lecture. The Notes tab opens the prebuilt AI summary, when available, and your own notes. **Transcript** (**คำบรรยาย**) includes a summary preview and a link back to Notes. [Open MGT3204 lecture 1](https://termtrail.com/api/open/lectures?view=lectures&summary=MGT3204-1)
 
-Under **Layout for this lecture**, **Keep summary and notes separate** shows the summary first and your notes in their own section below. **Combine summary and notes** places passages from your generated notes beside the relevant summary points. Each lecture remembers your choice. Lectures with an older generated copy start in that copy’s layout. Other lectures start in Separate.
+Each lecture has one **My Notes** section under the reading. New notes appear in order, with Edit and Delete on each entry. **+ Add note** opens a half-screen tray with a scrollable reading pane above it. Expand the tray for more writing room. Saved images are together in the gallery at the bottom of the section.
+
+Saving a lecture note updates the combined notes automatically. For a page with handwriting or drawings, review any clarifying questions and tap **Save** to include your answers. Sentence annotations still appear at the marked passage.
 
 The Mac mini holds all 42 prebuilt transcript/summary pairs. Both designated accounts were verified against all 42 across ACC1103 (the same recording as ACC1101), MGT3204, RAM1103 and RAM1132. The two shared-lecture releases are `dd9589c` and `f354ddc`. The production allowlist is in `SHARED_LECTURE_USERS`; ask RU before widening it. The other 70 recordings remain outside this release. A database backup was taken before import.
 
 To view saved pictures, open the lecture and tap **Note images**, or open the individual note that contains them.
 
-The follow-up adds private summary editing and restoration, lecture photo galleries, anchored pen annotations, reviewed handwriting search, separate/combined study notes and drawing review. In Combine, Flash chooses where a student's passage goes; the server retrieves its exact words and colours. A note with photos also has an action to read a sketchnote, review its arrows and see the original page. Details of the original requirements and source material follow.
+The reader also supports private summary editing and restoration, handwriting search and reviewed drawings. The automatically generated references connect a saved note to related summary points and preserve the student's wording.
 
 To annotate a sentence in the summary or transcript, underline or circle it and save your handwriting. Its transcription appears under the sentence as a pale yellow sub-bullet. Tap the note to edit its ink, rewrite its text or delete it.
 
-To keep a page handwritten, choose **Pen**, write on the full-screen canvas, then tap **Done** and **Save note**. **Generate notes from handwriting** runs the tuned DeepSeek prompt on the saved page. Tap the small original beside the generated notes to read it full screen.
+To keep a page handwritten, choose **Pen**, write on the full-screen canvas, then tap **Done** and **Save note**. A new lecture page starts its handwriting reading automatically. Standalone notes offer **Generate notes from handwriting**. Tap the original thumbnail to see it full screen.
 
 The internal TestFlight upload is build `202611160616`. It carries the PencilKit popover and native Thai/English dictation. Existing iOS builds can open the server-hosted lecture library. The physical iPad, Pencil, palm rejection and microphone checks are still open. Pricing and the optional v4 lecture format remain owner decisions.
 

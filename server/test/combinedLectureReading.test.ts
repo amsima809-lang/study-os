@@ -46,3 +46,13 @@ it("matches verified sketch text and colour, and drops placements for deleted pe
   live.notes[0].sketch_passages[0].runs[0] = { ...sketch, color: "#999999" };
   expect(currentCombinedReading("First", saved, live).notes.size).toBe(0);
 });
+
+it("uses a handwritten note's explicit rewrite once in both the editor and its matched summary links", async () => {
+  const { personalNoteText } = await import(new URL("../../client/src/combinedLectureNotes.ts", import.meta.url).href);
+  const entry = { id: 1, raw_text: "Changed", sketch_passages: [{ runs: [{text: "Ink", color: "#abc123"}] }] };
+  expect(personalNoteText(entry)).toBe("Changed\nInk");
+  const revised = { ...entry, sketch_passages: [] };
+  expect(personalNoteText(revised)).toBe("Changed");
+  expect(currentCombinedReading("First", { ...stored, blocks: [line("First"), note(1, "Changed")] },
+    { notes: [revised], annotations: [] }).notes).toEqual(new Set([1]));
+});

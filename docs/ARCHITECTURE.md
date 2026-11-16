@@ -589,9 +589,9 @@ AI ช่วยเรา "ฝึก" ไม่ใช่ "ทำแทน" — �
 
 ## Phase 79 — Lecture navigation and layout
 
-Under Study, the sidebar’s **Lecture notes** destination opens the lecture list and provides access to documents and personal notes. Course rows show how many summaries are available. The lecture list and linked personal notes use a single **Notes** shortcut to open the reader’s **Notes** tab. Separate displays the available summary followed by the student’s notes. Combine places saved personal passages alongside the relevant summary points. Transcript and Watch are available where applicable.
+Under Study, the sidebar’s **Lecture notes** destination opens the lecture list and provides access to documents and personal notes. Course rows show how many summaries are available. The lecture list and linked personal notes use a single **Notes** shortcut to open the reader’s **Notes** tab. The reader shows a single chronological list of personal notes below the available summary. Transcript and Watch are available where applicable.
 
-Migration 049 adds `lecture_note_layouts` keyed by student and catalogue lecture. An existing row in `created_lecture_notes` seeds the layout for that student and lecture from the copy’s saved mode. Other lectures start in Separate, regardless of the former account-wide preference. Each lecture returned by `GET /api/lectures` includes its own `note_mode`. Changing the layout preserves the generated copy and its passages. Only creating notes again replaces it.
+Migration 049 adds `lecture_note_layouts` keyed by student and catalogue lecture. An existing row in `created_lecture_notes` seeds the layout for that student and lecture from the copy’s saved mode. The older layout preferences and generated copies are retained for compatibility. The current reader uses the same notes section for every lecture.
 
 The production entry at `/api/open/lectures?view=lectures&summary=MGT3204-1` serves the app through the network even with an older installed service worker. The browser keeps the requested lecture in the current tab through sign-in. The authenticated lecture list determines whether that student can open its summary.
 
@@ -604,3 +604,10 @@ The note input opens the annotation editor full screen, using PencilKit in the i
 A saved underline or circle belongs to one student and one source. Each rendered sentence has a stable key and a place for its annotations. The reader reconciles the key, quote and surrounding text when the page changes. A transcript search excludes hidden cues, and an inserted personal note stays outside the text used for locating marks.
 
 Migration 051 identifies the source and records the transcription status. Saving ink stores the original before starting recognition. Successful recognition displays a pale yellow sub-bullet at the marked sentence. Revising the text or ink uses the current revision so an older recognition result cannot overwrite a correction. Search opens the matching annotation in its source.
+
+
+## Lecture note editing and automatic updates
+
+The summary and transcript share one **My Notes** list for a lecture. Each saved note keeps its own identity for edits and deletion. Linked images share the gallery after the list. Opening the editor puts the reading and writing areas in independently scrollable panes. Expanding the editor keeps the current draft.
+
+Saving lecture notes updates the combined document in the background. Clarifying answers become eligible when saved. Matching sources are linked to their summary points from the list. Margin annotations retain their positions at the marked sentences.

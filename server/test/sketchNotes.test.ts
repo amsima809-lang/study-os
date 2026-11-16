@@ -173,6 +173,8 @@ describe("reading and correcting hand-drawn pages", () => {
 });
 
 describe("private sketch routes", () => {
+  const lectureChanged = vi.fn();
+  let sketchCall = fake();
   let server: Server,
     dir: string,
     base: string,
@@ -200,10 +202,12 @@ describe("private sketch routes", () => {
       req.user = { id: student } as Express.User;
       next();
     });
-    app.use(
-      "/api",
-      createSketchRouter(db, fake(), () => true),
-    );
+    const sketches = createSketchRouter(db, (...args) => sketchCall(...args), () => true, lectureChanged);
+    const { createNotesRouter } = await import("../src/notes.js");
+    app.use("/api", createNotesRouter(db, undefined, sketches.startLecturePages));
+    app.use("/api", sketches);
+    const { createLecturesRouter } = await import("../src/lectures.js");
+    app.use("/api", createLecturesRouter(db, undefined, undefined, sketches.lectureReading));
     server = app.listen(0, "127.0.0.1");
     await new Promise((resolve) => server.once("listening", resolve));
     base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api/notes/${noteId}/sketch/0`;
@@ -262,6 +266,63 @@ describe("private sketch routes", () => {
     expect((await fetch(base)).status).toBe(404);
     expect((await post()).status).toBe(404);
     expect(sketchSources(db, student, noteId)).toEqual([]);
+  });
+  it("starts reading a lecture image on note save and publishes handwritten passages immediately after saving the answers", async () => {
+    const { seedDatabase } = await import("../src/seed.js");
+    const { findOrCreateUser } = await import("../src/auth.js");
+    const { sketchSources } = await import("../src/sketchRoutes.js");
+    seedDatabase(db, { reset: false });
+    student = findOrCreateUser(db, {email:"image-owner@example.test",name:"Owner",avatar:""});
+    const form = new FormData();
+    form.append("course_code","ACC1101"); form.append("lecture_no","1"); form.append("handwriting_image_index","0");
+    form.append("images",new Blob([new Uint8Array(photo)], {type:"image/jpeg"}),"drawing.jpg");
+    const response = await fetch(base.split("/sketch/")[0].replace(/\/\d+$/, ""), {method:"POST",body:form});
+    expect(response.status).toBe(201);
+    const id = (await response.json() as {id:number}).id;
+    base = base.replace(/\/notes\/\d+\/sketch/, "/notes/" + id + "/sketch");
+    const state = await settled();
+    expect(state.document?.checks.length).toBeGreaterThan(0);
+    expect(sketchSources(db,student,id)).toHaveLength(0);
+    const oldCalls = lectureChanged.mock.calls.length;
+    expect((await post("/answers",{revision:state.revision,answers:state.document!.checks.map(() => ({yes:true})),save:true})).status).toBe(202);
+    const reviewed = await settled();
+    expect(reviewed.verified).toBe(true);
+    expect(reviewed.document?.checks).toEqual([]);
+    expect(sketchSources(db,student,id)[0].runs[0].text).toBe("Heading");
+    expect(lectureChanged.mock.calls.slice(oldCalls)).toEqual([[student,expect.any(Number)]]);
+  });
+  it("automatically includes all no-question lecture images, tracking an unselected page until it finishes", async () => {
+    let release!: () => void, reads = 0;
+    const second = new Promise<void>(resolve => {release = resolve;});
+    sketchCall = async (purpose, ...args) => {
+      if (purpose === "sketch_read") {
+        const n = ++reads;
+        if (n === 2) await second;
+        return {...pageReading, items:[], lines:[], groups:[], please_check:[],
+          notes:{title:"Reading",blocks:[{type:"text",runs:[textRun("Handwriting " + n)]}]}};
+      }
+      if (purpose === "sketch_locate") return {pictures:[]};
+      return fake()(purpose, ...args);
+    };
+    try {
+      const forms = new FormData();
+      forms.append("course_code","ACC1101"); forms.append("lecture_no","1"); forms.append("lecture_tray","1");
+      for (let i=0; i<2; i++) forms.append("images",new Blob([new Uint8Array(photo)],{type:"image/jpeg"}),"photo"+i+".jpg");
+      const origin = new URL(base).origin;
+      const r = await fetch(origin + "/api/notes",{method:"POST",body:forms}); expect(r.status).toBe(201);
+      const {id} = (await r.json()) as {id:number};
+      const personal = async () => (await (await fetch(origin+"/api/lectures/ACC1101/1/personal-notes")).json()) as {
+        reading_images:boolean; notes:{id:number;sketch_passages:{runs:{text:string}[]}[]}[]
+      };
+      const passages = async () => (await personal()).notes.find(n=>n.id===id)?.sketch_passages.map(p=>p.runs[0].text);
+      await vi.waitFor(async () => expect(await passages()).toEqual(["Handwriting 1"]));
+      expect((await personal()).reading_images).toBe(true);
+      release();
+      await vi.waitFor(async () => expect((await personal()).reading_images).toBe(false));
+      expect((await passages())?.sort()).toEqual(["Handwriting 1","Handwriting 2"]);
+      const state = await (await fetch(origin+"/api/notes/"+id+"/sketch/1")).json();
+      expect(state).toMatchObject({included:true,verified:false,document:{checks:[]}});
+    } finally {release(); sketchCall=fake();}
   });
 });
 
