@@ -691,13 +691,13 @@ for form in A B; do
 done
 ```
 
-The November 16, 2026 review covered 720 questions in seven editions. The revisions affected 380 questions. Comparing the wrong choices within each question, the revised papers contain 717 newly worded alternatives across 368 questions. The private `seven-mocks-quality/final-audit.json` and `seven-mocks-review/fairness-final.json` files identify the exact reviewed files and record the decisions for each question.
+The November 16, 2026 review covered 720 questions in seven editions. The revisions affected 380 questions. Comparing the wrong choices within each question, the revised papers contain 719 newly worded alternatives across 368 questions. The private `seven-mocks-quality/final-audit.json` and `seven-mocks-review/fairness-final.json` files identify the exact reviewed files and record the decisions for each question. The final quality audit has SHA-256 `33abea8a117450b12d3c79a7a9729f7392456c22b09ee063e076a1496b1fda8a`.
 
 | Course | Paper A edition | Paper B edition |
 | --- | --- | --- |
 | Accounting (ACC1101 / ACC1103) | `A-660ff6cb9ce4fb71` | `B-23d781d2a0974e5d` |
 | Management (MGT3204) | `A-5d01de13657b84bb` | `B-7f48cf2dd1484e0c` |
 | Thai (RAM1103) | `A-14677ca5d12a9363` | `B-b5823607d538bab4` (earlier review) |
-| Information Literacy (RAM1132) | `A-ba931e4764fc8049` | `B-b4cc1455f8ab738b` |
+| Information Literacy (RAM1132) | `A-0eaf0224200920ed` | `B-b4cc1455f8ab738b` |
 
 The head-to-head review in the private `mock-exam-comparison` folder identifies its sample and input editions. `mock-exams` retains the original DeepSeek baseline. `mock-exams-a-errata/papers` retains the previous A editions. To publish a validated form, run its import command again without `--dry-run`. Each edit creates a new edition for that course and form.
