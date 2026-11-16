@@ -680,10 +680,10 @@ python3 scripts/codex-mock-bank.py publish --notes-folder "$NOTES_DIR" --output 
 python3 scripts/codex-mock-bank.py check --notes-folder "$NOTES_DIR" --output "$NOTES_DIR/mock-exams-b"
 ```
 
-For the current trial, the private `mock-exams-b-thai-distractors/papers` directory contains the revised RAM1103 Paper B and the other three released B papers. To import that edition, run
+For the current trial, the private `mock-exams-b-thai-three/papers` directory contains the revised RAM1103 Paper B and the other three released B papers. To import that edition, run
 
 ```sh
-B_RELEASE="$NOTES_DIR/mock-exams-b-thai-distractors"
+B_RELEASE="$NOTES_DIR/mock-exams-b-thai-three"
 python3 scripts/codex-mock-bank.py check --notes-folder "$NOTES_DIR" --output "$B_RELEASE" --only RAM1103
 B_PAPERS="$B_RELEASE/papers"
 node --import tsx server/src/importCourseMocks.ts --database "$DB_PATH" --papers "$B_PAPERS" --dry-run
