@@ -224,7 +224,7 @@ export function AnnotatedSummary({ courseCode, sessionNo, source = "summary", fi
     trace.current?.removeAttribute("points");
   }
 
-  function sample(e: PointerEvent<HTMLDivElement>, coalesced = false) {
+  function sample(e: PointerEvent<HTMLElement>, coalesced = false) {
     const g = gesture.current;
     if (!g || g.pointer !== e.pointerId) return;
     const box = layer.current!.getBoundingClientRect();
@@ -249,17 +249,26 @@ export function AnnotatedSummary({ courseCode, sessionNo, source = "summary", fi
     const protectPencilStroke = (event: TouchEvent) => {
       if (event.cancelable && Array.from(event.changedTouches).some(t =>
         (t as Touch & { touchType?: string }).touchType === "stylus") &&
-        !(event.target as Element).closest("button,a,[data-personal-passage]")) event.preventDefault();
+        !(event.target as Element).closest("button,a")) event.preventDefault();
     };
     root.addEventListener("touchstart", protectPencilStroke, { passive: false });
     return () => root.removeEventListener("touchstart", protectPencilStroke);
   }, [summary, readOnly, activeEditor]);
 
-  function beginStroke(e: PointerEvent<HTMLDivElement>) {
+  function beginStroke(e: PointerEvent<HTMLElement>) {
     if (readOnly || busy || pending || editor || menu || e.button !== 0) return;
-    const target = e.target as Element;
+    const reported = e.target as Element, root = content.current;
+    if (!root?.contains(reported)) return;
+    const pressedControl = reported.closest("button, a");
+    // Touch browsers can retarget a stroke in the gap to a nearby note button.
+    const target = summary && e.pointerType === "touch" && pressedControl
+      ? document.elementFromPoint(e.clientX, e.clientY) ?? reported : reported;
+    if (!root.contains(target)) return;
     const control = target.closest("button, a");
-    if (target.closest("[data-personal-passage]") || (control && !control.closest("[data-annotation-text]"))) return;
+    if (control && !control.closest("[data-annotation-text]")) return;
+    // An existing note's slot spans the gap immediately below its sentence.
+    // Accept a summary mark from that gap and leave buttons to their own tap handlers.
+    if (target.closest("[data-personal-passage]") && !(summary && target.closest("[data-annotation-slot]"))) return;
     const type = e.pointerType;
     if (type === "pen") {
       lastPen.current = performance.now();
@@ -276,14 +285,14 @@ export function AnnotatedSummary({ courseCode, sessionNo, source = "summary", fi
     suppressClick.current = false;
     gesture.current = { pointer: e.pointerId, type, points: [], path: "" };
     // A plain tap on a timestamp must still reach that button.
-    if (!control) {
-      e.currentTarget.setPointerCapture(e.pointerId);
+    if (!pressedControl) {
+      root.setPointerCapture(e.pointerId);
       if (type !== "touch") e.preventDefault();
     }
     sample(e);
   }
 
-  function lift(e: PointerEvent<HTMLDivElement>) {
+  function lift(e: PointerEvent<HTMLElement>) {
     const g = gesture.current;
     if (!g || g.pointer !== e.pointerId) return;
     sample(e, true);
@@ -354,7 +363,19 @@ export function AnnotatedSummary({ courseCode, sessionNo, source = "summary", fi
   const passage = editor?.anchor.block_key && content.current
     ? content.current.querySelector<HTMLElement>(`[data-annotation-block="${CSS.escape(editor.anchor.block_key)}"]`)
     : null;
-  return <section ref={section} onPointerDownCapture={e => { lastTool.current = e.pointerType; suppressClick.current = false; }}>
+  // Listen above the inline note portals so retargeted finger strokes reach the reader as well.
+  return <section ref={section} onPointerDownCapture={e => {
+    lastTool.current = e.pointerType; suppressClick.current = false; beginStroke(e);
+  }} onPointerMoveCapture={e => sample(e, true)} onPointerUpCapture={lift}
+    onPointerCancelCapture={e => { if (gesture.current?.pointer === e.pointerId) stopStroke(); }}
+    onLostPointerCapture={e => {
+      if (e.target === content.current && gesture.current?.pointer === e.pointerId) stopStroke();
+    }}
+    onClickCapture={e => {
+      if (suppressClick.current && e.detail > 0 && content.current?.contains(e.target as Node)) {
+        suppressClick.current = false; e.stopPropagation(); e.preventDefault();
+      }
+    }}>
     {!summary && <>
       <button type="button" aria-pressed={pen} disabled={readOnly || busy || !!pending}
         className="inline-flex items-center gap-1.5 min-h-11 px-2 rounded-lg text-sm font-medium"
@@ -375,18 +396,12 @@ export function AnnotatedSummary({ courseCode, sessionNo, source = "summary", fi
         userSelect: !readOnly && !editor && (summary || pen) ? "none" : undefined,
       }}
         onClickCapture={e => {
-          if (suppressClick.current) { suppressClick.current = false; e.stopPropagation(); e.preventDefault(); return; }
           if (readOnly || editor || (e.target as Element).closest("[data-personal-passage], button, a")) return;
           const box = layer.current!.getBoundingClientRect(), x=e.clientX-box.left, y=e.clientY-box.top;
           const hit = placements.find(p => p.rects.some(r => x>=r.left && x<=r.left+r.width && y>=r.top && y<=r.top+r.height+4));
           const row = hit && byId.get(hit.id);
           const button = hit?.slot?.querySelector<HTMLElement>(`button[data-annotation="${hit.id}"]`);
           if (row && button) { e.stopPropagation(); openMenu(row, button); }
-        }}
-        onPointerDown={beginStroke} onPointerMove={e => sample(e, true)} onPointerUp={lift}
-        onPointerCancel={e => { if (gesture.current?.pointer === e.pointerId) stopStroke(); }}
-        onLostPointerCapture={e => {
-          if (e.target === e.currentTarget && gesture.current?.pointer === e.pointerId) stopStroke();
         }}>
         {children}
       </div>

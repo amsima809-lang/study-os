@@ -2,6 +2,10 @@
   display: block;
   margin: .3rem 0 .55rem 1rem;
 }
+[data-annotation-surface="summary"] .lecture-inline-notes {
+  /* Leave room for another underline between the sentence and the first note button. */
+  margin-top: 1rem;
+}
 .lecture-inline-note {
   display: flex;
   align-items: flex-start;

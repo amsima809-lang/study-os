@@ -605,6 +605,8 @@ A saved underline or circle belongs to one student and one source. Each rendered
 
 The summary accepts marks directly. Underlines use the visible character boxes on the marked line, including when the stroke extends into a margin or below the letters. Circles use the characters inside the loop. The selected words show their mark immediately and the handwriting editor opens below the scrollable lecture.
 
+There is space below a sentence for another underline after a note has been added. A touch that begins in that gap uses its actual screen position, even when the browser associates the touch with the nearby yellow note. Tapping the note opens its editing menu.
+
 The iOS reader uses PencilKit when the installed app registers both `AppInk.drawInSheet` and `closeSheet`. A child view controller covers the lower half of the web view so the reading pane above it can still receive touches. Saved PencilKit strokes reopen for editing. Browsers, older app builds and notes previously edited as images use the web canvas in the same lower pane.
 
 Migration 051 identifies the source and records the transcription status. Saving ink stores the original before starting recognition. Successful recognition displays a pale yellow sub-bullet at the marked sentence. Revising the text or ink uses the current revision so an older recognition result cannot overwrite a correction. Search opens the matching annotation in its source.
