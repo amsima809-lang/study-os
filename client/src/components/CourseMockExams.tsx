@@ -97,6 +97,7 @@ export function CourseMockExams({ history, legacy, onReading }: {
             onClick={() => void open(null, course.latest_completed_id)}>{t("paper.review")}</button>}
         </div>
       </Card>)}</div>
+      <p className="text-xs text-[var(--text-secondary)]">{t("quiz.disclaimer")}</p>
     </>}
     <details className="border-t border-[var(--border)] pt-2"><summary className="min-h-11 cursor-pointer py-3 font-medium">{t(history ? "paper.customHistory" : "paper.custom")}</summary>{legacy}</details>
   </div>;
@@ -213,7 +214,7 @@ function PaperRunner({ initial, course, onFinish, exit }: {
         questions: change ? prev.questions.map(q => q.position === change.position ? {...q, ...change} : q) : prev.questions}));
       if (position !== paper.current_position) {
         if (grid.current) grid.current.open = false;
-        requestAnimationFrame(() => { heading.current?.focus(); heading.current?.scrollIntoView({block: "nearest"}); });
+        requestAnimationFrame(() => { heading.current?.focus({preventScroll: true}); heading.current?.scrollIntoView({block: "start"}); });
       }
     } catch {
       try { apply(await getAttempt(initial.id)); } catch { /* Keep the last confirmed state until online. */ }
@@ -248,8 +249,8 @@ function PaperRunner({ initial, course, onFinish, exit }: {
           {t(question.flagged ? "mock.unflag" : "mock.flag")}
         </button>
       </div>
+      <h2 id="paper-question" ref={heading} tabIndex={-1} className="scroll-mt-28 whitespace-pre-line text-lg font-semibold">{question.stem}</h2>
       <StimulusView stimulus={question.stimulus} />
-      <h2 id="paper-question" ref={heading} tabIndex={-1} className="scroll-mt-20 whitespace-pre-line text-lg font-semibold">{question.stem}</h2>
       <fieldset aria-busy={busy} disabled={blocked} aria-labelledby="paper-question" className="space-y-2">{question.options.map((option, i) =>
         <label key={i} className={'flex min-h-11 cursor-pointer items-baseline gap-3 rounded-lg border px-3 py-2 ' +
           (shownChoice === i ? "border-[var(--accent-text)] bg-[var(--accent-light)]" : "border-[var(--border)]")}>

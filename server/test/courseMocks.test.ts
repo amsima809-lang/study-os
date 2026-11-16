@@ -8,6 +8,9 @@ import { createCourseMockRouter, expireCourseMocks } from "../src/courseMocks.js
 import { importCourseMocks, type CourseMockQuestion } from "../src/importCourseMocks.js";
 
 const sizes = { ACC1101: 80, MGT3204: 100, RAM1103: 120, RAM1132: 120 };
+const formats: Record<string, NonNullable<CourseMockQuestion["stimulus"]>["kind"][]> = {
+  ACC1101: ["case","table"], MGT3204: ["case","grid"], RAM1103: ["passage","poster"], RAM1132: ["record","table","passage"],
+};
 const student = "legacy-user-0001", other = "second-student", signedOut = "anonymous";
 let db: DB, server: Server, base: string, now: number;
 type PublicItem = Partial<CourseMockQuestion> & { choice: number | null; flagged: boolean };
@@ -36,7 +39,9 @@ function fixtures() {
       position: index+1, ...sources[index%2], stem: course_code + " example " + index, concept: "Interpreting the example",
       options: ["First response", "Second response", "Third response", "Fourth response"], correct_index: index%4,
       explanation: "Review the principle shown in this example.", evidence_ms: 100, evidence_quote: "Grounded practice example",
-      stimulus: index < 2 ? { id: "case1", kind: "table", title: "Records", text: "", columns: ["Item","Count"], rows:[["A","15"]] } : null,
+      stimulus: index < formats[course_code].length*2 ? { id: "source"+Math.floor(index/2),
+        kind: formats[course_code][Math.floor(index/2)], title: "Records", text: "A record to interpret",
+        columns: ["Item","Count"], rows:[["A","15"]] } : null,
     }));
     return { course_code, form_key: "A", version: edition(questions), model: "deepseek-v4-pro", duration_min: 150,
       question_count, questions, sources, receipts: ["author","blind_review"].map(role => ({ model: "deepseek-v4-pro", response_id: role, role })) };
@@ -94,6 +99,9 @@ describe("private transcript course mock exams", () => {
     broken[3].questions.splice(60, 1);
     expect(() => importCourseMocks(db, broken)).toThrow(/expected 120/);
     expect(count()).toBe(0);
+    broken[3] = structuredClone(papers[3]);
+    broken[3].questions.forEach(q => { q.stimulus=null; });
+    expect(() => importCourseMocks(db, broken)).toThrow(/linked question formats/);
     const result = importCourseMocks(db, papers);
     expect(result.map(p => p.question_count)).toEqual([80,100,120,120]);
     expect(importCourseMocks(db, papers).every(p => p.already_active)).toBe(true);

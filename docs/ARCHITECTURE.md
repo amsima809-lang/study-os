@@ -628,7 +628,7 @@ The Quiz screen opens on **Lecture transcripts** when the student has access to 
 
 Each numbered lecture quiz and the whole-course quiz show their own progress for the signed-in student. **Quizzes taken** counts submitted attempts. **Questions answered correctly** counts each distinct question answered correctly at least once, out of the full pool available to that quiz. The missed count includes distinct questions the student has answered incorrectly and has yet to answer correctly. Starting or resuming a quiz preserves these counts until submission.
 
-Migration 054 links a bank to a shared recording or a student's private transcript. Course aliases resolve through the same recording and programme permissions as the lecture reader. Attempts record the selected question IDs, displayed option order and submitted choices. The API grades those choices on the server and returns the key, explanation, lecture number, timestamp and excerpt once the student submits. An interrupted submission or repeated start resumes the existing attempt.
+Migration 054 links a bank to a shared recording or a student's private transcript. Course aliases resolve through the same recording and programme permissions as the lecture reader. Attempts record the selected question IDs, displayed option order and submitted choices. The server records the first checked choice for each question. Checking returns correctness and completes the quiz when the final answer is checked. A separate explanation request returns the answer key, reasoning and cited passage for that checked question. Review opens with explanations collapsed. Older clients can still submit an entire attempt. An interrupted submission or repeated start resumes the existing attempt.
 
 `scripts/lecture-quiz-bank.py` sends transcripts to DeepSeek V4 Pro offline with `scripts/lecture-quiz-prompt.txt`. The prompt calls for questions on applying a principle, reasoning through a change of circumstances or diagnosing an error. Each question cites the relevant transcript passage. The generator checks the returned model, exact source excerpts, question and choice counts, and duplicate stems. `scripts/lecture-quiz-review.mjs` independently asks V4 Pro to solve the questions using the transcript and shuffled choices. It withholds the proposed key and explanation, flags ambiguous or repetitive items and checks changed questions again. Bank files and reviews live with the private lecture materials outside git.
 
@@ -646,3 +646,25 @@ python3 scripts/lecture-quiz-bank.py import --database "$DB_PATH" --output "$BAN
 Review reports list the slot and reason for each issue. Pass a JSON map of bank names to slot numbers and reasons to `generate --repairs FILE` for a targeted rewrite. Repeat the blind review after editing. Its `--check-only` option verifies the cached answers against the current question content.
 
 The importer validates each bank against the destination transcript inside a transaction. Re-importing identical questions preserves attempts and grades. The importer reports a conflict if a changed bank already has attempts.
+
+## Full-length course mock exams
+
+In **Practice → Mock exam**, students with access to the lecture trial can start, resume, submit and review a course paper. Financial Accounting (ACC1101/ACC1103) has 80 items, Change Management (MGT3204) has 100, and RAM1103 and RAM1132 each have 120. Each item offers four choices. The course lecturers' descriptions of previous sittings informed the counts, linked stimuli and task types. The notes folder contains the source links in `lecture-quiz/mock-exam-benchmarks.md`.
+
+The server sets one deadline 150 minutes from the start. Each choice, flag and question position is saved with its revision. The server grades the saved choices when the deadline arrives, including when the student has closed the app. An early submission uses the same key. Completed attempts keep their paper edition. A retake of the same edition presents the same paper. The personal-materials mock retains its existing settings.
+
+Migration 056 stores immutable question lists, the recordings used, and each student's attempts. Every recording used by a paper must be readable under the student's course code. Edited or removed source material invalidates the corresponding paper. Private stimuli, keys, evidence and provider receipts stay outside Git.
+
+To build an edition, use the private transcript/summary folders and released practice banks with `DEEPSEEK_API_KEY` set. Generation and blind review run in separate model calls. The first reviewer solves shuffled options against the lecture. A second reviewer sees only the question, its choices and the material displayed to the student. Both checks withhold the proposed key. Published questions retain the supporting cue. Use this sequence with the migrated destination database.
+
+```sh
+python3 scripts/mock-exam-bank.py generate --notes-folder "$NOTES_DIR" --output "$NOTES_DIR/mock-exams"
+python3 scripts/mock-exam-bank.py polish --notes-folder "$NOTES_DIR" --output "$NOTES_DIR/mock-exams"
+python3 scripts/mock-exam-bank.py qualify --notes-folder "$NOTES_DIR" --output "$NOTES_DIR/mock-exams"
+python3 scripts/mock-exam-bank.py publish --notes-folder "$NOTES_DIR" --output "$NOTES_DIR/mock-exams"
+python3 scripts/mock-exam-bank.py check --notes-folder "$NOTES_DIR" --output "$NOTES_DIR/mock-exams"
+node --import tsx server/src/importCourseMocks.ts --database "$DB_PATH" --papers "$NOTES_DIR/mock-exams/papers" --dry-run
+node --import tsx server/src/importCourseMocks.ts --database "$DB_PATH" --papers "$NOTES_DIR/mock-exams/papers"
+```
+
+`qualify` repeats the lecture-based review and student-screen audit for revised items. For a correction identified by a reader, `correct --corrections FILE` accepts a lecture-by-lecture list of slots and instructions. Rerun `qualify` after a correction. The publisher verifies current review results for every item. The importer validates all four files before committing the release in one transaction. Reimporting an identical edition preserves student attempts.

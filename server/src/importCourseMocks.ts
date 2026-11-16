@@ -8,6 +8,10 @@ import { z } from "zod";
 import type { DB } from "./db.js";
 
 const counts = { ACC1101: 80, MGT3204: 100, RAM1103: 120, RAM1132: 120 } as const;
+const linkedFormats = {
+  ACC1101: ["case", "table"], MGT3204: ["case", "grid"],
+  RAM1103: ["passage", "poster"], RAM1132: ["record", "table", "passage"],
+} as const;
 const model = "deepseek-v4-pro";
 const nonempty = z.string().trim().min(1);
 const positiveInt = z.number().int().positive();
@@ -59,6 +63,7 @@ function validatePaper(db: DB, raw: unknown) {
   const seen = new Set(practice.map((q) => key(q.stem)));
   const used = new Set<number>();
   const stimuli = new Map<string, string>();
+  const sharedFormats = new Set<string>();
   for (const [index, q] of paper.questions.entries()) {
     const where = `${code}, question ${index + 1}`;
     if (q.position !== index + 1 || seen.has(key(q.stem)) || new Set(q.options.map(key)).size !== 4) {
@@ -81,9 +86,14 @@ function validatePaper(db: DB, raw: unknown) {
       if (previous && (previous !== JSON.stringify(s) || paper.questions[index-1]?.stimulus?.id !== s.id)) {
         throw new Error(where + ": linked stimulus changed or is out of sequence");
       }
+      if (previous) sharedFormats.add(s.kind);
       stimuli.set(s.id, JSON.stringify(s));
     }
   }
+  if (!linkedFormats[code].every((kind) => sharedFormats.has(kind))) {
+    throw new Error(code + ": incomplete course-specific linked question formats");
+  }
+  if (used.size !== recordings.size) throw new Error(code + ": paper omits a released lecture");
   const declared = new Set<number>();
   for (const s of paper.sources) {
     const src = recordings.get(s.session_no);
