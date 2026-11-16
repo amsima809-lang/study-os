@@ -302,15 +302,21 @@ describe("lecture and course transcript quizzes", () => {
     bank(null, Number(privateId), "Own recording");
     const own = await start(2, 1, null, "ACC1103");
     await grade(own, [own.questions[0].id]);
+    const privateCourse = await start(null, 1, pastCourse.id, "ACC1103");
+    expect(privateCourse.questions.every((q) => q.session_no === 2)).toBe(true);
+    await grade(privateCourse, [privateCourse.questions[0].id]);
+    const mixedCourse = await start(null, 1, privateCourse.id, "ACC1103");
+    expect(new Set(mixedCourse.questions.map((q) => q.session_no))).toEqual(new Set([1, 2]));
+    await grade(mixedCourse);
     const before = (await list())[0];
     expect(before.course_quiz.stats).toEqual({
-      quizzes_taken: 1, correct_questions: 25, incorrect_questions: 0, total_questions: 50,
+      quizzes_taken: 3, correct_questions: 50, incorrect_questions: 0, total_questions: 50,
     });
     vi.stubEnv("SHARED_LECTURE_USERS", other);
     const retained = (await list())[0];
     expect(retained.lectures.map((l) => l.no)).toEqual([2]);
     expect(retained.course_quiz.stats).toEqual({
-      quizzes_taken: 0, correct_questions: 0, incorrect_questions: 0, total_questions: 25,
+      quizzes_taken: 1, correct_questions: 24, incorrect_questions: 1, total_questions: 25,
     });
     expect(retained.lectures[0].quizzes[0].stats).toEqual({
       quizzes_taken: 1, correct_questions: 4, incorrect_questions: 1, total_questions: 25,
