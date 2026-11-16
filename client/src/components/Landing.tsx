@@ -14,15 +14,21 @@ import { useT } from "../i18n.tsx";
 import { inNativeApp, APP_STORE_URL } from "../native.ts";
 import { withBase } from "../base.ts";
 import Icon from "./Icon.tsx";
+import { PhoneDemo, type NotesDemo } from "./LandingNotesDemo.tsx";
 
 /**
  * The features with a screenshot, in the order they are shown. The planning comes first (owner
  * 2026-11-16: "the trail planner and auto-scheduling of near-term and long-term activities …
  * that's the killer app"): the whole degree, then the study week, then the rest.
  */
-const SHOWN: { shot: string; key: string; icon: string }[] = [
+const SHOWN: { shot?: string; demo?: NotesDemo; key: string; icon: string }[] = [
   { shot: "trail", key: "trail", icon: "flag" },
   { shot: "studyplan", key: "studyplan", icon: "bookOpen" },
+  // The lecture notes that write themselves (owner 2026-11-16: "these are very unique capabilities"),
+  // right after the planning. Drawn illustrations until real screenshots are taken (LandingNotesDemo.tsx).
+  { demo: "lecture", key: "lecture", icon: "transcript" },
+  { demo: "annotate", key: "annotate", icon: "pen" },
+  { demo: "combine", key: "combine", icon: "notebook" },
   { shot: "exams", key: "exams", icon: "fileEdit" },
   { shot: "timetable", key: "timetable", icon: "calendarRange" },
   { shot: "map", key: "map", icon: "mapPin" },
@@ -122,7 +128,9 @@ export default function LandingMore({ onSignIn }: { onSignIn: () => void }) {
               <h3 className="mt-4 text-xl md:text-2xl font-bold">{t(`land.f.${f.key}`)}</h3>
               <p className="mt-2 text-sm md:text-base" style={{ color: "rgba(255,255,255,0.66)" }}>{t(`land.f.${f.key}.body`)}</p>
             </div>
-            <PhoneShot shot={f.shot} className="w-[230px] md:w-[260px] shrink-0" />
+            {f.demo
+              ? <PhoneDemo kind={f.demo} label={t(`land.f.${f.key}`)} className="w-[230px] md:w-[260px] shrink-0" />
+              : <PhoneShot shot={f.shot!} className="w-[230px] md:w-[260px] shrink-0" />}
           </section>
         ))}
       </div>
