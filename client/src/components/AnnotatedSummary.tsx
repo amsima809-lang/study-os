@@ -406,6 +406,7 @@ export function AnnotatedSummary({ courseCode, sessionNo, source = "summary", fi
     ))}
     {editor && (summary || !pending) && <AnnotationPad point={editor.point}
       reader={summary ? section.current?.closest<HTMLElement>("[data-lecture-reader]") ?? undefined : undefined}
+      nativeDrawingUrl={editor.previous?.native ? url(`/${editor.previous.id}/drawing`) : undefined}
       passage={passage ?? undefined} getMarkRect={markRect} allowFinger={editor.allowFinger}
       saving={busy} saveError={pending ? error : undefined} quote={editor.anchor.quote} accent={editor.accent}
       colors={editor.previous?.colors ?? []} previous={editor.previous && imageURL(editor.previous)}

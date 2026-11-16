@@ -1,6 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { getJSON } from "../api.ts";
 import { useT } from "../i18n.tsx";
+import { closePencilKitSheet, drawInPencilKitSheet, hasNativeInkSheet } from "../nativeInk.ts";
 import type { Drawing } from "../noteDraft.ts";
 import type { Point } from "../summaryAnchors.ts";
 import { HandwritingPad, type HandwritingHandle } from "./HandwritingPad.tsx";
@@ -8,7 +10,7 @@ import { useLectureSplitPane } from "./useLectureSplitPane.ts";
 
 export type AnnotationInk = { png: string; drawing?: string; colors: string[] };
 
-/** The annotation editor is placed at the selected passage. A standalone note fills the viewport. */
+/** Anchor transcript popovers and annotation menus to the passage. Standalone notes fill the viewport. */
 export function InkDialog({ point, anchor, label, cancel, children }: {
   point?: Point;
   anchor?: HTMLElement;
@@ -90,7 +92,76 @@ function InkActions({ cancel, save, disabled, saving, title, done }: {
   </div>;
 }
 
-export function AnnotationPad({ point, quote, previous, colors, accent, save, cancel, reader, passage, getMarkRect, allowFinger = false, saving = false, saveError }: {
+function PencilKitAnnotation({ drawingURL, quote, accent, allowFinger, save, cancel, fallback, saving, saveError }: {
+  drawingURL?: string;
+  quote: string;
+  accent: string;
+  allowFinger: boolean;
+  save: (ink: AnnotationInk) => void;
+  cancel: () => void;
+  fallback: () => void;
+  saving: boolean;
+  saveError?: string;
+}) {
+  const { t, lang } = useT();
+  const doneLabel = lang === "th" ? "บันทึก" : "Save", cancelLabel = t("ink.cancel");
+  const [attempt, setAttempt] = useState(0);
+  const [openingFailed, setOpeningFailed] = useState(false);
+  const [draft, setDraft] = useState<AnnotationInk>();
+  const callbacks = useRef({ save, cancel, fallback, draft });
+  callbacks.current = { save, cancel, fallback, draft };
+
+  useEffect(() => {
+    let active = true, presented = false;
+    const sessionID = crypto.randomUUID();
+    const close = () => { if (presented) closePencilKitSheet(sessionID); };
+    window.addEventListener("pagehide", close);
+    async function open() {
+      await Promise.resolve(); // A StrictMode setup/cleanup should never present a second native view.
+      if (!active) return;
+      let drawing = callbacks.current.draft?.drawing;
+      if (!drawing && drawingURL) {
+        const saved = await getJSON<{ drawing: string | null }>(drawingURL);
+        if (!active) return;
+        if (!saved.drawing) { callbacks.current.fallback(); return; }
+        drawing = saved.drawing;
+      }
+      presented = true;
+      const ink = await drawInPencilKitSheet(sessionID, drawing, { title: quote, done: doneLabel, cancel: cancelLabel, accent }, allowFinger);
+      presented = false;
+      if (!active) return;
+      if (!ink || ink.drawing === drawing) {
+        if (!callbacks.current.draft) callbacks.current.cancel();
+        return;
+      }
+      const next = { drawing: ink.drawing, png: ink.png, colors: ink.colors.length ? ink.colors : [accent] };
+      setDraft(next);
+      callbacks.current.save(next);
+    }
+    void open().catch((e: unknown) => {
+      if (!active) return;
+      if (!callbacks.current.draft && e && typeof e === "object" && "code" in e && e.code === "UNIMPLEMENTED") {
+        callbacks.current.fallback();
+      } else {
+        setOpeningFailed(true);
+      }
+    });
+    return () => { active = false; window.removeEventListener("pagehide", close); close(); };
+  }, [attempt, drawingURL, quote, doneLabel, cancelLabel, accent, allowFinger]);
+
+  const reopen = () => { setOpeningFailed(false); setAttempt(n => n + 1); };
+  return <>
+    <InkActions title={quote} cancel={cancel} saving={saving} disabled={!openingFailed && !draft}
+      done={openingFailed ? t("status.retry") : saving ? t("ink.saving") : doneLabel}
+      save={openingFailed ? reopen : () => { if (draft) save(draft); }}/>
+    {draft && <button type="button" onClick={reopen} disabled={saving} className="min-h-0 flex-1 py-2" aria-label={t("ink.edit")}>
+      <img src={`data:image/png;base64,${draft.png}`} alt="" className="w-full h-full object-contain"/>
+    </button>}
+    {(openingFailed || saveError) && <p role="alert" className="text-sm px-3">{openingFailed ? t("ink.failed") : saveError}</p>}
+  </>;
+}
+
+export function AnnotationPad({ point, quote, previous, nativeDrawingUrl, colors, accent, save, cancel, reader, passage, getMarkRect, allowFinger = false, saving = false, saveError }: {
   reader?: HTMLElement | null;
   passage?: HTMLElement | null;
   getMarkRect?: () => DOMRectReadOnly | null | undefined;
@@ -100,6 +171,7 @@ export function AnnotationPad({ point, quote, previous, colors, accent, save, ca
   point: Point;
   quote: string;
   previous?: string;
+  nativeDrawingUrl?: string;
   colors: string[];
   accent: string;
   save: (ink: AnnotationInk) => void;
@@ -110,15 +182,17 @@ export function AnnotationPad({ point, quote, previous, colors, accent, save, ca
   const [background, setBackground] = useState<HTMLImageElement | null>(null);
   const [failed, setFailed] = useState(false);
   const [hasStroke, setHasStroke] = useState(false);
+  const [webOnly, setWebOnly] = useState(false);
+  const nativeSheet = !!reader && !webOnly && (!previous || !!nativeDrawingUrl) && hasNativeInkSheet();
   useEffect(() => {
-    if (!previous) return;
+    if (!previous || nativeSheet) return;
     let live = true;
     const image = new Image();
     image.onload = () => { if (live) setBackground(image); };
     image.onerror = () => { if (live) setFailed(true); };
     image.src = previous;
     return () => { live = false; };
-  }, [previous]);
+  }, [previous, nativeSheet]);
   const label = th ? "เขียนโน้ต" : "Write a pen note";
   const panel = useRef<HTMLElement>(null);
   useLectureSplitPane(reader, panel, root => getMarkRect?.()
@@ -141,9 +215,12 @@ export function AnnotationPad({ point, quote, previous, colors, accent, save, ca
     aria-busy={saving} tabIndex={-1} className="lecture-note-tray annotation-sheet" onKeyDown={e => {
       if (e.key === "Escape") { e.stopPropagation(); if (!saving) cancel(); }
     }}>
-    {actions}
-    <div className="annotation-sheet-paper" inert={saving}>{writing}</div>
-    {error && <p role="alert" className="text-sm px-3">{error}</p>}
+    {nativeSheet ? <PencilKitAnnotation drawingURL={nativeDrawingUrl} quote={quote} accent={accent} save={save} allowFinger={allowFinger}
+      cancel={cancel} fallback={() => setWebOnly(true)} saving={saving} saveError={saveError}/> : <>
+      {actions}
+      <div className="annotation-sheet-paper" inert={saving}>{writing}</div>
+      {error && <p role="alert" className="text-sm px-3">{error}</p>}
+    </>}
   </section>, document.body);
   return <InkDialog point={point} label={label} cancel={cancel}>
     <blockquote className="text-sm line-clamp-2 border-l-2 pl-2" style={{ borderColor: accent }}>{quote}</blockquote>

@@ -8,20 +8,49 @@ import type { NativeInk } from "./noteDraft.ts";
 
 type InkLabels = { title: string; done: string; cancel: string; anchorX?: number; anchorY?: number; accent?: string };
 
+type Result = { cancelled: true } | { empty: true } | NativeInk;
 type AppInkPlugin = {
-  draw: (o: InkLabels & { drawing?: string }) => Promise<
-    { cancelled: true } | { cancelled?: false; empty: true } | { drawing: string; png: string; width: number; height: number; colors: string[]; strokeBounds?: number[][] }
-  >;
+  draw: (o: InkLabels & { drawing?: string }) => Promise<Result>;
+  drawInSheet: (o: InkLabels & { sessionID: string; drawing?: string; pencilOnly: boolean; allowFinger: boolean }) => Promise<Result>;
+  closeSheet: (o: { sessionID: string }) => Promise<void>;
 };
 
-function plugin(): AppInkPlugin | null {
-  const cap = (window as { Capacitor?: { Plugins?: { AppInk?: AppInkPlugin } } }).Capacitor;
-  return cap?.Plugins?.AppInk ?? null;
+function bridge() {
+  return (window as { Capacitor?: {
+    Plugins?: { AppInk?: AppInkPlugin };
+    PluginHeaders?: { name: string; methods: { name: string }[] }[];
+  } }).Capacitor;
 }
 
 /** True inside an iOS app build that has the PencilKit page. */
 export function hasNativeInk(): boolean {
-  return plugin() !== null;
+  return !!bridge()?.Plugins?.AppInk;
+}
+
+/** Check the methods actually registered by the installed binary, independent of any JS proxy. */
+export function hasNativeInkSheet(): boolean {
+  const cap = bridge();
+  const methods = cap?.PluginHeaders?.find(header => header.name === "AppInk")?.methods;
+  return !!cap?.Plugins?.AppInk && !!methods?.some(m => m.name === "drawInSheet") && methods.some(m => m.name === "closeSheet");
+}
+
+function inkResult(result: Result): NativeInk | null | undefined {
+  if ("empty" in result) return null;
+  if ("cancelled" in result) return undefined;
+  if (!result.png) throw new Error("MISSING_INK_IMAGE");
+  return { drawing: result.drawing, png: result.png, colors: result.colors ?? [], strokeBounds: result.strokeBounds };
+}
+
+export async function drawInPencilKitSheet(sessionID: string, drawing: string | undefined, labels: InkLabels, allowFinger: boolean) {
+  const p = bridge()?.Plugins?.AppInk;
+  if (!p) throw Object.assign(new Error("PencilKit unavailable"), { code: "UNIMPLEMENTED" });
+  let pencilOnly = false;
+  try { pencilOnly = localStorage.getItem("studyos.penOnly") === "1"; } catch { /* storage unavailable */ }
+  return inkResult(await p.drawInSheet({ sessionID, drawing, pencilOnly, allowFinger, ...labels }));
+}
+
+export function closePencilKitSheet(sessionID: string) {
+  void bridge()?.Plugins?.AppInk?.closeSheet?.({ sessionID })?.catch(() => {});
 }
 
 /** The selected pen colour is shared by full-page notes and margin annotations. */
@@ -37,13 +66,9 @@ export async function drawWithPencilKit(
   previous: NativeInk | undefined,
   labels: InkLabels,
 ): Promise<NativeInk | null | undefined> {
-  const p = plugin();
+  const p = bridge()?.Plugins?.AppInk;
   if (!p) return undefined;
-  const r = await p.draw({ drawing: previous?.drawing, ...labels });
-  if ("cancelled" in r && r.cancelled) return undefined;
-  if ("empty" in r) return null;
-  if (!("png" in r) || !r.png) return undefined;
-  return { drawing: r.drawing, png: r.png, colors: r.colors ?? [], strokeBounds: r.strokeBounds };
+  return inkResult(await p.draw({ drawing: previous?.drawing, ...labels }));
 }
 
 /** The ink's picture as a file to send with the note. */

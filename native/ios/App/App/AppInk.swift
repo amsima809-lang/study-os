@@ -20,9 +20,28 @@ public class AppInkPlugin: CAPPlugin, CAPBridgedPlugin {
     public let jsName = "AppInk"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "draw", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "drawInSheet", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "closeSheet", returnType: CAPPluginReturnPromise),
     ]
+    private var sheet: (id: String, page: InkPageController)?
 
     @objc func draw(_ call: CAPPluginCall) {
+        presentInk(call, sheetID: nil)
+    }
+
+    @objc func drawInSheet(_ call: CAPPluginCall) {
+        guard let id = call.getString("sessionID"), !id.isEmpty else { call.reject("NO_SESSION"); return }
+        presentInk(call, sheetID: id)
+    }
+
+    @objc func closeSheet(_ call: CAPPluginCall) {
+        DispatchQueue.main.async { [weak self] in
+            if let sheet = self?.sheet, sheet.id == call.getString("sessionID") { sheet.page.cancelTapped() }
+            call.resolve()
+        }
+    }
+
+    private func presentInk(_ call: CAPPluginCall, sheetID: String?) {
         var drawing = PKDrawing()
         if let b64 = call.getString("drawing"), !b64.isEmpty {
             guard let data = Data(base64Encoded: b64), let saved = try? PKDrawing(data: data) else {
@@ -38,16 +57,44 @@ public class AppInkPlugin: CAPPlugin, CAPBridgedPlugin {
         let markY = call.getDouble("anchorY")
         let accent = call.getString("accent")
         DispatchQueue.main.async { [weak self] in
-            guard let presenter = self?.bridge?.viewController else {
+            guard let self, let presenter = self.bridge?.viewController, let web = self.bridge?.webView else {
                 call.reject("NO_VIEW")
                 return
             }
-            let compact = markX != nil && markY != nil
-            let page = InkPageController(drawing: drawing, title: title, done: done, cancel: cancel, compact: compact, accent: accent) { result in
+            let compact = sheetID != nil || (markX != nil && markY != nil)
+            var policy: PKCanvasViewDrawingPolicy = UIDevice.current.userInterfaceIdiom == .pad ? .default : .anyInput
+            if sheetID != nil {
+                if call.getBool("pencilOnly") == true { policy = .pencilOnly }
+                else if call.getBool("allowFinger") == true { policy = .anyInput }
+            }
+            let page = InkPageController(drawing: drawing, title: title, done: done, cancel: cancel, compact: compact,
+                                         embedded: sheetID != nil, policy: policy, accent: accent) { [weak self] result in
+                if let sheetID, self?.sheet?.id == sheetID { self?.sheet = nil }
                 call.resolve(result)
             }
             let nav = UINavigationController(rootViewController: page)
-            if let x = markX, let y = markY, let web = self?.bridge?.webView {
+            if let sheetID {
+                self.sheet?.page.cancelTapped()
+                self.sheet = (sheetID, page)
+                // Containment keeps touches and accessibility in the visible half of the web reader.
+                presenter.addChild(nav)
+                nav.view.translatesAutoresizingMaskIntoConstraints = false
+                nav.view.layer.cornerRadius = 14
+                nav.view.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
+                nav.view.clipsToBounds = true
+                presenter.view.addSubview(nav.view)
+                NSLayoutConstraint.activate([
+                    nav.view.leadingAnchor.constraint(equalTo: web.leadingAnchor),
+                    nav.view.trailingAnchor.constraint(equalTo: web.trailingAnchor),
+                    nav.view.topAnchor.constraint(equalTo: web.centerYAnchor),
+                    nav.view.bottomAnchor.constraint(equalTo: web.bottomAnchor),
+                ])
+                nav.didMove(toParent: presenter)
+                presenter.view.layoutIfNeeded()
+                page.activateCanvas()
+                return
+            }
+            if let x = markX, let y = markY {
                 nav.modalPresentationStyle = .popover
                 nav.preferredContentSize = CGSize(width: 390, height: 260)
                 let popover = nav.popoverPresentationController
@@ -72,12 +119,16 @@ final class InkPageController: UIViewController, PKCanvasViewDelegate, PKToolPic
     private let finish: ([String: Any]) -> Void
     private var finished = false
     private let compact: Bool
+    private let embedded: Bool
+    private let drawingPolicy: PKCanvasViewDrawingPolicy
     private let initialColor: UIColor?
 
-    init(drawing: PKDrawing, title: String, done: String, cancel: String, compact: Bool, accent: String?, finish: @escaping ([String: Any]) -> Void) {
+    init(drawing: PKDrawing, title: String, done: String, cancel: String, compact: Bool, embedded: Bool, policy: PKCanvasViewDrawingPolicy, accent: String?, finish: @escaping ([String: Any]) -> Void) {
         self.startDrawing = drawing
         self.finish = finish
         self.compact = compact
+        self.embedded = embedded
+        self.drawingPolicy = policy
         if let accent, accent.hasPrefix("#"), accent.count == 7, let rgb = UInt32(accent.dropFirst(), radix: 16) {
             self.initialColor = UIColor(red: CGFloat((rgb >> 16) & 255) / 255, green: CGFloat((rgb >> 8) & 255) / 255, blue: CGFloat(rgb & 255) / 255, alpha: 1)
         } else {
@@ -106,10 +157,7 @@ final class InkPageController: UIViewController, PKCanvasViewDelegate, PKToolPic
         canvas.delegate = self
         canvas.alwaysBounceVertical = !compact
         canvas.backgroundColor = .systemBackground
-        // .default follows the iPad's own "Only Draw with Apple Pencil" setting (on once a Pencil is
-        // paired), so a palm or finger scrolls and only the Pencil draws; the tool picker's menu can
-        // switch finger drawing on. On an iPhone, a finger draws.
-        canvas.drawingPolicy = UIDevice.current.userInterfaceIdiom == .pad ? .default : .anyInput
+        canvas.drawingPolicy = drawingPolicy
         let tool = PKInkingTool(.pen, color: initialColor ?? .label, width: 3)
         canvas.tool = tool
         if initialColor != nil { picker.selectedTool = tool }
@@ -120,6 +168,10 @@ final class InkPageController: UIViewController, PKCanvasViewDelegate, PKToolPic
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        activateCanvas()
+    }
+
+    func activateCanvas() {
         canvas.becomeFirstResponder() // the tool picker shows for the canvas while it is first responder
         growPage()
     }
@@ -131,9 +183,10 @@ final class InkPageController: UIViewController, PKCanvasViewDelegate, PKToolPic
 
     /// The page is always at least two screens tall, and a screen longer than the ink.
     private func growPage() {
-        let width = canvas.bounds.width
-        guard width > 0 else { return }
-        let inkBottom = canvas.drawing.bounds.isNull ? 0 : canvas.drawing.bounds.maxY
+        guard canvas.bounds.width > 0 else { return }
+        let ink = canvas.drawing.bounds
+        let width = embedded && !ink.isNull ? max(canvas.bounds.width, ink.maxX + 4) : canvas.bounds.width
+        let inkBottom = ink.isNull ? 0 : ink.maxY
         let height = compact ? max(canvas.bounds.height, inkBottom + 4) : max(canvas.bounds.height * 2, inkBottom + canvas.bounds.height)
         if abs(canvas.contentSize.height - height) > 1 || canvas.contentSize.width != width {
             canvas.contentSize = CGSize(width: width, height: height)
@@ -144,19 +197,20 @@ final class InkPageController: UIViewController, PKCanvasViewDelegate, PKToolPic
         growPage()
     }
 
-    @objc private func cancelTapped() {
+    @objc fileprivate func cancelTapped() {
         close(["cancelled": true])
     }
 
     @objc private func doneTapped() {
         let drawing = canvas.drawing
+        if embedded && drawing == startDrawing { cancelTapped(); return }
         if drawing.strokes.isEmpty {
             close(["cancelled": false, "empty": true])
             return
         }
         // The picture: the full page width, from the top to just under the ink, on white,
         // drawn as in light mode (PencilKit shows black ink as white in dark mode).
-        let width = canvas.bounds.width
+        let width = embedded ? max(canvas.bounds.width, drawing.bounds.maxX + 4) : canvas.bounds.width
         let rect = CGRect(x: 0, y: 0, width: width, height: drawing.bounds.maxY + 24)
         var image = UIImage()
         UITraitCollection(userInterfaceStyle: .light).performAsCurrent {
@@ -207,8 +261,17 @@ final class InkPageController: UIViewController, PKCanvasViewDelegate, PKToolPic
         guard !finished else { return }
         finished = true
         picker.setVisible(false, forFirstResponder: canvas)
+        picker.removeObserver(canvas)
+        picker.removeObserver(self)
         canvas.resignFirstResponder()
-        dismiss(animated: true) { [finish] in finish(result) }
+        if embedded, let nav = navigationController {
+            nav.willMove(toParent: nil)
+            nav.view.removeFromSuperview()
+            nav.removeFromParent()
+            finish(result)
+        } else {
+            dismiss(animated: true) { [finish] in finish(result) }
+        }
     }
 
     private static func hex(_ color: UIColor) -> String {
