@@ -680,14 +680,24 @@ python3 scripts/codex-mock-bank.py publish --notes-folder "$NOTES_DIR" --output 
 python3 scripts/codex-mock-bank.py check --notes-folder "$NOTES_DIR" --output "$NOTES_DIR/mock-exams-b"
 ```
 
-For the current trial, the private `mock-exams-b-thai-three/papers` directory contains the revised RAM1103 Paper B and the other three released B papers. To import that edition, run
+The current trial papers are in the private `seven-mocks-release/A/papers` and `seven-mocks-release/B/papers` directories. Each directory holds one complete four-course set. The B set includes the previously reviewed RAM1103 edition. The per-choice review is in `seven-mocks-quality`, and the item-by-item answer checks are in `seven-mocks-review`. To validate both sets against the destination database, run
 
 ```sh
-B_RELEASE="$NOTES_DIR/mock-exams-b-thai-three"
-python3 scripts/codex-mock-bank.py check --notes-folder "$NOTES_DIR" --output "$B_RELEASE" --only RAM1103
-B_PAPERS="$B_RELEASE/papers"
-node --import tsx server/src/importCourseMocks.ts --database "$DB_PATH" --papers "$B_PAPERS" --dry-run
-node --import tsx server/src/importCourseMocks.ts --database "$DB_PATH" --papers "$B_PAPERS"
+python3 scripts/mock-exam-bank.py check --notes-folder "$NOTES_DIR" --output "$NOTES_DIR/seven-mocks-release/A"
+python3 scripts/codex-mock-bank.py check --notes-folder "$NOTES_DIR" --output "$NOTES_DIR/seven-mocks-release/B"
+for form in A B; do
+  node --import tsx server/src/importCourseMocks.ts --database "$DB_PATH" \
+    --papers "$NOTES_DIR/seven-mocks-release/$form/papers" --dry-run
+done
 ```
 
-The head-to-head review in the private `mock-exam-comparison` folder identifies its sample and input editions. `mock-exams` retains the original DeepSeek baseline. Corrections to A are released from `mock-exams-a-errata/papers` with the same importer. Each edit creates a new edition for that course and form.
+The November 16, 2026 review covered 720 questions in seven editions. The revisions affected 380 questions. Comparing the wrong choices within each question, the revised papers contain 717 newly worded alternatives across 368 questions. The private `seven-mocks-quality/final-audit.json` and `seven-mocks-review/fairness-final.json` files identify the exact reviewed files and record the decisions for each question.
+
+| Course | Paper A edition | Paper B edition |
+| --- | --- | --- |
+| Accounting (ACC1101 / ACC1103) | `A-660ff6cb9ce4fb71` | `B-23d781d2a0974e5d` |
+| Management (MGT3204) | `A-5d01de13657b84bb` | `B-7f48cf2dd1484e0c` |
+| Thai (RAM1103) | `A-14677ca5d12a9363` | `B-b5823607d538bab4` (earlier review) |
+| Information Literacy (RAM1132) | `A-ba931e4764fc8049` | `B-b4cc1455f8ab738b` |
+
+The head-to-head review in the private `mock-exam-comparison` folder identifies its sample and input editions. `mock-exams` retains the original DeepSeek baseline. `mock-exams-a-errata/papers` retains the previous A editions. To publish a validated form, run its import command again without `--dry-run`. Each edit creates a new edition for that course and form.
