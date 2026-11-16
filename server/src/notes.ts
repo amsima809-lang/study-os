@@ -29,10 +29,23 @@ import {
 } from "./ai.js";
 
 // Keep uploads in memory so we can resize before writing to disk.
+/** Photos one note may carry (a run of lecture slides is often more than five), plus a handwritten page. */
+export const MAX_NOTE_PHOTOS = 20;
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 12 * 1024 * 1024, fieldSize: 3_000_000, files: 5 },
+  limits: { fileSize: 12 * 1024 * 1024, fieldSize: 3_000_000, files: MAX_NOTE_PHOTOS + 1 },
 });
+/** The upload step, answering too many or too large files with a clear message instead of a server error. */
+const noteImages: import("express").RequestHandler = (req, res, next) =>
+  upload.array("images", MAX_NOTE_PHOTOS + 1)(req, res, (err?: unknown) => {
+    if (!err) return next();
+    const code = err instanceof multer.MulterError ? err.code : "";
+    if (code === "LIMIT_FILE_COUNT" || code === "LIMIT_UNEXPECTED_FILE") {
+      return res.status(400).json({ error: `แนบรูปได้สูงสุด ${MAX_NOTE_PHOTOS} รูปต่อโน้ต`, code: "TOO_MANY_PHOTOS" });
+    }
+    if (code === "LIMIT_FILE_SIZE") return res.status(400).json({ error: "รูปใหญ่เกิน 12 MB", code: "PHOTO_TOO_LARGE" });
+    next(err);
+  });
 
 // Anthropic recommends the long edge be <= 1568px.
 const MAX_EDGE = 1568;
@@ -324,7 +337,7 @@ export function createNotesRouter(db: DB, onLectureChanged?: LectureChanged, sta
 
   // Create a note: text and/or images -> optionally AI summary.
   // A drawn page stays in its original format. Its owner can request the sketch reading after saving.
-  router.post("/notes", upload.array("images", 5), async (req, res) => {
+  router.post("/notes", noteImages, async (req, res) => {
     const unattached: string[] = [];
     try {
       const courseCode = (req.body.course_code as string) || null;

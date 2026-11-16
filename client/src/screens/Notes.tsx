@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useContext, useEffect, useRef, useState } from "react";
 import { useT } from "../i18n.tsx";
 import {
   getJSON,
@@ -17,7 +17,10 @@ import { setUnsaved } from "../unsaved.ts";
 import { consumeNoteFormRequest } from "../shareIntake.ts";
 import { formatDate, formatTime } from "../format.ts";
 import { PrivateNoteSummary } from "../components/PrivateNoteSummary.tsx";
-import { AddButton, Card, ConfirmDialog, ErrorBox, Loading } from "../components/ui.tsx";
+import { AddButton, Card, ConfirmDialog, ErrorBox, LayoutContext, Loading } from "../components/ui.tsx";
+
+/** Photos one note may carry: the same number as MAX_NOTE_PHOTOS in server/src/notes.ts. */
+const MAX_NOTE_PHOTOS = 20;
 import { DRAFT_CHANGED, clearNoteDraft, isEmptyDraft, loadNoteDraft, noteDraftKey, saveNoteDraft, type Drawing, type NoteDraft } from "../noteDraft.ts";
 import { SketchNotes } from "../components/SketchNotes.tsx";
 import { Markdown } from "../components/Markdown.tsx";
@@ -49,6 +52,7 @@ type View =
   | { screen: "add" };
 
 export default function Notes() {
+  const layout = useContext(LayoutContext);
   const { t } = useT();
   // Opens straight on the form when something was just shared into the app.
   const [view, setView] = useState<View>(() => (consumeNoteFormRequest() ? { screen: "add" } : { screen: "courses" }));
@@ -85,13 +89,19 @@ export default function Notes() {
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{t("notes.title")}</h1>
         {view.screen !== "add" && (
-          <AddButton
-            label={t("notes.addShort")}
-            onClick={() => {
-              setResult(null);
-              setView({ screen: "add" });
-            }}
-          />
+          <>
+            {/* On a phone the main button floats at the bottom; this one at the top is the same action, for convenience (owner 2026-11-16). */}
+            {layout === "phone" && (
+              <AddButton inline label={t("notes.addShort")} onClick={() => { setResult(null); setView({ screen: "add" }); }} />
+            )}
+            <AddButton
+              label={t("notes.addShort")}
+              onClick={() => {
+                setResult(null);
+                setView({ screen: "add" });
+              }}
+            />
+          </>
         )}
       </div>
 
@@ -848,7 +858,12 @@ function AddNote({
   function addFiles(list: FileList | File[] | null) {
     // Photos only: this is the same limit as the camera and gallery buttons.
     const images = Array.from(list ?? []).filter((f) => f.type.startsWith("image/"));
-    if (images.length) setFiles((prev) => [...prev, ...images]);
+    if (!images.length) return;
+    setFiles((prev) => {
+      const room = MAX_NOTE_PHOTOS - prev.length;
+      if (images.length > room) setError(t("notes.tooManyPhotos", { n: MAX_NOTE_PHOTOS }));
+      return room > 0 ? [...prev, ...images.slice(0, room)] : prev;
+    });
   }
 
   // On a computer: drop photos onto the form, or paste one (a screenshot, a copied image).
@@ -1067,6 +1082,8 @@ function AddNote({
             type="file"
             accept="image/*"
             capture="environment"
+            // A phone opens the camera; a computer opens a file picker, where several can be chosen.
+            multiple
             className="hidden"
             onChange={(e) => {
               addFiles(e.target.files);

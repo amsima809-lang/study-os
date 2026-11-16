@@ -115,8 +115,8 @@ export const LayoutContext = createContext<Layout>("sidebar");
  *   the thumb and in view however far the page is scrolled;
  * - on wider layouts it sits where the screen puts it (top right), with its label.
  */
-export function AddButton({ label, onClick, expanded }: { label: string; onClick: () => void; expanded?: boolean }) {
-  const floating = useContext(LayoutContext) === "phone";
+export function AddButton({ label, onClick, expanded, inline }: { label: string; onClick: () => void; expanded?: boolean; /** Never float, even on a phone (a second, in-page copy of the main action). */ inline?: boolean }) {
+  const floating = useContext(LayoutContext) === "phone" && !inline;
   const button = (
     <button
       onClick={onClick}
