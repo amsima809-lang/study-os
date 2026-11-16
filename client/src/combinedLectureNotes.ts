@@ -1,3 +1,5 @@
+import type { AnnotationSource } from "./summaryAnchors.ts";
+
 export type InkRun = { text: string; color: string | null };
 export type PersonalPassage = { kind: "mine"; id: number; source: "annotation" | "note"; runs: InkRun[] };
 type Block = { kind: "summary"; text: string } | PersonalPassage;
@@ -35,7 +37,7 @@ export type PersonalNote = {
 };
 export type LectureSources = {
   notes: PersonalNote[];
-  annotations: { id: number; quote: string; runs: InkRun[]; image_url: string }[];
+  annotations: { id: number; source?: AnnotationSource; quote: string; runs: InkRun[]; image_url: string }[];
 };
 
 function signature(runs: InkRun[]) {

@@ -8,13 +8,15 @@ import { HandwritingPad, type HandwritingHandle } from "./HandwritingPad.tsx";
 export type AnnotationInk = { png: string; drawing?: string; colors: string[] };
 
 /** The annotation editor is placed at the selected passage. A standalone note fills the viewport. */
-function InkDialog({ point, label, cancel, children }: {
+export function InkDialog({ point, anchor, label, cancel, children }: {
   point?: Point;
+  anchor?: HTMLElement;
   label: string;
   cancel: () => void;
   children: ReactNode;
 }) {
   const modal = useRef<HTMLDialogElement>(null);
+  const placeDialog = useRef<() => void>(null);
   useLayoutEffect(() => {
     const dialog = modal.current!;
     dialog.showModal();
@@ -22,18 +24,21 @@ function InkDialog({ point, label, cancel, children }: {
       const viewport = window.visualViewport;
       const x = viewport?.offsetLeft ?? 0, y = viewport?.offsetTop ?? 0;
       const width = viewport?.width ?? innerWidth, height = viewport?.height ?? innerHeight;
-      if (!point) {
+      if (!point && !anchor) {
         Object.assign(dialog.style, { left: `${x}px`, top: `${y}px`, width: `${width}px`, height: `${height}px` });
         return;
       }
       dialog.style.maxWidth = `${Math.max(1, width - 16)}px`;
       dialog.style.maxHeight = `${Math.max(1, height - 16)}px`;
-      const left = Math.min(point.x, x + width - dialog.offsetWidth - 8);
-      const below = point.y + 12;
-      const top = below + dialog.offsetHeight + 8 < y + height ? below : point.y - dialog.offsetHeight - 12;
+      const rect = anchor?.isConnected ? anchor.getBoundingClientRect() : undefined;
+      const target = rect ? { x: rect.left, y: rect.bottom } : point!;
+      const left = Math.min(target.x, x + width - dialog.offsetWidth - 8);
+      const below = target.y + 8;
+      const top = below + dialog.offsetHeight + 8 < y + height ? below : (rect?.top ?? target.y) - dialog.offsetHeight - 8;
       dialog.style.left = `${Math.max(x + 8, left)}px`;
       dialog.style.top = `${Math.max(y + 8, Math.min(y + height - dialog.offsetHeight - 8, top))}px`;
     };
+    placeDialog.current = place;
     place();
     const resize = new ResizeObserver(place);
     resize.observe(dialog);
@@ -41,20 +46,27 @@ function InkDialog({ point, label, cancel, children }: {
     window.visualViewport?.addEventListener("resize", place);
     window.visualViewport?.addEventListener("scroll", place);
     return () => {
+      placeDialog.current = null;
       resize.disconnect();
       window.removeEventListener("resize", place);
       window.visualViewport?.removeEventListener("resize", place);
       window.visualViewport?.removeEventListener("scroll", place);
       dialog.close();
     };
-  }, [point]);
+  }, [point, anchor]);
+  useLayoutEffect(() => { placeDialog.current?.(); });
   return createPortal(<dialog ref={modal} aria-label={label}
     onCancel={e => { e.preventDefault(); cancel(); }}
-    className={point
+    onClick={e => {
+      if (!anchor || e.target !== e.currentTarget) return;
+      const box = e.currentTarget.getBoundingClientRect();
+      if (e.clientX < box.left || e.clientX > box.right || e.clientY < box.top || e.clientY > box.bottom) cancel();
+    }}
+    className={point || anchor
       ? "fixed m-0 p-3 rounded-xl border shadow-lg overflow-auto w-[22rem] space-y-2"
       : "fixed m-0 max-w-none max-h-none flex flex-col overflow-hidden overscroll-none"}
     style={{ background: "var(--bg-surface)", color: "var(--text-primary)", borderColor: "var(--border)",
-      ...(!point && { padding: "env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)" }) }}>
+      ...(!point && !anchor && { padding: "env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)" }) }}>
     {children}
   </dialog>, document.body);
 }
@@ -106,6 +118,7 @@ export function AnnotationPad({ point, quote, previous, colors, accent, save, ca
     {failed && <p role="alert">{th ? "เปิดลายมือเดิมไม่สำเร็จ" : "Couldn’t open the saved ink."}</p>}
     <InkActions cancel={cancel} disabled={!hasStroke && !background} done={th ? "บันทึก" : "Save"}
       save={() => {
+        if (!hasStroke && background) { cancel(); return; }
         if (pad.current) save({ png: pad.current.png(), colors: [...new Set([...colors, ...pad.current.colors()])] });
       }}/>
   </InkDialog>;

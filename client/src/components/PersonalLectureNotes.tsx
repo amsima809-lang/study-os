@@ -6,7 +6,7 @@ import { readableInk } from "../theme.ts";
 import { type InkRun, type PersonalPassage, type LectureSources } from "../combinedLectureNotes.ts";
 import { Card, ErrorBox, Loading } from "./ui.tsx";
 import { SketchNotes } from "./SketchNotes.tsx";
-import { OriginalPageThumbnail } from "./OriginalPageThumbnail.tsx";
+import type { AnnotationSource } from "../summaryAnchors.ts";
 import "./createdLectureNotes.css";
 
 export function usePersonalLectureNotes(path: string | null, revision: number) {
@@ -47,25 +47,33 @@ export function SavedPersonalPassage({ passage }: { passage: PersonalPassage }) 
   </aside>;
 }
 
-export function PersonalLectureNotes({ result, combined, placedNotes }: {
+export function PersonalLectureNotes({ result, combined, placedNotes, onShowAnnotation }: {
   result: ReturnType<typeof usePersonalLectureNotes>;
   combined: boolean;
   placedNotes?: Set<number>;
+  onShowAnnotation: (source: AnnotationSource, id: number) => void;
 }) {
   const { t, lang } = useT();
   const th = lang === "th";
   const { data, failed, retry } = result;
   if (failed) return <ErrorBox onRetry={retry}/>;
   if (!data) return <Loading>{t("status.connecting")}</Loading>;
-  // The combined reader already shows the original ink, transcription and editing tools on the summary.
-  const annotations = combined ? [] : data.annotations;
+  if (combined && !data.notes.length) return null;
   return <section id="lecture-personal-notes" tabIndex={-1} className="space-y-3">
     <h3 className="font-semibold">{t("notes.title")}</h3>
-    {!data.notes.length && !annotations.length && <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-      {combined && data.annotations.length
-        ? th ? "โน้ตลายมืออยู่บนสรุปด้านบน" : "Your pen notes appear on the summary above."
-        : th ? "ยังไม่มีโน้ตสำหรับบทเรียนนี้" : "You haven’t added any notes to this lecture yet."}
+    {!data.notes.length && !data.annotations.length && <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+      {th ? "ยังไม่มีโน้ตสำหรับบทเรียนนี้" : "You haven’t added any notes to this lecture yet."}
     </p>}
+    {!combined && (["summary", "transcript"] as const).map(source => {
+      const first = data.annotations.find(a => (a.source ?? "summary") === source);
+      if (!first) return null;
+      return <button key={source} type="button" className="block min-h-11 text-sm underline"
+        style={{ color: "var(--accent-text)" }} onClick={() => onShowAnnotation(source, first.id)}>
+        {source === "summary"
+          ? th ? "ดูโน้ตที่จดบนสรุป" : "View annotations in the summary"
+          : th ? "ดูโน้ตที่จดบนคำบรรยาย" : "View annotations in the transcript"}
+      </button>;
+    })}
     {data.notes.map(note => {
       const title = note.title || (th ? "โน้ตของฉัน" : "My note") + " #" + note.id;
       const handwritten = note.handwriting_image_index != null;
@@ -86,11 +94,5 @@ export function PersonalLectureNotes({ result, combined, placedNotes }: {
         )}</div>}
       </Card>;
     })}
-    {annotations.map(annotation => <Card key={annotation.id}>
-      <h4 className="font-medium">{th ? "โน้ตลายมือของฉัน" : "My pen note"}</h4>
-      <blockquote className="my-1 text-sm" style={{ color: "var(--text-secondary)" }}>“{annotation.quote}”</blockquote>
-      <OriginalPageThumbnail src={withBase(annotation.image_url)}/>
-      <InkText runs={annotation.runs}/>
-    </Card>)}
   </section>;
 }

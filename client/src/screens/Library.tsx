@@ -203,9 +203,9 @@ export function LectureLinks({ onRead, initialCourse }: { onRead: (t: OpenLectur
       {loadFailed && <ErrorBox onRetry={load}>{t("lib.loadFailed")}</ErrorBox>}
       <p className="text-xs mt-0.5 mb-2" style={{ color: "var(--text-tertiary)" }}>{t("lib.lecturesHint")}</p>
 
-      <AnnotationSearch onOpen={(code, no, annotationId) => {
+      <AnnotationSearch onOpen={(code, no, annotationId, source) => {
         const lecture = courses.find((c) => c.code === code)?.lectures.find((l) => l.no === no);
-        if (lecture?.has_summary) onRead({ code, lecture, tab: "summary", annotationId });
+        if (lecture && (source === "transcript" ? lecture.transcript : lecture.has_summary)) onRead({ code, lecture, tab: source, annotationId });
       }}/>
 
       <ul className="space-y-1.5">

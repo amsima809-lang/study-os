@@ -166,8 +166,9 @@ type Props = {
  */
 export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, onChange, onPen, compact = false, accent = COLORS[0], background }, ref) => {
   const { lang, t } = useT();
-  const logicalWidth = compact ? 680 : CANVAS_W;
-  const pageHeight = compact ? 260 : CANVAS_H;
+  // A web edit of a PencilKit annotation paints on its exact saved image, including its original aspect ratio.
+  const logicalWidth = compact ? background?.naturalWidth || 680 : CANVAS_W;
+  const pageHeight = compact ? background?.naturalHeight || 260 : CANVAS_H;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const [viewportPaperHeight, setViewportPaperHeight] = useState(0);
@@ -309,6 +310,7 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
     const sincePen = Date.now() - lastPenAt.current;
     if (palm || penDown.current || sincePen < (penOnly ? 1000 : 400)) return;
     touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (compact) return;
     if (touches.current.size === 2) {
       // A second finger means zoom, not a line: drop the stroke the first finger began.
       if (activePointer.current !== null) {
@@ -331,7 +333,7 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
     const dy = e.clientY - prev.y;
     touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (touches.current.size === 1) {
-      if (penOnly) return; // a lone touch is the palm, or a finger resting: it moves nothing
+      if (penOnly && !compact) return; // a lone touch is the palm, or a finger resting: it moves nothing
       sc.scrollLeft -= dx;
       sc.scrollTop -= dy;
     } else if (touches.current.size === 2 && pinch.current) {
@@ -356,7 +358,7 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
 
   function down(e: React.PointerEvent) {
     if (e.button !== 0) return;
-    if (e.pointerType === "touch") { if (!compact) touchDown(e); return; }
+    if (e.pointerType === "touch") return touchDown(e);
     if (!compact && e.pointerType === "pen") sawPen();
     // The pen (or mouse) always wins over fingers already on the glass.
     touches.current.clear();
@@ -369,7 +371,7 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
     activePointer.current = e.pointerId;
     drawing.current = true;
     const p = toCanvas(e);
-    const w = tool === "eraser" ? ERASER_WIDTH : tool === "highlighter" ? HL_WIDTH : width;
+    const w = (tool === "eraser" ? ERASER_WIDTH : tool === "highlighter" ? HL_WIDTH : width) * (compact ? logicalWidth / 680 : 1);
     const col = tool === "highlighter" ? hlColor : color;
     current.current = { tool, color: col, width: w, points: [p] };
     last.current = p;
@@ -452,6 +454,12 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
   return (
     <div className={compact ? "overflow-hidden rounded border" : "flex flex-col flex-1 min-h-0"} style={{ borderColor: "var(--border)" }}>
       {/* toolbar */}
+      {compact && <div className="flex gap-1 px-1 border-b" style={{ borderColor: "var(--border)" }}>
+        <button type="button" title={t("draw.pen")} aria-pressed={tool === "pen"} onClick={() => setTool("pen")} className={toolBtn(true)} style={toolStyle(tool === "pen")}><Icon name="pen" size={16}/></button>
+        <button type="button" title={t("draw.eraser")} aria-pressed={tool === "eraser"} onClick={() => setTool("eraser")} className={toolBtn(true)} style={toolStyle(tool === "eraser")}>🧽</button>
+        <button type="button" title={t("draw.undo")} aria-label={t("draw.undo")} disabled={!strokes.length} onClick={undo} className={toolBtn(false)}>↩︎</button>
+        <button type="button" title={t("draw.redo")} aria-label={t("draw.redo")} disabled={!redoStack.length} onClick={redo} className={toolBtn(false)}>↪︎</button>
+      </div>}
       {!compact && <details className="border-b shrink-0 overflow-y-auto max-h-[45dvh]" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border)" }}>
         <summary className="cursor-pointer px-3 py-2 min-h-11 content-center text-sm font-medium">{lang === "th" ? "เครื่องมือวาด" : "Drawing tools"}</summary>
         <div className="px-2 pb-2 space-y-2">
@@ -585,7 +593,7 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
       </details>}
 
       {/* scrollable canvas area */}
-      <div ref={scroller} className={compact ? "overflow-hidden" : "flex-1 min-h-0 overflow-auto overscroll-contain bg-white"}>
+      <div ref={scroller} className={compact ? "overflow-auto overscroll-contain max-h-[45dvh]" : "flex-1 min-h-0 overflow-auto overscroll-contain bg-white"}>
         <canvas
           ref={canvasRef}
           aria-label={lang === "th" ? "พื้นที่เขียน" : "Writing pad"}

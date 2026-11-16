@@ -34,7 +34,7 @@ export function OriginalPageViewer({ src, label, onClose }: { src: string; label
   }, []);
   return createPortal(
       <dialog ref={modal} className="sketch-viewer" aria-label={label ?? (th ? "หน้าต้นฉบับ" : "Original page")}
-        onCancel={e => { e.preventDefault(); onClose(); }}>
+        onCancel={e => { e.preventDefault(); e.stopPropagation(); onClose(); }}>
         <div className="sketch-viewer-tools">
           <button type="button" className="sketch-button" aria-pressed={zoomed}
             onClick={() => setZoomed(!zoomed)}>{th ? "ขนาดจริง" : "Actual size"}</button>

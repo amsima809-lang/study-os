@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import { getJSON } from "../api.ts";
 import { useT } from "../i18n.tsx";
 
-type Match = { id: number; course_code: string; session_no: number; quote: string; transcription: string };
+import type { AnnotationSource } from "../summaryAnchors.ts";
 
-export function AnnotationSearch({ onOpen }: { onOpen: (code: string, no: number, annotationId: number) => void }) {
+type Match = { id: number; course_code: string; session_no: number; source?: AnnotationSource; quote: string; transcription: string };
+
+export function AnnotationSearch({ onOpen }: { onOpen: (code: string, no: number, annotationId: number, source: AnnotationSource) => void }) {
   const { lang, t } = useT(),
     th = lang === "th";
   const [available, setAvailable] = useState(false),
@@ -57,11 +59,11 @@ export function AnnotationSearch({ onOpen }: { onOpen: (code: string, no: number
           {hits.map((m) => (
             <li key={m.id}>
               <button
-                onClick={() => onOpen(m.course_code, m.session_no, m.id)}
+                onClick={() => onOpen(m.course_code, m.session_no, m.id, m.source ?? "summary")}
                 className="min-h-11 text-left text-sm w-full"
               >
                 <span className="font-semibold" style={{ color: "var(--accent-text)" }}>
-                  {m.course_code} · {t("lib.lectureNo", { n: m.session_no })}
+                    {m.course_code} · {t("lib.lectureNo", { n: m.session_no })} · {t(m.source === "transcript" ? "lec.transcript" : "lec.summary")}
                 </span>
                 <span className="block line-clamp-2">{m.transcription || m.quote}</span>
               </button>

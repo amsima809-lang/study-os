@@ -598,3 +598,9 @@ The production entry at `/api/open/lectures?view=lectures&summary=MGT3204-1` ser
 ## Phase 80 — Handwritten notes
 
 The note input opens the annotation editor full screen, using PencilKit in the iOS app and the shared canvas in browsers. Browser drafts keep editable strokes. Migration 050 records which private attachment is the handwritten original. The server preserves its uploaded PNG or JPEG and skips automatic summarisation for the note. Tapping **Generate notes from handwriting** runs the existing DeepSeek sketch-v4 reading for that page. The reader keeps the original thumbnail available before and after generation. Transcript timestamp targets, search matches and text selections use a pale yellow highlight.
+
+## Phase 81 — Inline annotations
+
+A saved underline or circle belongs to one student and one source. Each rendered sentence has a stable key and a place for its annotations. The reader reconciles the key, quote and surrounding text when the page changes. A transcript search excludes hidden cues, and an inserted personal note stays outside the text used for locating marks.
+
+Migration 051 identifies the source and records the transcription status. Saving ink stores the original before starting recognition. Successful recognition displays a pale yellow sub-bullet at the marked sentence. Revising the text or ink uses the current revision so an older recognition result cannot overwrite a correction. Search opens the matching annotation in its source.

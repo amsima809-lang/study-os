@@ -11,6 +11,7 @@ import { z } from "zod";
 import type { DB } from "./db.js";
 import { hasCatalog, programFilter } from "./api.js";
 import { sketchSources } from "./sketchRoutes.js";
+import { createAnnotationReader, visibleAnnotations } from "./lectureAnnotations.js";
 
 import { canReadSharedLectures, getLecture, getLectureSummary, lectureFilter, type LectureNoteMode } from "./savedLectures.js";
 
@@ -58,6 +59,8 @@ export function importBundle(db: DB, userId: string, bundle: Bundle): { courses:
     `INSERT INTO lecture_transcripts (user_id, course_code, session_no, source, source_url, cues, cue_count, duration_ms)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(user_id, course_code, session_no) DO UPDATE SET
+       annotation_version = annotation_version + CASE WHEN source != excluded.source OR source_url IS NOT excluded.source_url
+         OR (excluded.source_url IS NULL AND cues != excluded.cues) THEN 1 ELSE 0 END,
        source = excluded.source, source_url = excluded.source_url, cues = excluded.cues,
        cue_count = excluded.cue_count, duration_ms = excluded.duration_ms, imported_at = datetime('now')`,
   );
@@ -77,7 +80,7 @@ export function importBundle(db: DB, userId: string, bundle: Bundle): { courses:
   return { courses, saved };
 }
 
-export function createLecturesRouter(db: DB): Router {
+export function createLecturesRouter(db: DB, schedule = createAnnotationReader(db)): Router {
   const router = Router();
 
   // Lecture links for the student's own courses, with which ones they hold a transcript for.
@@ -218,18 +221,19 @@ export function createLecturesRouter(db: DB): Router {
         CASE WHEN json_valid(image_paths) AND json_type(image_paths) = 'array' THEN image_paths ELSE '[]' END AS images
       FROM notes WHERE user_id = ? AND lecture_id = ? ORDER BY created_at, id`)
       .all(user, lecture.id) as { id: number; title: string | null; raw_text: string | null; created_at: string; images: string; handwriting_image_index: number | null }[];
-    // A pen annotation contains a quotation. Give it the same visibility as the shared summary it marks.
-    const annotations = canReadSharedLectures(user) ? db.prepare(`SELECT a.id, a.quote, a.runs, a.revision
-      FROM lecture_annotations a JOIN shared_lecture_summaries s ON s.transcript_id = ?
-      WHERE a.user_id = ? AND a.lecture_id = ? ORDER BY a.id`)
-      .all(lecture.shared_transcript_id, user, lecture.id) as { id: number; quote: string; runs: string; revision: number }[] : [];
+    const scope = visibleAnnotations(db, user);
+    const annotations = db.prepare(`SELECT a.id,a.quote,a.runs,a.revision,a.source,a.ocr_status ${scope.from} AND a.lecture_id=? ORDER BY a.id`)
+      .all(...scope.params, lecture.id) as {id:number; quote:string; runs:string; revision:number; source:string; ocr_status:string}[];
+    for (const mark of annotations) {
+      if (mark.ocr_status === "pending") void schedule(mark.id, user, mark.revision);
+    }
     res.json({
       notes: notes.map(({ images, ...note }) => ({
         ...note, image_paths: JSON.parse(images), sketch_passages: sketchSources(db, user, note.id),
       })),
-      annotations: annotations.map(({ id, quote, runs, revision }) => ({
-        id, quote, runs: JSON.parse(runs),
-        image_url: `/api/lectures/${encodeURIComponent(code)}/${Number(no)}/annotations/${id}/image?v=${revision}`,
+      annotations: annotations.map(({ id, quote, runs, revision, source, ocr_status }) => ({
+        id, quote, runs: JSON.parse(runs), source, ocr_status,
+        image_url: `/api/lectures/${encodeURIComponent(code)}/${Number(no)}/annotations/${id}/image?source=${source}&v=${revision}`,
       })),
     });
   });

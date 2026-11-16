@@ -157,8 +157,8 @@ describe("saved lectures", () => {
     addSketch.run(note.lastInsertRowid, 1, JSON.stringify(sketch), 0);
     add.run(a, second, "Another lecture", null, null);
     add.run(b, id, "Another student", null, null);
-    const pen = db.prepare(`INSERT INTO lecture_annotations(user_id,lecture_id,client_key,quote,prefix,suffix,mark,png,colors,runs)
-      VALUES(?,?,'fixture',?,'','','circle',x'00','["#872161"]',?)`);
+    const pen = db.prepare(`INSERT INTO lecture_annotations(user_id,lecture_id,client_key,quote,prefix,suffix,mark,png,colors,runs,ocr_status,reviewed)
+      VALUES(?,?,'fixture',?,'','','circle',x'00','["#872161"]',?,'ready',1)`);
     const runs = [{ text: "My ink", color: "#872161" }];
     const mark = pen.run(a, id, "Marked phrase", JSON.stringify(runs));
     db.prepare("UPDATE notes SET handwriting_image_index=1 WHERE id=?").run(note.lastInsertRowid);
@@ -167,8 +167,8 @@ describe("saved lectures", () => {
     expect(await (await request(path, a)).json()).toEqual({
       notes: [{ id: Number(note.lastInsertRowid), raw_text: "My typed note", title: "My title", image_paths: photos, handwriting_image_index: 1, created_at: "today",
         sketch_passages: [{runs:[{text:"Verified writing",color:"#872161"}]}] }],
-      annotations: [{ id: Number(mark.lastInsertRowid), quote: "Marked phrase", runs,
-        image_url: `/api/lectures/MGT3204/1/annotations/${mark.lastInsertRowid}/image?v=1` }],
+      annotations: [{ id: Number(mark.lastInsertRowid), quote: "Marked phrase", runs, source: "summary", ocr_status: "ready",
+        image_url: `/api/lectures/MGT3204/1/annotations/${mark.lastInsertRowid}/image?source=summary&v=1` }],
     });
     expect(await (await request(path, b)).json()).toMatchObject({
       notes: [{ raw_text: "Another student", image_paths: [] }], annotations: [{ quote: "Other student's quote", runs: [] }],

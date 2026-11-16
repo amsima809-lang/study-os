@@ -4,6 +4,8 @@ import { useT } from "../i18n.tsx";
 import { withBase } from "../base.ts";
 import { LectureNoteForm } from "../screens/Notes.tsx";
 import { AnnotatedSummary } from "./AnnotatedSummary.tsx";
+import type { AnnotationSource } from "../summaryAnchors.ts";
+import { LectureSentences } from "./LectureSentences.tsx";
 import { CreateLectureNotes, LectureLayout } from "./CreateLectureNotes.tsx";
 import { PersonalLectureNotes, SavedPersonalPassage, usePersonalLectureNotes } from "./PersonalLectureNotes.tsx";
 import { currentCombinedReading, type CreatedLectureNotes } from "../combinedLectureNotes.ts";
@@ -104,6 +106,8 @@ function LectureReader({ which, onDeleted }: { which: OpenLecture; onDeleted: ()
   const { code, lecture } = which;
   const [mode, setMode] = useState(lecture.note_mode);
   const [tab, setTab] = useState<Tab>(which.tab === "summary" && lecture.note_mode === "combined" ? "combined" : which.tab);
+  const [annotationTarget, setAnnotationTarget] = useState<{ source: AnnotationSource; id: number } | null>(() =>
+    which.annotationId ? { source: which.tab === "transcript" ? "transcript" : "summary", id: which.annotationId } : null);
   const [adding, setAdding] = useState(false);
   const [notesRevision, setNotesRevision] = useState(0);
   const [created, setCreated] = useState<CreatedLectureNotes | null>(null);
@@ -127,8 +131,11 @@ function LectureReader({ which, onDeleted }: { which: OpenLecture; onDeleted: ()
   const personal = usePersonalLectureNotes(readingNotes ? `/api/lectures/${suffix}/personal-notes` : null, notesRevision);
   const reading = useMemo(() => tab === "combined" && summary && personal.data && !personal.failed
     ? currentCombinedReading(summary.summary_md, created, personal.data) : null, [tab, summary, created, personal.data, personal.failed]);
+  // A generated copy can contain a transcript annotation whose live bullet belongs in the transcript.
+  const includesTranscriptAnnotations = personal.data?.annotations.some(a =>
+    a.source === "transcript" && reading?.annotations.has(a.id));
   function switchTab(v: Tab) {
-    setTab(v); setFocus(null); setBack(null); setAdding(false); setError("");
+    setTab(v); setFocus(null); setBack(null); setAdding(false); setError(""); setAnnotationTarget(null);
   }
   function changeMode(next: LectureNoteMode) {
     setMode(next);
@@ -146,8 +153,8 @@ function LectureReader({ which, onDeleted }: { which: OpenLecture; onDeleted: ()
   // Opening a long lecture from a scrolled course list should show its heading and tabs.
   // Timestamp links and pen-note search handle their own scroll destinations.
   useEffect(() => {
-    if (!focus && !which.annotationId) window.scrollTo({ top: 0, behavior: "instant" });
-  }, [code, lecture.no, tab, focus, which.annotationId]);
+    if (!focus && !annotationTarget) window.scrollTo({ top: 0, behavior: "instant" });
+  }, [code, lecture.no, tab, focus, annotationTarget]);
 
   const refs = useMemo(() => summaryCitations(summary?.summary_md ?? "", transcript?.cues ?? [], (n) => t("lec.point", { n })), [summary, transcript, t]);
   useEffect(() => {
@@ -156,6 +163,7 @@ function LectureReader({ which, onDeleted }: { which: OpenLecture; onDeleted: ()
     if (target) { target.scrollIntoView({ block: "center" }); target.focus({ preventScroll: true }); }
   }, [focus, tab, transcript, summary]);
   function go(target: Target, from: Target | null) {
+    setAnnotationTarget(null);
     if (target.tab === "summary") setDraft(null);
     setTab(target.tab === "summary" ? summaryTab : "transcript"); setBack(from); setFocus(target); setQuery("");
   }
@@ -206,7 +214,7 @@ function LectureReader({ which, onDeleted }: { which: OpenLecture; onDeleted: ()
     {readingNotes && !adding && <div className="flex gap-4 items-center">
       <button type="button" className="rounded-lg px-3 min-h-11 font-medium text-sm" style={chipStyle}
         onClick={() => setAdding(true)}>{t("notes.addShort")}</button>
-      {tab === "combined" && personal.data && <button type="button" className="min-h-11 text-sm underline"
+      {tab === "combined" && !!personal.data?.notes.length && <button type="button" className="min-h-11 text-sm underline"
         onClick={() => {
           const section = document.getElementById("lecture-personal-notes");
           section?.scrollIntoView({ block: "start" }); section?.focus({ preventScroll: true });
@@ -228,20 +236,25 @@ function LectureReader({ which, onDeleted }: { which: OpenLecture; onDeleted: ()
       </div>
       {draft !== null ? <textarea className="w-full rounded-lg p-3" rows={18} style={{ background: "var(--bg-surface)" }}
         aria-label={t("lec.edit")} maxLength={120000} value={draft} onChange={(e) => setDraft(e.target.value)}/> :
-        <Card><AnnotatedSummary key={suffix} courseCode={code} sessionNo={lecture.no} focusId={which.annotationId}
-          savedInk={reading?.annotations} onChanged={() => setNotesRevision(n => n + 1)}><div className="space-y-2">
+        <Card><AnnotatedSummary key={suffix} courseCode={code} sessionNo={lecture.no}
+          focusId={annotationTarget?.source === "summary" ? annotationTarget.id : undefined}
+          onChanged={() => setNotesRevision(n => n + 1)}><div className="space-y-2">
           {summary.summary_md.split("\n").map((line, i) => line.trim() && (
             <div key={i} tabIndex={-1} data-lecture-target={`summary-${i}`} style={mark("summary", i)}>
-              <Markdown source={line} renderText={(part) => renderSummaryPart(part, i)}/>
+              <Markdown source={line} annotationKey={`s:${i}`} renderText={(part) => renderSummaryPart(part, i)}/>
               {focus?.tab === "summary" && focus.idx === i && backButton}
-              {reading?.lines.get(i)?.map((p, index) => <SavedPersonalPassage key={index} passage={p}/>)}
+              {reading?.lines.get(i)?.filter(p => p.source === "note").map((p, index) => <SavedPersonalPassage key={index} passage={p}/>)}
             </div>
           ))}
         </div></AnnotatedSummary></Card>}
     </> : !error && <Loading>{t("status.connecting")}</Loading>)}
-    {!adding && readingNotes && <PersonalLectureNotes result={personal} combined={tab === "combined" && !!summary && draft === null} placedNotes={draft === null ? reading?.notes : undefined}/>}
+    {!adding && readingNotes && <PersonalLectureNotes result={personal} combined={tab === "combined"} placedNotes={draft === null ? reading?.notes : undefined}
+      onShowAnnotation={(source, id) => {
+        switchTab(source === "transcript" ? "transcript" : summaryTab);
+        setQuery(""); setAnnotationTarget({ source, id });
+      }}/>}
     {!adding && readingSummary && summary && draft === null && <CreateLectureNotes code={code} sessionNo={lecture.no}
-      inline={!!reading?.allCurrent} onCreated={setCreated}/>}
+      inline={!!reading?.allCurrent && !includesTranscriptAnnotations} onCreated={setCreated}/>}
     {tab === "transcript" && (transcript ? <>
       {summary && <section className="rounded-xl border px-4 py-3 space-y-1" style={{ background: "var(--bg-surface)", borderColor: "var(--border-light)" }}>
         <h3 className="font-semibold">{t("lec.aiSummary")}</h3>
@@ -253,14 +266,16 @@ function LectureReader({ which, onDeleted }: { which: OpenLecture; onDeleted: ()
       <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("lib.searchTranscript")}
         aria-label={t("lib.searchTranscript")} className="w-full rounded-xl border px-4 py-3 min-h-11" style={{ background: "var(--bg-surface)", borderColor: "var(--border-light)" }} />
       <p className="text-xs">{q ? t("lib.matches", { n: shown.length }) : t("lib.transcriptNote")}</p>
-      <Card><ul className="space-y-3">{shown.map(({ c, idx }) => (
+      <Card><AnnotatedSummary key={`transcript/${suffix}`} courseCode={code} sessionNo={lecture.no} source="transcript" filtered={!!q}
+        focusId={annotationTarget?.source === "transcript" ? annotationTarget.id : undefined} onChanged={() => setNotesRevision(n => n + 1)}>
+        <ul className="space-y-3">{shown.map(({ c, idx }) => (
         <li key={idx} tabIndex={-1} data-lecture-target={`transcript-${idx}`} className="flex gap-3">
           <span className="shrink-0 w-14 text-xs pt-1 tabular-nums">{clock(c.startMs)}</span>
-          <div><span className="lecture-source-text">{transcriptText(c.text, search, focus?.tab === "transcript" && focus.idx === idx)}</span> {(refs.get(idx) ?? []).map((ref) => <button key={ref.line} className={chip} style={chipStyle}
+          <div><LectureSentences text={c.text} blockKey={`t:${c.startMs}:${idx}`} renderText={part => transcriptText(part, search, focus?.tab === "transcript" && focus.idx === idx)}/> {(refs.get(idx) ?? []).map((ref) => <button key={ref.line} className={chip} style={chipStyle}
             onClick={() => go({ tab: "summary", idx: ref.line }, { tab: "transcript", idx })}>{ref.label}</button>)} {focus?.tab === "transcript" && focus.idx === idx && backButton}</div>
         </li>))}
         {!shown.length && <li>{t("lib.noMatches")}</li>}
-      </ul></Card>
+      </ul></AnnotatedSummary></Card>
       {!transcript.shared && <button className="min-h-11" style={{ color: "var(--danger)" }} onClick={() => setConfirm("delete")}>{t("lib.deleteTranscript")}</button>}
     </> : !error && <Loading>{t("status.connecting")}</Loading>)}
     {confirm && <ConfirmDialog title={t(confirm === "restore" ? "lec.restore" : "lib.deleteTranscriptTitle")} message={t("confirm.cannotUndo")}
