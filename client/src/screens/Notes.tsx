@@ -447,6 +447,24 @@ function NoteView({ noteId, onBack, onDeleted }: { noteId: number; onBack: () =>
     }
   }
 
+  const { showPaywall } = useSubscription();
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiError, setAiError] = useState("");
+  /** Summarise this saved note now (one saved while AI was off): same fields as a new note gets. */
+  async function summarizeNote() {
+    setAiBusy(true);
+    setAiError("");
+    try {
+      setNote(await postJSON<NoteDetail>(`/api/notes/${noteId}/summarize`, {}));
+    } catch (e) {
+      const err = e as ApiError;
+      if (handleSubscriptionError(err, showPaywall)) return;
+      setAiError(err.code === "AI_NOT_CONFIGURED" ? t("notes.aiNotConfigured") : err.error ?? t("status.failed"));
+    } finally {
+      setAiBusy(false);
+    }
+  }
+
   if (loading) return <Loading>{t("status.connecting")}</Loading>;
   if (!note) return <ErrorBox>{t("notes.notFound")}</ErrorBox>;
 
@@ -581,7 +599,16 @@ function NoteView({ noteId, onBack, onDeleted }: { noteId: number; onBack: () =>
         </>
       ) : (
         <Card>
-          <p className="text-sm italic" style={{ color: "var(--text-tertiary)" }}>{t("notes.noAi")}</p>
+          <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t("notes.noAi")}</p>
+          <button
+            onClick={summarizeNote}
+            disabled={aiBusy}
+            className="no-print mt-3 w-full font-medium rounded-lg py-2.5 min-h-11 flex items-center justify-center gap-1.5 disabled:opacity-60"
+            style={{ backgroundColor: "var(--accent)", color: "#fff" }}
+          >
+            <Icon name="sparkles" size={16} /> {aiBusy ? t("notes.summarizingNote") : t("notes.summarizeNote")}
+          </button>
+          {aiError && <div className="mt-2"><ErrorBox>{aiError}</ErrorBox></div>}
         </Card>
       )}
 

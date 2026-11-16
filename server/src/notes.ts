@@ -5,8 +5,8 @@
 import { Router } from "express";
 import multer from "multer";
 import sharp from "sharp";
-import { writeFile, mkdir } from "node:fs/promises";
-import { join } from "node:path";
+import { writeFile, mkdir, readFile } from "node:fs/promises";
+import { join, basename } from "node:path";
 import type { DB } from "./db.js";
 import { env } from "./env.js";
 import {
@@ -121,18 +121,71 @@ export function createNotesRouter(db: DB): Router {
   });
 
   // Read one note with all AI fields.
-  router.get("/notes/:id", (req, res) => {
-    const userId = req.user!.id;
-    const row = db.prepare("SELECT * FROM notes WHERE id = ? AND user_id = ?").get(req.params.id, userId) as
-      | Record<string, unknown>
-      | undefined;
-    if (!row) return res.status(404).json({ error: "ไม่พบโน้ตนี้" });
-    res.json({
+  type NoteRow = { id: number; course_code: string | null; raw_text: string | null } & Record<string, unknown>;
+  function noteDetail(id: unknown, userId: string) {
+    const row = db.prepare("SELECT * FROM notes WHERE id = ? AND user_id = ?").get(id, userId) as NoteRow | undefined;
+    if (!row) return undefined;
+    return {
       ...row,
       key_terms: safeParse(row.ai_terms_json as string | null, []),
       topics: safeParse(row.ai_topics_json as string | null, []),
-      image_paths: safeParse(row.image_paths as string | null, []),
-    });
+      image_paths: safeParse(row.image_paths as string | null, []) as string[],
+    };
+  }
+
+  router.get("/notes/:id", (req, res) => {
+    const note = noteDetail(req.params.id, req.user!.id);
+    if (!note) return res.status(404).json({ error: "ไม่พบโน้ตนี้" });
+    res.json(note);
+  });
+
+  // Summarise a saved note with AI (a note saved while AI was off, or one she wants redone).
+  // Same model call and fields as when a note is created; the note's own text and photos are untouched.
+  router.post("/notes/:id/summarize", async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const note = noteDetail(req.params.id, userId);
+      if (!note) return res.status(404).json({ error: "ไม่พบโน้ตนี้" });
+      checkAiSubscription(db, userId);
+      if (!isAiConfigured()) throw new AiNotConfiguredError();
+
+      const rawText = note.raw_text ?? "";
+      const images: ImageInput[] = [];
+      for (const p of note.image_paths) {
+        const name = basename(String(p)); // stored as /api/uploads/<file>; never leave the upload folder
+        try {
+          images.push({ media_type: "image/jpeg", data_base64: (await readFile(join(env.uploadDir, name))).toString("base64") });
+        } catch {
+          // a missing photo is skipped; the rest of the note is still summarised
+        }
+      }
+      if (!rawText.trim() && images.length === 0) {
+        return res.status(400).json({ error: "โน้ตนี้ไม่มีข้อความหรือรูปให้ AI สรุป" });
+      }
+
+      const learning = await generateNoteLearning(noteModelCall(db, { text: rawText, images }));
+      db.prepare(
+        `UPDATE notes SET ai_summary_md = ?, ai_mindmap_md = ?, ai_terms_json = ?, ai_topics_json = ?
+          WHERE id = ? AND user_id = ?`,
+      ).run(
+        learning.summary_md || null,
+        learning.mindmap_md || null,
+        JSON.stringify(learning.key_terms),
+        JSON.stringify(learning.topics),
+        note.id,
+        userId,
+      );
+      const courseCode = note.course_code;
+      if (courseCode) {
+        const insTopic = db.prepare(
+          "INSERT OR IGNORE INTO topics (course_code, name, mastery, user_id) VALUES (?, ?, 0, ?)",
+        );
+        for (const tag of learning.topics) insTopic.run(courseCode, tag, userId);
+      }
+      res.json(noteDetail(note.id, userId));
+    } catch (err) {
+      handleAiError(res, err);
+    }
   });
 
   // Summarize all notes for a course with AI.

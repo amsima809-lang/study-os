@@ -9,7 +9,7 @@ function renderInline(text: string, keyPrefix: string): ReactNode[] {
   // Split on **bold** and render the odd segments as <strong>.
   return text.split(/\*\*(.+?)\*\*/g).map((seg, i) =>
     i % 2 === 1 ? (
-      <strong key={`${keyPrefix}-b${i}`} className="font-semibold text-slate-900">
+      <strong key={`${keyPrefix}-b${i}`} className="font-semibold" style={{ color: "var(--text-primary)" }}>
         {seg}
       </strong>
     ) : (
@@ -28,7 +28,7 @@ export function Markdown({ source }: { source: string }) {
 
     if (line.startsWith("## ")) {
       out.push(
-        <h4 key={idx} className="font-semibold text-slate-800 mt-2">
+        <h4 key={idx} className="font-semibold mt-2" style={{ color: "var(--text-primary)" }}>
           {renderInline(line.slice(3), `h${idx}`)}
         </h4>,
       );
@@ -36,7 +36,7 @@ export function Markdown({ source }: { source: string }) {
     }
     if (line.startsWith("# ")) {
       out.push(
-        <h3 key={idx} className="font-bold text-slate-800 mt-2">
+        <h3 key={idx} className="font-bold mt-2" style={{ color: "var(--text-primary)" }}>
           {renderInline(line.slice(2), `h${idx}`)}
         </h3>,
       );
@@ -49,8 +49,8 @@ export function Markdown({ source }: { source: string }) {
       out.push(
         <div
           key={idx}
-          className="flex gap-2 text-sm text-slate-700"
-          style={{ paddingLeft: `${level * 16}px` }}
+          className="flex gap-2 text-sm"
+          style={{ paddingLeft: `${level * 16}px`, color: "var(--text-secondary)" }}
         >
           <span style={{ color: "var(--accent-text)" }}>•</span>
           <span>{renderInline(bullet[2], `li${idx}`)}</span>
@@ -60,7 +60,7 @@ export function Markdown({ source }: { source: string }) {
     }
 
     out.push(
-      <p key={idx} className="text-sm text-slate-700">
+      <p key={idx} className="text-sm" style={{ color: "var(--text-secondary)" }}>
         {renderInline(line, `p${idx}`)}
       </p>,
     );
