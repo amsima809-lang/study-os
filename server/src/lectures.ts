@@ -11,7 +11,7 @@ import { z } from "zod";
 import type { DB } from "./db.js";
 import { hasCatalog, programFilter } from "./api.js";
 
-import { canReadSharedLectures, getLecture, getLectureSummary } from "./savedLectures.js";
+import { canReadSharedLectures, getLecture, getLectureSummary, lectureFilter } from "./savedLectures.js";
 
 const Cue = z.object({
   startMs: z.number().int().min(0),
@@ -83,7 +83,7 @@ export function createLecturesRouter(db: DB): Router {
   router.get("/lectures", (req, res) => {
     const userId = req.user!.id;
     if (!hasCatalog(db, userId)) return res.json({ courses: [] });
-    const mine = programFilter(db, userId, "cl.course_code");
+    const mine = lectureFilter(db, userId);
     const rows = db
       .prepare(
         `SELECT cl.course_code, c.name_th, c.name_en, cl.session_no, cl.url,

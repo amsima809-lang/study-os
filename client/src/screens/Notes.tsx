@@ -682,7 +682,9 @@ function AddNote({
   const [courses, setCourses] = useState<Course[]>([]);
   const [courseCode, setCourseCode] = useState("");
   const [lectureNo, setLectureNo] = useState("");
-  const lectureCourse = useLectureCourses().find((c) => c.code === courseCode);
+  const lectureCourses = useLectureCourses();
+  const lectureCourse = lectureCourses.find((c) => c.code === courseCode);
+  const noteCourses = [...courses, ...lectureCourses.filter((l) => !courses.some((c) => c.code === l.code))];
   const [title, setTitle] = useState("");
   const [text, setText] = useState("");
   const [mode, setMode] = useState<"type" | "draw">("type");
@@ -905,7 +907,7 @@ function AddNote({
             style={selectStyle}
           >
             <option value="">{t("notes.selectCourse")}</option>
-            {courses.map((c) => (
+            {noteCourses.map((c) => (
               <option key={c.code} value={c.code}>
                 {c.code} {c.name_th}
               </option>

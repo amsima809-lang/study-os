@@ -9,11 +9,26 @@ export function canReadSharedLectures(userId: string) {
   return ids.includes("*") || ids.includes(userId);
 }
 
+/** One listing per preloaded recording. Prefer the student's programme code when a recording has aliases. */
+export function lectureFilter(db: DB, userId: string) {
+  const mine = programFilter(db, userId, "cl.course_code");
+  if (!canReadSharedLectures(userId)) return mine;
+  const program = mine.params[0] ?? null;
+  return {
+    sql: ` AND ((cl.shared_transcript_id IS NULL${mine.sql}) OR cl.id = (
+      SELECT alias.id FROM course_lectures alias WHERE alias.shared_transcript_id = cl.shared_transcript_id
+      ORDER BY EXISTS (SELECT 1 FROM program_courses pc WHERE pc.course_code = alias.course_code AND pc.program_id = ?) DESC,
+               (alias.id = alias.shared_transcript_id) DESC, alias.id LIMIT 1
+    ))`,
+    params: [...mine.params, program],
+  };
+}
+
 export function getLecture(db: DB, userId: string, code: string, no: number) {
   if (!Number.isSafeInteger(no) || !hasCatalog(db, userId)) return undefined;
-  const mine = programFilter(db, userId, "course_code");
+  const mine = lectureFilter(db, userId);
   return db.prepare(
-    `SELECT id, shared_transcript_id FROM course_lectures
+    `SELECT id, shared_transcript_id FROM course_lectures cl
      WHERE course_code = ? AND session_no = ? AND source = 'ru-vod-subtitle'${mine.sql}`,
   ).get(code, no, ...mine.params) as { id: number; shared_transcript_id: number | null } | undefined;
 }

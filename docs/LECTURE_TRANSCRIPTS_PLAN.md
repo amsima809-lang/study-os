@@ -14,7 +14,7 @@ node_modules/.bin/tsx server/src/importSavedLectures.ts "/path/to/private-notes"
 
 The importer checks the manifest against each course, session, URL and cue count. It replaces shared originals in one transaction, preserves student edits and links both accounting codes to the same original. The SQLite database and its daily backups contain the resulting transcripts and summaries.
 
-In production, set `SHARED_LECTURE_USERS` to a comma-separated list of the trial students' account IDs. An empty list grants no shared access. Wider release is an owner decision after asking RU. An explicit `*` enables all eligible signed-in students. Programme and university filters still apply.
+In production, set `SHARED_LECTURE_USERS` to a comma-separated list of the trial students' account IDs. An empty list grants no shared access. Wider release is an owner decision after asking RU. An explicit `*` enables all eligible signed-in students. The designated RU trial accounts see the full four-subject collection. The student's programme supplies the preferred accounting code and filters lectures without shared material. Degree planning keeps its usual programme catalogue.
 
 Timestamps in a summary open the matching transcript line. Return chips link the line to every point that cites it. Manual edits and restoration affect only the signed-in student's copy. Choosing a lecture on a new or existing course note adds its photos to that student's lecture gallery.
 

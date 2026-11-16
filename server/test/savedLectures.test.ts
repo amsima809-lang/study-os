@@ -35,12 +35,14 @@ beforeAll(async () => {
   mkdirSync(join(root,"transcripts/raw"), { recursive: true });
   mkdirSync(join(root,"lecture-summary/summaries"), { recursive: true });
   for (const [subject, ...codes] of files) {
-    const { url } = db.prepare("SELECT url FROM course_lectures WHERE course_code = ? AND session_no = 1").get(codes[0]) as {url:string};
-    const file = codes[0] + "_L01.md";
-    manifest[file] = { source_url: url, session_no: 1, course_codes: codes, cues: 1, model: "model", prompt: "v3" };
-    writeFileSync(join(root,"lecture-summary/summaries",file), "Original [00:02]");
+    const rows = db.prepare("SELECT session_no AS no, url FROM course_lectures WHERE course_code = ? ORDER BY session_no").all(codes[0]) as { no: number; url: string }[];
+    for (const { no, url } of rows) {
+      const file = codes[0] + "_L" + String(no).padStart(2, "0") + ".md";
+      manifest[file] = { source_url: url, session_no: no, course_codes: codes, cues: 1, model: "model", prompt: "v3" };
+      writeFileSync(join(root, "lecture-summary/summaries", file), "Original [00:02]");
+    }
     const bundle = { format: "studyos-lecture-transcripts", version: 1, source: "ru-vod-subtitle", collected_at: "2026-01-01T12:00:00Z",
-      course_codes: codes, sessions: [{ no: 1, url, cues: [{startMs:2000,endMs:5000,text:"Shared cue"}] }] };
+      course_codes: codes, sessions: rows.map((r) => ({...r, cues: [{startMs:2000,endMs:5000,text:"Shared cue"}]})) };
     writeFileSync(join(root,"transcripts/raw",`subject-${subject}_${codes.join("_")}.json`),JSON.stringify(bundle));
   }
   writeFileSync(join(root, "lecture-summary/summaries/manifest.json"), JSON.stringify(manifest));
@@ -62,7 +64,7 @@ afterAll(() => {
 describe("saved lectures", () => {
   const summary = "/lectures/summaries/ACC1103/1", transcript = "/lectures/transcripts/ACC1103/1";
   it("imports each recording once, serves both catalogue aliases, and keeps private edits on re-import", async () => {
-    expect(importSavedLectures(db, root)).toEqual({recordings:4, catalogueLinks:5});
+    expect(importSavedLectures(db, root)).toEqual({recordings:42, catalogueLinks:52});
     expect(await (await request(summary)).json()).toMatchObject({ summary_md: "Original [00:02]" });
     expect(await (await request(summary, a, "PUT", {summary_md:"My edit"})).json()).toMatchObject({ edited: true });
     importSavedLectures(db, root);
@@ -86,6 +88,20 @@ describe("saved lectures", () => {
       const {courses} = await (await request("/lectures",user)).json() as { courses: {code:string; lectures:{has_summary:boolean}[]}[] };
       expect(courses.find((c: {code:string})=>c.code==="ACC1103")!.lectures[0].has_summary).toBe(user===a);
     }
+  });
+  it("shows all 42 trial recordings, deduplicates accounting by major, and keeps other programmes unchanged", async () => {
+    expect(db.prepare("SELECT 1 FROM program_courses WHERE program_id='bus-mkt' AND course_code='MGT3204'").get()).toBeUndefined();
+    for (const [program, preferred] of [["bus-mkt", "ACC1103"], ["bus-acc", "ACC1101"]]) {
+      db.prepare("UPDATE user_profiles SET program_id=? WHERE user_id=?").run(program, b);
+      const { courses } = await (await request("/lectures",b)).json() as { courses: {code:string;lectures:{has_summary:boolean}[]}[] };
+      expect(courses.map(c=>c.code)).toEqual([preferred, "MGT3204", "RAM1103", "RAM1132"]);
+      expect(courses.flatMap(c=>c.lectures).filter(l=>l.has_summary)).toHaveLength(42);
+      expect((await request("/lectures/summaries/MGT3204/1",b)).status).toBe(200);
+      expect((await request("/lectures/transcripts/MGT3204/1",b)).status).toBe(200);
+    }
+    expect((await request("/lectures/summaries/MGT3204/1",outside)).status).toBe(404);
+    expect((await request("/lectures/images/MGT3204/1",outside)).status).toBe(404);
+    db.prepare("UPDATE user_profiles SET program_id='bus-mkt' WHERE user_id=?").run(b);
   });
   it("links an existing note to its lecture and serves only its owner's gallery and images", async () => {
     const img = "/api/uploads/original-file.jpg";
