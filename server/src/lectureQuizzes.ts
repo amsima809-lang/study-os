@@ -12,7 +12,9 @@ type Progress = {
   attempt_id: number | null;
   status: "new" | "in_progress" | "completed";
   score: number | null;
+  stats: { quizzes_taken: number; correct_questions: number; incorrect_questions: number; total_questions: number };
 };
+type AnswerCounts = { session_no: number; slot: number; quizzes_taken: number; correct_questions: number; answered_questions: number };
 type Item = {
   question_id: number;
   bank_id: number;
@@ -60,27 +62,52 @@ function visibleBanks(db: DB, user: string, code?: string): Bank[] {
     .all(Number(canReadSharedLectures(user)), user, bankSize, ...(code ? [code] : []), ...filter.params) as Bank[];
 }
 
-/** Revoking access to a single source must also remove any mixed-course attempt that used it from view. */
+/** Revoking any source hides the entire attempt, including its contribution to progress. */
+function visibleAttemptFilter(banks: Bank[]) {
+  return `a.user_id=? AND a.course_code=? AND NOT EXISTS (
+    SELECT 1 FROM lecture_quiz_items i JOIN lecture_quiz_questions q ON q.id=i.question_id
+    WHERE i.attempt_id=a.id AND q.bank_id NOT IN (${marks(banks)}))`;
+}
+
 function latestAttempts(db: DB, user: string, banks: Bank[]): Attempt[] {
   if (!banks.length) return [];
   return db
     .prepare(
       `SELECT * FROM lecture_quiz_attempts WHERE id IN (
-    SELECT MAX(a.id) FROM lecture_quiz_attempts a WHERE a.user_id=? AND a.course_code=?
-    AND NOT EXISTS (SELECT 1 FROM lecture_quiz_items i JOIN lecture_quiz_questions q ON q.id=i.question_id
-      WHERE i.attempt_id=a.id AND q.bank_id NOT IN (${marks(banks)}))
+    SELECT MAX(a.id) FROM lecture_quiz_attempts a WHERE ${visibleAttemptFilter(banks)}
     GROUP BY a.session_no,a.slot)`
     )
     .all(user, banks[0].code, ...banks.map((b) => b.bank_id)) as Attempt[];
 }
 
-function progress(latest: Attempt[], session: number, slot: number): Progress {
+function answerCounts(db: DB, user: string, banks: Bank[]): AnswerCounts[] {
+  return db.prepare(`
+    SELECT a.session_no, a.slot, COUNT(DISTINCT a.id) AS quizzes_taken,
+      COUNT(DISTINCT lecture_quiz_stem(q.stem)) AS answered_questions,
+      COUNT(DISTINCT CASE WHEN json_extract(i.option_order, '$[' || i.choice || ']') = q.correct_index
+        THEN lecture_quiz_stem(q.stem) END) AS correct_questions
+    FROM lecture_quiz_attempts a JOIN lecture_quiz_items i ON i.attempt_id=a.id
+    JOIN lecture_quiz_questions q ON q.id=i.question_id
+    WHERE a.score IS NOT NULL AND i.choice IS NOT NULL AND ${visibleAttemptFilter(banks)}
+    GROUP BY a.session_no, a.slot
+  `).all(user, banks[0].code, ...banks.map((b) => b.bank_id)) as AnswerCounts[];
+}
+
+function progress(latest: Attempt[], counts: AnswerCounts[], session: number, slot: number, total: number): Progress {
   const a = latest.find((a) => a.session_no === session && a.slot === slot);
+  const count = counts.find((c) => c.session_no === session && c.slot === slot);
+  const correct = count?.correct_questions ?? 0;
   return {
     slot,
     attempt_id: a?.id ?? null,
     status: !a ? "new" : a.score === null ? "in_progress" : "completed",
     score: a?.score ?? null,
+    stats: {
+      quizzes_taken: count?.quizzes_taken ?? 0,
+      correct_questions: correct,
+      incorrect_questions: (count?.answered_questions ?? 0) - correct,
+      total_questions: total,
+    },
   };
 }
 
@@ -95,20 +122,24 @@ function catalog(db: DB, user: string) {
     courses: Array.from(groups.values(), (banks) => {
       const { code, name_th, name_en } = banks[0];
       const latest = latestAttempts(db, user, banks);
-      const count = db
-        .prepare(
-          `SELECT COUNT(DISTINCT trim(stem)) AS n FROM lecture_quiz_questions WHERE bank_id IN (${marks(banks)})`
-        )
-        .get(...banks.map((b) => b.bank_id)) as { n: number };
+      const counts = answerCounts(db, user, banks);
+      const sizes = db.prepare(`
+        WITH available AS (SELECT bank_id, lecture_quiz_stem(stem) AS stem FROM lecture_quiz_questions
+          WHERE bank_id IN (${marks(banks)}))
+        SELECT bank_id, COUNT(DISTINCT stem) AS n FROM available GROUP BY bank_id
+        UNION ALL SELECT NULL, COUNT(DISTINCT stem) FROM available
+      `).all(...banks.map((b) => b.bank_id)) as { bank_id: number | null; n: number }[];
+      const poolSize = new Map(sizes.map((s) => [s.bank_id, s.n]));
+      const courseTotal = poolSize.get(null)!;
       return {
         code,
         name_th,
         name_en,
-        pool_size: count.n,
-        course_quiz: progress(latest, 0, 1),
+        pool_size: courseTotal,
+        course_quiz: progress(latest, counts, 0, 1, courseTotal),
         lectures: banks.map((b) => ({
           no: b.no,
-          quizzes: Array.from({ length: 5 }, (_, i) => progress(latest, b.no, i + 1)),
+          quizzes: Array.from({ length: 5 }, (_, i) => progress(latest, counts, b.no, i + 1, poolSize.get(b.bank_id)!)),
         })),
       };
     }),
@@ -285,6 +316,8 @@ function ownedAttempt(db: DB, user: string, id: number) {
 }
 
 export function createLectureQuizRouter(db: DB): Router {
+  // Catalog totals and past answers use the same question identity as the randomized draws.
+  db.function("lecture_quiz_stem", { deterministic: true }, stemKey);
   const router = Router();
   router.get("/catalog", (req, res) => res.json(db.transaction(() => catalog(db, req.user!.id))()));
   router.post("/start", (req, res) => {

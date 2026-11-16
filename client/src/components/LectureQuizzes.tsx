@@ -10,7 +10,10 @@ const secondary = "min-h-11 rounded-lg px-3 font-medium text-[var(--accent-text)
 const select = "mt-1 block min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-sm text-[var(--text-primary)]";
 const subtle = "text-sm text-[var(--text-secondary)]";
 
-type Slot = { slot: number; attempt_id: number | null; status: "new" | "in_progress" | "completed"; score: number | null };
+type Slot = {
+  slot: number; attempt_id: number | null; status: "new" | "in_progress" | "completed"; score: number | null;
+  stats: { quizzes_taken: number; correct_questions: number; incorrect_questions: number; total_questions: number };
+};
 type Course = {
   code: string; name_th: string; name_en: string | null; pool_size: number;
   course_quiz: Slot; lectures: { no: number; quizzes: Slot[] }[];
@@ -94,6 +97,7 @@ export default function LectureQuizzes({ onTaking, onEmpty }: { onTaking: (takin
 
   function back() {
     rememberOpen(null); setAttempt(null); setActionFailed(false);
+    setCourses(null); setFailed(false);
     setRefresh(n => n + 1);
   }
 
@@ -139,17 +143,29 @@ export default function LectureQuizzes({ onTaking, onEmpty }: { onTaking: (takin
     <ul className="divide-y divide-[var(--border-light)]">
       {slots.map(s => {
         const title = setTitle(no, s.slot);
-        const action = t(s.status === "completed" ? "quiz.review" : s.status === "in_progress" ? "mock.resume" : "quiz.begin");
-        return <li key={s.slot} className="flex flex-wrap items-center justify-between gap-x-2 py-1">
-          <div>
-            <h2 className="text-sm font-semibold">{title}</h2>
-            {s.score !== null && <p className="text-xs text-[var(--text-secondary)]">{t("quiz.scoreOf", { score: s.score, total: lecture ? 5 : 25 })}</p>}
+        const action = t(s.status === "in_progress" ? "quiz.resume" : "quiz.begin");
+        const metrics = [
+          [t("quiz.quizzesTaken"), s.stats.quizzes_taken],
+          [t("quiz.questionsCorrect"), t("quiz.correctOfPool", { n: s.stats.correct_questions, total: s.stats.total_questions })],
+          [t("quiz.stillIncorrect"), s.stats.incorrect_questions],
+        ] as const;
+        return <li key={s.slot} className="grid gap-3 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+          <div className="min-w-0">
+            <h2 className="font-semibold">{title}</h2>
+            <dl className="mt-2 grid grid-cols-3 gap-x-3">
+              {metrics.map(([label, value]) => <div key={label} className="flex min-w-0 flex-col">
+                <dt className="text-xs text-[var(--text-secondary)]">{label}</dt>
+                <dd className="order-first text-base font-semibold tabular-nums">{value}</dd>
+              </div>)}
+            </dl>
           </div>
-          <div className="flex flex-wrap items-center gap-1">
-            <button type="button" className={secondary} disabled={busy} aria-label={`${action} · ${title}`}
-              onClick={() => void open(course.code, no, s.slot, s.attempt_id)}>{action}</button>
+          <div className="flex flex-wrap items-center gap-2 sm:flex-col sm:items-end sm:gap-0">
+            <button type="button" className={primary} disabled={busy} aria-label={`${action} · ${title}`}
+              onClick={() => void open(course.code, no, s.slot, s.attempt_id, s.status === "completed")}>{action}</button>
             {s.status === "completed" && <button type="button" disabled={busy} className={secondary}
-              aria-label={`${t("quiz.retake")} · ${title}`} onClick={() => void open(course.code, no, s.slot, s.attempt_id, true)}>{t("quiz.retake")}</button>}
+              aria-label={`${t("quiz.review")} · ${title}`} onClick={() => void open(course.code, no, s.slot, s.attempt_id)}>
+              {t("quiz.review")}{s.score !== null && <span className="ml-1 text-xs">({s.score}/{lecture ? 5 : 25})</span>}
+            </button>}
           </div>
         </li>;
       })}

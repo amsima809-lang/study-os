@@ -24,7 +24,13 @@ type Quiz = {
   score: number | null;
   questions: Question[];
 };
-type Progress = { status: string; slot: number; attempt_id: number | null; score: number | null };
+type Progress = {
+  status: string;
+  slot: number;
+  attempt_id: number | null;
+  score: number | null;
+  stats: { quizzes_taken: number; correct_questions: number; incorrect_questions: number; total_questions: number };
+};
 type Course = {
   code: string;
   pool_size: number;
@@ -143,6 +149,44 @@ async function grade(quiz: Quiz, missed: number[] = []) {
 const ids = (quiz: Quiz) => quiz.questions.map((q) => q.id);
 
 describe("lecture and course transcript quizzes", () => {
+  it("counts completed rounds and distinct questions for each student's quiz across retakes", async () => {
+    shared("MGT3204", 1);
+    const fresh = { quizzes_taken: 0, correct_questions: 0, incorrect_questions: 0, total_questions: 25 };
+    const first = await start(1, 1);
+    expect((await list())[0].lectures[0].quizzes[0].stats).toEqual(fresh);
+
+    const missed = ids(first).slice(0, 2);
+    await grade(first, missed);
+    await grade(first, missed); // a retry of the same submission
+    const retry = await start(1, 1, first.id);
+    expect((await list())[0].lectures[0].quizzes[0].stats).toEqual({
+      ...fresh, quizzes_taken: 1, correct_questions: 3, incorrect_questions: 2,
+    });
+    await grade(retry, [missed[0]]);
+    const secondSlot = await start(1, 2);
+    await grade(secondSlot, ids(secondSlot));
+    const course = await start(null, 1);
+    const afterLecture = (await list())[0];
+    expect(afterLecture.lectures[0].quizzes.map((s) => s.stats)).toEqual([
+      { ...fresh, quizzes_taken: 2, correct_questions: 7, incorrect_questions: 1 },
+      { ...fresh, quizzes_taken: 1, incorrect_questions: 5 }, fresh, fresh, fresh,
+    ]);
+    expect(afterLecture.course_quiz.stats).toEqual(fresh);
+
+    await grade(course, ids(course));
+    expect((await list())[0].course_quiz.stats).toEqual({ ...fresh, quizzes_taken: 1, incorrect_questions: 25 });
+    const corrected = await start(null, 1, course.id);
+    await grade(corrected);
+    const recycled = await start(null, 1, corrected.id);
+    await grade(recycled, ids(recycled));
+    const afterCourse = (await list())[0];
+    expect(afterCourse.course_quiz.stats).toEqual({ ...fresh, quizzes_taken: 3, correct_questions: 25 });
+    expect(afterCourse.lectures).toEqual(afterLecture.lectures);
+    const anotherStudent = (await list(other))[0];
+    expect(anotherStudent.course_quiz.stats).toEqual(fresh);
+    expect(anotherStudent.lectures[0].quizzes.every((s) => s.stats.quizzes_taken === 0)).toBe(true);
+  });
+
   it("deals all 25 questions across five first quizzes, even out of order and interleaved with retakes", async () => {
     shared("MGT3204", 1);
     const firsts: number[] = [];
@@ -196,7 +240,7 @@ describe("lecture and course transcript quizzes", () => {
       secondBank = shared("MGT3204", 2);
     // One duplicated stem across recordings may not appear twice within the same course attempt.
     db.prepare(
-      "UPDATE lecture_quiz_questions SET stem=(SELECT stem FROM lecture_quiz_questions WHERE bank_id=? AND slot=1) WHERE bank_id=? AND slot=1"
+      "UPDATE lecture_quiz_questions SET stem=(SELECT upper(stem) || ' ' FROM lecture_quiz_questions WHERE bank_id=? AND slot=1) WHERE bank_id=? AND slot=1"
     ).run(firstBank, secondBank);
     const course = await start(null, 1);
     expect(course.questions).toHaveLength(25);
@@ -216,7 +260,11 @@ describe("lecture and course transcript quizzes", () => {
     await grade(retry, ids(retry));
     const allMissed = await start(null, 1, retry.id);
     expect(new Set(ids(allMissed))).toEqual(new Set(ids(retry)));
-    expect((await list())[0].lectures.flatMap((s) => s.quizzes).every((q) => q.status === "new")).toBe(true);
+    const catalog = (await list())[0];
+    expect(catalog.course_quiz.stats).toEqual({
+      quizzes_taken: 2, total_questions: 49, correct_questions: 22, incorrect_questions: 25,
+    });
+    expect(catalog.lectures.flatMap((s) => s.quizzes).every((q) => q.status === "new")).toBe(true);
   });
 
   it("validates and grades once in stored display order, including when an exhausted pool must recycle", async () => {
@@ -240,6 +288,33 @@ describe("lecture and course transcript quizzes", () => {
     expect((await request(path, { answers: answers(quiz, ids(quiz)) })).status).toBe(409);
     expect(await start(null, 1)).toEqual(submitted);
     expect(new Set(ids(await start(null, 1, quiz.id)))).toEqual(new Set(ids(quiz)));
+  });
+
+  it("drops past progress on revoked recordings while keeping progress on accessible ones", async () => {
+    shared("ACC1101", 1);
+    const pastCourse = await start(null, 1, null, "ACC1103");
+    await grade(pastCourse);
+    const pastLecture = await start(1, 1, null, "ACC1103");
+    await grade(pastLecture);
+
+    const privateId = db.prepare(`INSERT INTO lecture_transcripts(user_id,course_code,session_no,source,cues,cue_count,duration_ms)
+      VALUES(?,'ACC1103',2,'my-copy','[]',1,5000)`).run(student).lastInsertRowid;
+    bank(null, Number(privateId), "Own recording");
+    const own = await start(2, 1, null, "ACC1103");
+    await grade(own, [own.questions[0].id]);
+    const before = (await list())[0];
+    expect(before.course_quiz.stats).toEqual({
+      quizzes_taken: 1, correct_questions: 25, incorrect_questions: 0, total_questions: 50,
+    });
+    vi.stubEnv("SHARED_LECTURE_USERS", other);
+    const retained = (await list())[0];
+    expect(retained.lectures.map((l) => l.no)).toEqual([2]);
+    expect(retained.course_quiz.stats).toEqual({
+      quizzes_taken: 0, correct_questions: 0, incorrect_questions: 0, total_questions: 25,
+    });
+    expect(retained.lectures[0].quizzes[0].stats).toEqual({
+      quizzes_taken: 1, correct_questions: 4, incorrect_questions: 1, total_questions: 25,
+    });
   });
 
   it("enforces programme aliases, shared allowlist, account ownership, bank completeness and source revocation", async () => {
