@@ -252,20 +252,25 @@ export function LectureLinks({ onRead, initialCourse }: { onRead: (t: OpenLectur
                       {l.transcript && (
                         <button
                           onClick={() => onRead({ code: c.code, lecture: l, tab: "transcript" })}
-                          className="rounded-lg px-3 min-h-11 text-sm font-medium"
+                          aria-label={t("lec.transcript")} title={t("lec.transcript")}
+                          className="inline-flex items-center gap-1.5 rounded-lg px-3 min-h-11 min-w-11 justify-center text-sm font-medium"
                           style={{ backgroundColor: "var(--accent-light)", color: "var(--accent-text)" }}
                         >
-                          {t("lec.transcript")}
+                          <Icon name="transcript" size={18}/>
+                          {/* Icon alone on a phone; icon and label from iPad width up (owner 2026-11-16). */}
+                          <span className="hidden sm:inline" aria-hidden>{t("lec.transcript")}</span>
                         </button>
                       )}
                       <a
                         href={l.url}
                         target="_blank"
                         rel="noreferrer"
-                        className="flex items-center rounded-lg px-3 min-h-11 text-sm font-medium"
+                        aria-label={t("lib.watchExternal")} title={t("lib.watchExternal")}
+                        className="inline-flex items-center gap-1.5 rounded-lg px-3 min-h-11 min-w-11 justify-center text-sm font-medium"
                         style={{ backgroundColor: "var(--accent-light)", color: "var(--accent-text)" }}
                       >
-                        {t("lib.watch")} ↗
+                        <Icon name="watch" size={18}/>
+                        <span className="hidden sm:inline" aria-hidden>{t("lib.watch")} ↗</span>
                       </a>
                     </li>
                   ))}

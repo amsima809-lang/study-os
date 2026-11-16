@@ -101,6 +101,17 @@ export function AnnotatedSummary({ courseCode, sessionNo, source = "summary", fi
   const title = th ? "โน้ตลายมือของฉัน" : "My pen note";
   const failed = th ? "ทำรายการไม่สำเร็จ ลองใหม่อีกครั้ง" : "Couldn’t complete that change. Try again.";
   const reloadList = () => setReload(n => n + 1);
+  // A note whose words were edited away, waiting for her to mark its new place.
+  const [moving, setMoving] = useState<Annotation | null>(null);
+  async function moveTo(anchor: QuoteAnchor) {
+    const row = moving!;
+    try {
+      await putJSON<Annotation>(url(`/${row.id}/anchor`), { anchor: { ...anchor, block_key: anchor.block_key ?? undefined }, revision: row.revision });
+      setMoving(null); setError(""); reloadList(); onChanged?.();
+    } catch {
+      setError(th ? "ย้ายโน้ตไม่สำเร็จ ลองขีดเส้นใต้ข้อความใหม่อีกครั้ง" : "Couldn’t move the note. Mark the new words again.");
+    }
+  }
   const version = useRef(0);
   function writeRows(next: Annotation[]) {
     currentRows.current = next;
@@ -308,7 +319,7 @@ export function AnnotatedSummary({ courseCode, sessionNo, source = "summary", fi
     lastTool.current = g.type;
     suppressClick.current = true;
     const anchor = anchorFromMark(content.current!, g.points, source === "transcript" && filtered);
-    if (anchor) void openInk(anchor, point);
+    if (anchor) void (moving ? moveTo(anchor) : openInk(anchor, point));
     else setError(th ? "ขีดเส้นใต้หรือวงข้อความที่ต้องการอีกครั้ง" : "Underline or circle the words you want to annotate.");
   }
 
@@ -389,7 +400,13 @@ export function AnnotatedSummary({ courseCode, sessionNo, source = "summary", fi
     {loadFailed && <p role="alert" className="text-sm">{th ? "โหลดโน้ตลายมือไม่สำเร็จ" : "Couldn’t load your pen notes."} <button type="button" onClick={reloadList} className="min-h-11 underline">{th ? "ลองอีกครั้ง" : "Try again"}</button></p>}
     {unplaced.length > 0 && <details className="my-2 text-sm"><summary className="cursor-pointer min-h-11 py-2">
       {th ? "โน้ตที่หาข้อความเดิมไม่พบ" : "Notes whose original passage changed"} ({unplaced.length})
-    </summary>{unplaced.map(a => <div key={a.id}><q>{a.quote}</q><span role="list" className="lecture-inline-notes">{note(a)}</span></div>)}</details>}
+    </summary>{unplaced.map(a => <div key={a.id}><q>{a.quote}</q><span role="list" className="lecture-inline-notes">{note(a)}</span>
+      {!readOnly && <button type="button" className="min-h-11 px-2 underline" style={{ color: "var(--accent-text)" }}
+        onClick={() => { setMoving(a); setError(""); if (!summary) setPen(true); }}>
+        {th ? "ย้ายไปข้อความใหม่" : "Attach to new words"}</button>}</div>)}</details>}
+    {moving && <p role="status" className="text-sm my-2 rounded-lg px-3 py-2" style={{ backgroundColor: "var(--accent-light)", color: "var(--text-primary)" }}>
+      {th ? "ขีดเส้นใต้หรือวงข้อความใหม่สำหรับโน้ตนี้" : "Underline or circle the new words for this note."}
+      {" "}<button type="button" className="min-h-11 px-2 underline" onClick={() => setMoving(null)}>{th ? "ยกเลิก" : "Cancel"}</button></p>}
     <div ref={layer} className="relative">
       <div ref={content} className="lecture-source-text" data-annotation-surface={source} style={{
         touchAction: readOnly || editor ? undefined : summary ? "pan-y pinch-zoom" : pen ? "none" : undefined,

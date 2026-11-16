@@ -325,14 +325,50 @@ export function createNotesRouter(db: DB, onLectureChanged?: LectureChanged, sta
   });
 
   // Delete a note.
-  router.delete("/notes/:id", (req, res) => {
+  /** Remove a deleted photo's file, unless another note still points at it. Never outside the upload folder. */
+  async function removePhotoFile(path: string) {
+    const still = db.prepare("SELECT 1 FROM notes n, json_each(n.image_paths) i WHERE json_valid(n.image_paths) AND i.value = ? LIMIT 1").get(path);
+    if (!still) await unlink(join(env.uploadDir, basename(path))).catch(() => undefined);
+  }
+
+  router.delete("/notes/:id", async (req, res) => {
     const userId = req.user!.id;
-    const row = db.prepare("SELECT lecture_id FROM notes WHERE id = ? AND user_id = ?").get(req.params.id, userId) as
-      { lecture_id: number | null } | undefined;
+    const row = db.prepare("SELECT lecture_id, image_paths FROM notes WHERE id = ? AND user_id = ?").get(req.params.id, userId) as
+      { lecture_id: number | null; image_paths: string | null } | undefined;
     if (!row) return res.status(404).json({ error: "ไม่พบโน้ตนี้" });
     db.prepare("DELETE FROM notes WHERE id = ? AND user_id = ?").run(req.params.id, userId);
+    for (const path of safeParse(row.image_paths, []) as string[]) await removePhotoFile(String(path));
     onLectureChanged?.(userId, row.lecture_id);
     res.json({ ok: true });
+  });
+
+  // Delete ONE photo of a note (a blurry or repeated shot) and keep the rest of the note.
+  // Drawn-page readings and the handwriting marker refer to photos by position, so later ones move down by one.
+  router.delete("/notes/:id/images/:index", async (req, res) => {
+    const user = req.user!.id;
+    const note = noteDetail(req.params.id, user);
+    if (!note) return res.status(404).json({ error: "ไม่พบโน้ตนี้" });
+    const index = Number(req.params.index);
+    if (!Number.isInteger(index) || index < 0 || index >= note.image_paths.length) return res.status(404).json({ error: "ไม่พบรูปนี้" });
+    const others = note.image_paths.length - 1;
+    const hasText = !!note.raw_text?.trim();
+    if (!others && !hasText) {
+      return res.status(400).json({ code: "LAST_CONTENT", error: "รูปนี้เป็นเนื้อหาเดียวของโน้ต — ลบทั้งโน้ตแทน" });
+    }
+    const path = note.image_paths[index];
+    const paths = note.image_paths.filter((_, i) => i !== index);
+    const hw = (db.prepare("SELECT handwriting_image_index AS i FROM notes WHERE id = ?").get(note.id) as { i: number | null }).i;
+    db.transaction(() => {
+      db.prepare("DELETE FROM sketch_pages WHERE note_id = ? AND image_index = ?").run(note.id, index);
+      // Two steps so no two pages ever share a position on the way.
+      db.prepare("UPDATE sketch_pages SET image_index = image_index + 100000 WHERE note_id = ? AND image_index > ?").run(note.id, index);
+      db.prepare("UPDATE sketch_pages SET image_index = image_index - 100001 WHERE note_id = ? AND image_index >= 100000").run(note.id);
+      db.prepare("UPDATE notes SET image_paths = ?, handwriting_image_index = ? WHERE id = ? AND user_id = ?").run(
+        JSON.stringify(paths), hw === null || hw === index ? null : hw > index ? hw - 1 : hw, note.id, user);
+    })();
+    await removePhotoFile(path);
+    onLectureChanged?.(user, note.lecture_id);
+    res.json(noteDetail(note.id, user));
   });
 
   // Create a note: text and/or images -> optionally AI summary.

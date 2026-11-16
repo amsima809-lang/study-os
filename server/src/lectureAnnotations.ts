@@ -344,6 +344,24 @@ export function createLectureAnnotationsRouter(db: DB, transcribe = readInk, sch
     onLectureChanged?.(req.user!.id, res.locals.lecture);
     res.json(present(entry(req, res, id)!));
   });
+  // Point an existing note at new words (its passage was edited away): same checks as a new mark; the ink stays.
+  router.put("/:id/anchor", (req, res) => {
+    const body = z.object({ anchor, revision }).safeParse(req.body);
+    if (!body.success) return invalid(res);
+    const id = Number(req.params.id);
+    if (!entry(req, res, id)) return missing(res);
+    const a = body.data.anchor;
+    if (res.locals.source === "transcript") {
+      const row = db.prepare(`SELECT COALESCE(st.cues,pt.cues) AS cues FROM course_lectures cl ${joinRecordings} WHERE cl.id=?`)
+        .get(Number(canReadSharedLectures(req.user!.id)), req.user!.id, res.locals.lecture) as {cues:string};
+      if (!transcriptContains(row.cues, a.quote)) return conflict(res);
+    }
+    const saved = db.prepare(`UPDATE lecture_annotations SET quote=?,prefix=?,suffix=?,mark=?,block_key=?,revision=revision+1${where} AND revision=?`)
+      .run(a.quote, a.prefix, a.suffix, a.mark, a.block_key ?? null, ...owner(req, res), id, body.data.revision);
+    if (!saved.changes) return conflict(res);
+    onLectureChanged?.(req.user!.id, res.locals.lecture);
+    res.json(present(entry(req, res, id)!));
+  });
   router.delete("/:id", (req, res) => {
     const id = Number(req.params.id);
     if (!entry(req, res, id)) return missing(res);

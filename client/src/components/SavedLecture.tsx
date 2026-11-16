@@ -72,6 +72,8 @@ function LectureReader({ which, onDeleted }: { which: OpenLecture; onDeleted: ()
   const [draft, setDraft] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState<"restore" | "delete" | null>(null);
+  // Pen notes attached to words this edit removes: she is told before saving (they are kept, under "passage changed").
+  const [detaching, setDetaching] = useState(0);
   const [error, setError] = useState("");
   const [focus, setFocus] = useState<Target | null>(null);
   const [back, setBack] = useState<Target | null>(null);
@@ -135,6 +137,23 @@ function LectureReader({ which, onDeleted }: { which: OpenLecture; onDeleted: ()
     if (target.tab === "summary") setDraft(null);
     setTab(target.tab === "summary" ? "notes" : "transcript"); setBack(from); setFocus(target); setQuery("");
   }
+  /** How many of her summary pen notes are attached to words the edited text no longer contains. */
+  async function notesDetachedBy(text: string) {
+    try {
+      const { annotations } = await getJSON<{ annotations: { quote: string }[] }>(
+        `/api/lectures/${encodeURIComponent(code)}/${lecture.no}/annotations?source=summary`);
+      // Compare as the reader shows it: no markdown marks, timestamps as plain times, spaces ignored.
+      const plain = (v: string) => v.replace(/\[(\d{1,2}:\d{2}(?::\d{2})?)\]/g, "$1").replace(/^\s*(?:#{1,6}|[-*]|\d+\.)\s+/gm, "")
+        .replace(/[*_`>]/g, "").replace(/\s+/g, "");
+      const shown = plain(text);
+      return annotations.filter(a => !shown.includes(plain(a.quote))).length;
+    } catch { return 0; } // the server still keeps every note; the warning is only a courtesy
+  }
+  async function saveEdit() {
+    if (!draft) return;
+    const n = await notesDetachedBy(draft);
+    if (n > 0) setDetaching(n); else await save(false);
+  }
   async function save(restore: boolean) {
     setBusy(true); setError("");
     try {
@@ -170,11 +189,13 @@ function LectureReader({ which, onDeleted }: { which: OpenLecture; onDeleted: ()
     <h2 className="text-lg font-bold"><CourseChip code={code} className="mr-2"/>{t("lib.lectureNo", { n: lecture.no })}</h2>
     <div className="flex flex-wrap items-center gap-2">
       {(["notes", "transcript"] as const).filter(v => v === "notes" || lecture.transcript).map(v =>
-        <button key={v} aria-pressed={tab === v} onClick={() => switchTab(v)}
-          className="rounded-lg min-h-11 px-3 text-sm" style={tab === v ? chipStyle : undefined}>
-          {t(v === "notes" ? "lec.notes" : "lec.transcript")}
+        <button key={v} aria-pressed={tab === v} onClick={() => switchTab(v)} aria-label={v === "transcript" ? t("lec.transcript") : undefined}
+          className="inline-flex items-center gap-1.5 rounded-lg min-h-11 min-w-11 justify-center px-3 text-sm" style={tab === v ? chipStyle : undefined}>
+          {v === "notes" ? t("lec.notes") : <><Icon name="transcript" size={18}/><span className="hidden sm:inline" aria-hidden>{t("lec.transcript")}</span></>}
         </button>)}
-      <a href={lecture.url} target="_blank" rel="noreferrer" className="min-h-11 inline-flex items-center px-2 text-sm" style={{ color: "var(--accent-text)" }}>{t("lib.watch")} ↗</a>
+      <a href={lecture.url} target="_blank" rel="noreferrer" aria-label={t("lib.watchExternal")} title={t("lib.watchExternal")}
+        className="min-h-11 min-w-11 justify-center inline-flex items-center gap-1.5 px-2 text-sm" style={{ color: "var(--accent-text)" }}>
+        <Icon name="watch" size={18}/><span className="hidden sm:inline" aria-hidden>{t("lib.watch")} ↗</span></a>
     </div>
     {error && <ErrorBox>{error}</ErrorBox>}
     {readingSummary && (summary ? <>
@@ -186,7 +207,7 @@ function LectureReader({ which, onDeleted }: { which: OpenLecture; onDeleted: ()
           <span style={{ color: "var(--text-secondary)" }}>{t("lec.markToAnnotate")}</span>
           {summary.edited && <button className="min-h-11" onClick={() => setConfirm("restore")}>{t("lec.restore")}</button>}
         </> : <>
-          <button className="min-h-11" disabled={busy || !draft.trim()} onClick={() => void save(false)}>{t("lec.save")}</button>
+          <button className="min-h-11" disabled={busy || !draft.trim()} onClick={() => void saveEdit()}>{t("lec.save")}</button>
           <button className="min-h-11" disabled={busy} onClick={() => setDraft(null)}>{t("nav.cancel")}</button>
         </>}
       </div>
@@ -240,6 +261,9 @@ function LectureReader({ which, onDeleted }: { which: OpenLecture; onDeleted: ()
     {editor && <LectureNoteTray key={editor.note?.id ?? "add"} code={code} sessionNo={lecture.no}
       readerRef={container} note={editor.note} onCancel={() => setEditor(null)}
       onSaved={id => { setSavedNoteId(id); setNotesRevision(n => n + 1); setEditor(null); }}/>}
+    {detaching > 0 && <ConfirmDialog title={t("lec.detachTitle", { n: detaching })} message={t("lec.detachMessage")}
+      cancelLabel={t("lec.keepEditing")} confirmLabel={t("lec.save")} busy={busy}
+      onCancel={() => { if (!busy) setDetaching(0); }} onConfirm={async () => { await save(false); setDetaching(0); }}/>}
     {confirm && <ConfirmDialog title={t(confirm === "restore" ? "lec.restore" : "lib.deleteTranscriptTitle")} message={t("confirm.cannotUndo")}
       cancelLabel={t("nav.cancel")} confirmLabel={t(confirm === "restore" ? "lec.restore" : "confirm.delete")} busy={busy}
       onCancel={() => setConfirm(null)} onConfirm={async () => {

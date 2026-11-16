@@ -247,3 +247,17 @@ it("retains native vectors for recovery after a raster edit and reopens the curr
     .toMatchObject({native:true,revision:changed.revision+1});
   expect(await(await request("/"+a.id+"/drawing")).json()).toEqual({drawing:"ZGVm"});
 });
+
+describe("moving a note whose words were edited away", () => {
+  it("re-attaches it to new words, keeps its ink, and refuses stale or foreign moves", async () => {
+    const created = await request("", "POST", { key: randomUUID(), anchor, png, colors: ["#006688"] });
+    const note = (await created.json()) as { id: number; revision: number };
+    const next = { quote: "example", prefix: "Cited text ", suffix: "", mark: "underline" };
+    const moved = await request(`/${note.id}/anchor`, "PUT", { anchor: next, revision: note.revision });
+    expect(moved.status).toBe(200);
+    expect(await moved.json()).toMatchObject({ id: note.id, ...next, revision: note.revision + 1 });
+    expect(Buffer.from(await (await request(`/${note.id}/image`)).arrayBuffer()).toString("base64")).toBe(png);
+    expect((await request(`/${note.id}/anchor`, "PUT", { anchor, revision: note.revision })).status).toBe(409);
+    expect((await request(`/${note.id}/anchor`, "PUT", { anchor, revision: note.revision + 1 }, "another")).status).toBe(404);
+  });
+});

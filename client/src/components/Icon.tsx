@@ -31,6 +31,10 @@ const paths: Record<string, string> = {
   calendarRange:
     "M8 2v3m8-3v3M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2zm4 9h2m4 0h2M9 17h2",
   chartBar: "M18 20V10m-6 10V4M6 20v-6",
+  // A lecture's transcript: a caption box with lines of text.
+  transcript: "M4 5h16a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V7a2 2 0 012-2zm2 5h6m3 0h3M6 14h3m3 0h6",
+  // Watch the recording: a screen with a play button.
+  watch: "M4 4h16a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2zm6 4.5v5l4.5-2.5L10 8.5zM8 21h8",
   graduationCap:
     "M2 10l10-5 10 5-10 5-10-5zm5 3.5v4l5 2.5 5-2.5v-4",
   fileEdit:
