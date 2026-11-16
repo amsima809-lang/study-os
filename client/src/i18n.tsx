@@ -552,6 +552,7 @@ const STRINGS: Record<Lang, Dict> = {
     // more hub
     // mock exam
     "paper.fullLength": "ข้อสอบจำลองเต็มชุด",
+    "paper.form": "ข้อสอบชุด {form}",
     "paper.accounting": "รายการค้า งบการเงิน และการคำนวณ",
     "paper.management": "กรณีศึกษาและการอ่านกราฟการจัดการ",
     "paper.thai": "การอ่านบทความ โปสเตอร์ และการสื่อสารในที่ทำงาน",
@@ -1670,6 +1671,7 @@ const STRINGS: Record<Lang, Dict> = {
     "more.theme_dark": "Dark",
     "more.theme_system": "System",
     "paper.fullLength": "Full-length mock exams",
+    "paper.form": "Paper {form}",
     "paper.accounting": "Transactions, financial statements and calculations",
     "paper.management": "Management cases and two-axis grids",
     "paper.thai": "Passages, posters and workplace communication",

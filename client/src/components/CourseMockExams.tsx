@@ -12,10 +12,10 @@ const secondary = "min-h-11 rounded-lg border border-[var(--border)] px-3 text-s
 const quiet = "text-sm text-[var(--text-secondary)]";
 
 type Course = {
-  code: string; name_th: string; name_en: string | null; question_count: number; duration_min: number;
+  code: string; form_key: string; name_th: string; name_en: string | null; question_count: number; duration_min: number;
   active_attempt_id: number | null; latest_completed_id: number | null;
 };
-type History = { id: number; course_code: string; score: number; question_count: number; finished_ms: number };
+type History = { id: number; course_code: string; form_key: string; score: number; question_count: number; finished_ms: number };
 type Catalog = { courses: Course[]; history: History[] };
 type Stimulus = { kind: string; title: string; text: string; columns: string[]; rows: string[][] };
 type Question = {
@@ -24,7 +24,7 @@ type Question = {
 };
 type Progress = { revision: number; status: "in_progress" | "completed"; server_now_ms: number; deadline_ms: number };
 type Attempt = Progress & {
-  id: number; course_code: string; current_position: number; questions: Question[]; question_count: number;
+  id: number; course_code: string; form_key: string; current_position: number; questions: Question[]; question_count: number;
   score: number | null; expired: boolean;
 };
 type Change = { position: number; flagged?: boolean; choice?: number };
@@ -41,7 +41,7 @@ export function CourseMockExams({ history, legacy, onReading }: {
   const [load, setLoad] = useState(0);
   useEffect(() => {
     let live = true;
-    getJSON<Catalog>(base + "/catalog").then(data => { if (live) setCatalog(data); })
+    getJSON<Catalog>(base + "/catalog?forms=all").then(data => { if (live) setCatalog(data); })
       .catch(() => { if (live) setError(true); });
     return () => { live = false; };
   }, [load]);
@@ -53,7 +53,7 @@ export function CourseMockExams({ history, legacy, onReading }: {
     setBusy(true); setError(false);
     try {
       const result = id !== null ? await getAttempt(id) : await postJSON<Attempt>(base + "/start", {
-        course_code: course!.code, previous_attempt_id: course!.latest_completed_id,
+        course_code: course!.code, form_key: course!.form_key, previous_attempt_id: course!.latest_completed_id,
       });
       setAttempt(result);
     } catch { setError(true); } finally { setBusy(false); }
@@ -73,6 +73,12 @@ export function CourseMockExams({ history, legacy, onReading }: {
   </>;
 
   if (history && catalog.history.length === 0) return <>{legacy}</>;
+  const byCourse = new Map<string, Course[]>();
+  for (const form of catalog.courses) {
+    const group = byCourse.get(form.code);
+    if (group) group.push(form);
+    else byCourse.set(form.code, [form]);
+  }
   return <div className="space-y-4">
     <h2 className="text-lg font-semibold">{t(history ? "paper.courseHistory" : "paper.fullLength")}</h2>
     {error && <ErrorBox onRetry={reload} />}
@@ -80,23 +86,35 @@ export function CourseMockExams({ history, legacy, onReading }: {
       const course = catalog.courses.find(c => c.code === item.course_code);
       return <Card key={item.id}><div className="flex flex-wrap items-center justify-between gap-2">
         <div><CourseTitle kind="exam" inline code={item.course_code} {...names(course)} />
-          <p className={quiet}>{new Date(item.finished_ms).toLocaleString(lang === "th" ? "th-TH" : "en-GB", {dateStyle: "medium", timeStyle: "short"})} · {item.score}/{item.question_count}</p></div>
+          <p className={quiet}>{t("paper.form", {form: item.form_key})} · {new Date(item.finished_ms).toLocaleString(lang === "th" ? "th-TH" : "en-GB", {dateStyle: "medium", timeStyle: "short"})} · {item.score}/{item.question_count}</p></div>
         <button className={secondary} disabled={busy} onClick={() => void open(null, item.id)}>{t("paper.review")}</button>
       </div></Card>;
     })}</div> : <>
       <p className={quiet}>{t("paper.sitting")}</p>
-      <div className="grid gap-3 sm:grid-cols-2">{catalog.courses.map(course => <Card key={course.code} className="flex flex-col gap-3">
-        <h3 className="font-semibold"><CourseTitle kind="exam" code={course.code} {...names(course)} /></h3>
-        <p className={quiet}>{t("paper.format", {n: course.question_count, minutes: course.duration_min})}</p>
-        {formatKey(course.code) && <p className={quiet}>{t("paper." + formatKey(course.code))}</p>}
-        <div className="mt-auto flex flex-wrap gap-2">
-          <button className={primary} disabled={busy} onClick={() => void open(course, course.active_attempt_id)}>
-            {t(course.active_attempt_id ? "mock.resume" : course.latest_completed_id ? "paper.samePaper" : "mock.startExam")}
-          </button>
-          {course.latest_completed_id !== null && <button className={secondary} disabled={busy}
-            onClick={() => void open(null, course.latest_completed_id)}>{t("paper.review")}</button>}
-        </div>
-      </Card>)}</div>
+      <div className="grid gap-3 sm:grid-cols-2">{Array.from(byCourse.values(), forms => {
+        const course = forms[0];
+        return <Card key={course.code} className="flex flex-col gap-2">
+          <h3 className="font-semibold"><CourseTitle kind="exam" code={course.code} {...names(course)} /></h3>
+          <p className={quiet}>{t("paper.format", {n: course.question_count, minutes: course.duration_min})}</p>
+          {formatKey(course.code) && <p className={quiet}>{t("paper." + formatKey(course.code))}</p>}
+          <ul className="mt-auto divide-y divide-[var(--border-light)]">
+            {forms.map(form => {
+              const title = t("paper.form", {form: form.form_key});
+              const action = t(form.active_attempt_id ? "mock.resume" : form.latest_completed_id ? "paper.samePaper" : "mock.startExam");
+              return <li key={form.form_key} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                <span className="text-sm font-semibold">{title}</span>
+                <div className="flex flex-wrap gap-2">
+                  <button className={primary} disabled={busy} aria-label={action + " · " + title + " · " + course.code}
+                    onClick={() => void open(form, form.active_attempt_id)}>{action}</button>
+                  {form.latest_completed_id !== null && <button className={secondary} disabled={busy}
+                    aria-label={t("paper.review") + " · " + title + " · " + course.code}
+                    onClick={() => void open(null, form.latest_completed_id)}>{t("paper.review")}</button>}
+                </div>
+              </li>;
+            })}
+          </ul>
+        </Card>;
+      })}</div>
       <p className="text-xs text-[var(--text-secondary)]">{t("quiz.disclaimer")}</p>
     </>}
     <details className="border-t border-[var(--border)] pt-2"><summary className="min-h-11 cursor-pointer py-3 font-medium">{t(history ? "paper.customHistory" : "paper.custom")}</summary>{legacy}</details>
@@ -233,7 +251,7 @@ function PaperRunner({ initial, course, onFinish, exit }: {
   const blocked = busy || expired;
   return <div className="space-y-4">
     <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2">
-      <CourseTitle kind="exam" inline code={paper.course_code} {...names(course)} className="text-sm font-semibold" />
+      <div className="text-sm"><CourseTitle kind="exam" inline code={paper.course_code} {...names(course)} className="font-semibold" /> · {t("paper.form", {form: paper.form_key})}</div>
       <div className={'flex items-center gap-2 font-medium ' + (seconds <= 300 ? 'text-[var(--danger)]' : '')}>
         <Icon name="clock" size={17} /><span className="text-xs">{t("mock.timeLeft")}</span>
         <span role="timer" className="font-semibold tabular-nums">{clock(seconds)}</span>
@@ -285,6 +303,7 @@ function PaperReview({ attempt, course, exit }: {attempt: Attempt; course?: Cour
   const [review, setReview] = useState(false);
   return <div className="space-y-4">
     <Card className="space-y-2"><CourseTitle kind="exam" code={attempt.course_code} {...names(course)} />
+      <p className={quiet}>{t("paper.form", {form: attempt.form_key})}</p>
       <h2 className="text-2xl font-semibold">{t("mock.resultScore", {score: attempt.score ?? 0, max: attempt.question_count})}
         <span className="ml-2 text-base text-[var(--text-secondary)]">{Math.round(100 * (attempt.score ?? 0) / attempt.question_count)}%</span></h2>
       {attempt.expired && <p className={quiet}>{t("paper.expired")}</p>}

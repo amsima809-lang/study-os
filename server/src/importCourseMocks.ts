@@ -12,27 +12,30 @@ const linkedFormats = {
   ACC1101: ["case", "table"], MGT3204: ["case", "grid"],
   RAM1103: ["passage", "poster"], RAM1132: ["record", "table", "passage"],
 } as const;
-const model = "deepseek-v4-pro";
+const deepSeek = "deepseek-v4-pro";
+const codex = "openai-codex";
 const nonempty = z.string().trim().min(1);
+const hexDigest = z.string().regex(/^[a-f0-9]{64}$/);
 const positiveInt = z.number().int().positive();
 const stimulus = z.object({
   id: nonempty, kind: z.enum(["case", "table", "grid", "poster", "passage", "record"]),
   title: z.string(), text: z.string(), columns: z.array(z.string()), rows: z.array(z.array(z.string())),
 });
 const question = z.object({
-  position: positiveInt, session_no: positiveInt, source_url: nonempty, source_hash: z.string().regex(/^[a-f0-9]{64}$/),
+  position: positiveInt, session_no: positiveInt, source_url: nonempty, source_hash: hexDigest,
   evidence_ms: z.number().int().nonnegative(), evidence_quote: nonempty, concept: nonempty,
   stimulus: stimulus.nullable(), stem: nonempty, options: z.array(nonempty).length(4),
   correct_index: z.number().int().min(0).max(3), explanation: nonempty,
 });
 const paperSchema = z.object({
   course_code: z.enum(["ACC1101", "MGT3204", "RAM1103", "RAM1132"]),
-  form_key: nonempty, version: nonempty, model: z.literal(model), duration_min: z.literal(150),
+  form_key: nonempty, version: nonempty, model: z.enum([deepSeek, codex]), duration_min: z.literal(150),
   question_count: positiveInt, questions: z.array(question),
-  sources: z.array(z.object({ session_no: positiveInt, source_url: nonempty, source_hash: z.string().regex(/^[a-f0-9]{64}$/) })).min(1),
-  receipts: z.array(z.object({
-    model: z.literal(model), response_id: nonempty, role: z.enum(["author", "blind_review"]),
-  }).passthrough()).min(2),
+  sources: z.array(z.object({ session_no: positiveInt, source_url: nonempty, source_hash: hexDigest })).min(1),
+  receipts: z.array(z.discriminatedUnion("model", [
+    z.object({ model: z.literal(deepSeek), role: z.enum(["author", "blind_review"]), response_id: nonempty }).passthrough(),
+    z.object({ model: z.literal(codex), role: z.literal("author"), artifact_sha256: hexDigest }).passthrough(),
+  ])).min(2),
 });
 export type CourseMockQuestion = z.infer<typeof question>;
 type Cue = { startMs: number; endMs: number; text: string };
@@ -40,14 +43,22 @@ type Recording = { id: number; session_no: number; source_url: string; cues: str
 const key = (s: string) => s.normalize("NFKC").trim().toLowerCase().replace(/\s+/gu, " ");
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 
+function stimulusContent(s: z.infer<typeof stimulus>) {
+  return key(JSON.stringify([s.text, s.columns, s.rows]));
+}
+
 function validatePaper(db: DB, raw: unknown) {
   const paper = paperSchema.parse(raw);
   const code = paper.course_code;
   if (paper.question_count !== counts[code] || paper.questions.length !== counts[code]) {
     throw new Error(`${code}: expected ${counts[code]} questions`);
   }
-  if (new Set(paper.receipts.map((receipt) => receipt.role)).size !== 2 ||
-    new Set(paper.receipts.map((receipt) => receipt.response_id)).size !== paper.receipts.length) {
+  if ((paper.form_key === "B" && paper.model !== codex) || (paper.form_key === "A" && paper.model !== deepSeek) ||
+    paper.receipts.some((r) => r.role === "author" && r.model !== paper.model)) {
+    throw new Error(code + ": paper author differs from form or author receipts");
+  }
+  const receiptIds = paper.receipts.map((r) => r.model === codex ? "artifact:" + r.artifact_sha256 : "response:" + r.response_id);
+  if (new Set(paper.receipts.map((r) => r.role)).size !== 2 || new Set(receiptIds).size !== receiptIds.length) {
     throw new Error(code + ": expected separate generation and blind-review receipts");
   }
   const sources = db.prepare("SELECT id,session_no,source_url,cues FROM shared_lecture_transcripts WHERE course_code=?")
@@ -60,7 +71,12 @@ function validatePaper(db: DB, raw: unknown) {
   const practice = db.prepare(`SELECT q.stem FROM lecture_quiz_questions q
     JOIN lecture_quiz_banks b ON b.id=q.bank_id JOIN shared_lecture_transcripts t ON t.id=b.shared_transcript_id
     WHERE t.course_code=?`).all(code) as { stem: string }[];
-  const seen = new Set(practice.map((q) => key(q.stem)));
+  const otherForms = db.prepare(`SELECT json_extract(q.value,'$.stem') stem, json_extract(q.value,'$.stimulus') stimulus
+    FROM course_mock_papers p,json_each(p.questions) q WHERE p.course_code=? AND p.form_key<>?`)
+    .all(code, paper.form_key) as { stem: string; stimulus: string | null }[];
+  // Older editions may already have been seen by students, including via attempt history.
+  const seen = new Set([...practice, ...otherForms].map((q) => key(q.stem)));
+  const otherStimuli = new Set(otherForms.flatMap((q) => q.stimulus ? [stimulusContent(JSON.parse(q.stimulus))] : []));
   const used = new Set<number>();
   const stimuli = new Map<string, string>();
   const sharedFormats = new Set<string>();
@@ -78,6 +94,7 @@ function validatePaper(db: DB, raw: unknown) {
     used.add(source.id);
     if (q.stimulus) {
       const s = q.stimulus;
+      if (otherStimuli.has(stimulusContent(s))) throw new Error(where + ": stimulus reused from another form");
       if ((!s.text.trim() && !s.rows.length) || s.rows.some((r) => r.length !== s.columns.length)
         || ((s.kind === "table" || s.kind === "grid") && (!s.rows.length || !s.columns.length))) {
         throw new Error(where + ": incomplete stimulus");
@@ -119,21 +136,22 @@ export function importCourseMocks(db: DB, raws: unknown[], dryRun = false) {
     if (forms.length !== Object.keys(counts).length || new Set(forms.map((f) => f.paper.course_code)).size !== forms.length) {
       throw new Error("Expected one complete paper for each of the four courses");
     }
-    const existing = db.prepare(`SELECT id,content_hash,active FROM course_mock_papers
+    if (new Set(forms.map((f) => f.paper.form_key)).size !== 1) throw new Error("Expected the same form across all four courses");
+    const existing = db.prepare(`SELECT id,content_hash,model,active FROM course_mock_papers
       WHERE course_code=? AND form_key=? AND version=?`);
     const insert = db.prepare(`INSERT INTO course_mock_papers(course_code,form_key,version,content_hash,model,duration_min,question_count,questions,receipts)
       VALUES(?,?,?,?,?,?,?,?,?)`);
     return forms.map(({ paper, sourceIds, hash }) => {
       const { course_code, form_key, version, question_count } = paper;
-      const old = existing.get(course_code, form_key, version) as { id: number; content_hash: string; active: number } | undefined;
-      if (old && old.content_hash !== hash) throw new Error(course_code + ": this version already identifies different questions");
+      const old = existing.get(course_code, form_key, version) as { id: number; content_hash: string; model: string; active: number } | undefined;
+      if (old && (old.content_hash !== hash || old.model !== paper.model)) throw new Error(course_code + ": this version already identifies different questions or author");
       if (!dryRun && !old?.active) {
-        const id = old?.id ?? Number(insert.run(course_code, form_key, version, hash, model, paper.duration_min, question_count,
+        const id = old?.id ?? Number(insert.run(course_code, form_key, version, hash, paper.model, paper.duration_min, question_count,
           JSON.stringify(paper.questions), JSON.stringify(paper.receipts)).lastInsertRowid);
         db.prepare("DELETE FROM course_mock_sources WHERE paper_id=?").run(id);
         const link = db.prepare("INSERT INTO course_mock_sources(paper_id,transcript_id) VALUES(?,?)");
         for (const tid of sourceIds) link.run(id, tid);
-        db.prepare("UPDATE course_mock_papers SET active=0 WHERE course_code=? AND active=1").run(course_code);
+        db.prepare("UPDATE course_mock_papers SET active=0 WHERE course_code=? AND form_key=? AND active=1").run(course_code, form_key);
         db.prepare("UPDATE course_mock_papers SET active=1,valid=1 WHERE id=?").run(id);
       }
       return { course_code, form_key, version, question_count, recordings: sourceIds.length, already_active: Boolean(old?.active) };

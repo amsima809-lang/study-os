@@ -1,5 +1,8 @@
 import { createHash } from "node:crypto";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { type Server } from "node:http";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { type AddressInfo } from "node:net";
 import express from "express";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -15,13 +18,13 @@ const student = "legacy-user-0001", other = "second-student", signedOut = "anony
 let db: DB, server: Server, base: string, now: number;
 type PublicItem = Partial<CourseMockQuestion> & { choice: number | null; flagged: boolean };
 type Detail = {
-  id: number; course_code: string; status: string; score: number | null; revision: number; current_position: number;
+  id: number; course_code: string; form_key: string; status: string; score: number | null; revision: number; current_position: number;
   deadline_ms: number; started_ms: number; finished_ms: number | null; expired: boolean; questions: PublicItem[];
 };
-type Course = { code: string; question_count: number; active_attempt_id: number | null; latest_completed_id: number | null };
+type Course = { code: string; form_key: string; question_count: number; active_attempt_id: number | null; latest_completed_id: number | null };
 
-function edition(questions: CourseMockQuestion[]) {
-  return "A-" + createHash("sha256").update(JSON.stringify(questions)).digest("hex").slice(0, 16);
+function edition(questions: CourseMockQuestion[], form = "A") {
+  return form + "-" + createHash("sha256").update(JSON.stringify(questions)).digest("hex").slice(0, 16);
 }
 function fixtures() {
   return Object.entries(sizes).map(([course_code, question_count]) => {
@@ -45,6 +48,19 @@ function fixtures() {
     }));
     return { course_code, form_key: "A", version: edition(questions), model: "deepseek-v4-pro", duration_min: 150,
       question_count, questions, sources, receipts: ["author","blind_review"].map(role => ({ model: "deepseek-v4-pro", response_id: role, role })) };
+  });
+}
+function secondForms(originals: ReturnType<typeof fixtures>) {
+  return originals.map(paper => {
+    const questions = paper.questions.map(q => ({
+      ...q, stem: "Fresh scenario " + q.position, correct_index: (q.correct_index + 1) % 4,
+      stimulus: q.stimulus && { ...q.stimulus, text: "Independent example for paper B" },
+    }));
+    return { ...paper, form_key: "B", version: edition(questions, "B"), model: "openai-codex", questions,
+      receipts: [
+        { role: "author", model: "openai-codex", artifact_sha256: createHash("sha256").update(JSON.stringify(questions)).digest("hex") },
+        { role: "blind_review", model: "deepseek-v4-pro", response_id: "fixture-review" },
+      ] };
   });
 }
 beforeEach(async () => {
@@ -74,13 +90,13 @@ afterEach(async () => {
 function api(path: string, method = "GET", data?: unknown, user = student) {
   return fetch(base + path, { method, headers: { "content-type": "application/json", "x-user": user }, body: data === undefined ? undefined : JSON.stringify(data) });
 }
-async function start(course_code = "ACC1103", previous_attempt_id?: number) {
-  const r = await api("/start", "POST", { course_code, previous_attempt_id });
+async function start(course_code = "ACC1103", previous_attempt_id?: number, form_key?: string) {
+  const r = await api("/start", "POST", { course_code, previous_attempt_id, form_key });
   expect(r.status).toBe(200);
   return await r.json() as Detail;
 }
-async function list(user = student) {
-  return (await (await api("/catalog", "GET", undefined, user)).json()) as { courses: Course[]; history: { id: number; score: number; expired: boolean }[] };
+async function list(user = student, allForms = false) {
+  return (await (await api(allForms ? "/catalog?forms=all" : "/catalog", "GET", undefined, user)).json()) as { courses: Course[]; history: { id: number; form_key: string; score: number; expired: boolean }[] };
 }
 function progress(id: number, data: unknown) { return api("/attempts/" + id + "/progress", "PUT", data); }
 async function get(id: number) { return (await (await api("/attempts/" + id)).json()) as Detail; }
@@ -175,6 +191,104 @@ describe("private transcript course mock exams", () => {
     expect(retake.questions[0].stem).toBe(papers[0].questions[0].stem);
     expect((await get(a.id)).questions[0].stem).toBe("ACC1101 example 0");
   });
+  it("accepts A and B in either order, verifies authorship, and rejects reused stems and shared data", () => {
+    const a = fixtures();
+    const b = secondForms(a);
+    importCourseMocks(db, b);
+    const duplicate = structuredClone(a);
+    duplicate[3].questions[119].stem = "  " + b[3].questions[0].stem.toUpperCase();
+    expect(() => importCourseMocks(db, duplicate)).toThrow(/duplicated question/);
+    duplicate[3] = structuredClone(a[3]);
+    duplicate[3].questions[0].stimulus = { ...b[3].questions[0].stimulus!, id: "changed id", title: "New heading" };
+    expect(() => importCourseMocks(db, duplicate)).toThrow(/stimulus reused/);
+    const wrongAuthor = b.map(p => ({...p, model: "deepseek-v4-pro"}));
+    expect(() => importCourseMocks(db, wrongAuthor)).toThrow(/paper author/);
+    const wrongReceipt = structuredClone(b);
+    wrongReceipt[0].receipts = a[0].receipts;
+    expect(() => importCourseMocks(db, wrongReceipt)).toThrow(/author receipts/);
+    const noReview = b.map(p => ({...p, receipts: [p.receipts[0], p.receipts[0]]}));
+    expect(() => importCourseMocks(db, noReview)).toThrow(/separate generation/);
+    expect(() => importCourseMocks(db, [a[0], a[1], b[2], b[3]])).toThrow(/same form/);
+    expect(db.prepare("SELECT count(*) n FROM course_mock_papers").get()).toEqual({ n: 4 });
+    importCourseMocks(db, a);
+    for (const batch of [b, a]) expect(importCourseMocks(db, batch).every(r => r.already_active)).toBe(true);
+    expect(db.prepare("SELECT model,count(*) n FROM course_mock_papers WHERE active=1 GROUP BY model ORDER BY model").all()).toEqual([
+      { model: "deepseek-v4-pro", n: 4 }, { model: "openai-codex", n: 4 },
+    ]);
+  });
+
+  it("keeps timers, answers, keys, resume, retakes and history independent for both papers", async () => {
+    const a = fixtures();
+    importCourseMocks(db, a);
+    const first = await start();
+    await progress(first.id, {revision: 0, changes: [{position: 1, choice: 0}]});
+    now += 60000;
+    importCourseMocks(db, secondForms(a));
+    const courses = (await list(student, true)).courses;
+    expect(courses.map(c => [c.code, c.form_key, c.question_count])).toEqual(
+      (await list()).courses.flatMap(c => [[c.code, "A", c.question_count], [c.code, "B", c.question_count]]));
+    expect((await api("/start","POST",{course_code:"ACC1103",form_key:"B",previous_attempt_id:first.id})).status).toBe(404);
+    const second = await start("ACC1103", undefined, "B");
+    expect(second.id).not.toBe(first.id);
+    expect(second).toMatchObject({form_key:"B", started_ms:now, deadline_ms: first.deadline_ms+60000});
+    expect(second.questions[0]).toMatchObject({stem:"Fresh scenario 1", choice:null});
+    expect(second.questions[0]).not.toHaveProperty("correct_index");
+    await progress(second.id, {revision:0, changes:[{position:1, choice:1, flagged:true}]});
+    expect((await start()).id).toBe(first.id);
+    expect((await start("ACC1103", undefined, "B")).id).toBe(second.id);
+    const [ca, cb] = (await list(student,true)).courses;
+    expect(ca.active_attempt_id).toBe(first.id);
+    expect(cb.active_attempt_id).toBe(second.id);
+    await api("/attempts/"+second.id+"/finish","POST",{revision:1});
+    expect((await list()).history).toEqual([]);
+    expect((await list(student,true)).history).toMatchObject([{id:second.id,form_key:"B",score:1}]);
+    expect(await get(first.id)).toMatchObject({status:"in_progress",score:null});
+    const retake = await start("ACC1103",second.id,"B");
+    expect(retake.id).not.toBe(second.id);
+    expect(retake.questions[0]).toMatchObject({choice:null, flagged:false});
+    now=first.deadline_ms;
+    expect(await get(first.id)).toMatchObject({status:"completed",score:1,expired:true});
+    expect(await get(retake.id)).toMatchObject({status:"in_progress",score:null});
+    expect((await list(other,true)).history).toEqual([]);
+    db.prepare("UPDATE shared_lecture_transcripts SET cues='[]' WHERE course_code='ACC1101' AND session_no=1").run();
+    expect((await list(student,true)).courses).toHaveLength(6);
+    expect((await api("/attempts/"+second.id)).status).toBe(404);
+  });
+
+  it("upgrades an installed 056 database with graded and in-progress A attempts intact", async () => {
+    db.exec(`DROP TRIGGER course_mock_source_changed; DROP TRIGGER course_mock_source_removed;
+      DROP TABLE course_mock_attempts; DROP TABLE course_mock_sources; DROP TABLE course_mock_papers;`);
+    db.exec(readFileSync(new URL("../migrations/056_course_mock_exams.sql", import.meta.url), "utf8"));
+    db.prepare("DELETE FROM _migrations WHERE name='057_course_mock_forms.sql'").run();
+    const papers = fixtures();
+    importCourseMocks(db, papers);
+    const first = await start();
+    await progress(first.id,{revision:0, changes:[{position:1, choice:0}]});
+    await api("/attempts/"+first.id+"/finish","POST",{revision:1});
+    const open = await start("ACC1103",first.id);
+    await progress(open.id,{revision:0,position:4,changes:[{position:3,choice:1,flagged:true}]});
+    const tables = ["course_mock_papers", "course_mock_sources", "course_mock_attempts"];
+    const snapshot = (database: DB) => tables.map(t => database.prepare("SELECT * FROM "+t+" ORDER BY rowid").all());
+    const before = snapshot(db);
+    const temp = mkdtempSync(join(tmpdir(),"course-mock-migration-"));
+    try {
+      const path = join(temp,"before.sqlite");
+      await db.backup(path);
+      const upgraded = openDb(path);
+      try {
+        for (const table of tables) expect(upgraded.pragma("foreign_key_check("+table+")")).toEqual([]);
+        expect(snapshot(upgraded)).toEqual(before);
+        importCourseMocks(upgraded,secondForms(papers));
+        expect(upgraded.prepare("SELECT count(*) n FROM course_mock_papers WHERE active=1").get()).toEqual({n:8});
+        upgraded.prepare("DELETE FROM shared_lecture_transcripts WHERE course_code='ACC1101' AND session_no=1").run();
+        expect(upgraded.prepare("SELECT active,valid FROM course_mock_papers WHERE course_code='ACC1101' ORDER BY form_key").all()).toEqual([
+          {active:0,valid:0},{active:0,valid:0},
+        ]);
+        for (const table of tables) expect(upgraded.pragma("foreign_key_check("+table+")")).toEqual([]);
+      } finally { upgraded.close(); }
+    } finally { rmSync(temp, {recursive: true, force: true}); }
+  });
+
   it("requires every source, entitlement, university and attempt ownership for both reading and writing", async () => {
     const papers = fixtures();
     importCourseMocks(db,papers);

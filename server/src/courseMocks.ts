@@ -21,7 +21,9 @@ class RequestError extends Error {
 const missing = () => new RequestError(404, "Exam unavailable");
 const positive = z.number().int().positive();
 const revision = z.number().int().nonnegative();
-const startInput = z.object({ course_code: z.string().min(1), previous_attempt_id: positive.nullish() }).strict();
+const startInput = z.object({
+  course_code: z.string().min(1), form_key: z.string().min(1).default("A"), previous_attempt_id: positive.nullish(),
+}).strict();
 const change = z.object({
   position: positive, choice: z.number().int().min(0).max(3).nullable().optional(), flagged: z.boolean().optional(),
 }).strict();
@@ -39,7 +41,7 @@ function visiblePapers(db: DB, user: string): Paper[] {
     WHERE p.valid=1 AND cl.source='ru-vod-subtitle' ${filter.sql}
     GROUP BY p.id,cl.course_code
     HAVING COUNT(DISTINCT s.transcript_id)=(SELECT COUNT(*) FROM course_mock_sources linked WHERE linked.paper_id=p.id)
-    ORDER BY cl.course_code,p.id`).all(...filter.params) as Paper[];
+    ORDER BY cl.course_code,p.form_key,p.id`).all(...filter.params) as Paper[];
 }
 
 // Grade directly against the frozen version and persisted answers. Unanswered
@@ -80,15 +82,19 @@ function fullAttempt(db: DB, a: Attempt, p: Paper, now: number) {
 function guardRevision(a: Attempt, expected: number | undefined) {
   if (expected !== undefined && expected !== a.revision) throw new RequestError(409, "Attempt changed; reload before editing");
 }
-export function courseMockCatalog(db: DB, user: string) {
-  const papers = visiblePapers(db, user);
+export function courseMockCatalog(db: DB, user: string, allForms = false) {
+  // Installed clients predating form selection can start and display only paper A.
+  const papers = visiblePapers(db, user).filter((p) => allForms || p.form_key === "A");
   const byId = new Map(papers.map((p) => [p.id, p]));
   const attempts = db.prepare(`SELECT id,paper_id,score,started_ms,finished_ms,expired FROM course_mock_attempts
     WHERE user_id=? ORDER BY id DESC`).all(user) as Pick<Attempt, "id" | "paper_id" | "score" | "started_ms" | "finished_ms" | "expired">[];
   const visible = attempts.filter((a) => byId.has(a.paper_id));
   return {
     courses: papers.filter((p) => p.active).map((p) => {
-      const same = visible.filter((a) => byId.get(a.paper_id)!.course_code === p.course_code);
+      const same = visible.filter((a) => {
+        const edition = byId.get(a.paper_id)!;
+        return edition.course_code === p.course_code && edition.form_key === p.form_key;
+      });
       return { code: p.code, name_th: p.name_th, name_en: p.name_en, question_count: p.question_count,
         duration_min: p.duration_min, form_key: p.form_key,
         active_attempt_id: same.find((a) => a.finished_ms === null)?.id ?? null,
@@ -111,7 +117,7 @@ export function createCourseMockRouter(db: DB, clock = Date.now) {
   });
   router.get("/catalog", (req, res) => {
     expireCourseMocks(db, clock());
-    res.json(courseMockCatalog(db, req.user!.id));
+    res.json(courseMockCatalog(db, req.user!.id, req.query.forms === "all"));
   });
   router.post("/start", (req, res) => {
     const data = startInput.parse(req.body);
@@ -119,7 +125,7 @@ export function createCourseMockRouter(db: DB, clock = Date.now) {
     const result = db.transaction(() => {
       const now = clock();
       expireCourseMocks(db, now);
-      const versions = visiblePapers(db, user).filter((p) => p.code === data.course_code);
+      const versions = visiblePapers(db, user).filter((p) => p.code === data.course_code && p.form_key === data.form_key);
       const paper = versions.find((p) => p.active);
       if (!paper) throw missing();
       const latest = db.prepare(`SELECT * FROM course_mock_attempts WHERE user_id=?
