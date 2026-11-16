@@ -23,7 +23,7 @@ export async function loadLectureCourses(): Promise<LectureCourse[]> {
   const { courses } = await getJSON<{ courses: LectureCourse[] }>("/api/lectures");
   return courses;
 }
-type Tab = "summary" | "notes" | "combined" | "transcript" | "images";
+type Tab = "notes" | "transcript" | "images";
 export type OpenLecture = { code: string; lecture: Lecture; tab: Tab; annotationId?: number };
 type Summary = { summary_md: string; edited: boolean };
 type Transcript = { cues: Cue[]; source_url: string | null; shared: boolean };
@@ -46,19 +46,12 @@ function transcriptText(text: string, search: RegExp | null, focused: boolean) {
 
 export function LectureShortcuts({ code, lecture, onOpen }: { code: string; lecture: Lecture; onOpen: (v: OpenLecture) => void }) {
   const { t } = useT();
-  const combined = lecture.has_summary && lecture.note_mode === "combined";
   return <>
-    {lecture.has_summary && (
-      <button type="button" className="inline-flex items-center gap-1.5 text-sm font-medium px-3 min-h-11 rounded-lg"
-        style={{ background: "var(--accent)", color: "#fff" }}
-        onClick={() => onOpen({ code, lecture, tab: combined ? "combined" : "summary" })}>
-        <Icon name="fileText" size={16} />{t(combined ? "lec.summaryAndNotes" : "lec.summary")}
-      </button>
-    )}
-    {!combined && (
-      <button type="button" className="rounded-lg px-3 min-h-11 text-sm font-medium" style={chipStyle}
-        onClick={() => onOpen({ code, lecture, tab: "notes" })}>{t("lec.notes")}</button>
-    )}
+    <button type="button" className="inline-flex items-center gap-1.5 text-sm font-medium px-3 min-h-11 rounded-lg"
+      style={{ background: "var(--accent)", color: "#fff" }}
+      onClick={() => onOpen({ code, lecture, tab: "notes" })}>
+      <Icon name="fileText" size={16}/>{t("lec.notes")}
+    </button>
     {lecture.image_count > 0 && <button className="text-sm px-2 min-h-11" style={{ color: "var(--accent-text)" }} onClick={() => onOpen({ code, lecture, tab: "images" })}>{t("lec.imageCount", { n: lecture.image_count })}</button>}
   </>;
 }
@@ -105,7 +98,7 @@ function LectureReader({ which, onDeleted }: { which: OpenLecture; onDeleted: ()
   const { t } = useT();
   const { code, lecture } = which;
   const [mode, setMode] = useState(lecture.note_mode);
-  const [tab, setTab] = useState<Tab>(which.tab === "summary" && lecture.note_mode === "combined" ? "combined" : which.tab);
+  const [tab, setTab] = useState<Tab>(which.tab);
   const [annotationTarget, setAnnotationTarget] = useState<{ source: AnnotationSource; id: number } | null>(() =>
     which.annotationId ? { source: which.tab === "transcript" ? "transcript" : "summary", id: which.annotationId } : null);
   const [adding, setAdding] = useState(false);
@@ -124,22 +117,18 @@ function LectureReader({ which, onDeleted }: { which: OpenLecture; onDeleted: ()
   const suffix = `${code}/${lecture.no}`;
   const summaryPath = `/api/lectures/summaries/${suffix}`;
   const trPath = `/api/lectures/transcripts/${suffix}`;
-  const summaryTab = lecture.has_summary && mode === "combined" ? "combined" : "summary";
-  const readingSummary = tab === "summary" || tab === "combined";
-  const readingNotes = tab === "notes" || tab === "combined";
+  const readingNotes = tab === "notes";
+  const readingSummary = readingNotes && lecture.has_summary;
+  const combined = readingSummary && mode === "combined";
   const readingText = readingSummary || tab === "transcript";
   const personal = usePersonalLectureNotes(readingNotes ? `/api/lectures/${suffix}/personal-notes` : null, notesRevision);
-  const reading = useMemo(() => tab === "combined" && summary && personal.data && !personal.failed
-    ? currentCombinedReading(summary.summary_md, created, personal.data) : null, [tab, summary, created, personal.data, personal.failed]);
+  const reading = useMemo(() => combined && summary && personal.data && !personal.failed
+    ? currentCombinedReading(summary.summary_md, created, personal.data) : null, [combined, summary, created, personal.data, personal.failed]);
   // A generated copy can contain a transcript annotation whose live bullet belongs in the transcript.
   const includesTranscriptAnnotations = personal.data?.annotations.some(a =>
     a.source === "transcript" && reading?.annotations.has(a.id));
   function switchTab(v: Tab) {
     setTab(v); setFocus(null); setBack(null); setAdding(false); setError(""); setAnnotationTarget(null);
-  }
-  function changeMode(next: LectureNoteMode) {
-    setMode(next);
-    switchTab(next === "combined" ? "combined" : "summary");
   }
 
   useEffect(() => {
@@ -158,14 +147,14 @@ function LectureReader({ which, onDeleted }: { which: OpenLecture; onDeleted: ()
 
   const refs = useMemo(() => summaryCitations(summary?.summary_md ?? "", transcript?.cues ?? [], (n) => t("lec.point", { n })), [summary, transcript, t]);
   useEffect(() => {
-    if (!focus || focus.tab !== (tab === "combined" ? "summary" : tab)) return;
+    if (!focus || focus.tab !== (readingSummary ? "summary" : tab)) return;
     const target = container.current?.querySelector<HTMLElement>(`[data-lecture-target="${focus.tab}-${focus.idx}"]`);
     if (target) { target.scrollIntoView({ block: "center" }); target.focus({ preventScroll: true }); }
-  }, [focus, tab, transcript, summary]);
+  }, [focus, tab, readingSummary, transcript, summary]);
   function go(target: Target, from: Target | null) {
     setAnnotationTarget(null);
     if (target.tab === "summary") setDraft(null);
-    setTab(target.tab === "summary" ? summaryTab : "transcript"); setBack(from); setFocus(target); setQuery("");
+    setTab(target.tab === "summary" ? "notes" : "transcript"); setBack(from); setFocus(target); setQuery("");
   }
   async function save(restore: boolean) {
     setBusy(true); setError("");
@@ -176,7 +165,7 @@ function LectureReader({ which, onDeleted }: { which: OpenLecture; onDeleted: ()
     } catch (e) { setError((e as ApiError).error || t("status.failed")); }
     finally { setBusy(false); }
   }
-  const mark = (pane: Tab, idx: number) => focus?.tab === pane && focus.idx === idx ? { background: "var(--accent-light)" } : undefined;
+  const mark = (pane: Target["tab"], idx: number) => focus?.tab === pane && focus.idx === idx ? { background: "var(--accent-light)" } : undefined;
   const backButton = back && <button className={chip} style={chipStyle} onClick={() => go(back, null)}>← {t("lec.back")}</button>;
   function renderSummaryPart(part: string, line: number) {
     return part.split(stampPattern).map((s, i) => {
@@ -196,25 +185,23 @@ function LectureReader({ which, onDeleted }: { which: OpenLecture; onDeleted: ()
   return <div ref={container} className="space-y-3">
     <h2 className="text-lg font-bold"><CourseChip code={code} className="mr-2"/>{t("lib.lectureNo", { n: lecture.no })}</h2>
     <div className="flex flex-wrap items-center gap-2">
-      {(["summary", "notes", "combined", "transcript", "images"] as const).filter(v => {
-        if (v === "summary" || v === "combined") return lecture.has_summary && v === summaryTab;
-        if (v === "notes") return summaryTab !== "combined";
-        return v === "transcript" ? !!lecture.transcript : lecture.image_count > 0;
-      }).map(v =>
+      {(["notes", "transcript", "images"] as const).filter(v =>
+        v === "notes" || (v === "transcript" ? !!lecture.transcript : lecture.image_count > 0)
+      ).map(v =>
         <button key={v} aria-pressed={tab === v} onClick={() => switchTab(v)}
           className="rounded-lg min-h-11 px-3 text-sm" style={tab === v ? chipStyle : undefined}>
-          {t(v === "summary" ? "lec.summary" : v === "combined" ? "lec.summaryAndNotes" : v === "notes" ? "lec.notes"
+          {t(v === "notes" ? "lec.notes"
             : v === "transcript" ? "lec.transcript" : "lec.imageCount", { n: lecture.image_count })}
         </button>)}
       <a href={lecture.url} target="_blank" rel="noreferrer" className="min-h-11 inline-flex items-center px-2 text-sm" style={{ color: "var(--accent-text)" }}>{t("lib.watch")} ↗</a>
     </div>
-    {lecture.has_summary && (readingSummary || readingNotes) && !adding && <LectureLayout code={code} sessionNo={lecture.no} mode={mode} onChange={changeMode}/>}
+    {readingSummary && !adding && <LectureLayout code={code} sessionNo={lecture.no} mode={mode} onChange={setMode}/>}
     {error && <ErrorBox>{error}</ErrorBox>}
     {tab === "images" && <PhotoGallery path={`/api/lectures/images/${suffix}`}/>}
-    {readingNotes && !adding && <div className="flex gap-4 items-center">
+    {readingNotes && draft === null && !adding && <div className="flex gap-4 items-center">
       <button type="button" className="rounded-lg px-3 min-h-11 font-medium text-sm" style={chipStyle}
         onClick={() => setAdding(true)}>{t("notes.addShort")}</button>
-      {tab === "combined" && !!personal.data?.notes.length && <button type="button" className="min-h-11 text-sm underline"
+      {readingSummary && personal.data && (personal.data.notes.length > 0 || (!combined && personal.data.annotations.length > 0)) && <button type="button" className="min-h-11 text-sm underline"
         onClick={() => {
           const section = document.getElementById("lecture-personal-notes");
           section?.scrollIntoView({ block: "start" }); section?.focus({ preventScroll: true });
@@ -223,6 +210,7 @@ function LectureReader({ which, onDeleted }: { which: OpenLecture; onDeleted: ()
     {adding && <LectureNoteForm code={code} sessionNo={lecture.no} onCancel={() => setAdding(false)}
         onSaved={() => { setNotesRevision(n => n + 1); setAdding(false); }}/>}
     {!adding && readingSummary && (summary ? <>
+      <h3 className="font-semibold">{t("lec.aiSummary")}</h3>
       <p className="rounded-lg px-3 py-2 text-sm" style={{ background: "var(--warning-bg)", color: "var(--warning)" }}>{t("lec.disclaimer")}</p>
       <div className="flex items-center flex-wrap gap-3 text-sm">
         {summary.edited && <span>{t("lec.edited")}</span>}
@@ -248,9 +236,9 @@ function LectureReader({ which, onDeleted }: { which: OpenLecture; onDeleted: ()
           ))}
         </div></AnnotatedSummary></Card>}
     </> : !error && <Loading>{t("status.connecting")}</Loading>)}
-    {!adding && readingNotes && <PersonalLectureNotes result={personal} combined={tab === "combined"} placedNotes={draft === null ? reading?.notes : undefined}
+    {!adding && readingNotes && draft === null && <PersonalLectureNotes result={personal} combined={combined} placedNotes={reading?.notes}
       onShowAnnotation={(source, id) => {
-        switchTab(source === "transcript" ? "transcript" : summaryTab);
+        switchTab(source === "transcript" ? "transcript" : "notes");
         setQuery(""); setAnnotationTarget({ source, id });
       }}/>}
     {!adding && readingSummary && summary && draft === null && <CreateLectureNotes code={code} sessionNo={lecture.no}
@@ -261,7 +249,7 @@ function LectureReader({ which, onDeleted }: { which: OpenLecture; onDeleted: ()
         <div className="line-clamp-3"><Markdown source={summary.summary_md.trim().split(/\n\s*\n/, 1)[0]} /></div>
         <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{t("lec.disclaimer")}</p>
         <button type="button" className="min-h-11 font-semibold text-sm" style={{ color: "var(--accent-text)" }}
-          onClick={() => switchTab(summaryTab)}>{t(summaryTab === "combined" ? "lec.summaryAndNotes" : "lec.readSummary")} →</button>
+          onClick={() => switchTab("notes")}>{t("lec.readSummary")} →</button>
       </section>}
       <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("lib.searchTranscript")}
         aria-label={t("lib.searchTranscript")} className="w-full rounded-xl border px-4 py-3 min-h-11" style={{ background: "var(--bg-surface)", borderColor: "var(--border-light)" }} />

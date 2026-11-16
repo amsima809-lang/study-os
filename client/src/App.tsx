@@ -205,23 +205,24 @@ function Shell() {
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, []);
 
-  // A row in the desktop sidebar: one page, or Settings.
-  const sideItem = (id: Tab) => (
-    <button
+  const sideItem = (id: Tab) => {
+    const current = tab === id || (id === "notes" && section?.id === "study");
+    const label = id === "notes" ? "nav.lectureNotes" : id === "settings" ? "nav.settings" : destination(id).label;
+    return <button
       key={id}
       onClick={() => open(id)}
-      aria-current={tab === id ? "page" : undefined}
+      aria-current={current ? (tab === id ? "page" : "true") : undefined}
       className="w-full flex items-center gap-3 px-3 py-1.5 rounded-xl text-sm font-medium transition-all min-h-11 text-left"
       style={{
-        backgroundColor: tab === id ? "var(--accent-light)" : "transparent",
-        color: tab === id ? "var(--accent-text)" : "var(--text-secondary)",
-        boxShadow: tab === id ? "inset 3px 0 0 var(--accent-2, var(--accent))" : "none",
+        backgroundColor: current ? "var(--accent-light)" : "transparent",
+        color: current ? "var(--accent-text)" : "var(--text-secondary)",
+        boxShadow: current ? "inset 3px 0 0 var(--accent-2, var(--accent))" : "none",
       }}
     >
       <Icon name={id === "settings" ? "settings" : destination(id).icon} size={20} className="shrink-0" />
-      <span className="min-w-0 leading-snug">{t(id === "settings" ? "nav.settings" : destination(id).label)}</span>
-    </button>
-  );
+      <span className="min-w-0 leading-snug">{t(label)}</span>
+    </button>;
+  };
   const gear = (
     <button
       onClick={() => open("settings")}
@@ -239,7 +240,7 @@ function Shell() {
 
   return (
     <div data-layout={layout} className="min-h-dvh flex flex-col" style={{ backgroundColor: "var(--bg-base)" }}>
-      {/* Wide and tall enough: a sidebar that lists every screen. */}
+      {/* Study's two pages share the Lecture notes entry in the wide sidebar. */}
       {layout === "sidebar" && (
         <aside
           className="flex flex-col w-60 fixed inset-y-0 left-0 z-20 border-r"
@@ -261,7 +262,7 @@ function Shell() {
             {SECTIONS.map((s) => (
               <div key={s.id} role="group" aria-label={t(s.label)} className="space-y-0.5">
                 <p className="px-3 pt-3 pb-1 text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>{t(s.label)}</p>
-                {s.pages.map((id) => sideItem(id))}
+                {s.id === "study" ? sideItem("notes") : s.pages.map(sideItem)}
               </div>
             ))}
             <div className="pt-2 mt-3 border-t" style={{ borderColor: "var(--border-light)" }}>
@@ -375,8 +376,7 @@ function Shell() {
           style={{ paddingRight: "max(1.25rem, env(safe-area-inset-right))" }}
         >
           <LayoutContext.Provider value={layout}>
-            {/* The pages of this section, as tabs. (The desktop sidebar lists every page already.) */}
-            {layout !== "sidebar" && section && section.pages.length > 1 && (
+            {section && section.pages.length > 1 && (layout !== "sidebar" || section.id === "study") && (
               <div
                 role="tablist"
                 aria-label={t(section.label)}

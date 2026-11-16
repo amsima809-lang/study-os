@@ -589,7 +589,7 @@ AI ช่วยเรา "ฝึก" ไม่ใช่ "ทำแทน" — �
 
 ## Phase 79 — Lecture navigation and layout
 
-Study lists Documents & lectures first. Course rows show how many summaries are available. The lecture list, links on personal notes and the reader use the same layout for a given student and lecture. Separate shows **Summary** and **Notes**. Combine shows **Summary and notes**. Transcript and Watch remain available where applicable.
+Under Study, the sidebar’s **Lecture notes** destination opens the lecture list and provides access to documents and personal notes. Course rows show how many summaries are available. The lecture list and linked personal notes use a single **Notes** shortcut to open the reader’s **Notes** tab. Separate displays the available summary followed by the student’s notes. Combine places saved personal passages alongside the relevant summary points. Transcript and Watch are available where applicable.
 
 Migration 049 adds `lecture_note_layouts` keyed by student and catalogue lecture. An existing row in `created_lecture_notes` seeds the layout for that student and lecture from the copy’s saved mode. Other lectures start in Separate, regardless of the former account-wide preference. Each lecture returned by `GET /api/lectures` includes its own `note_mode`. Changing the layout preserves the generated copy and its passages. Only creating notes again replaces it.
 

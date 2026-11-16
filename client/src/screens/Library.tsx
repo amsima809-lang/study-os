@@ -46,7 +46,7 @@ function LinkedSummary({ target, onBack }: { target: string; onBack: () => void 
       const code = target.split("-")[0];
       const lecture = courses.find(c => c.code === code)?.lectures.find(l => `${code}-${l.no}` === target);
       if (lecture?.has_summary) {
-        setWhich({ code, lecture, tab: lecture.note_mode === "combined" ? "combined" : "summary" });
+        setWhich({ code, lecture, tab: "notes" });
       } else {
         setStatus("missing");
       }
@@ -205,7 +205,9 @@ export function LectureLinks({ onRead, initialCourse }: { onRead: (t: OpenLectur
 
       <AnnotationSearch onOpen={(code, no, annotationId, source) => {
         const lecture = courses.find((c) => c.code === code)?.lectures.find((l) => l.no === no);
-        if (lecture && (source === "transcript" ? lecture.transcript : lecture.has_summary)) onRead({ code, lecture, tab: source, annotationId });
+        if (lecture && (source === "transcript" ? lecture.transcript : lecture.has_summary)) {
+          onRead({ code, lecture, tab: source === "transcript" ? "transcript" : "notes", annotationId });
+        }
       }}/>
 
       <ul className="space-y-1.5">

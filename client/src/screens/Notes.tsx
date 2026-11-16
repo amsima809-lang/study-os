@@ -53,6 +53,7 @@ export default function Notes() {
   const [view, setView] = useState<View>(() => (consumeNoteFormRequest() ? { screen: "add" } : { screen: "courses" }));
   const [result, setResult] = useState<NoteLearning | null>(null);
   const [openLecture, setOpenLecture] = useState<OpenLecture | null>(null);
+  const [lectureCourse, setLectureCourse] = useState<string>();
   const [refreshKey, setRefreshKey] = useState(0);
   const [query, setQuery] = useState(""); // kept here so it survives opening a result and coming back
   // An unfinished note waiting in this browser (see noteDraft.ts).
@@ -111,7 +112,10 @@ export default function Notes() {
 
       {view.screen === "courses" && (
         <>
-          {!query.trim() && <LectureLinks onRead={setOpenLecture}/>}
+          {!query.trim() && <LectureLinks initialCourse={lectureCourse} onRead={which => {
+            setLectureCourse(which.code);
+            setOpenLecture(which);
+          }}/>}
           <NoteSearch query={query} onQuery={setQuery} onOpen={(id) => setView({ screen: "view", noteId: id })} />
           {!query.trim() && (
             <CourseList
