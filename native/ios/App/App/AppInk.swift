@@ -62,13 +62,8 @@ public class AppInkPlugin: CAPPlugin, CAPBridgedPlugin {
                 return
             }
             let compact = sheetID != nil || (markX != nil && markY != nil)
-            var policy: PKCanvasViewDrawingPolicy = UIDevice.current.userInterfaceIdiom == .pad ? .default : .anyInput
-            if sheetID != nil {
-                if call.getBool("pencilOnly") == true { policy = .pencilOnly }
-                else if call.getBool("allowFinger") == true { policy = .anyInput }
-            }
             let page = InkPageController(drawing: drawing, title: title, done: done, cancel: cancel, compact: compact,
-                                         embedded: sheetID != nil, policy: policy, accent: accent) { [weak self] result in
+                                         embedded: sheetID != nil, pencilOnly: call.getBool("pencilOnly") ?? false, accent: accent) { [weak self] result in
                 if let sheetID, self?.sheet?.id == sheetID { self?.sheet = nil }
                 call.resolve(result)
             }
@@ -120,15 +115,15 @@ final class InkPageController: UIViewController, PKCanvasViewDelegate, PKToolPic
     private var finished = false
     private let compact: Bool
     private let embedded: Bool
-    private let drawingPolicy: PKCanvasViewDrawingPolicy
+    private let pencilOnly: Bool
     private let initialColor: UIColor?
 
-    init(drawing: PKDrawing, title: String, done: String, cancel: String, compact: Bool, embedded: Bool, policy: PKCanvasViewDrawingPolicy, accent: String?, finish: @escaping ([String: Any]) -> Void) {
+    init(drawing: PKDrawing, title: String, done: String, cancel: String, compact: Bool, embedded: Bool, pencilOnly: Bool, accent: String?, finish: @escaping ([String: Any]) -> Void) {
         self.startDrawing = drawing
         self.finish = finish
         self.compact = compact
         self.embedded = embedded
-        self.drawingPolicy = policy
+        self.pencilOnly = pencilOnly
         if let accent, accent.hasPrefix("#"), accent.count == 7, let rgb = UInt32(accent.dropFirst(), radix: 16) {
             self.initialColor = UIColor(red: CGFloat((rgb >> 16) & 255) / 255, green: CGFloat((rgb >> 8) & 255) / 255, blue: CGFloat(rgb & 255) / 255, alpha: 1)
         } else {
@@ -157,7 +152,10 @@ final class InkPageController: UIViewController, PKCanvasViewDelegate, PKToolPic
         canvas.delegate = self
         canvas.alwaysBounceVertical = !compact
         canvas.backgroundColor = .systemBackground
-        canvas.drawingPolicy = drawingPolicy
+        // .default follows the iPad's own "Only Draw with Apple Pencil" setting (on once a Pencil is
+        // paired), so a palm or finger scrolls and only the Pencil draws; the tool picker's menu can
+        // switch finger drawing on. On an iPhone, a finger draws.
+        canvas.drawingPolicy = pencilOnly ? .pencilOnly : (UIDevice.current.userInterfaceIdiom == .pad ? .default : .anyInput)
         let tool = PKInkingTool(.pen, color: initialColor ?? .label, width: 3)
         canvas.tool = tool
         if initialColor != nil { picker.selectedTool = tool }

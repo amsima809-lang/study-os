@@ -92,11 +92,10 @@ function InkActions({ cancel, save, disabled, saving, title, done }: {
   </div>;
 }
 
-function PencilKitAnnotation({ drawingURL, quote, accent, allowFinger, save, cancel, fallback, saving, saveError }: {
+function PencilKitAnnotation({ drawingURL, quote, accent, save, cancel, fallback, saving, saveError }: {
   drawingURL?: string;
   quote: string;
   accent: string;
-  allowFinger: boolean;
   save: (ink: AnnotationInk) => void;
   cancel: () => void;
   fallback: () => void;
@@ -127,7 +126,7 @@ function PencilKitAnnotation({ drawingURL, quote, accent, allowFinger, save, can
         drawing = saved.drawing;
       }
       presented = true;
-      const ink = await drawInPencilKitSheet(sessionID, drawing, { title: quote, done: doneLabel, cancel: cancelLabel, accent }, allowFinger);
+      const ink = await drawInPencilKitSheet(sessionID, drawing, { title: quote, done: doneLabel, cancel: cancelLabel, accent });
       presented = false;
       if (!active) return;
       if (!ink || ink.drawing === drawing) {
@@ -147,7 +146,7 @@ function PencilKitAnnotation({ drawingURL, quote, accent, allowFinger, save, can
       }
     });
     return () => { active = false; window.removeEventListener("pagehide", close); close(); };
-  }, [attempt, drawingURL, quote, doneLabel, cancelLabel, accent, allowFinger]);
+  }, [attempt, drawingURL, quote, doneLabel, cancelLabel, accent]);
 
   const reopen = () => { setOpeningFailed(false); setAttempt(n => n + 1); };
   return <>
@@ -215,7 +214,7 @@ export function AnnotationPad({ point, quote, previous, nativeDrawingUrl, colors
     aria-busy={saving} tabIndex={-1} className="lecture-note-tray annotation-sheet" onKeyDown={e => {
       if (e.key === "Escape") { e.stopPropagation(); if (!saving) cancel(); }
     }}>
-    {nativeSheet ? <PencilKitAnnotation drawingURL={nativeDrawingUrl} quote={quote} accent={accent} save={save} allowFinger={allowFinger}
+    {nativeSheet ? <PencilKitAnnotation drawingURL={nativeDrawingUrl} quote={quote} accent={accent} save={save}
       cancel={cancel} fallback={() => setWebOnly(true)} saving={saving} saveError={saveError}/> : <>
       {actions}
       <div className="annotation-sheet-paper" inert={saving}>{writing}</div>

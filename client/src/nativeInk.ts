@@ -11,7 +11,7 @@ type InkLabels = { title: string; done: string; cancel: string; anchorX?: number
 type Result = { cancelled: true } | { empty: true } | NativeInk;
 type AppInkPlugin = {
   draw: (o: InkLabels & { drawing?: string }) => Promise<Result>;
-  drawInSheet: (o: InkLabels & { sessionID: string; drawing?: string; pencilOnly: boolean; allowFinger: boolean }) => Promise<Result>;
+  drawInSheet: (o: InkLabels & { sessionID: string; drawing?: string; pencilOnly: boolean }) => Promise<Result>;
   closeSheet: (o: { sessionID: string }) => Promise<void>;
 };
 
@@ -41,12 +41,12 @@ function inkResult(result: Result): NativeInk | null | undefined {
   return { drawing: result.drawing, png: result.png, colors: result.colors ?? [], strokeBounds: result.strokeBounds };
 }
 
-export async function drawInPencilKitSheet(sessionID: string, drawing: string | undefined, labels: InkLabels, allowFinger: boolean) {
+export async function drawInPencilKitSheet(sessionID: string, drawing: string | undefined, labels: InkLabels) {
   const p = bridge()?.Plugins?.AppInk;
   if (!p) throw Object.assign(new Error("PencilKit unavailable"), { code: "UNIMPLEMENTED" });
   let pencilOnly = false;
   try { pencilOnly = localStorage.getItem("studyos.penOnly") === "1"; } catch { /* storage unavailable */ }
-  return inkResult(await p.drawInSheet({ sessionID, drawing, pencilOnly, allowFinger, ...labels }));
+  return inkResult(await p.drawInSheet({ sessionID, drawing, pencilOnly, ...labels }));
 }
 
 export function closePencilKitSheet(sessionID: string) {
