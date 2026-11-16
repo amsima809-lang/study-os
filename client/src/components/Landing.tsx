@@ -15,13 +15,17 @@ import { inNativeApp, APP_STORE_URL } from "../native.ts";
 import { withBase } from "../base.ts";
 import Icon from "./Icon.tsx";
 
-/** The features with a screenshot, in the order they are shown. */
+/**
+ * The features with a screenshot, in the order they are shown. The planning comes first (owner
+ * 2026-11-16: "the trail planner and auto-scheduling of near-term and long-term activities …
+ * that's the killer app"): the whole degree, then the study week, then the rest.
+ */
 const SHOWN: { shot: string; key: string; icon: string }[] = [
-  { shot: "timetable", key: "timetable", icon: "calendarRange" },
-  { shot: "map", key: "map", icon: "mapPin" },
-  { shot: "exams", key: "exams", icon: "fileEdit" },
   { shot: "trail", key: "trail", icon: "flag" },
   { shot: "studyplan", key: "studyplan", icon: "bookOpen" },
+  { shot: "exams", key: "exams", icon: "fileEdit" },
+  { shot: "timetable", key: "timetable", icon: "calendarRange" },
+  { shot: "map", key: "map", icon: "mapPin" },
 ];
 /** And the rest, as small cards. */
 const MORE: { icon: string; key: string }[] = [
@@ -104,7 +108,7 @@ export default function LandingMore({ onSignIn }: { onSignIn: () => void }) {
     <div id="features" style={{ background: "linear-gradient(180deg, #24243e 0%, #14132a 30%, #0b0b18 100%)", color: "#fff" }}>
       {/* Everything here sits above the trail, which is drawn behind the whole page. */}
       <section data-trail-row className="relative z-[2] max-w-5xl mx-auto px-9 md:px-6 pt-16 text-center">
-        <Stop icon="bookOpen" />
+        <Stop icon="flag" />
         <h2 className="mt-4 text-2xl md:text-4xl font-extrabold tracking-tight">{t("land.featuresTitle")}</h2>
         <p className="text-sm md:text-base mt-2" style={{ color: "rgba(255,255,255,0.6)" }}>{t("land.featuresIntro")}</p>
       </section>
