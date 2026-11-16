@@ -591,6 +591,8 @@ AI ช่วยเรา "ฝึก" ไม่ใช่ "ทำแทน" — �
 
 Under Study, the sidebar’s **Lecture notes** destination opens the lecture list and provides access to documents and personal notes. Course rows show how many summaries are available. The lecture list and linked personal notes use a single **Notes** shortcut to open the reader’s **Notes** tab. The reader shows a single chronological list of personal notes below the available summary. Transcript and Watch are available where applicable.
 
+The Notes tab and the Transcript preview share an **AI summary** heading with the textbook reminder beside it.
+
 Migration 049 adds `lecture_note_layouts` keyed by student and catalogue lecture. An existing row in `created_lecture_notes` seeds the layout for that student and lecture from the copy’s saved mode. The older layout preferences and generated copies are retained for compatibility. The current reader uses the same notes section for every lecture.
 
 The production entry at `/api/open/lectures?view=lectures&summary=MGT3204-1` serves the app through the network even with an older installed service worker. The browser keeps the requested lecture in the current tab through sign-in. The authenticated lecture list determines whether that student can open its summary.

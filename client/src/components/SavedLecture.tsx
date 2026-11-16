@@ -153,6 +153,10 @@ function LectureReader({ which, onDeleted }: { which: OpenLecture; onDeleted: ()
     return term ? new RegExp("(" + term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ")", "iu") : null;
   }, [query]);
   const shown = (transcript?.cues ?? []).map((c, idx) => ({ c, idx })).filter(({ c }) => !q || c.text.toLowerCase().includes(q));
+  const summaryHeading = <div className="flex items-baseline gap-2">
+    <h3 className="shrink-0 font-semibold">{t("lec.aiSummary")}</h3>
+    <p className="min-w-0 text-xs" style={{ color: "var(--text-secondary)" }}>{t("lec.disclaimer")}</p>
+  </div>;
   return <div ref={container} data-lecture-reader="">
     <fieldset disabled={writingAnnotation} className="min-w-0 border-0 p-0 space-y-3">
     <h2 className="text-lg font-bold"><CourseChip code={code} className="mr-2"/>{t("lib.lectureNo", { n: lecture.no })}</h2>
@@ -166,8 +170,7 @@ function LectureReader({ which, onDeleted }: { which: OpenLecture; onDeleted: ()
     </div>
     {error && <ErrorBox>{error}</ErrorBox>}
     {readingSummary && (summary ? <>
-      <h3 className="font-semibold">{t("lec.aiSummary")}</h3>
-      <p className="rounded-lg px-3 py-2 text-sm" style={{ background: "var(--warning-bg)", color: "var(--warning)" }}>{t("lec.disclaimer")}</p>
+      {summaryHeading}
       <div className="flex items-center flex-wrap gap-3 text-sm">
         {summary.edited && <span>{t("lec.edited")}</span>}
         {draft === null ? <>
@@ -195,9 +198,8 @@ function LectureReader({ which, onDeleted }: { which: OpenLecture; onDeleted: ()
     </> : !error && <Loading>{t("status.connecting")}</Loading>)}
     {tab === "transcript" && (transcript ? <>
       {summary && <section className="rounded-xl border px-4 py-3 space-y-1" style={{ background: "var(--bg-surface)", borderColor: "var(--border-light)" }}>
-        <h3 className="font-semibold">{t("lec.aiSummary")}</h3>
+        {summaryHeading}
         <div className="line-clamp-3"><Markdown source={summary.summary_md.trim().split(/\n\s*\n/, 1)[0]} /></div>
-        <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{t("lec.disclaimer")}</p>
         <button type="button" className="min-h-11 font-semibold text-sm" style={{ color: "var(--accent-text)" }}
           onClick={() => switchTab("notes")}>{t("lec.readSummary")} →</button>
       </section>}

@@ -22,7 +22,7 @@ Starts semester 2/2569 (Nov 2026), target graduation ~Oct 2573.
 - Quiz answers stay hidden until the student submits their own answer.
 - Every AI summary/question references the note it came from.
 - Info not in the note is labeled `[นอกโน้ต — ตรวจกับตำราก่อน]`.
-- Show the banner "AI อาจผิดได้ — ยึดตำรารามฯ เป็นหลัก" on AI output.
+- Show the notice "AI อาจผิดได้ — ยึดตำรารามฯ เป็นหลัก" on AI output. In the lecture reader it sits beside the AI summary heading.
 
 ## Stack
 - Client: React 19 + Vite + TypeScript + Tailwind CSS v4. Mobile-first, PWA.
