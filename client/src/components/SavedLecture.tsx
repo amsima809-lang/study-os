@@ -34,6 +34,14 @@ const clock = (ms: number) => {
   return (h ? `${h}:${String(m).padStart(2, "0")}` : String(m)) + ":" + String(s % 60).padStart(2, "0");
 };
 
+function transcriptText(text: string, search: RegExp | null, focused: boolean) {
+  if (focused) return <mark className="lecture-highlight">{text}</mark>;
+  if (!search) return text;
+  return text.split(search).map((part, i) => i % 2
+    ? <mark key={i} className="lecture-highlight">{part}</mark>
+    : part);
+}
+
 export function LectureShortcuts({ code, lecture, onOpen }: { code: string; lecture: Lecture; onOpen: (v: OpenLecture) => void }) {
   const { t } = useT();
   const combined = lecture.has_summary && lecture.note_mode === "combined";
@@ -172,6 +180,10 @@ function LectureReader({ which, onDeleted }: { which: OpenLecture; onDeleted: ()
     });
   }
   const q = query.trim().toLowerCase();
+  const search = useMemo(() => {
+    const term = query.trim();
+    return term ? new RegExp("(" + term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ")", "iu") : null;
+  }, [query]);
   const shown = (transcript?.cues ?? []).map((c, idx) => ({ c, idx })).filter(({ c }) => !q || c.text.toLowerCase().includes(q));
   return <div ref={container} className="space-y-3">
     <h2 className="text-lg font-bold"><CourseChip code={code} className="mr-2"/>{t("lib.lectureNo", { n: lecture.no })}</h2>
@@ -242,9 +254,9 @@ function LectureReader({ which, onDeleted }: { which: OpenLecture; onDeleted: ()
         aria-label={t("lib.searchTranscript")} className="w-full rounded-xl border px-4 py-3 min-h-11" style={{ background: "var(--bg-surface)", borderColor: "var(--border-light)" }} />
       <p className="text-xs">{q ? t("lib.matches", { n: shown.length }) : t("lib.transcriptNote")}</p>
       <Card><ul className="space-y-3">{shown.map(({ c, idx }) => (
-        <li key={idx} tabIndex={-1} data-lecture-target={`transcript-${idx}`} style={mark("transcript", idx)} className="flex gap-3">
+        <li key={idx} tabIndex={-1} data-lecture-target={`transcript-${idx}`} className="flex gap-3">
           <span className="shrink-0 w-14 text-xs pt-1 tabular-nums">{clock(c.startMs)}</span>
-          <div><span>{c.text}</span> {(refs.get(idx) ?? []).map((ref) => <button key={ref.line} className={chip} style={chipStyle}
+          <div><span className="lecture-source-text">{transcriptText(c.text, search, focus?.tab === "transcript" && focus.idx === idx)}</span> {(refs.get(idx) ?? []).map((ref) => <button key={ref.line} className={chip} style={chipStyle}
             onClick={() => go({ tab: "summary", idx: ref.line }, { tab: "transcript", idx })}>{ref.label}</button>)} {focus?.tab === "transcript" && focus.idx === idx && backButton}</div>
         </li>))}
         {!shown.length && <li>{t("lib.noMatches")}</li>}

@@ -171,6 +171,7 @@ export type NoteLearning = {
   mindmap_md: string;
   topics: string[];
   image_paths?: string[];
+  handwriting_image_index?: number | null;
   ai_skipped?: boolean;
 };
 
@@ -192,6 +193,7 @@ export type NoteDetail = {
   title: string | null;
   raw_text: string | null;
   image_paths: string[];
+  handwriting_image_index?: number | null;
   ai_summary_md: string | null;
   summary_edited: boolean;
   ai_mindmap_md: string | null;

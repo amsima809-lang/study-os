@@ -214,10 +214,10 @@ export function createLecturesRouter(db: DB): Router {
     const { code, no } = req.params;
     const lecture = getLecture(db, user, code, Number(no));
     if (!lecture) return res.status(404).json({ error: "ไม่พบบทเรียน" });
-    const notes = db.prepare(`SELECT id, title, raw_text, created_at,
+    const notes = db.prepare(`SELECT id, title, raw_text, created_at, handwriting_image_index,
         CASE WHEN json_valid(image_paths) AND json_type(image_paths) = 'array' THEN image_paths ELSE '[]' END AS images
       FROM notes WHERE user_id = ? AND lecture_id = ? ORDER BY created_at, id`)
-      .all(user, lecture.id) as { id: number; title: string | null; raw_text: string | null; created_at: string; images: string }[];
+      .all(user, lecture.id) as { id: number; title: string | null; raw_text: string | null; created_at: string; images: string; handwriting_image_index: number | null }[];
     // A pen annotation contains a quotation. Give it the same visibility as the shared summary it marks.
     const annotations = canReadSharedLectures(user) ? db.prepare(`SELECT a.id, a.quote, a.runs, a.revision
       FROM lecture_annotations a JOIN shared_lecture_summaries s ON s.transcript_id = ?

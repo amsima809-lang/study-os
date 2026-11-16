@@ -13,6 +13,8 @@ The Mac mini holds all 42 prebuilt transcript/summary pairs. Both designated acc
 
 The follow-up adds private summary editing and restoration, lecture photo galleries, anchored pen annotations, reviewed handwriting search, separate/combined study notes and drawing review. In Combine, Flash chooses where a student's passage goes; the server retrieves its exact words and colours. A note with photos also has an action to read a sketchnote, review its arrows and see the original page. Details of the original requirements and source material follow.
 
+To keep a page handwritten, choose **Pen**, write on the full-screen canvas, then tap **Done** and **Save note**. **Generate notes from handwriting** runs the tuned DeepSeek prompt on the saved page. Tap the small original beside the generated notes to read it full screen.
+
 The internal TestFlight upload is build `202611160616`. It carries the PencilKit popover and native Thai/English dictation. Existing iOS builds can open the server-hosted lecture library. The physical iPad, Pencil, palm rejection and microphone checks are still open. Pricing and the optional v4 lecture format remain owner decisions.
 
 The two reference pages were also run through the live drawing model. Instruction produced nine inline crops and the graph point (1, 2). Confirming its hub arrows restores both two-way links. One marked speech bubble was described as two dots instead of an ellipsis; a free-text correction can fix that in the same review batch. Boaler produced eight crops, the brain-systems group, the leftward Math connection and purple digits on yellow. Confirming the brain arrows restores all three two-way links.

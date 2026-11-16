@@ -4,7 +4,6 @@ import "katex/dist/katex.min.css";
 import mermaidUrl from "@mermaid-js/tiny/dist/mermaid.tiny.js?url";
 import type { SketchPage, SketchReading } from "../../../server/src/sketchSchema.js";
 import { withBase } from "../base.ts";
-import { useT } from "../i18n.tsx";
 import "./sketchNotes.css";
 
 type Block = SketchReading["notes"]["blocks"][number];
@@ -170,7 +169,6 @@ function SketchBlock({ block, reading }: { block: Block; reading: SketchReading 
 }
 
 export default function SketchPageView({ page, original }: { page: SketchPage; original: string }) {
-  const { lang } = useT();
   const href = withBase(original);
   return (
     <article className="sketch-paper">
@@ -200,10 +198,6 @@ export default function SketchPageView({ page, original }: { page: SketchPage; o
             })}
         </section>
       ))}
-      <a className="sketch-original" href={href} target="_blank" rel="noreferrer">
-        <img src={href} alt="" />
-        {lang === "th" ? "ดูหน้าต้นฉบับ" : "Open the original page"}
-      </a>
     </article>
   );
 }

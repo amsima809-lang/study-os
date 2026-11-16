@@ -11,6 +11,7 @@ export type SketchCall = (
 ) => Promise<unknown>;
 
 class ReasoningLimit extends AiError {}
+const pngSignature = Buffer.from("89504e470d0a1a0a", "hex");
 
 /** DeepSeek exposes JSON mode and max reasoning on its Chat Completions endpoint. */
 export function sketchModel(db: DB): SketchCall {
@@ -21,7 +22,7 @@ export function sketchModel(db: DB): SketchCall {
     const content = [
       ...images.map((image) => ({
         type: "image_url",
-        image_url: { url: "data:image/jpeg;base64," + image.toString("base64") },
+        image_url: { url: "data:image/" + (image.subarray(0, 8).equals(pngSignature) ? "png" : "jpeg") + ";base64," + image.toString("base64") },
       })),
       { type: "text", text: prompt },
     ];

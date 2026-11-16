@@ -1,11 +1,11 @@
 import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
 import { useT } from "../i18n.tsx";
 import Icon from "./Icon.tsx";
+import type { Drawing } from "../noteDraft.ts";
 
 export type HandwritingHandle = {
-  exportBlob: () => Promise<Blob | null>;
-  clear: () => void;
-  isEmpty: () => boolean;
+  png: () => string;
+  colors: () => string[];
 };
 
 // Logical drawing resolution per page (exported at this size). Displayed scaled by zoom.
@@ -38,32 +38,162 @@ function widthAt(s: Stroke, point: Point): number {
 }
 export type Stroke = { tool: Tool; color: string; width: number; points: Point[] };
 
+function paintStroke(ctx: CanvasRenderingContext2D, s: Stroke) {
+  const col = s.tool === "eraser" ? "#ffffff" : s.color;
+  ctx.save();
+  if (s.tool === "highlighter") ctx.globalAlpha = HL_ALPHA;
+  ctx.strokeStyle = col;
+  ctx.fillStyle = col;
+  ctx.lineWidth = s.width;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  const pts = s.points;
+  if (pts.length === 1) {
+    ctx.beginPath();
+    ctx.arc(pts[0].x, pts[0].y, widthAt(s, pts[0]) / 2, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (s.tool === "pen" && pts.some((pt) => pt.p !== undefined)) {
+    // Pressure changes along the line: draw it piece by piece, each at its own width.
+    for (let i = 1; i < pts.length; i++) {
+      ctx.lineWidth = (widthAt(s, pts[i - 1]) + widthAt(s, pts[i])) / 2;
+      ctx.beginPath();
+      ctx.moveTo(pts[i - 1].x, pts[i - 1].y);
+      ctx.lineTo(pts[i].x, pts[i].y);
+      ctx.stroke();
+    }
+  } else {
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+type VectorDrawing = Pick<Drawing, "strokes" | "pages">;
+
+function paintPage(ctx: CanvasRenderingContext2D, drawing: VectorDrawing, width: number, pageHeight: number, background?: HTMLImageElement) {
+  const height = pageHeight * drawing.pages;
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, width, Math.max(height, ctx.canvas.height));
+  if (background) ctx.drawImage(background, 0, 0, width, height);
+  ctx.strokeStyle = "#e2e8f0";
+  ctx.lineWidth = 2;
+  ctx.setLineDash([12, 10]);
+  for (let page = 1; page < drawing.pages; page++) {
+    const y = page * pageHeight;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(width, y);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  for (const stroke of drawing.strokes) paintStroke(ctx, stroke);
+}
+
+/** Render a closed editor's vector draft at its original resolution for note submission. */
+export async function exportHandwriting(drawing: VectorDrawing | null): Promise<Blob | null> {
+  if (!drawing?.strokes.length) return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = CANVAS_W;
+  canvas.height = CANVAS_H * drawing.pages;
+  paintPage(canvas.getContext("2d")!, drawing, CANVAS_W, CANVAS_H);
+  try {
+    return await new Promise<Blob>((resolve, reject) => canvas.toBlob(
+      blob => blob ? resolve(blob) : reject(new Error("Could not export handwriting")), "image/png",
+    ));
+  } finally {
+    canvas.width = canvas.height = 0;
+  }
+}
+
+/** Bounds use the same page coordinates as the lossless export, in the format used for PencilKit strokes. */
+export function handwritingStrokeBounds(drawing: VectorDrawing): number[][] {
+  const height = CANVAS_H * drawing.pages;
+  const boxes: number[][] = [];
+  // An eraser may have removed any part of an earlier mark. Use the actual pixels alone in that case.
+  if (drawing.strokes.some(stroke => stroke.tool === "eraser")) return boxes;
+  for (const stroke of drawing.strokes) {
+    let left = CANVAS_W, top = height, right = 0, bottom = 0;
+    for (const point of stroke.points) {
+      const radius = widthAt(stroke, point) / 2;
+      left = Math.min(left, point.x - radius);
+      top = Math.min(top, point.y - radius);
+      right = Math.max(right, point.x + radius);
+      bottom = Math.max(bottom, point.y + radius);
+    }
+    left = Math.max(0, left);
+    top = Math.max(0, top);
+    right = Math.min(CANVAS_W, right);
+    bottom = Math.min(height, bottom);
+    if (right > left && bottom > top) {
+      const box = [left / CANVAS_W, top / height, right / CANVAS_W, bottom / height];
+      boxes.push(box.map(value => Math.round(value * 100000) / 100000));
+    }
+    if (boxes.length === 20_000) break;
+  }
+  return boxes;
+}
+
+export function HandwritingPreview({ drawing }: { drawing: VectorDrawing }) {
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const scale = 0.2;
+  useEffect(() => {
+    const ctx = canvas.current!.getContext("2d")!;
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    paintPage(ctx, drawing, CANVAS_W, CANVAS_H);
+  }, [drawing]);
+  return <canvas ref={canvas} width={CANVAS_W * scale} height={CANVAS_H * drawing.pages * scale}
+    className="block max-w-full max-h-full object-contain" aria-hidden="true"/>;
+}
+
 type Props = {
+  compact?: boolean;
+  accent?: string;
+  background?: HTMLImageElement;
   /** Strokes and page count to start from (a restored draft). Read once, on mount. */
-  initial?: { strokes: Stroke[]; pages: number } | null;
+  initial?: VectorDrawing | null;
   /** Called after every finished stroke, undo, redo, clear or page change. */
-  onChange?: (drawing: { strokes: Stroke[]; pages: number }) => void;
+  onChange?: (drawing: VectorDrawing) => void;
   /** Called the first time a pen (Apple Pencil, stylus) touches the pad, so the note form can show it is in use. */
   onPen?: () => void;
 };
 
 /**
  * A full drawing pad: pen + eraser, colors, stroke widths, undo/redo, clear,
- * zoom in/out, and an expand toggle. Strokes are stored as vectors (light +
- * redo-friendly) and exported as a JPEG for the AI to read.
+ * zoom in/out, and multiple pages. Compact annotations start on the same pen.
+ * Note drafts keep editable vectors and export original strokes as a PNG.
  */
-export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, onChange, onPen }, ref) => {
-  const { t } = useT();
+export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, onChange, onPen, compact = false, accent = COLORS[0], background }, ref) => {
+  const { lang, t } = useT();
+  const logicalWidth = compact ? 680 : CANVAS_W;
+  const pageHeight = compact ? 260 : CANVAS_H;
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const scroller = useRef<HTMLDivElement>(null);
+  const [viewportPaperHeight, setViewportPaperHeight] = useState(0);
+  useLayoutEffect(() => {
+    if (compact) return;
+    const sc = scroller.current!;
+    const measure = () => {
+      if (sc.clientWidth) setViewportPaperHeight(Math.ceil(sc.clientHeight / sc.clientWidth * CANVAS_W));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(sc);
+    return () => observer.disconnect();
+  }, [compact]);
   const [strokes, setStrokes] = useState<Stroke[]>(() => initial?.strokes ?? []);
   const [redoStack, setRedoStack] = useState<Stroke[]>([]);
   const [tool, setTool] = useState<Tool>("pen");
-  const [color, setColor] = useState(COLORS[0]);
+  const [color, setColor] = useState(accent);
   const [hlColor, setHlColor] = useState(HL_COLORS[0]);
-  const [width, setWidth] = useState(WIDTHS[1].val);
+  const [width, setWidth] = useState(WIDTHS[0].val);
   const [zoom, setZoom] = useState(1);
-  const [expanded, setExpanded] = useState(false);
   const [pages, setPages] = useState(() => Math.min(MAX_PAGES, Math.max(1, initial?.pages ?? 1)));
+
+  // On tall phones the first sheet can end above the bottom edge. Extend the active
+  // writing surface, and count a new page only when its first stroke is committed.
+  const logicalHeight = Math.max(pageHeight * pages, viewportPaperHeight);
 
   // Tell the owner about every change so it can keep a draft.
   const onChangeRef = useRef(onChange);
@@ -80,69 +210,22 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
     return canvasRef.current!.getContext("2d")!;
   }
 
-  function paintStroke(ctx: CanvasRenderingContext2D, s: Stroke) {
-    const col = s.tool === "eraser" ? "#ffffff" : s.color;
-    ctx.save();
-    if (s.tool === "highlighter") ctx.globalAlpha = HL_ALPHA;
-    ctx.strokeStyle = col;
-    ctx.fillStyle = col;
-    ctx.lineWidth = s.width;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    const pts = s.points;
-    if (pts.length === 1) {
-      ctx.beginPath();
-      ctx.arc(pts[0].x, pts[0].y, widthAt(s, pts[0]) / 2, 0, Math.PI * 2);
-      ctx.fill();
-    } else if (s.tool === "pen" && pts.some((pt) => pt.p !== undefined)) {
-      // Pressure changes along the line: draw it piece by piece, each at its own width.
-      for (let i = 1; i < pts.length; i++) {
-        ctx.lineWidth = (widthAt(s, pts[i - 1]) + widthAt(s, pts[i])) / 2;
-        ctx.beginPath();
-        ctx.moveTo(pts[i - 1].x, pts[i - 1].y);
-        ctx.lineTo(pts[i].x, pts[i].y);
-        ctx.stroke();
-      }
-    } else {
-      ctx.beginPath();
-      ctx.moveTo(pts[0].x, pts[0].y);
-      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
-
   function redraw() {
     const c = canvasRef.current!;
-    const ctx = ctxOf();
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, c.width, c.height);
-    // dashed dividers between pages
-    ctx.strokeStyle = "#e2e8f0";
-    ctx.lineWidth = 2;
-    ctx.setLineDash([12, 10]);
-    for (let i = 1; i < pages; i++) {
-      const y = i * CANVAS_H;
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(CANVAS_W, y);
-      ctx.stroke();
-    }
-    ctx.setLineDash([]);
-    for (const s of strokes) paintStroke(ctx, s);
+    paintPage(ctxOf(), { strokes, pages }, c.width, pageHeight, background);
   }
 
   // init + redraw whenever strokes or the page count change
-  useEffect(() => {
+  useLayoutEffect(() => {
     const c = canvasRef.current!;
-    const h = CANVAS_H * pages;
-    if (c.width !== CANVAS_W || c.height !== h) {
-      c.width = CANVAS_W;
+    const h = logicalHeight;
+    if (c.width !== logicalWidth || c.height !== h) {
+      c.width = logicalWidth;
       c.height = h; // resizing clears the canvas; redraw() repaints below
     }
     redraw();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [strokes, pages]);
+  }, [strokes, pages, logicalWidth, logicalHeight, pageHeight, background]);
 
   function toCanvas(e: React.PointerEvent): Point {
     const c = canvasRef.current!;
@@ -170,7 +253,6 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
   // to zoom and pan. With "draw with a finger" switched on, one finger draws
   // and two fingers still zoom and pan. A palm is not a finger: a large
   // contact, or any touch while the pen is down or has just lifted, is ignored.
-  const scroller = useRef<HTMLDivElement>(null);
   const touches = useRef(new Map<number, { x: number; y: number }>());
   const pinch = useRef<{ dist: number; zoom: number } | null>(null);
   const penDown = useRef(false);
@@ -273,8 +355,9 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
   }
 
   function down(e: React.PointerEvent) {
-    if (e.pointerType === "touch") return touchDown(e);
-    if (e.pointerType === "pen") sawPen();
+    if (e.button !== 0) return;
+    if (e.pointerType === "touch") { if (!compact) touchDown(e); return; }
+    if (!compact && e.pointerType === "pen") sawPen();
     // The pen (or mouse) always wins over fingers already on the glass.
     touches.current.clear();
     pinch.current = null;
@@ -332,23 +415,23 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
     const done = current.current;
     current.current = null;
     last.current = null;
+    if (!compact && logicalHeight > pages * pageHeight) {
+      const bottom = done.points.reduce((y, pt) => Math.max(y, pt.y + widthAt(done, pt) / 2), 0);
+      setPages(p => Math.max(p, Math.min(MAX_PAGES, Math.ceil(bottom / pageHeight))));
+    }
     setStrokes((prev) => [...prev, done]);
     setRedoStack([]);
   }
 
   function undo() {
-    setStrokes((prev) => {
-      if (prev.length === 0) return prev;
-      setRedoStack((r) => [...r, prev[prev.length - 1]]);
-      return prev.slice(0, -1);
-    });
+    if (!strokes.length) return;
+    setRedoStack([...redoStack, strokes[strokes.length - 1]]);
+    setStrokes(strokes.slice(0, -1));
   }
   function redo() {
-    setRedoStack((prev) => {
-      if (prev.length === 0) return prev;
-      setStrokes((s) => [...s, prev[prev.length - 1]]);
-      return prev.slice(0, -1);
-    });
+    if (!redoStack.length) return;
+    setStrokes([...strokes, redoStack[redoStack.length - 1]]);
+    setRedoStack(redoStack.slice(0, -1));
   }
   function clearAll() {
     setStrokes([]);
@@ -356,13 +439,8 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
   }
 
   useImperativeHandle(ref, () => ({
-    exportBlob: () =>
-      new Promise((resolve) => {
-        if (strokes.length === 0) return resolve(null);
-        canvasRef.current!.toBlob((b) => resolve(b), "image/jpeg", 0.9);
-      }),
-    clear: clearAll,
-    isEmpty: () => strokes.length === 0,
+    png: () => canvasRef.current!.toDataURL("image/png").split(",")[1],
+    colors: () => [...new Set(strokes.filter(s => s.tool !== "eraser").map(s => s.color))],
   }));
 
   const toolBtn = (_active: boolean) => "px-3 min-h-11 min-w-11 rounded-md text-sm font-medium";
@@ -372,9 +450,11 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
   });
 
   return (
-    <div className="border rounded-lg overflow-hidden" style={{ borderColor: "var(--border)" }}>
+    <div className={compact ? "overflow-hidden rounded border" : "flex flex-col flex-1 min-h-0"} style={{ borderColor: "var(--border)" }}>
       {/* toolbar */}
-      <div className="border-b p-2 space-y-2" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border)" }}>
+      {!compact && <details className="border-b shrink-0 overflow-y-auto max-h-[45dvh]" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border)" }}>
+        <summary className="cursor-pointer px-3 py-2 min-h-11 content-center text-sm font-medium">{lang === "th" ? "เครื่องมือวาด" : "Drawing tools"}</summary>
+        <div className="px-2 pb-2 space-y-2">
         <div className="flex flex-wrap items-center gap-1.5">
           <button className={toolBtn(tool === "pen")} style={toolStyle(tool === "pen")} onClick={() => setTool("pen")} title={t("draw.pen")}>
             <Icon name="pen" size={16} />
@@ -396,7 +476,7 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
 
           <span className="w-px h-5 mx-0.5" style={{ backgroundColor: "var(--border)" }} />
 
-          {(tool === "highlighter" ? HL_COLORS : COLORS).map((c) => {
+          {(tool === "highlighter" ? HL_COLORS : [...new Set([accent, ...COLORS])]).map((c) => {
             const active = tool === "highlighter" ? hlColor === c : tool === "pen" && color === c;
             return (
               <button
@@ -478,13 +558,6 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
           >
             <Icon name="filePlus" size={16} />
           </button>
-          <button
-            className={toolBtn(expanded)} style={toolStyle(expanded)}
-            onClick={() => setExpanded((v) => !v)}
-            title={t(expanded ? "draw.collapse" : "draw.expand")}
-          >
-            ⤢
-          </button>
         </div>
         <div className="flex items-center gap-2 text-xs" style={{ color: "var(--text-tertiary)" }}>
           <button
@@ -508,16 +581,18 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
           <span className="flex-1 min-w-0">{t(penOnly ? "draw.penOnlyHint" : "draw.gestureHint")}</span>
           <span className="whitespace-nowrap">{t("draw.pages", { n: pages })}</span>
         </div>
-      </div>
+        </div>
+      </details>}
 
       {/* scrollable canvas area */}
-      <div ref={scroller} className={`overflow-auto bg-slate-100 ${expanded ? "h-[70vh]" : "h-72"}`}>
+      <div ref={scroller} className={compact ? "overflow-hidden" : "flex-1 min-h-0 overflow-auto overscroll-contain bg-white"}>
         <canvas
           ref={canvasRef}
+          aria-label={lang === "th" ? "พื้นที่เขียน" : "Writing pad"}
           onPointerDown={down}
           onPointerMove={move}
           onPointerUp={up}
-          onPointerLeave={up}
+          onLostPointerCapture={up}
           onPointerCancel={up}
           // A resting palm must not open the copy/selection menu or select text.
           onContextMenu={(e) => e.preventDefault()}
@@ -526,7 +601,7 @@ export const HandwritingPad = forwardRef<HandwritingHandle, Props>(({ initial, o
             WebkitTouchCallout: "none",
             WebkitUserSelect: "none",
             width: `${zoom * 100}%`,
-            aspectRatio: `${CANVAS_W} / ${CANVAS_H * pages}`,
+            aspectRatio: `${logicalWidth} / ${logicalHeight}`,
             touchAction: "none",
           }}
         />

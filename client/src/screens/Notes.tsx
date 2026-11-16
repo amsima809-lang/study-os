@@ -23,9 +23,11 @@ import { SketchNotes } from "../components/SketchNotes.tsx";
 import { Markdown } from "../components/Markdown.tsx";
 import Icon from "../components/Icon.tsx";
 import { CourseChip, CourseTitle } from "../components/CourseTitle.tsx";
-import { HandwritingPad, type HandwritingHandle } from "../components/HandwritingPad.tsx";
+import { HandwritingPreview, exportHandwriting, handwritingStrokeBounds } from "../components/HandwritingPad.tsx";
+import { FullScreenNotePad } from "../components/AnnotationPad.tsx";
+import { OriginalPageViewer } from "../components/OriginalPageThumbnail.tsx";
 import { NoteInputBar, type NoteMode } from "../components/NoteInputBar.tsx";
-import { drawWithPencilKit, hasNativeInk, inkBlob } from "../nativeInk.ts";
+import { drawWithPencilKit, hasNativeInk, inkBlob, penAccent } from "../nativeInk.ts";
 import { useSubscription, handleSubscriptionError } from "../components/SubscriptionGate.tsx";
 import { withBase } from "../base.ts";
 
@@ -100,7 +102,7 @@ export default function Notes() {
           <span className="flex-1 min-w-0">
             <span className="block font-semibold">{t("notes.draftWaiting")}</span>
             <span className="block text-sm truncate" style={{ color: "var(--text-secondary)" }}>
-              {draft.title.trim() || draft.text.trim().slice(0, 60) || t(draft.drawing?.strokes.length ? "notes.draftDrawing" : "notes.draftPhotos")}
+              {draft.title.trim() || draft.text.trim().slice(0, 60) || t(draft.drawing?.strokes.length || draft.drawing?.ink ? "notes.draftDrawing" : "notes.draftPhotos")}
             </span>
           </span>
           <span className="shrink-0 font-semibold" style={{ color: "var(--accent-text)" }}>{t("notes.draftContinue")}</span>
@@ -153,7 +155,10 @@ export default function Notes() {
           />
         ) : (
           <AddNote
-            onCreated={setResult}
+            onCreated={saved => {
+              if (saved.handwriting_image_index != null && saved.id) setView({ screen: "view", noteId: saved.id });
+              else setResult(saved);
+            }}
             onCancel={() => setView({ screen: "courses" })}
           />
         ))}
@@ -496,6 +501,8 @@ function NoteView({ noteId, onBack, onDeleted, onOpenLecture }: { onOpenLecture:
   if (!note) return <ErrorBox>{t("notes.notFound")}</ErrorBox>;
 
   const hasAi = note.ai_summary_md || note.key_terms.length > 0 || note.ai_mindmap_md;
+  const handwritten = note.handwriting_image_index != null;
+  const photos = note.image_paths.filter((_, index) => index !== note.handwriting_image_index);
 
   /** The note as a Markdown file: the student's own text first, AI parts clearly marked. */
   function downloadText() {
@@ -548,20 +555,22 @@ function NoteView({ noteId, onBack, onDeleted, onOpenLecture }: { onOpenLecture:
         }}/>
       {linkError && <ErrorBox>{linkError}</ErrorBox>}
       {linked && note.course_code && <LectureShortcuts code={note.course_code} lecture={{ ...linked, image_count: Math.max(linked.image_count, note.image_paths.length) }} onOpen={onOpenLecture}/>}
-      <Card>
+      {(!handwritten || note.raw_text) && <Card>
         <h3 className="font-semibold mb-2 flex items-center gap-1.5" style={{ color: "var(--text-primary)" }}><Icon name="edit" size={16} /> {t("notes.text")}</h3>
         {note.raw_text ? (
           <p className="text-sm whitespace-pre-wrap" style={{ color: "var(--text-secondary)" }}>{note.raw_text}</p>
         ) : (
           <p className="text-sm italic" style={{ color: "var(--text-tertiary)" }}>{t("notes.noContent")}</p>
         )}
-      </Card>
+      </Card>}
 
-      {note.image_paths.length > 0 && (
+      {note.image_paths.length > 0 && <Card><SketchNotes key={note.id} noteId={note.id} imagePaths={note.image_paths} handwritingIndex={note.handwriting_image_index}/></Card>}
+
+      {photos.length > 0 && (
         <Card>
           <h3 className="font-semibold mb-2 flex items-center gap-1.5" style={{ color: "var(--text-primary)" }}><Icon name="image" size={16} /> {t("notes.images")}</h3>
           <div className="grid grid-cols-2 gap-2">
-            {note.image_paths.map((src, i) => (
+            {photos.map((src, i) => (
               <img
                 key={i}
                 src={withBase(src)}
@@ -573,8 +582,6 @@ function NoteView({ noteId, onBack, onDeleted, onOpenLecture }: { onOpenLecture:
           </div>
         </Card>
       )}
-
-      {note.image_paths.length > 0 && <SketchNotes noteId={note.id} imagePaths={note.image_paths} />}
 
       {hasAi ? (
         <>
@@ -635,7 +642,7 @@ function NoteView({ noteId, onBack, onDeleted, onOpenLecture }: { onOpenLecture:
             </Card>
           )}
         </>
-      ) : (
+      ) : !handwritten && (
         <Card>
           <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t("notes.noAi")}</p>
           <button
@@ -708,35 +715,47 @@ function AddNote({
   const [penUsed, setPenUsed] = useState(false);
   const [dictating, setDictating] = useState(false);
   const textRef = useRef<HTMLTextAreaElement>(null);
-  // In the iOS app, handwriting is Apple's PencilKit page (nativeInk.ts); in a browser, the web pad.
-  const native = hasNativeInk();
+  const [drawing, setDrawing] = useState<Drawing | null>(null);
+  const [webEditor, setWebEditor] = useState<{ original: Drawing | null; accent: string } | null>(null);
+  const [viewOriginal, setViewOriginal] = useState(false);
+  const nativeOpen = useRef(false);
+  const hasHandwriting = !!(drawing?.ink || drawing?.strokes.length);
   async function openInk() {
+    if (nativeOpen.current || webEditor) return;
+    textRef.current?.blur();
+    setMode("draw");
+    const accent = penAccent();
+    if (!hasNativeInk() || drawing?.strokes.length) {
+      if (drawing?.ink) setViewOriginal(true);
+      else setWebEditor({ original: drawing, accent });
+      return;
+    }
+    nativeOpen.current = true;
     try {
-      const ink = await drawWithPencilKit(drawing?.ink, { title: title || t("notes.modeDraw"), done: t("ink.done"), cancel: t("ink.cancel") });
-      if (ink === undefined) return; // cancelled: keep what was there
+      const ink = await drawWithPencilKit(drawing?.ink, { title: title || t("notes.modeDraw"), done: t("ink.done"), cancel: t("ink.cancel"), accent });
+      if (ink === undefined) return;
       setDrawing(ink ? { strokes: [], pages: 1, ink } : null);
       if (ink) setPenUsed(true);
     } catch {
       setError(t("ink.failed"));
+    } finally {
+      nativeOpen.current = false;
     }
   }
   function chooseMode(m: NoteMode) {
-    setMode(m);
-    if (m === "draw" && native) void openInk();
+    if (m === "draw") void openInk();
+    else setMode(m);
   }
   const [files, setFiles] = useState<File[]>([]);
-  const [drawing, setDrawing] = useState<Drawing | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Draft handling: `ready` once any saved draft has been read back; `restoredAt`
-  // when what is on screen came from a draft; `padKey` remounts the drawing pad.
+  // Wait for the saved draft before letting the student write on a new page.
   const [ready, setReady] = useState(false);
   const [restoredAt, setRestoredAt] = useState<number | null>(null);
-  const [padKey, setPadKey] = useState(0);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [draftState, setDraftState] = useState<"saved" | "partial" | "failed">("saved");
   const saved = useRef(false);
-  const padRef = useRef<HandwritingHandle>(null);
+  const submitting = useRef(false);
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
 
@@ -805,7 +824,6 @@ function AddNote({
     setText("");
     setFiles([]);
     setDrawing(null);
-    setPadKey((k) => k + 1);
     setRestoredAt(null);
     setConfirmDiscard(false);
     void clearNoteDraft(draftKey);
@@ -846,10 +864,10 @@ function AddNote({
   };
 
   async function submit() {
+    if (submitting.current) return;
     setError(null);
-    const handwriting = drawing?.ink ? inkBlob(drawing.ink) : await padRef.current?.exportBlob();
     const hasText = text.trim().length > 0;
-    if (!hasText && files.length === 0 && !handwriting) {
+    if (!hasText && files.length === 0 && !hasHandwriting) {
       setError(t("notes.needInput"));
       return;
     }
@@ -859,26 +877,31 @@ function AddNote({
     if (title) form.append("title", title);
     if (hasText) form.append("raw_text", text);
     for (const f of files) form.append("images", f);
-    if (handwriting) {
-      form.append("images", handwriting, drawing?.ink ? "handwriting.png" : "handwriting.jpg");
-      if (drawing?.ink?.strokeBounds) form.append("handwriting_strokes", JSON.stringify(drawing.ink.strokeBounds));
-    }
-
+    submitting.current = true;
     setBusy(true);
     try {
+      if (drawing && hasHandwriting) {
+        const image = drawing.ink ? inkBlob(drawing.ink) : await exportHandwriting(drawing);
+        if (!image) throw new Error("Could not export the drawing");
+        form.append("images", image, "handwriting.png");
+        form.append("handwriting_image_index", String(files.length));
+        const bounds = drawing.ink ? drawing.ink.strokeBounds : handwritingStrokeBounds(drawing);
+        if (bounds?.length) form.append("handwriting_strokes", JSON.stringify(bounds));
+      }
       const r = await postForm<NoteLearning>("/api/notes", form);
       saved.current = true; // the note is on the server: the draft is no longer needed
       await clearNoteDraft(draftKey);
       onCreated(r);
     } catch (e) {
       const err = e as ApiError;
-      setError(err.code === "AI_NOT_CONFIGURED" ? t("notes.aiNotConfigured") : err.error);
+      setError(err.code === "AI_NOT_CONFIGURED" ? t("notes.aiNotConfigured") : err.error || t("status.failed"));
     } finally {
+      submitting.current = false;
       setBusy(false);
     }
   }
 
-  if (busy) return <Loading>{t("notes.processing")}</Loading>;
+  if (busy) return <Loading>{t(hasHandwriting ? "ink.saving" : "notes.processing")}</Loading>;
   if (!ready) return <Loading>{t("status.connecting")}</Loading>;
 
   const selectStyle = { backgroundColor: "var(--bg-surface)", borderColor: "var(--border)", color: "var(--text-primary)" };
@@ -963,8 +986,12 @@ function AddNote({
             ref={textRef}
             value={text}
             onChange={(e) => setText(e.target.value)}
-            // A pen writing in the box (iPad Scribble turns it into text) lights up the Pen icon.
-            onPointerDown={(e) => { if (e.pointerType === "pen") setPenUsed(true); }}
+            onPointerDown={(e) => {
+              if (e.pointerType === "pen") {
+                e.preventDefault();
+                void openInk();
+              }
+            }}
             placeholder={t("notes.textPlaceholder")}
             aria-label={t("notes.textPlaceholder")}
             rows={5}
@@ -972,32 +999,24 @@ function AddNote({
             style={inputStyle}
           />
         )}
-        {(mode === "draw" || !!drawing?.strokes.length) && (
-          <div hidden={mode !== "draw"}>
-            {!native && <p className="text-xs mb-1" style={{ color: "var(--text-tertiary)" }}>{t("notes.drawHint")}</p>}
-            {native ? (
-              <button
-                type="button"
-                onClick={() => void openInk()}
-                className="w-full rounded-lg border overflow-hidden flex flex-col items-center justify-center gap-1 min-h-32"
-                style={{ borderColor: "var(--border)", backgroundColor: drawing?.ink ? "#fff" : "var(--bg-surface-hover)" }}
-                aria-label={t(drawing?.ink ? "ink.edit" : "ink.open")}
-              >
-                {drawing?.ink ? (
-                  <img src={`data:image/png;base64,${drawing.ink.png}`} alt="" className="w-full max-h-80 object-contain object-top" />
-                ) : (
-                  <>
-                    <Icon name="pen" size={28} style={{ color: "var(--accent-text)" }} />
-                    <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{t("ink.open")}</span>
-                  </>
-                )}
-              </button>
-            ) : (
-              <HandwritingPad key={padKey} ref={padRef} initial={drawing} onChange={setDrawing} onPen={() => setPenUsed(true)} />
-            )}
-            {native && drawing?.ink && <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>{t("ink.tapToEdit")}</p>}
-          </div>
-        )}
+        {(mode === "draw" || hasHandwriting) && <button
+          type="button" onClick={() => void openInk()}
+          className="flex items-center gap-3 text-sm min-h-11"
+          style={{ color: "var(--accent-text)" }}
+        >
+          {hasHandwriting && drawing ? <span className="flex h-20 w-24 items-center justify-center overflow-hidden rounded-lg border bg-white" style={{ borderColor: "var(--border)" }}>
+            {drawing.ink
+              ? <img src={`data:image/png;base64,${drawing.ink.png}`} alt="" className="size-full object-contain" />
+              : <HandwritingPreview drawing={drawing}/>}
+          </span> : <Icon name="pen" size={20}/>}
+          {t(!hasHandwriting ? "ink.open" : drawing?.ink && !hasNativeInk() ? "ink.view" : "ink.edit")}
+        </button>}
+        {webEditor && <FullScreenNotePad
+          initial={webEditor.original} title={title || t("notes.modeDraw")} accent={webEditor.accent}
+          onChange={setDrawing} onPen={() => setPenUsed(true)} onDone={() => setWebEditor(null)}
+          onCancel={() => { setDrawing(webEditor.original); setWebEditor(null); }}
+        />}
+        {viewOriginal && drawing?.ink && <OriginalPageViewer src={`data:image/png;base64,${drawing.ink.png}`} onClose={() => setViewOriginal(false)}/>}
 
         <div className="flex gap-2">
           <input
@@ -1086,7 +1105,7 @@ function AddNote({
             {t("notes.cancel")}
           </button>
         </div>
-        <p className="text-xs text-center" style={{ color: "var(--text-tertiary)" }}>{t(dictating ? "input.finishDictation" : "notes.saveHint")}</p>
+        <p className="text-xs text-center" style={{ color: "var(--text-tertiary)" }}>{t(dictating ? "input.finishDictation" : hasHandwriting ? "ink.saveHint" : "notes.saveHint")}</p>
         {hasContent && draftState === "saved" && <p className="text-xs text-center" style={{ color: "var(--text-tertiary)" }}>{t("notes.draftKept")}</p>}
         {hasContent && draftState !== "saved" && (
           <p role="alert" className="text-xs text-center font-medium" style={{ color: "var(--danger)" }}>

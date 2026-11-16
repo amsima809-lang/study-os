@@ -3,12 +3,13 @@
  * list/read saved notes. Also exposes the course list for the add-note form.
  */
 import { Router } from "express";
+import { randomUUID } from "node:crypto";
 import multer from "multer";
 import sharp from "sharp";
-import { writeFile, mkdir, readFile } from "node:fs/promises";
+import { writeFile, mkdir, readFile, unlink } from "node:fs/promises";
 import { join, basename } from "node:path";
 import type { DB } from "./db.js";
-import { saveSketchStrokes } from "./sketchRoutes.js";
+import { parseSketchStrokes } from "./sketchRoutes.js";
 import { getLecture } from "./savedLectures.js";
 import { env } from "./env.js";
 import {
@@ -281,13 +282,21 @@ export function createNotesRouter(db: DB): Router {
   });
 
   // Create a note: text and/or images -> optionally AI summary.
-  // Notes always save to the database. AI summary runs only when the key is set.
+  // A drawn page stays in its original format. Its owner can request the sketch reading after saving.
   router.post("/notes", upload.array("images", 5), async (req, res) => {
+    const unattached: string[] = [];
     try {
       const courseCode = (req.body.course_code as string) || null;
       const title = (req.body.title as string) || null;
       const rawText = (req.body.raw_text as string) || "";
       const files = (req.files as Express.Multer.File[] | undefined) ?? [];
+      const strokes = parseSketchStrokes(req.body.handwriting_strokes);
+      const field = req.body.handwriting_image_index;
+      if (field !== undefined && (typeof field !== "string" || !/^\d+$/.test(field) || Number(field) >= files.length)) {
+        return res.status(400).json({ error: "ไม่พบหน้าลายมือที่ระบุ" });
+      }
+      // Older iOS builds append the PencilKit page last and send its stroke bounds.
+      const handwritingIndex = field !== undefined ? Number(field) : strokes && files.length ? files.length - 1 : null;
       let lectureId: number | null = null;
       if (req.body.lecture_no !== undefined) {
         const lecture = courseCode && getLecture(db, req.user!.id, courseCode, Number(req.body.lecture_no));
@@ -299,19 +308,37 @@ export function createNotesRouter(db: DB): Router {
         return res.status(400).json({ error: "กรุณาพิมพ์ข้อความหรือแนบรูปโน้ตอย่างน้อย 1 อย่าง" });
       }
 
-      // Resize images, save to disk, and prepare base64 for the AI.
+      let inkExtension: "png" | "jpg" | null = null;
+      if (handwritingIndex !== null) {
+        try {
+          const ink = sharp(files[handwritingIndex].buffer);
+          const metadata = await ink.metadata();
+          if ((metadata.format !== "jpeg" && metadata.format !== "png") || (metadata.pages ?? 1) !== 1) {
+            return res.status(400).json({ error: "หน้าลายมือจะต้องเป็นรูป PNG หรือ JPEG" });
+          }
+          // Decode a thumbnail to reject broken image data before retaining the original bytes.
+          await ink.resize(1, 1).raw().toBuffer();
+          inkExtension = metadata.format === "png" ? "png" : "jpg";
+        } catch {
+          return res.status(400).json({ error: "ไม่สามารถอ่านรูปหน้าลายมือนี้ได้" });
+        }
+      }
+
+      const userId = req.user!.id;
+      const summarizeOnSave = handwritingIndex === null && isAiConfigured() && hasAiSubscription(db, userId);
       await mkdir(env.uploadDir, { recursive: true });
       const imagePaths: string[] = [];
       const aiImages: ImageInput[] = [];
-      for (const f of files) {
-        // Keep the uploaded page at a reading resolution for zoomed handwriting recognition.
-        const page = await sharp(f.buffer).rotate().flatten({ background: "#fff" })
+      for (const [index, file] of files.entries()) {
+        const penPage = index === handwritingIndex;
+        const page = penPage ? file.buffer : await sharp(file.buffer).rotate().flatten({ background: "#fff" })
           .resize({ width: 4800, height: 4800, fit: "inside", withoutEnlargement: true }).jpeg({ quality: 91 }).toBuffer();
-        const jpeg = await resizeToJpeg(page);
-        const filename = `note_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
-        await writeFile(join(env.uploadDir, filename), page);
+        const filename = `note_${randomUUID()}.${penPage ? inkExtension : "jpg"}`;
+        const path = join(env.uploadDir, filename);
+        unattached.push(path);
+        await writeFile(path, page);
         imagePaths.push(`/api/uploads/${filename}`);
-        aiImages.push({ media_type: "image/jpeg", data_base64: jpeg.toString("base64") });
+        if (summarizeOnSave) aiImages.push({ media_type: "image/jpeg", data_base64: (await resizeToJpeg(page)).toString("base64") });
       }
 
       // Try AI summary — gracefully skip if the API key is not set.
@@ -321,9 +348,8 @@ export function createNotesRouter(db: DB): Router {
         key_terms: [] as { term: string; definition: string }[],
         topics: [] as string[],
       };
-      const userId = req.user!.id;
       let aiSkipped = false;
-      if (isAiConfigured() && hasAiSubscription(db, userId)) {
+      if (summarizeOnSave) {
         try {
           learning = await generateNoteLearning(
             noteModelCall(db, { text: rawText, images: aiImages }),
@@ -337,43 +363,52 @@ export function createNotesRouter(db: DB): Router {
         aiSkipped = true;
       }
 
-      const info = db
-        .prepare(
-          `INSERT INTO notes
-             (user_id, course_code, lecture_id, created_at, title, raw_text, image_paths,
-              ai_summary_md, ai_mindmap_md, ai_terms_json, ai_topics_json)
-           VALUES (@user_id, @course_code, @lecture_id, @created_at, @title, @raw_text, @image_paths,
-                   @ai_summary_md, @ai_mindmap_md, @ai_terms_json, @ai_topics_json)`,
-        )
-        .run({
-          user_id: userId,
-          course_code: courseCode,
-          lecture_id: lectureId,
-          created_at: new Date().toISOString(),
-          title,
-          raw_text: rawText || null,
-          image_paths: JSON.stringify(imagePaths),
-          ai_summary_md: learning.summary_md || null,
-          ai_mindmap_md: learning.mindmap_md || null,
-          ai_terms_json: JSON.stringify(learning.key_terms),
-          ai_topics_json: JSON.stringify(learning.topics),
-        });
+      const id = db.transaction(() => {
+        const info = db
+          .prepare(
+            `INSERT INTO notes
+               (user_id, course_code, lecture_id, created_at, title, raw_text, image_paths, handwriting_image_index,
+                ai_summary_md, ai_mindmap_md, ai_terms_json, ai_topics_json)
+             VALUES (@user_id, @course_code, @lecture_id, @created_at, @title, @raw_text, @image_paths, @handwriting_image_index,
+                     @ai_summary_md, @ai_mindmap_md, @ai_terms_json, @ai_topics_json)`,
+          )
+          .run({
+            user_id: userId,
+            course_code: courseCode,
+            lecture_id: lectureId,
+            created_at: new Date().toISOString(),
+            title,
+            raw_text: rawText || null,
+            image_paths: JSON.stringify(imagePaths),
+            handwriting_image_index: handwritingIndex,
+            ai_summary_md: learning.summary_md || null,
+            ai_mindmap_md: learning.mindmap_md || null,
+            ai_terms_json: JSON.stringify(learning.key_terms),
+            ai_topics_json: JSON.stringify(learning.topics),
+          });
 
-      saveSketchStrokes(db, Number(info.lastInsertRowid), files.length - 1, req.body.handwriting_strokes);
-      if (courseCode) {
-        const insTopic = db.prepare(
-          "INSERT OR IGNORE INTO topics (course_code, name, mastery, user_id) VALUES (?, ?, 0, ?)",
-        );
-        for (const tag of learning.topics) insTopic.run(courseCode, tag, userId);
-      }
+        const noteId = Number(info.lastInsertRowid);
+        if (handwritingIndex !== null && strokes) {
+          db.prepare("INSERT INTO sketch_pages(note_id,image_index,stroke_bounds) VALUES (?,?,?)")
+            .run(noteId, handwritingIndex, JSON.stringify(strokes));
+        }
+        if (courseCode) {
+          const insTopic = db.prepare("INSERT OR IGNORE INTO topics (course_code, name, mastery, user_id) VALUES (?, ?, 0, ?)");
+          for (const tag of learning.topics) insTopic.run(courseCode, tag, userId);
+        }
+        return noteId;
+      })();
+      unattached.length = 0;
 
       res.status(201).json({
-        id: info.lastInsertRowid,
+        id,
         ...learning,
         image_paths: imagePaths,
+        handwriting_image_index: handwritingIndex,
         ai_skipped: aiSkipped,
       });
     } catch (err) {
+      await Promise.allSettled(unattached.map(path => unlink(path)));
       handleAiError(res, err);
     }
   });

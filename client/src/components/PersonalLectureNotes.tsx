@@ -5,6 +5,8 @@ import { useT } from "../i18n.tsx";
 import { readableInk } from "../theme.ts";
 import { type InkRun, type PersonalPassage, type LectureSources } from "../combinedLectureNotes.ts";
 import { Card, ErrorBox, Loading } from "./ui.tsx";
+import { SketchNotes } from "./SketchNotes.tsx";
+import { OriginalPageThumbnail } from "./OriginalPageThumbnail.tsx";
 import "./createdLectureNotes.css";
 
 export function usePersonalLectureNotes(path: string | null, revision: number) {
@@ -66,16 +68,20 @@ export function PersonalLectureNotes({ result, combined, placedNotes }: {
     </p>}
     {data.notes.map(note => {
       const title = note.title || (th ? "โน้ตของฉัน" : "My note") + " #" + note.id;
+      const handwritten = note.handwriting_image_index != null;
+      const photos = note.image_paths.filter((_, i) => i !== note.handwriting_image_index);
       const text = <>
         {note.raw_text && <p className="whitespace-pre-wrap break-words text-sm">{note.raw_text}</p>}
-        {note.sketch_passages?.map((p, i) => <InkText key={i} runs={p.runs}/>)}
+        {!handwritten && note.sketch_passages?.map((p, i) => <InkText key={i} runs={p.runs}/>)}
       </>;
       return <Card key={note.id}>
         {placedNotes?.has(note.id) ? <details>
           <summary className="cursor-pointer py-1 font-medium">{th ? "โน้ตต้นฉบับ" : "Original note"} · {title}</summary>
           {text}
         </details> : <><h4 className="font-medium">{title}</h4>{text}</>}
-        {!!note.image_paths.length && <div className="mt-2 grid gap-2 sm:grid-cols-2">{note.image_paths.map((src, index) =>
+        {handwritten && <SketchNotes noteId={note.id} imagePaths={note.image_paths} handwritingIndex={note.handwriting_image_index}
+          onSourcesChanged={retry}/>}
+        {!!photos.length && <div className="mt-2 grid gap-2 sm:grid-cols-2">{photos.map((src, index) =>
           <img key={index} loading="lazy" className="rounded-lg max-w-full" src={withBase(src)} alt={t("lec.noteImage", { n: index + 1 })}/>
         )}</div>}
       </Card>;
@@ -83,7 +89,7 @@ export function PersonalLectureNotes({ result, combined, placedNotes }: {
     {annotations.map(annotation => <Card key={annotation.id}>
       <h4 className="font-medium">{th ? "โน้ตลายมือของฉัน" : "My pen note"}</h4>
       <blockquote className="my-1 text-sm" style={{ color: "var(--text-secondary)" }}>“{annotation.quote}”</blockquote>
-      <img src={withBase(annotation.image_url)} alt={th ? "โน้ตลายมือ" : "Handwritten note"} loading="lazy" className="max-h-48 max-w-full rounded"/>
+      <OriginalPageThumbnail src={withBase(annotation.image_url)}/>
       <InkText runs={annotation.runs}/>
     </Card>)}
   </section>;

@@ -24,6 +24,11 @@ export function hasNativeInk(): boolean {
   return plugin() !== null;
 }
 
+/** The selected pen colour is shared by full-page notes and margin annotations. */
+export function penAccent(): string {
+  return getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#6d5cdf";
+}
+
 /**
  * Open the PencilKit page, starting from `previous` so she can keep editing.
  * Resolves to the new ink, `null` when she cleared everything, or `undefined` when she cancelled.

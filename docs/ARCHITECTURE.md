@@ -594,3 +594,7 @@ Study lists Documents & lectures first. Course rows show how many summaries are 
 Migration 049 adds `lecture_note_layouts` keyed by student and catalogue lecture. An existing row in `created_lecture_notes` seeds the layout for that student and lecture from the copy’s saved mode. Other lectures start in Separate, regardless of the former account-wide preference. Each lecture returned by `GET /api/lectures` includes its own `note_mode`. Changing the layout preserves the generated copy and its passages. Only creating notes again replaces it.
 
 The production entry at `/api/open/lectures?view=lectures&summary=MGT3204-1` serves the app through the network even with an older installed service worker. The browser keeps the requested lecture in the current tab through sign-in. The authenticated lecture list determines whether that student can open its summary.
+
+## Phase 80 — Handwritten notes
+
+The note input opens the annotation editor full screen, using PencilKit in the iOS app and the shared canvas in browsers. Browser drafts keep editable strokes. Migration 050 records which private attachment is the handwritten original. The server preserves its uploaded PNG or JPEG and skips automatic summarisation for the note. Tapping **Generate notes from handwriting** runs the existing DeepSeek sketch-v4 reading for that page. The reader keeps the original thumbnail available before and after generation. Transcript timestamp targets, search matches and text selections use a pale yellow highlight.

@@ -161,10 +161,11 @@ describe("saved lectures", () => {
       VALUES(?,?,'fixture',?,'','','circle',x'00','["#872161"]',?)`);
     const runs = [{ text: "My ink", color: "#872161" }];
     const mark = pen.run(a, id, "Marked phrase", JSON.stringify(runs));
+    db.prepare("UPDATE notes SET handwriting_image_index=1 WHERE id=?").run(note.lastInsertRowid);
     pen.run(a, second, "Other lecture's quote", "[]");
     pen.run(b, id, "Other student's quote", "[]");
     expect(await (await request(path, a)).json()).toEqual({
-      notes: [{ id: Number(note.lastInsertRowid), raw_text: "My typed note", title: "My title", image_paths: photos, created_at: "today",
+      notes: [{ id: Number(note.lastInsertRowid), raw_text: "My typed note", title: "My title", image_paths: photos, handwriting_image_index: 1, created_at: "today",
         sketch_passages: [{runs:[{text:"Verified writing",color:"#872161"}]}] }],
       annotations: [{ id: Number(mark.lastInsertRowid), quote: "Marked phrase", runs,
         image_url: `/api/lectures/MGT3204/1/annotations/${mark.lastInsertRowid}/image?v=1` }],

@@ -11,19 +11,13 @@ import type { Bounds, SketchPage, SketchState } from "./sketchSchema.js";
 
 const unit = z.number().min(0).max(1);
 const Strokes = z.array(z.tuple([unit, unit, unit, unit])).max(20000);
-export function saveSketchStrokes(db: DB, noteId: number, index: number, raw: unknown) {
-  if (typeof raw !== "string" || raw.length > 3_000_000 || index < 0) return;
-  let parsed: unknown;
+export function parseSketchStrokes(raw: unknown): Bounds[] | null {
+  if (typeof raw !== "string" || raw.length > 3_000_000) return null;
   try {
-    parsed = JSON.parse(raw);
+    const parsed = Strokes.safeParse(JSON.parse(raw));
+    return parsed.success && parsed.data.length ? parsed.data : null;
   } catch {
-    return;
-  }
-  const result = Strokes.safeParse(parsed);
-  if (result.success && result.data.length) {
-    db.prepare(
-      "INSERT INTO sketch_pages (note_id,image_index,stroke_bounds) VALUES (?,?,?) ON CONFLICT(note_id,image_index) DO UPDATE SET stroke_bounds=excluded.stroke_bounds",
-    ).run(noteId, index, JSON.stringify(result.data));
+    return null;
   }
 }
 

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type Pointer
 import { getJSON, deleteJSON, postJSON, putJSON } from "../api.ts";
 import { withBase } from "../base.ts";
 import { useT } from "../i18n.tsx";
-import { drawWithPencilKit, hasNativeInk } from "../nativeInk.ts";
+import { drawWithPencilKit, hasNativeInk, penAccent } from "../nativeInk.ts";
 import { anchorFromMark, quoteRange, type Point, type QuoteAnchor } from "../summaryAnchors.ts";
 import { AnnotationPad, type AnnotationInk } from "./AnnotationPad.tsx";
 import Icon from "./Icon.tsx";
@@ -127,7 +127,7 @@ export function AnnotatedSummary({
 
   async function open(anchor: QuoteAnchor, point: Point, previous?: Annotation) {
     if (busy || pending || editor) return;
-    const accent = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#4f46e5";
+    const accent = penAccent();
     const ed: Editor = { key: crypto.randomUUID(), anchor, point, accent, previous };
     setError("");
     if (!hasNativeInk()) {
@@ -247,6 +247,7 @@ export function AnnotatedSummary({
       <div ref={layer} className="relative">
         <div
           ref={content}
+          className="lecture-source-text"
           style={{ touchAction: pen ? "none" : undefined, userSelect: pen ? "none" : undefined }}
           onClickCapture={(e) => {
             if (pen) {

@@ -296,7 +296,10 @@ describe("DeepSeek drawing stream", () => {
       }),
     );
     try {
-      expect(await sketchModel(db)("sketch_read", "Read in JSON", [photo])).toEqual({ text: "ทดสอบ" });
+      const png = await sharp(photo).png().toBuffer();
+      expect(await sketchModel(db)("sketch_read", "Read in JSON", [png, photo])).toEqual({ text: "ทดสอบ" });
+      expect(JSON.stringify(calls[0].messages)).toContain("data:image/png;base64," + png.toString("base64"));
+      expect(JSON.stringify(calls[0].messages)).toContain("data:image/jpeg;base64," + photo.toString("base64"));
       expect(calls.map((c) => c.reasoning_effort)).toEqual(["max", "high"]);
       expect(calls[0].messages).toEqual(calls[1].messages);
       expect(db.prepare("SELECT purpose, input_tokens, output_tokens FROM ai_usage").get()).toEqual({

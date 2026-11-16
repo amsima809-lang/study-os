@@ -1,13 +1,17 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { getJSON, postJSON } from "../api.ts";
 import { useT } from "../i18n.tsx";
-import { Card, Loading } from "./ui.tsx";
+import { withBase } from "../base.ts";
+import { Loading } from "./ui.tsx";
+import { OriginalPageThumbnail } from "./OriginalPageThumbnail.tsx";
 import type { Answer, SketchState } from "../../../server/src/sketchSchema.js";
 import "./sketchNotes.css";
 
 const PageView = lazy(() => import("./SketchPageView.tsx"));
 
-function Page({ noteId, index, src }: { noteId: number; index: number; src: string }) {
+function Page({ noteId, index, src, handwritten, onSourcesChanged }: {
+  noteId: number; index: number; src: string; handwritten: boolean; onSourcesChanged?: () => void;
+}) {
   const { lang } = useT();
   const tr = (en: string, th: string) => (lang === "th" ? th : en);
   const base = `/api/notes/${noteId}/sketch/${index}`;
@@ -48,8 +52,11 @@ function Page({ noteId, index, src }: { noteId: number; index: number; src: stri
       const s = await postJSON<SketchState>(base + action, body);
       setState(s);
       setReload((x) => x + 1);
+      if (action) onSourcesChanged?.();
     } catch {
-      setError(tr("Could not save this request. Refresh and try again.", "บันทึกไม่สำเร็จ โหลดใหม่แล้วลองอีกครั้ง"));
+      setError(action
+        ? tr("Could not save this change. Refresh and try again.", "บันทึกการแก้ไขไม่สำเร็จ โหลดใหม่แล้วลองอีกครั้ง")
+        : tr("Could not start the reading. Your original is saved. Try again when ready.", "เริ่มอ่านไม่สำเร็จ ต้นฉบับยังอยู่ ลองอีกครั้งได้"));
     } finally {
       setPosting(false);
     }
@@ -58,6 +65,8 @@ function Page({ noteId, index, src }: { noteId: number; index: number; src: stri
   const disabled = posting || state?.busy;
   return (
     <div className="space-y-3">
+      {(handwritten || state?.document) && <OriginalPageThumbnail src={withBase(src)}
+        label={handwritten ? undefined : tr("Open the original page", "ดูหน้าต้นฉบับ")}/>}
       {error && (
         <p role="alert">
           {error}{" "}
@@ -80,7 +89,7 @@ function Page({ noteId, index, src }: { noteId: number; index: number; src: stri
       )}
       {state && !state.document && !state.busy && (
         <button className="sketch-button" disabled={posting} onClick={() => void post()}>
-          {tr("Turn this page into notes", "สร้างโน้ตจากภาพหน้านี้")}
+          {handwritten ? tr("Generate notes from handwriting", "สร้างโน้ตจากลายมือด้วย AI") : tr("Turn this page into notes", "สร้างโน้ตจากภาพหน้านี้")}
         </button>
       )}
       {state?.document && (
@@ -174,15 +183,18 @@ function Page({ noteId, index, src }: { noteId: number; index: number; src: stri
   );
 }
 
-export function SketchNotes({ noteId, imagePaths }: { noteId: number; imagePaths: string[] }) {
+export function SketchNotes({ noteId, imagePaths, handwritingIndex, onSourcesChanged }: {
+  noteId: number; imagePaths: string[]; handwritingIndex?: number | null; onSourcesChanged?: () => void;
+}) {
   const { lang } = useT();
-  const [index, setIndex] = useState(0);
+  const [index, setIndex] = useState(handwritingIndex ?? 0);
   if (!imagePaths.length) return null;
   const active = Math.min(index, imagePaths.length - 1);
   return (
-    <Card>
-      <div className="space-y-3">
-        <h3 className="font-semibold">{lang === "th" ? "ภาพวาดเป็นโน้ต" : "Notes from drawings"}</h3>
+    <section className="space-y-3">
+        <h3 className="font-semibold">{handwritingIndex != null
+          ? lang === "th" ? "โน้ตจากลายมือ" : "Notes from handwriting"
+          : lang === "th" ? "ภาพวาดเป็นโน้ต" : "Notes from drawings"}</h3>
         {imagePaths.length > 1 && (
           <label>
             {lang === "th" ? "หน้า " : "Page "}
@@ -195,8 +207,8 @@ export function SketchNotes({ noteId, imagePaths }: { noteId: number; imagePaths
             </select>
           </label>
         )}
-        <Page key={noteId + "/" + active} noteId={noteId} index={active} src={imagePaths[active]} />
-      </div>
-    </Card>
+        <Page key={noteId + "/" + active} noteId={noteId} index={active} src={imagePaths[active]}
+          handwritten={active === handwritingIndex} onSourcesChanged={onSourcesChanged}/>
+    </section>
   );
 }

@@ -30,6 +30,7 @@ export type PersonalNote = {
   created_at: string;
   raw_text: string | null;
   image_paths: string[];
+  handwriting_image_index?: number | null;
   sketch_passages?: { runs: InkRun[] }[];
 };
 export type LectureSources = {

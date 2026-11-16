@@ -6,9 +6,9 @@ import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import sharp from "sharp";
 import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 
 const uploadDir = mkdtempSync(join(tmpdir(), "notes-sum-"));
 process.env.UPLOAD_DIR = uploadDir;
@@ -53,7 +53,7 @@ beforeAll(async () => {
   await new Promise((resolve) => server.once("listening", resolve));
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 });
-afterAll(() => server?.close());
+afterAll(() => { server?.close(); db?.close(); rmSync(uploadDir, { recursive: true, force: true }); });
 
 const addNote = (userId: string, raw: string | null, images: string[] = []) =>
   Number(
@@ -62,6 +62,79 @@ const addNote = (userId: string, raw: string | null, images: string[] = []) =>
       .run(userId, new Date().toISOString(), raw, JSON.stringify(images)).lastInsertRowid,
   );
 const summarize = (id: number) => fetch(`${base}/api/notes/${id}/summarize`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
+
+describe("handwritten note originals", () => {
+  const create = (body: FormData) => fetch(base + "/api/notes", { method: "POST", body });
+  type Saved = { id: number; image_paths: string[] };
+
+  it("saves a drawn page exactly as uploaded beside another photo, deferring recognition until requested", async () => {
+    as = findOrCreateUser(db, { email: "ink@example.com", name: "Ink", avatar: "" });
+    const ink = await sharp({ create: { width: 5000, height: 30, channels: 3, background: "#854120" } }).png().toBuffer();
+    const form = new FormData();
+    form.append("images", new Blob([new Uint8Array(ink)]), "other.png");
+    form.append("images", new Blob([new Uint8Array(ink)]), "drawn-page.png");
+    form.append("handwriting_image_index", "1");
+    seen.length = 0;
+    const response = await create(form);
+    expect(response.status).toBe(201);
+    const note = await response.json() as Saved;
+    expect(note).toMatchObject({ handwriting_image_index: 1, ai_skipped: true, summary_md: "" });
+    expect(seen).toEqual([]);
+    expect(note.image_paths).toHaveLength(2);
+    expect(note.image_paths[1]).toMatch(/\.png$/);
+    expect(readFileSync(join(uploadDir, basename(note.image_paths[1])))).toEqual(ink);
+    expect(await (await fetch(base + "/api/notes/" + note.id)).json()).toMatchObject({
+      handwriting_image_index: 1, image_paths: note.image_paths, ai_summary_md: null,
+    });
+    expect(db.prepare("SELECT document_json FROM sketch_pages WHERE note_id=?").get(note.id)).toBeUndefined();
+  });
+
+  it("recognizes the final PencilKit image on older requests and retains its stroke bounds", async () => {
+    const jpg = await sharp({ create: { width: 4, height: 8, channels: 3, background: "#fff" } }).jpeg().toBuffer();
+    const form = new FormData();
+    const strokes = "[[0.1,0.2,0.8,0.9]]";
+    form.append("images", new Blob([new Uint8Array(jpg)]), "handwriting.jpg");
+    form.append("handwriting_strokes", strokes);
+    const response = await create(form);
+    expect(response.status).toBe(201);
+    const note = await response.json() as Saved;
+    expect(note).toMatchObject({ handwriting_image_index: 0, ai_skipped: true });
+    expect(note.image_paths[0]).toMatch(/\.jpg$/);
+    expect(readFileSync(join(uploadDir, basename(note.image_paths[0])))).toEqual(jpg);
+    expect(db.prepare("SELECT stroke_bounds FROM sketch_pages WHERE note_id=? AND image_index=0").get(note.id)).toEqual({stroke_bounds:strokes});
+  });
+
+  it("rejects a missing or non-raster original and continues to summarize ordinary notes", async () => {
+    const form = new FormData();
+    form.append("handwriting_image_index", "0");
+    expect((await create(form)).status).toBe(400);
+    form.append("images", new Blob(['<svg xmlns="http://www.w3.org/2000/svg" width="5" height="5"/>'], {type:"image/png"}), "drawing.png");
+    expect((await create(form)).status).toBe(400);
+    const ordinary = new FormData();
+    ordinary.append("raw_text", "typed");
+    seen.length = 0;
+    expect(await (await create(ordinary)).json()).toMatchObject({handwriting_image_index:null, ai_skipped:false});
+    expect(seen).toEqual([{text:"typed",images:0}]);
+  });
+
+  it("recovers only known pen pages during migration", () => {
+    const path = join(uploadDir, "old-ink.sqlite");
+    const old = openDb(path);
+    const user = findOrCreateUser(old, { email: "oldink@example.com", name: "Ink", avatar: "" });
+    const save = old.prepare("INSERT INTO notes(user_id,created_at,image_paths) VALUES (?,'today','[\"/one.jpg\",\"/two.jpg\"]')");
+    const pen = Number(save.run(user).lastInsertRowid);
+    const photo = Number(save.run(user).lastInsertRowid);
+    old.prepare("INSERT INTO sketch_pages(note_id,image_index,stroke_bounds) VALUES (?,1,'[[0.1,0.2,0.8,0.9]]')").run(pen);
+    old.prepare("INSERT INTO sketch_pages(note_id,image_index,document_json) VALUES (?,0,'{}')").run(photo);
+    old.exec("ALTER TABLE notes DROP COLUMN handwriting_image_index; DELETE FROM _migrations WHERE name='050_handwriting_original.sql'");
+    old.close();
+    const upgraded = openDb(path);
+    try {
+      expect(upgraded.prepare("SELECT handwriting_image_index FROM notes ORDER BY id").all())
+        .toEqual([{handwriting_image_index:1},{handwriting_image_index:null}]);
+    } finally { upgraded.close(); }
+  });
+});
 
 describe("summarising a saved note with AI", () => {
   it("fills the note's AI fields from its own text and photos and returns the note", async () => {

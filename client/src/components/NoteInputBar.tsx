@@ -9,7 +9,7 @@ import Icon from "./Icon.tsx";
  * Speak, Keyboard (shows / hides the on-screen keyboard), External keyboard and
  * Pen. The last two light up BY THEMSELVES when they are being used: keys
  * arriving while no on-screen keyboard is up mean a connected keyboard; a pen
- * touching the text box (iPad Scribble) or the drawing pad means the pen.
+ * touching the note body opens the handwriting editor.
  *
  * Speak uses the browser's own speech recognition (Apple's on an iPad or
  * iPhone, in Thai or English with the app's language). It is hidden where the

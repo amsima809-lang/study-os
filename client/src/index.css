@@ -291,6 +291,13 @@ html.keyboard-open [role="alertdialog"] {
 .section-tabs { scrollbar-width: none; }
 .section-tabs::-webkit-scrollbar { display: none; }
 
+.lecture-highlight,
+.lecture-source-text::selection,
+.lecture-source-text ::selection {
+  background-color: #fff2a8;
+  color: #302710;
+}
+
 /* A row you tick in a list of courses (choosing this term's courses, marking passed ones).
    Rows sit apart with a thin outline each, and a ticked row is outlined in the accent colour.
    Before, a ticked row was only a filled block: several in a row ran together into one. */
