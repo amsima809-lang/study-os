@@ -10,9 +10,13 @@ import { openDb, type DB } from "../src/db.js";
 import { createCourseMockRouter, expireCourseMocks } from "../src/courseMocks.js";
 import { importCourseMocks, type CourseMockQuestion } from "../src/importCourseMocks.js";
 
-const sizes = { ACC1101: 80, MGT3204: 100, RAM1103: 120, RAM1132: 120 };
+const sizes: Record<string, number> = { ACC1101: 80, MGT3204: 100, RAM1103: 120, RAM1132: 120 };
+const communication: Record<string, number> = { CDM1101: 100, CDM2103: 100 };
+const politics: Record<string, number> = { POL1101: 100 };
+const choiceCounts: Record<string, number> = { POL1101: 5 };
 const formats: Record<string, NonNullable<CourseMockQuestion["stimulus"]>["kind"][]> = {
   ACC1101: ["case","table"], MGT3204: ["case","grid"], RAM1103: ["passage","poster"], RAM1132: ["record","table","passage"],
+  CDM1101: ["case"], CDM2103: ["case"], POL1101: [],
 };
 const student = "legacy-user-0001", other = "second-student", signedOut = "anonymous";
 let db: DB, server: Server, base: string, now: number;
@@ -26,8 +30,8 @@ type Course = { code: string; form_key: string; question_count: number; active_a
 function edition(questions: CourseMockQuestion[], form = "A") {
   return form + "-" + createHash("sha256").update(JSON.stringify(questions)).digest("hex").slice(0, 16);
 }
-function fixtures() {
-  return Object.entries(sizes).map(([course_code, question_count]) => {
+function fixtures(set = sizes) {
+  return Object.entries(set).map(([course_code, question_count]) => {
     const sources = [1, 2].map((session_no) => {
       const lecture = db.prepare("SELECT id,url FROM course_lectures WHERE course_code=? AND session_no=?")
         .get(course_code, session_no) as { id: number; url: string };
@@ -40,7 +44,8 @@ function fixtures() {
     });
     const questions: CourseMockQuestion[] = Array.from({ length: question_count }, (_, index) => ({
       position: index+1, ...sources[index%2], stem: course_code + " example " + index, concept: "Interpreting the example",
-      options: ["First response", "Second response", "Third response", "Fourth response"], correct_index: index%4,
+      options: ["First response", "Second response", "Third response", "Fourth response", "Fifth response"].slice(0, choiceCounts[course_code] ?? 4),
+      correct_index: index % (choiceCounts[course_code] ?? 4),
       explanation: "Review the principle shown in this example.", evidence_ms: 100, evidence_quote: "Grounded practice example",
       stimulus: index < formats[course_code].length*2 ? { id: "source"+Math.floor(index/2),
         kind: formats[course_code][Math.floor(index/2)], title: "Records", text: "A record to interpret",
@@ -110,7 +115,7 @@ describe("private transcript course mock exams", () => {
     const broken = structuredClone(papers);
     broken[3].questions[40].evidence_quote = "invented quotation";
     expect(() => importCourseMocks(db, broken)).toThrow(/citation/);
-    expect(() => importCourseMocks(db, papers.slice(0, 3))).toThrow(/four courses/);
+    expect(() => importCourseMocks(db, papers.slice(0, 3))).toThrow(/release set/);
     broken[3] = structuredClone(papers[3]);
     broken[3].questions.splice(60, 1);
     expect(() => importCourseMocks(db, broken)).toThrow(/expected 120/);
@@ -129,6 +134,52 @@ describe("private transcript course mock exams", () => {
     expect(count()).toBe(4);
     expect(db.prepare("SELECT count(*) n FROM course_mock_papers WHERE active=1").get()).toEqual({ n:4 });
   });
+  it("releases the communication courses as their own set, only to shared lecture accounts", async () => {
+    const four = fixtures();
+    importCourseMocks(db, four);
+    const pair = fixtures(communication);
+    expect(() => importCourseMocks(db, pair.slice(0, 1))).toThrow(/release set/);
+    expect(() => importCourseMocks(db, [...four, ...pair])).toThrow(/release set/);
+    expect(() => importCourseMocks(db, [four[0], pair[0]])).toThrow(/release set/);
+    expect(importCourseMocks(db, pair).map(p => [p.course_code, p.question_count])).toEqual([["CDM1101",100],["CDM2103",100]]);
+    expect(db.prepare("SELECT count(*) n FROM course_mock_papers WHERE active=1").get()).toEqual({ n: 6 });
+    // Outside the student's programme (bus-mkt), yet listed: shared lecture access ignores the programme.
+    const codes = (await list()).courses.map(c => c.code);
+    expect(codes).toEqual(expect.arrayContaining(["CDM1101", "CDM2103", "ACC1103", "MGT3204"]));
+    expect((await start("CDM2103")).questions).toHaveLength(100);
+    vi.stubEnv("SHARED_LECTURE_USERS", other);
+    expect((await list()).courses).toEqual([]);
+  });
+
+  it("takes five choices only where the course has them, and saves and marks the fifth", async () => {
+    const four = fixtures();
+    const pol = fixtures(politics);
+    const fourChoices = structuredClone(pol);
+    fourChoices[0].questions.forEach(q => { q.options = q.options.slice(0, 4); q.correct_index %= 4; });
+    fourChoices[0].version = edition(fourChoices[0].questions);
+    expect(() => importCourseMocks(db, fourChoices)).toThrow(/expected 5 choices/);
+    const fiveInAccounting = structuredClone(four);
+    fiveInAccounting[0].questions[0].options.push("Fifth response");
+    fiveInAccounting[0].version = edition(fiveInAccounting[0].questions);
+    expect(() => importCourseMocks(db, fiveInAccounting)).toThrow(/expected 4 choices/);
+    importCourseMocks(db, four);
+    expect(importCourseMocks(db, pol).map(p => [p.course_code, p.question_count])).toEqual([["POL1101", 100]]);
+    const a = await start("POL1101");
+    expect(a.questions[4].options).toHaveLength(5);
+    // Question 5 is keyed on the fifth choice; question 1 on the first.
+    expect((await progress(a.id, { revision: 0, changes: [{ position: 5, choice: 4 }, { position: 1, choice: 4 }] })).status).toBe(200);
+    expect((await (await api("/attempts/" + a.id + "/finish", "POST", { revision: 1 })).json() as Detail).score).toBe(1);
+    const done = await get(a.id);
+    expect(done.questions[4]).toMatchObject({ choice: 4, correct_index: 4 });
+    expect(done.questions[0]).toMatchObject({ choice: 4, correct_index: 0 });
+    // A four-choice paper still refuses a fifth answer.
+    const acc = await start("ACC1103");
+    expect(acc.questions[0].options).toHaveLength(4);
+    expect((await progress(acc.id, { revision: 0, changes: [{ position: 1, choice: 4 }] })).status).toBe(400);
+    expect((await progress(acc.id, { revision: 0, changes: [{ position: 1, choice: 5 }] })).status).toBe(400);
+    expect((await get(acc.id)).questions[0].choice).toBeNull();
+  });
+
   it("keeps one clock and saved responses across concurrent starts, refresh, deadline and a retake", async () => {
     importCourseMocks(db, fixtures());
     expect((await list()).courses.map(c => [c.code,c.question_count])).toEqual([

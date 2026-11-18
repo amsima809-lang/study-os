@@ -1,17 +1,23 @@
 import Database from "better-sqlite3";
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 import { z } from "zod";
 import type { DB } from "./db.js";
 
-const counts = { ACC1101: 80, MGT3204: 100, RAM1103: 120, RAM1132: 120 } as const;
-const linkedFormats = {
+const counts = { ACC1101: 80, MGT3204: 100, RAM1103: 120, RAM1132: 120, CDM1101: 100, CDM2103: 100, POL1101: 100 } as const;
+type Code = keyof typeof counts;
+const linkedFormats: Record<Code, readonly string[]> = {
   ACC1101: ["case", "table"], MGT3204: ["case", "grid"],
   RAM1103: ["passage", "poster"], RAM1132: ["record", "table", "passage"],
-} as const;
+  CDM1101: ["case"], CDM2103: ["case"], POL1101: [],
+};
+/** Choices per question: four, except where the lecturers describe five (POL1101 lecture 2 01:13, lecture 16 53:35). */
+const choiceCounts: Partial<Record<Code, number>> = { POL1101: 5 };
+/** Courses whose papers are released together: one import validates and activates exactly one whole set. */
+export const releaseSets: readonly (readonly Code[])[] = [["ACC1101", "MGT3204", "RAM1103", "RAM1132"], ["CDM1101", "CDM2103"], ["POL1101"]];
 const deepSeek = "deepseek-v4-pro";
 const codex = "openai-codex";
 const nonempty = z.string().trim().min(1);
@@ -24,11 +30,11 @@ const stimulus = z.object({
 const question = z.object({
   position: positiveInt, session_no: positiveInt, source_url: nonempty, source_hash: hexDigest,
   evidence_ms: z.number().int().nonnegative(), evidence_quote: nonempty, concept: nonempty,
-  stimulus: stimulus.nullable(), stem: nonempty, options: z.array(nonempty).length(4),
-  correct_index: z.number().int().min(0).max(3), explanation: nonempty,
+  stimulus: stimulus.nullable(), stem: nonempty, options: z.array(nonempty).min(4).max(5),
+  correct_index: z.number().int().min(0).max(4), explanation: nonempty,
 });
 const paperSchema = z.object({
-  course_code: z.enum(["ACC1101", "MGT3204", "RAM1103", "RAM1132"]),
+  course_code: z.enum(Object.keys(counts) as [Code, ...Code[]]),
   form_key: nonempty, version: nonempty, model: z.enum([deepSeek, codex]), duration_min: z.literal(150),
   question_count: positiveInt, questions: z.array(question),
   sources: z.array(z.object({ session_no: positiveInt, source_url: nonempty, source_hash: hexDigest })).min(1),
@@ -82,7 +88,9 @@ function validatePaper(db: DB, raw: unknown) {
   const sharedFormats = new Set<string>();
   for (const [index, q] of paper.questions.entries()) {
     const where = `${code}, question ${index + 1}`;
-    if (q.position !== index + 1 || seen.has(key(q.stem)) || new Set(q.options.map(key)).size !== 4) {
+    const choices = choiceCounts[code] ?? 4;
+    if (q.options.length !== choices || q.correct_index >= choices) throw new Error(`${where}: expected ${choices} choices`);
+    if (q.position !== index + 1 || seen.has(key(q.stem)) || new Set(q.options.map(key)).size !== choices) {
       throw new Error(where + ": invalid position or duplicated question/choice");
     }
     seen.add(key(q.stem));
@@ -133,10 +141,11 @@ function validatePaper(db: DB, raw: unknown) {
 export function importCourseMocks(db: DB, raws: unknown[], dryRun = false) {
   const apply = db.transaction(() => {
     const forms = raws.map((raw) => validatePaper(db, raw));
-    if (forms.length !== Object.keys(counts).length || new Set(forms.map((f) => f.paper.course_code)).size !== forms.length) {
-      throw new Error("Expected one complete paper for each of the four courses");
+    const codes = new Set(forms.map((f) => f.paper.course_code));
+    if (codes.size !== forms.length || !releaseSets.some((set) => set.length === codes.size && set.every((c) => codes.has(c)))) {
+      throw new Error("Expected one complete paper for each course of one release set: " + releaseSets.map((s) => s.join("+")).join(" or "));
     }
-    if (new Set(forms.map((f) => f.paper.form_key)).size !== 1) throw new Error("Expected the same form across all four courses");
+    if (new Set(forms.map((f) => f.paper.form_key)).size !== 1) throw new Error("Expected the same form across all courses of the set");
     const existing = db.prepare(`SELECT id,content_hash,model,active FROM course_mock_papers
       WHERE course_code=? AND form_key=? AND version=?`);
     const insert = db.prepare(`INSERT INTO course_mock_papers(course_code,form_key,version,content_hash,model,duration_min,question_count,questions,receipts)
@@ -163,7 +172,9 @@ export function importCourseMocks(db: DB, raws: unknown[], dryRun = false) {
 if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
   const { values } = parseArgs({ options: { database: { type: "string" }, papers: { type: "string" }, "dry-run": { type: "boolean" } } });
   if (!values.database || !values.papers) throw new Error("Usage: --database <migrated SQLite database> --papers <private papers directory> [--dry-run]");
-  const raws = Object.keys(counts).map((code) => JSON.parse(readFileSync(join(values.papers!, code + ".json"), "utf8")) as unknown);
+  const present = releaseSets.filter((set) => set.every((code) => existsSync(join(values.papers!, code + ".json"))));
+  if (present.length !== 1) throw new Error("The papers directory must hold exactly one complete release set: " + releaseSets.map((s) => s.join("+")).join(" or "));
+  const raws = present[0].map((code) => JSON.parse(readFileSync(join(values.papers!, code + ".json"), "utf8")) as unknown);
   const db = new Database(values.database, { fileMustExist: true, readonly: Boolean(values["dry-run"]) });
   db.pragma("foreign_keys=ON");
   try { console.log(importCourseMocks(db, raws, values["dry-run"])); } finally { db.close(); }

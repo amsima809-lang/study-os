@@ -25,7 +25,7 @@ const startInput = z.object({
   course_code: z.string().min(1), form_key: z.string().min(1).default("A"), previous_attempt_id: positive.nullish(),
 }).strict();
 const change = z.object({
-  position: positive, choice: z.number().int().min(0).max(3).nullable().optional(), flagged: z.boolean().optional(),
+  position: positive, choice: z.number().int().min(0).max(4).nullable().optional(), flagged: z.boolean().optional(),
 }).strict();
 const progressInput = z.object({ revision, position: positive.optional(), changes: z.array(change).max(120).optional() }).strict();
 
@@ -159,6 +159,13 @@ export function createCourseMockRouter(db: DB, clock = Date.now) {
       const changes = patch.changes ?? [];
       if ((patch.position ?? 1) > paper.question_count || changes.some((c) => c.position > paper.question_count)) {
         throw new RequestError(400, "Invalid question position");
+      }
+      // Papers have four choices, or five where the real final has five (POL1101).
+      const choiceCount = db.prepare(`SELECT json_array_length(item.value,'$.options') n
+        FROM course_mock_papers p,json_each(p.questions) item WHERE p.id=? AND json_extract(item.value,'$.position')=?`);
+      if (changes.some((c) => typeof c.choice === "number"
+        && c.choice >= (choiceCount.get(a.paper_id, c.position) as { n: number }).n)) {
+        throw new RequestError(400, "Invalid choice");
       }
       const answers = JSON.parse(a.responses) as Record<string, ResponseState>;
       for (const { position, choice, flagged } of changes) {
