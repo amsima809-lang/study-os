@@ -20,6 +20,7 @@ type Item = {
   bank_id: number;
   stem: string;
   options: string;
+  stimulus: string | null;
   correct_index: number;
   explanation: string;
   evidence_ms: number;
@@ -27,7 +28,7 @@ type Item = {
   option_order: string;
   choice: number | null;
 };
-type Candidate = { id: number; stem: string; last_seen: number; last_in_quiz: number; in_first_round: number };
+type Candidate = { id: number; stem: string; kind: string; last_seen: number; last_in_quiz: number; in_first_round: number };
 const bankSize = 25,
   lectureSize = 5;
 
@@ -84,10 +85,11 @@ function answerCounts(db: DB, user: string, banks: Bank[]): AnswerCounts[] {
   return db.prepare(`
     SELECT a.session_no, a.slot, COUNT(DISTINCT a.id) AS quizzes_taken,
       COUNT(DISTINCT lecture_quiz_stem(q.stem)) AS answered_questions,
-      COUNT(DISTINCT CASE WHEN json_extract(i.option_order, '$[' || i.choice || ']') = q.correct_index
+      COUNT(DISTINCT CASE WHEN json_extract(i.option_order, '$[' || i.choice || ']') = COALESCE(v.correct_index,q.correct_index)
         THEN lecture_quiz_stem(q.stem) END) AS correct_questions
     FROM lecture_quiz_attempts a JOIN lecture_quiz_items i ON i.attempt_id=a.id
     JOIN lecture_quiz_questions q ON q.id=i.question_id
+    LEFT JOIN lecture_quiz_item_snapshots v ON v.attempt_id=i.attempt_id AND v.question_id=i.question_id
     WHERE a.score IS NOT NULL AND i.choice IS NOT NULL AND ${visibleAttemptFilter(banks)}
     GROUP BY a.session_no, a.slot
   `).all(user, banks[0].code, ...banks.map((b) => b.bank_id)) as AnswerCounts[];
@@ -149,8 +151,14 @@ function catalog(db: DB, user: string) {
 function itemsFor(db: DB, attempt: number) {
   return db
     .prepare(
-      `SELECT q.*,i.question_id,i.option_order,i.choice FROM lecture_quiz_items i
-    JOIN lecture_quiz_questions q ON q.id=i.question_id WHERE i.attempt_id=? ORDER BY i.position`
+      `SELECT q.bank_id,i.question_id,i.option_order,i.choice,
+      COALESCE(v.stem,q.stem) AS stem, COALESCE(v.options,q.options) AS options,
+      COALESCE(v.correct_index,q.correct_index) AS correct_index, COALESCE(v.explanation,q.explanation) AS explanation,
+      COALESCE(v.evidence_ms,q.evidence_ms) AS evidence_ms, COALESCE(v.evidence_quote,q.evidence_quote) AS evidence_quote,
+      CASE WHEN v.question_id IS NULL THEN q.stimulus ELSE v.stimulus END AS stimulus
+    FROM lecture_quiz_items i JOIN lecture_quiz_questions q ON q.id=i.question_id
+    LEFT JOIN lecture_quiz_item_snapshots v ON v.attempt_id=i.attempt_id AND v.question_id=i.question_id
+    WHERE i.attempt_id=? ORDER BY i.position`
     )
     .all(attempt) as Item[];
 }
@@ -170,42 +178,51 @@ function drawQuestions(db: DB, user: string, banks: Bank[], session: number, slo
       FROM lecture_quiz_attempts a JOIN lecture_quiz_items i ON i.attempt_id=a.id
       WHERE a.user_id=? AND a.course_code=? GROUP BY i.question_id
     )
-    SELECT q.id,q.stem,coalesce(h.last_seen,0) AS last_seen,coalesce(h.last_in_quiz,0) AS last_in_quiz,
+    SELECT q.id,q.stem,coalesce(json_extract(q.stimulus,'$.kind'),'standalone') AS kind,coalesce(h.last_seen,0) AS last_seen,coalesce(h.last_in_quiz,0) AS last_in_quiz,
       coalesce(h.in_first_round,0) AS in_first_round FROM lecture_quiz_questions q
     LEFT JOIN history h ON q.id=h.question_id WHERE q.bank_id IN (${marks(banks)})`
     )
     .all(session, slot, session, user, code, ...banks.map((b) => b.bank_id)) as Candidate[];
   const last = previous ? itemsFor(db, previous.id) : [];
-  const lastStems = new Set(last.map((i) => stemKey(i.stem)));
-  const seen = new Set<string>();
+  const byId = new Map(candidates.map(q => [q.id, q]));
+  const lastStems = new Set(last.map(i => stemKey(byId.get(i.question_id)!.stem)));
+  const seen = new Set<string>(), kinds = new Set<string>();
   const chosen: number[] = [];
+  let exhibitCount = 0;
+  function take(q: Candidate) {
+    const key = stemKey(q.stem);
+    if (chosen.length === count || seen.has(key)) return;
+    chosen.push(q.id);
+    seen.add(key);
+    kinds.add(q.kind);
+    if (q.kind !== "standalone") exhibitCount++;
+  }
   for (const item of last) {
     const order = JSON.parse(item.option_order) as number[];
-    if (item.choice !== null && order[item.choice] !== item.correct_index) {
-      seen.add(stemKey(item.stem));
-      chosen.push(item.question_id);
-    }
+    if (item.choice !== null && order[item.choice] !== item.correct_index) take(byId.get(item.question_id)!);
   }
-  // The five first attempts form disjoint slices of this student's random lecture deck,
-  // even when they open the slots out of order and interleave retakes.
-  const available = shuffled(candidates.filter((q) => previous || !session || !q.in_first_round));
-  if (previous || session) {
-    available.sort(
-      (a, b) =>
-        Number(lastStems.has(stemKey(a.stem))) - Number(lastStems.has(stemKey(b.stem))) ||
-        Number(a.last_seen > 0) - Number(b.last_seen > 0) ||
-        a.last_in_quiz - b.last_in_quiz ||
-        a.last_seen - b.last_seen
-    );
-  }
+
+  // The five initial lecture sets draw disjoint slices, including when opened out of order.
+  const available = shuffled(candidates.filter(q => previous || !session || !q.in_first_round));
+  const remainingSets = Math.max(1, Math.ceil(available.length / count));
+  const exhibitQuota = session && !previous
+    ? Math.ceil(available.filter(q => q.kind !== "standalone").length / remainingSets)
+    : count;
+  const tiers: Candidate[][] = [[], [], []];
   for (const q of available) {
-    if (chosen.length === count) break;
-    const key = stemKey(q.stem);
-    if (!seen.has(key)) {
-      seen.add(key);
-      chosen.push(q.id);
-    }
+    const rank = !previous && !session ? 0 : lastStems.has(stemKey(q.stem)) ? 2 : Number(q.last_seen > 0);
+    tiers[rank].push(q);
   }
+  for (const pool of tiers) {
+    if (chosen.length === count) break;
+    if (previous || session) pool.sort((a, b) => a.last_in_quiz - b.last_in_quiz || a.last_seen - b.last_seen);
+    const fits = (q: Candidate) => q.kind === "standalone" || exhibitCount < exhibitQuota;
+    // Cover the available exam formats within each freshness tier, then fill remaining places.
+    for (const q of pool) if (!kinds.has(q.kind) && fits(q)) take(q);
+    for (const q of pool) if (fits(q)) take(q);
+  }
+  // If duplicates or history limited the regular draw, finish with eligible items in priority order.
+  if (chosen.length < count) for (const pool of tiers) for (const q of pool) take(q);
   return chosen.length === count ? shuffled(chosen) : null;
 }
 
@@ -218,7 +235,19 @@ function feedback(item: Item) {
   };
 }
 
-function present(attempt: Attempt, items: Item[], banks: Bank[], legacyReview: boolean) {
+type QuizView = { includeAnswers: boolean; exhibits: boolean };
+type Exhibit = { title: string; text: string; columns: string[]; rows: string[][] };
+
+function questionText(item: Item, rich: boolean) {
+  if (!item.stimulus) return { stem: item.stem };
+  const stimulus: Exhibit = JSON.parse(item.stimulus);
+  if (rich) return { stem: item.stem, stimulus };
+  // Installed clients that predate exhibit rendering still receive every label and value.
+  const rows = stimulus.rows.map(row => row.map((value, i) => stimulus.columns[i] + " = " + value).join(" · "));
+  return { stem: [stimulus.title, stimulus.text, ...rows, item.stem].filter(Boolean).join("\n\n") };
+}
+
+function present(attempt: Attempt, items: Item[], banks: Bank[], view: QuizView) {
   const sessions = new Map(banks.map((b) => [b.bank_id, b.no]));
   return {
     id: attempt.id,
@@ -232,11 +261,11 @@ function present(attempt: Attempt, items: Item[], banks: Bank[], legacyReview: b
         options = JSON.parse(item.options) as string[];
       return {
         id: item.question_id,
-        stem: item.stem,
+        ...questionText(item, view.exhibits),
         options: order.map((i) => options[i]),
         session_no: sessions.get(item.bank_id)!,
         ...(item.choice === null ? {} : { choice: item.choice, correct: order[item.choice] === item.correct_index }),
-        ...(legacyReview && attempt.score !== null ? feedback(item) : {}),
+        ...(view.includeAnswers && attempt.score !== null ? feedback(item) : {}),
       };
     }),
   };
@@ -256,7 +285,7 @@ const answerSchema = z.object({
 });
 const answersSchema = z.object({ answers: z.array(answerSchema).min(lectureSize).max(bankSize) });
 
-function startAttempt(db: DB, user: string, request: z.infer<typeof startSchema>, legacyReview: boolean) {
+function startAttempt(db: DB, user: string, request: z.infer<typeof startSchema>, view: QuizView) {
   const session = request.session_no ?? 0;
   const banks = visibleBanks(db, user, request.course_code).filter((b) => !session || b.no === session);
   if (!banks.length) return null;
@@ -273,7 +302,7 @@ function startAttempt(db: DB, user: string, request: z.infer<typeof startSchema>
     return null;
   // Two tabs or a lost HTTP response resume the same attempt. A retake must name its graded parent.
   if (latest && (latest.score === null || latest.id !== request.previous_attempt_id)) {
-    return present(latest, itemsFor(db, latest.id), banks, legacyReview);
+    return present(latest, itemsFor(db, latest.id), banks, view);
   }
   const ids = drawQuestions(db, user, banks, session, request.slot, latest);
   if (!ids) return null;
@@ -293,7 +322,7 @@ function startAttempt(db: DB, user: string, request: z.infer<typeof startSchema>
     { id, course_code: request.course_code, session_no: session, slot: request.slot, score: null },
     itemsFor(db, id),
     banks,
-    legacyReview
+    view
   );
 }
 
@@ -312,7 +341,7 @@ function ownedAttempt(db: DB, user: string, id: number) {
   return { attempt, items, banks };
 }
 
-function saveAnswers(db: DB, user: string, id: number, answers: z.infer<typeof answerSchema>[], wholeQuiz: boolean) {
+function saveAnswers(db: DB, user: string, id: number, answers: z.infer<typeof answerSchema>[], wholeQuiz: boolean, exhibits: boolean) {
   const state = ownedAttempt(db, user, id);
   if (!state) return { status: 404, data: { error: "ไม่พบแบบทดสอบ" } };
   const { attempt, items, banks } = state;
@@ -334,7 +363,7 @@ function saveAnswers(db: DB, user: string, id: number, answers: z.infer<typeof a
     attempt.score = items.filter(i => JSON.parse(i.option_order)[i.choice!] === i.correct_index).length;
     db.prepare("UPDATE lecture_quiz_attempts SET score=?,submitted_at=datetime('now') WHERE id=?").run(attempt.score, id);
   }
-  return { status: 200, data: present(attempt, items, banks, wholeQuiz) };
+  return { status: 200, data: present(attempt, items, banks, { includeAnswers: wholeQuiz, exhibits }) };
 }
 
 export function createLectureQuizRouter(db: DB): Router {
@@ -345,13 +374,13 @@ export function createLectureQuizRouter(db: DB): Router {
   router.post("/start", (req, res) => {
     const request = startSchema.safeParse(req.body);
     if (!request.success) return res.status(400).json({ error: "ข้อมูลแบบทดสอบไม่ถูกต้อง" });
-    const attempt = db.transaction(() => startAttempt(db, req.user!.id, request.data, req.query.feedback !== "on-demand")).immediate();
+    const attempt = db.transaction(() => startAttempt(db, req.user!.id, request.data, { includeAnswers: req.query.feedback !== "on-demand", exhibits: req.query.exhibits === "1" })).immediate();
     return attempt ? res.json(attempt) : res.status(404).json({ error: "ไม่พบแบบทดสอบ" });
   });
   router.get("/attempts/:id", (req, res) => {
     const result = db.transaction(() => {
       const state = ownedAttempt(db, req.user!.id, Number(req.params.id));
-      return state && present(state.attempt, state.items, state.banks, req.query.feedback !== "on-demand");
+      return state && present(state.attempt, state.items, state.banks, { includeAnswers: req.query.feedback !== "on-demand", exhibits: req.query.exhibits === "1" });
     })();
     return result ? res.json(result) : res.status(404).json({ error: "ไม่พบแบบทดสอบ" });
   });
@@ -366,14 +395,14 @@ export function createLectureQuizRouter(db: DB): Router {
   router.post("/attempts/:id/answer", (req, res) => {
     const parsed = answerSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "คำตอบไม่ถูกต้อง" });
-    const result = db.transaction(() => saveAnswers(db, req.user!.id, Number(req.params.id), [parsed.data], false)).immediate();
+    const result = db.transaction(() => saveAnswers(db, req.user!.id, Number(req.params.id), [parsed.data], false, req.query.exhibits === "1")).immediate();
     return res.status(result.status).json(result.data);
   });
   // Older clients send their saved draft as one submission.
   router.post("/attempts/:id/submit", (req, res) => {
     const parsed = answersSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "กรุณาตอบคำถามทุกข้อ" });
-    const result = db.transaction(() => saveAnswers(db, req.user!.id, Number(req.params.id), parsed.data.answers, true)).immediate();
+    const result = db.transaction(() => saveAnswers(db, req.user!.id, Number(req.params.id), parsed.data.answers, true, req.query.exhibits === "1")).immediate();
     return res.status(result.status).json(result.data);
   });
   return router;

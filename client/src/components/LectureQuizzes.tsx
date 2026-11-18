@@ -1,3 +1,4 @@
+import { StimulusView, type Stimulus } from "./QuestionStimulus.tsx";
 import { useEffect, useRef, useState } from "react";
 import { getJSON, postJSON } from "../api.ts";
 import { withBase } from "../base.ts";
@@ -20,7 +21,7 @@ type Course = {
   course_quiz: Slot; lectures: { no: number; quizzes: Slot[] }[];
 };
 type Question = {
-  id: number; stem: string; options: string[]; session_no: number;
+  id: number; stem: string; options: string[]; session_no: number; stimulus?: Stimulus | null;
   choice?: number; correct?: boolean;
 };
 type Explanation = {
@@ -70,7 +71,7 @@ export default function LectureQuizzes({ onTaking, onEmpty }: { onTaking: (takin
     try { id = Number(sessionStorage.getItem(recentKey())); } catch { /* optional */ }
     if (id > 0) {
       setBusy(true);
-      getJSON<Attempt>(`${api}/attempts/${id}?feedback=on-demand`).then(restored => {
+      getJSON<Attempt>(`${api}/attempts/${id}?feedback=on-demand&exhibits=1`).then(restored => {
         if (!active) return;
         setCourseCode(restored.course_code);
         setScope(String(restored.session_no ?? "course"));
@@ -92,8 +93,8 @@ export default function LectureQuizzes({ onTaking, onEmpty }: { onTaking: (takin
     lock.current = true; setBusy(true); setActionFailed(false);
     try {
       const next = id !== null && !retake
-        ? await getJSON<Attempt>(`${api}/attempts/${id}?feedback=on-demand`)
-        : await postJSON<Attempt>(api + "/start?feedback=on-demand", { course_code: code, session_no: no, slot, previous_attempt_id: id });
+        ? await getJSON<Attempt>(`${api}/attempts/${id}?feedback=on-demand&exhibits=1`)
+        : await postJSON<Attempt>(api + "/start?feedback=on-demand&exhibits=1", { course_code: code, session_no: no, slot, previous_attempt_id: id });
       rememberOpen(next.id); setAttempt(next);
     } catch { setActionFailed(true); setRefresh(n => n + 1); }
     finally { lock.current = false; setBusy(false); }
@@ -228,8 +229,8 @@ function AttemptForm({ attempt, title, busy, onBusy, onGraded }: {
     const path = `${api}/attempts/${attempt.id}`;
     try {
       // Recover the first accepted answer after an interrupted request or a check on another device.
-      const updated = await postJSON<Attempt>(path + "/answer", { question_id: question.id, choice })
-        .catch(() => getJSON<Attempt>(path + "?feedback=on-demand"));
+      const updated = await postJSON<Attempt>(path + "/answer?exhibits=1", { question_id: question.id, choice })
+        .catch(() => getJSON<Attempt>(path + "?feedback=on-demand&exhibits=1"));
       setSaved(updated);
       if (updated.questions[index].choice === undefined) { setFailed(true); return; }
       setDraftFailed(false);
@@ -246,6 +247,7 @@ function AttemptForm({ attempt, title, busy, onBusy, onGraded }: {
     </div>
     <fieldset disabled={busy || checked} className="min-w-0 space-y-2" aria-labelledby="lecture-question">
       <h2 id="lecture-question" ref={heading} tabIndex={-1} className="mb-3 text-lg font-semibold">{question.stem}</h2>
+      <StimulusView stimulus={question.stimulus}/>
       {question.options.map((option, i) => <label key={question.id + "/" + i}
         className={`flex min-h-11 items-center gap-3 rounded-lg border px-3 py-2 text-sm ${checked ? "" : "cursor-pointer"}`}
         style={{ borderColor: choice === i ? "var(--accent)" : "var(--border)",
@@ -325,6 +327,7 @@ function Results({ attempt, title, busy, onRetake }: { attempt: Attempt; title: 
       <ol className="divide-y divide-[var(--border-light)]">{attempt.questions.map((q, i) =>
         <li key={q.id} className="py-3 text-sm">
           <p className="font-semibold">{i + 1}. {q.stem}</p>
+          <StimulusView stimulus={q.stimulus}/>
           <p style={{ color: q.correct ? "var(--success)" : "var(--danger)" }}>{t(q.correct ? "quiz.correct" : "quiz.incorrect")}</p>
           <QuestionExplanation attempt={attempt} question={q}/>
         </li>

@@ -193,44 +193,7 @@ def cue_reference(src, item):
         return cue["startMs"], text[:490]
 
 
-def clean_stimulus(raw, kind, name):
-    if not isinstance(raw, dict) or raw.get("kind") != kind:
-        raise ValueError("missing or mismatched shared stimulus")
-    title = bank.plain(raw.get("title"), 2, 180)
-    text = raw.get("text") or ""
-    cols, rows = raw.get("columns") or [], raw.get("rows") or []
-    if (
-        not isinstance(text, str)
-        or len(text) > 3500
-        or not isinstance(cols, list)
-        or not isinstance(rows, list)
-    ):
-        raise ValueError("invalid stimulus")
-    if (
-        len(cols) > 6
-        or len(rows) > 12
-        or any(not isinstance(c, str) or len(c) > 180 for c in cols)
-    ):
-        raise ValueError("invalid stimulus dimensions")
-    if any(
-        not isinstance(row, list)
-        or len(row) != len(cols)
-        or any(not isinstance(x, str) or len(x) > 520 for x in row)
-        for row in rows
-    ):
-        raise ValueError("invalid stimulus cells")
-    if kind in ("grid", "table") and (len(cols) < 2 or len(rows) < 2):
-        raise ValueError("table needs labelled data")
-    if not rows and len(text.strip()) < 25:
-        raise ValueError("insufficient shared stimulus")
-    return {
-        "id": name,
-        "kind": kind,
-        "title": title,
-        "text": text.strip(),
-        "columns": cols,
-        "rows": rows,
-    }
+clean_stimulus = bank.clean_stimulus
 
 
 def group_exclusions(notes, src):

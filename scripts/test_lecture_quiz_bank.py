@@ -39,6 +39,7 @@ class QuizBankTest(unittest.TestCase):
                 CREATE TABLE lecture_transcripts(id INTEGER PRIMARY KEY, user_id TEXT, course_code TEXT,
                   session_no INTEGER, source_url TEXT, cues TEXT);""")
             conn.executescript(schema)
+            conn.executescript((SOURCE.parent.parent / "server/migrations/058_lecture_quiz_exhibits.sql").read_text())
             conn.execute("INSERT INTO users VALUES ('student')")
             conn.execute("INSERT INTO courses VALUES ('TEST')")
             conn.execute(
@@ -146,6 +147,33 @@ class QuizBankTest(unittest.TestCase):
                 conn.execute("SELECT question_id FROM lecture_quiz_items").fetchone(),
                 (qid,),
             )
+
+    def test_reviewed_revision_preserves_ids_and_rejects_stale_baseline(self):
+        self.install()
+        original = self.folder / "prior"
+        original.mkdir()
+        for src, bank in zip(self.sources, self.banks):
+            quiz.write_json(original / (quiz.name(src) + ".json"), bank)
+        q = self.banks[0]["questions"][0]
+        q["stimulus"] = {"kind": "table", "title": "Counts", "text": "", "columns": ["Side", "Count"],
+                         "rows": [["Left", "2"], ["Right", "3"]]}
+        self.save(self.sources[0], self.banks[0])
+        def revise(dry=False):
+            return quiz.import_banks(self.db, self.folder, self.sources, dry, original)
+        with sqlite3.connect(self.db) as db:
+            old_ids = db.execute("SELECT id FROM lecture_quiz_questions ORDER BY id").fetchall()
+            qid = old_ids[0][0]
+            db.execute("INSERT INTO lecture_quiz_attempts(id,user_id,course_code,session_no,slot,initial) VALUES(1,'student','TEST',1,1,1)")
+            db.execute("INSERT INTO lecture_quiz_items VALUES(1,?,0,'[0,1,2,3]',NULL)", (qid,))
+        self.assertEqual(revise(True), (1, 1))
+        self.assertEqual(revise(), (1, 1))
+        self.assertEqual(revise(), (0, 2))
+        with sqlite3.connect(self.db) as db:
+            self.assertEqual(db.execute("SELECT id FROM lecture_quiz_questions ORDER BY id").fetchall(), old_ids)
+            self.assertEqual(db.execute("SELECT stimulus FROM lecture_quiz_item_snapshots WHERE question_id=?", (qid,)).fetchone(), (None,))
+            db.execute("UPDATE lecture_quiz_questions SET explanation='Another published edit' WHERE id=?", (qid,))
+        with self.assertRaisesRegex(ValueError, "reviewed baseline"):
+            revise()
 
     def test_concurrent_source_change_rolls_back_batch(self):
         with sqlite3.connect(self.db) as conn:

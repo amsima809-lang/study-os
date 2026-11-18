@@ -16,6 +16,7 @@ type Question = {
   evidence_quote?: string;
   evidence_ms?: number;
   explanation?: string;
+  stimulus?: { kind: string };
 };
 type Quiz = {
   id: number;
@@ -150,6 +151,47 @@ async function grade(quiz: Quiz, missed: number[] = []) {
 const ids = (quiz: Quiz) => quiz.questions.map((q) => q.id);
 
 describe("lecture and course transcript quizzes", () => {
+  it("spreads exhibits across the first five sets and draws each available format in course practice", async () => {
+    const id = shared("MGT3204", 1);
+    shared("MGT3204", 2);
+    const table = { kind: "table", title: "Accounts", text: "", columns: ["Period", "Balance"], rows: [["May", "250"]] };
+    const grid = { ...table, kind: "grid", title: "Priorities" };
+    const edit = db.prepare("UPDATE lecture_quiz_questions SET stimulus=? WHERE bank_id=? AND slot=?");
+    for (let i = 1; i <= 5; i++) edit.run(JSON.stringify(i % 2 ? table : grid), id, i);
+    for (const slot of [3, 5, 1, 2, 4]) {
+      const round = await start(1, slot);
+      const rich = (await (await request("/attempts/" + round.id + "?exhibits=1")).json()) as Quiz;
+      const exhibits = rich.questions.filter((q: { stimulus?: unknown }) => q.stimulus);
+      expect(exhibits).toHaveLength(1);
+      expect(round.questions.find(q => q.id === exhibits[0].id)!.stem).toContain("Balance = 250");
+    }
+    const course = await start(null, 1);
+    const rich = (await (await request("/attempts/" + course.id + "?exhibits=1")).json()) as Quiz;
+    expect(new Set(rich.questions.map((q: { stimulus?: { kind: string } }) => q.stimulus?.kind ?? "standalone")))
+      .toEqual(new Set(["table", "grid", "standalone"]));
+  });
+
+  it("keeps an open quiz and grade on its original edition and retakes the revised missed item", async () => {
+    shared("MGT3204", 1);
+    const old = await start(1, 1);
+    const first = old.questions[0], submitted = answers(old, [first.id]);
+    const update = db.prepare("UPDATE lecture_quiz_questions SET stem=?, correct_index=(correct_index+1)%4, explanation=?, stimulus=? WHERE id=?");
+    const exhibit = { kind: "case", title: "Case", text: "New practice scenario", columns: [], rows: [] };
+    update.run("Revised decision", "Updated explanation", JSON.stringify(exhibit), first.id);
+    update.run("Final decision", "Final explanation", JSON.stringify(exhibit), first.id);
+    const path = "/attempts/" + old.id;
+    expect(await (await request(path + "?exhibits=1&feedback=on-demand")).json()).toEqual(old);
+    const done = (await (await request(path + "/submit", { answers: submitted })).json()) as Quiz;
+    expect(done.score).toBe(4);
+    expect(done.questions[0]).toMatchObject({ stem: first.stem, correct: false, explanation: "Explanation" });
+    expect((await list())[0].lectures[0].quizzes[0].stats).toMatchObject({ correct_questions: 4, incorrect_questions: 1 });
+    const retake = await start(1, 1, old.id);
+    const rich = (await (await request("/attempts/" + retake.id + "?exhibits=1")).json()) as Quiz;
+    expect(rich.questions.filter((q: Question) => q.id === first.id)).toEqual([
+      expect.objectContaining({ stem: "Final decision", stimulus: exhibit }),
+    ]);
+  });
+
   it.each([1, null])("checks each answer once and reveals only requested feedback in scope %s", async (session) => {
     shared("MGT3204", 1);
     shared("MGT3204", 2);

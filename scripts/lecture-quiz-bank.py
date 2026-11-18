@@ -231,6 +231,46 @@ def plain(value, low, high):
     return value.strip()
 
 
+def clean_stimulus(raw, kind, name=None):
+    if kind not in ("case", "table", "grid", "poster", "passage", "record") or not isinstance(raw, dict) or raw.get("kind") != kind:
+        raise ValueError("missing or mismatched shared stimulus")
+    title = plain(raw.get("title"), 2, 180)
+    text = raw.get("text") or ""
+    cols, rows = raw.get("columns") or [], raw.get("rows") or []
+    if (
+        not isinstance(text, str)
+        or len(text) > 3500
+        or not isinstance(cols, list)
+        or not isinstance(rows, list)
+    ):
+        raise ValueError("invalid stimulus")
+    if (
+        len(cols) > 6
+        or len(rows) > 12
+        or any(not isinstance(c, str) or len(c) > 180 for c in cols)
+    ):
+        raise ValueError("invalid stimulus dimensions")
+    if any(
+        not isinstance(row, list)
+        or len(row) != len(cols)
+        or any(not isinstance(x, str) or len(x) > 520 for x in row)
+        for row in rows
+    ):
+        raise ValueError("invalid stimulus cells")
+    if kind in ("grid", "table") and (len(cols) < 2 or len(rows) < 2):
+        raise ValueError("table needs labelled data")
+    if not rows and len(text.strip()) < 25:
+        raise ValueError("insufficient shared stimulus")
+    return {
+        **({"id": name} if name is not None else {}),
+        "kind": kind,
+        "title": title,
+        "text": text.strip(),
+        "columns": cols,
+        "rows": rows,
+    }
+
+
 def options_ok(options):
     if not isinstance(options, list) or len(options) != 4:
         raise ValueError("need four distinct answer options")
@@ -268,7 +308,9 @@ def make_question(candidate, source, slot):
     options = options[1:]
     random.Random(source["source_hash"] + stem).shuffle(options)
     options.insert(position, correct)
+    exhibit = candidate.get("stimulus")
     return {
+        **({"stimulus": clean_stimulus(exhibit, exhibit.get("kind"))} if isinstance(exhibit, dict) else {}),
         "slot": slot,
         "concept": concept,
         "stem": stem,
@@ -369,6 +411,10 @@ def validate(bank, source):
         cues.setdefault(cue["startMs"], []).append(cue["text"])
     for i, q in enumerate(questions):
         options_ok(q["options"])
+        exhibit = q.get("stimulus")
+        if exhibit is not None:
+            if not isinstance(exhibit, dict) or clean_stimulus(exhibit, exhibit.get("kind"), exhibit.get("id")) != exhibit:
+                raise ValueError(f"invalid exam exhibit in slot {i + 1}")
         if type(q["correct_index"]) is not int or q["correct_index"] not in range(4):
             raise ValueError("invalid answer key")
         plain(q["concept"], 2, 180)
@@ -431,6 +477,7 @@ The explanation must describe the principle, without using answer numbers or let
         items[slot] = {
             "slot": slot,
             "stem": q["stem"],
+            **({"stimulus": q["stimulus"]} if q.get("stimulus") else {}),
             "right": right,
             "wrong": wrong,
             "explanation": q["explanation"],
@@ -630,12 +677,51 @@ def checked_banks(folder, sources):
     return ready
 
 
-def import_banks(database, folder, sources, dry_run):
+def question_values(bank):
+    return [
+        (
+            q["slot"],
+            q["stem"],
+            compact(q["options"]),
+            q["correct_index"],
+            q["explanation"],
+            q["evidence_ms"],
+            q["evidence_quote"],
+            q["concept"],
+            compact(q["stimulus"]) if q.get("stimulus") else None,
+        )
+        for q in bank["questions"]
+    ]
+
+
+def update_revision(db, bank_id, prior, values, meta):
+    changed = [v for old, v in zip(prior, values) if old != v]
+    # Free any stems moving between slots before applying the new UNIQUE(bank_id,stem) values.
+    stems_by_slot = {v[1]: v[0] for v in prior}
+    for v in changed:
+        prev_slot = stems_by_slot.get(v[1])
+        if prev_slot is not None and prev_slot != v[0]:
+            db.execute("UPDATE lecture_quiz_questions SET stem=? WHERE bank_id=? AND slot=?",
+                       (f"\0revision-{prev_slot}", bank_id, prev_slot))
+    db.executemany(
+        """UPDATE lecture_quiz_questions SET stem=?,options=?,correct_index=?,explanation=?,
+           evidence_ms=?,evidence_quote=?,concept=?,stimulus=? WHERE bank_id=? AND slot=?""",
+        [(*v[1:], bank_id, v[0]) for v in changed],
+    )
+    db.execute("UPDATE lecture_quiz_banks SET source_hash=?,generator_model=?,prompt_version=? WHERE id=?",
+               (*meta, bank_id))
+
+
+def import_banks(database, folder, sources, dry_run, revise_from=None):
     """Verify the whole set before one atomic import. Re-runs preserve IDs and history."""
     columns = (
-        "slot,stem,options,correct_index,explanation,evidence_ms,evidence_quote,concept"
+        "slot,stem,options,correct_index,explanation,evidence_ms,evidence_quote,concept,stimulus"
     )
     ready = checked_banks(folder, sources)
+    originals = {}
+    if revise_from is not None:
+        for src, old in checked_banks(revise_from, sources):
+            originals[name(src)] = (question_values(old), (old["source_hash"], old["model"], old["prompt_version"]))
     uri = Path(database).resolve().as_uri() + "?mode=rw"
     db = (
         open_readonly(database)
@@ -668,19 +754,7 @@ def import_banks(database, folder, sources, dry_run):
                 f"SELECT id,source_hash,generator_model,prompt_version FROM lecture_quiz_banks WHERE {column}=?",
                 (source_id,),
             ).fetchone()
-            values = [
-                (
-                    q["slot"],
-                    q["stem"],
-                    compact(q["options"]),
-                    q["correct_index"],
-                    q["explanation"],
-                    q["evidence_ms"],
-                    q["evidence_quote"],
-                    q["concept"],
-                )
-                for q in bank["questions"]
-            ]
+            values = question_values(bank)
             meta = (bank["source_hash"], bank["model"], bank["prompt_version"])
             if existing:
                 prior = db.execute(
@@ -689,6 +763,13 @@ def import_banks(database, folder, sources, dry_run):
                 ).fetchall()
                 if existing[1:] == meta and prior == values:
                     matches += 1
+                    continue
+                if revise_from is not None:
+                    if (prior, existing[1:]) != originals[name(source)]:
+                        raise ValueError(f"Published bank differs from the reviewed baseline for {name(source)}")
+                    if not dry_run:
+                        update_revision(db, existing[0], prior, values, meta)
+                    new_count += 1
                     continue
                 # Replacing IDs referenced by an attempt would erase scores and missed-question history.
                 used = db.execute(
@@ -709,7 +790,7 @@ def import_banks(database, folder, sources, dry_run):
                     (source_id, *meta),
                 ).lastrowid
                 db.executemany(
-                    f"INSERT INTO lecture_quiz_questions(bank_id,{columns}) VALUES (?,?,?,?,?,?,?,?,?)",
+                    f"INSERT INTO lecture_quiz_questions(bank_id,{columns}) VALUES (?,?,?,?,?,?,?,?,?,?)",
                     ((bank_id, *v) for v in values),
                 )
             new_count += 1
@@ -750,7 +831,11 @@ def main():
     p.add_argument(
         "--dry-run", action="store_true", help="Validate import without writing"
     )
+    p.add_argument("--revise-from", type=Path, metavar="ORIGINAL_BANKS",
+                   help="Update reviewed items at their existing lecture/slot and preserve attempts; compare the original banks before writing")
     args = p.parse_args()
+    if args.revise_from and args.action != "import":
+        p.error("--revise-from applies only to import")
     if args.dry_run and args.action != "import":
         p.error("--dry-run applies only to import")
     if args.repairs and args.action != "generate":
@@ -805,7 +890,7 @@ def main():
     else:
         if not args.database:
             p.error("import requires --database")
-        import_banks(args.database, args.output, sources, args.dry_run)
+        import_banks(args.database, args.output, sources, args.dry_run, args.revise_from)
 
 
 if __name__ == "__main__":
