@@ -80,7 +80,7 @@ describe("Phase 24 — first start of a new database", () => {
   });
 
   it("stores recorded-lecture links only for courses that exist", () => {
-    expect(count("SELECT COUNT(*) n FROM course_lectures")).toBe(52);
+    expect(count("SELECT COUNT(*) n FROM course_lectures")).toBe(157); // 52 (migration 025) + 105 (migration 059)
     expect(count("SELECT COUNT(*) n FROM course_lectures WHERE course_code NOT IN (SELECT code FROM courses)")).toBe(0);
     expect(count("SELECT COUNT(*) n FROM course_lectures WHERE url NOT LIKE 'https://sub-demo.ru.ac.th/student/watch.php?session_id=%'")).toBe(0);
   });

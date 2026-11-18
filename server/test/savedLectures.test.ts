@@ -20,6 +20,8 @@ const a = "lecture-test-a", b = "lecture-test-b", outside = "lecture-test-c";
 let server: Server, base = "";
 const files = [
   ["15", "ACC1101", "ACC1103"], ["2", "MGT3204"], ["3", "RAM1103"], ["6", "RAM1132"],
+  ["11", "CDM1101"], ["12", "CDM2103", "MCS1151"], ["13", "LAW1001", "LAW1101"], ["5", "LAW1002", "LAW1102"],
+  ["7", "POL1101"], ["9", "POL2106"],
 ];
 const manifest: Record<string, object> = {};
 function request(path: string, user = a, method = "GET", body?: object) {
@@ -64,8 +66,18 @@ afterAll(() => {
 
 describe("saved lectures", () => {
   const summary = "/lectures/summaries/ACC1103/1", transcript = "/lectures/transcripts/ACC1103/1";
+  it("lists subjects outside the programme once, under the current code, only for shared access", async () => {
+    importSavedLectures(db, root);
+    const listed = async (user: string) => ((await (await request("/lectures", user)).json()) as { courses: { code: string }[] }).courses.map((c) => c.code);
+    const shared = await listed(a);
+    for (const code of ["CDM1101", "CDM2103", "LAW1101", "LAW1102", "POL1101", "POL2106"]) expect(shared).toContain(code);
+    for (const code of ["MCS1151", "LAW1001", "LAW1002"]) expect(shared).not.toContain(code);
+    expect(db.prepare("SELECT course_code FROM shared_lecture_transcripts WHERE source_url = (SELECT url FROM course_lectures WHERE course_code = 'LAW1001' AND session_no = 1)").get())
+      .toEqual({ course_code: "LAW1101" });
+    expect(await listed(outside)).not.toContain("LAW1101");
+  });
   it("imports each recording once, serves both catalogue aliases, and keeps private edits on re-import", async () => {
-    expect(importSavedLectures(db, root)).toEqual({recordings:42, catalogueLinks:52});
+    expect(importSavedLectures(db, root)).toEqual({recordings:112, catalogueLinks:157});
     expect(await (await request(summary)).json()).toMatchObject({ summary_md: "Original [00:02]" });
     expect(await (await request(summary, a, "PUT", {summary_md:"My edit"})).json()).toMatchObject({ edited: true });
     importSavedLectures(db, root);
@@ -90,13 +102,13 @@ describe("saved lectures", () => {
       expect(courses.find((c: {code:string})=>c.code==="ACC1103")!.lectures[0].has_summary).toBe(user===a);
     }
   });
-  it("shows all 42 trial recordings, deduplicates accounting by major, and keeps other programmes unchanged", async () => {
+  it("shows all 112 trial recordings, deduplicates accounting by major, and keeps other programmes unchanged", async () => {
     expect(db.prepare("SELECT 1 FROM program_courses WHERE program_id='bus-mkt' AND course_code='MGT3204'").get()).toBeUndefined();
     for (const [program, preferred] of [["bus-mkt", "ACC1103"], ["bus-acc", "ACC1101"]]) {
       db.prepare("UPDATE user_profiles SET program_id=? WHERE user_id=?").run(program, b);
       const { courses } = await (await request("/lectures",b)).json() as { courses: {code:string;lectures:{has_summary:boolean}[]}[] };
-      expect(courses.map(c=>c.code)).toEqual([preferred, "MGT3204", "RAM1103", "RAM1132"]);
-      expect(courses.flatMap(c=>c.lectures).filter(l=>l.has_summary)).toHaveLength(42);
+      expect(courses.map(c=>c.code)).toEqual([preferred, "CDM1101", "CDM2103", "LAW1101", "LAW1102", "MGT3204", "POL1101", "POL2106", "RAM1103", "RAM1132"]);
+      expect(courses.flatMap(c=>c.lectures).filter(l=>l.has_summary)).toHaveLength(112);
       expect((await request("/lectures/summaries/MGT3204/1",b)).status).toBe(200);
       expect((await request("/lectures/transcripts/MGT3204/1",b)).status).toBe(200);
     }

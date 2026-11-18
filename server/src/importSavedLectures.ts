@@ -5,11 +5,22 @@ import { z } from "zod";
 import { openDb, type DB } from "./db.js";
 import { Bundle } from "./lectures.js";
 
-const sources = [
-  ["subject-15_ACC1101_ACC1103.json", "ACC1101", "ACC1103"],
-  ["subject-2_MGT3204.json", "MGT3204"],
-  ["subject-3_RAM1103.json", "RAM1103"],
-  ["subject-6_RAM1132.json", "RAM1132"],
+// [bundle file, its course codes in the bundle's order, the code that holds the original].
+// The original is the code listed to students outside the course's own programme, so for a
+// recording shared with a former code (LAW1001 = LAW1101 for older IDs) it is the current code.
+// Summary files and manifest keys stay named after the bundle's first code.
+const sources: [string, string[], string][] = [
+  ["subject-15_ACC1101_ACC1103.json", ["ACC1101", "ACC1103"], "ACC1101"],
+  ["subject-2_MGT3204.json", ["MGT3204"], "MGT3204"],
+  ["subject-3_RAM1103.json", ["RAM1103"], "RAM1103"],
+  ["subject-6_RAM1132.json", ["RAM1132"], "RAM1132"],
+  // Outside the B.B.A. curriculum (migration 059): reachable only through shared lecture access.
+  ["subject-11_CDM1101.json", ["CDM1101"], "CDM1101"],
+  ["subject-12_CDM2103_MCS1151.json", ["CDM2103", "MCS1151"], "CDM2103"],
+  ["subject-13_LAW1001_LAW1101.json", ["LAW1001", "LAW1101"], "LAW1101"],
+  ["subject-5_LAW1002_LAW1102.json", ["LAW1002", "LAW1102"], "LAW1102"],
+  ["subject-7_POL1101.json", ["POL1101"], "POL1101"],
+  ["subject-9_POL2106.json", ["POL2106"], "POL2106"],
 ];
 
 const Metadata = z.object({
@@ -35,7 +46,9 @@ export function importSavedLectures(db: DB, folder: string) {
   return db.transaction(() => {
     let links = 0;
     const imported = new Set<string>();
-    for (const [file, ...codes] of sources) {
+    for (const [file, codes, primary] of sources) {
+      const lead = codes.indexOf(primary);
+      if (lead < 0) throw new Error(`Primary ${primary} is not among the codes of ${file}`);
       const bundle = Bundle.extend({ collected_at: z.string().min(1) }).parse(
         JSON.parse(readFileSync(join(folder, "transcripts/raw", file), "utf8")),
       );
@@ -57,10 +70,11 @@ export function importSavedLectures(db: DB, folder: string) {
         if (!md) throw new Error(`Empty summary in ${name}`);
         const cues = session.cues.filter((cue) => cue.text.trim()).sort((a,b) => a.startMs - b.startMs);
         if (!cues.length) throw new Error(`Empty cues for ${name}`);
-        save.run(ids[0], codes[0], session.no, meta.source_url, JSON.stringify(cues), cues.length,
+        const original = ids[lead];
+        save.run(original, primary, session.no, meta.source_url, JSON.stringify(cues), cues.length,
           Math.max(...cues.map((c) => c.endMs)), bundle.collected_at);
-        saveSummary.run(ids[0], md, meta.model, meta.prompt, statSync(path).mtime.toISOString());
-        for (const id of ids) link.run(ids[0], id);
+        saveSummary.run(original, md, meta.model, meta.prompt, statSync(path).mtime.toISOString());
+        for (const id of ids) link.run(original, id);
         links += ids.length;
         imported.add(name);
       }
