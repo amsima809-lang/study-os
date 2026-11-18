@@ -7,17 +7,19 @@ import { parseArgs } from "node:util";
 import { z } from "zod";
 import type { DB } from "./db.js";
 
-const counts = { ACC1101: 80, MGT3204: 100, RAM1103: 120, RAM1132: 120, CDM1101: 100, CDM2103: 100, POL1101: 100 } as const;
+const counts = { ACC1101: 80, MGT3204: 100, RAM1103: 120, RAM1132: 120, CDM1101: 100, CDM2103: 100, POL1101: 100, POL2106: 100 } as const;
 type Code = keyof typeof counts;
 const linkedFormats: Record<Code, readonly string[]> = {
   ACC1101: ["case", "table"], MGT3204: ["case", "grid"],
   RAM1103: ["passage", "poster"], RAM1132: ["record", "table", "passage"],
-  CDM1101: ["case"], CDM2103: ["case"], POL1101: [],
+  CDM1101: ["case"], CDM2103: ["case"], POL1101: [], POL2106: [],
 };
 /** Choices per question: four, except where the lecturers describe five (POL1101 lecture 2 01:13, lecture 16 53:35). */
-const choiceCounts: Partial<Record<Code, number>> = { POL1101: 5 };
+const choiceCounts: Partial<Record<Code, number>> = { POL1101: 5, POL2106: 5 };
+/** Exam length in minutes: 150, except where the lecturers give another (POL2106 lecture 1 03:46: two hours). */
+const durations: Partial<Record<Code, number>> = { POL2106: 120 };
 /** Courses whose papers are released together: one import validates and activates exactly one whole set. */
-export const releaseSets: readonly (readonly Code[])[] = [["ACC1101", "MGT3204", "RAM1103", "RAM1132"], ["CDM1101", "CDM2103"], ["POL1101"]];
+export const releaseSets: readonly (readonly Code[])[] = [["ACC1101", "MGT3204", "RAM1103", "RAM1132"], ["CDM1101", "CDM2103"], ["POL1101"], ["POL2106"]];
 const deepSeek = "deepseek-v4-pro";
 const codex = "openai-codex";
 const nonempty = z.string().trim().min(1);
@@ -35,7 +37,7 @@ const question = z.object({
 });
 const paperSchema = z.object({
   course_code: z.enum(Object.keys(counts) as [Code, ...Code[]]),
-  form_key: nonempty, version: nonempty, model: z.enum([deepSeek, codex]), duration_min: z.literal(150),
+  form_key: nonempty, version: nonempty, model: z.enum([deepSeek, codex]), duration_min: z.number().int(),
   question_count: positiveInt, questions: z.array(question),
   sources: z.array(z.object({ session_no: positiveInt, source_url: nonempty, source_hash: hexDigest })).min(1),
   receipts: z.array(z.discriminatedUnion("model", [
@@ -56,6 +58,7 @@ function stimulusContent(s: z.infer<typeof stimulus>) {
 function validatePaper(db: DB, raw: unknown) {
   const paper = paperSchema.parse(raw);
   const code = paper.course_code;
+  if (paper.duration_min !== (durations[code] ?? 150)) throw new Error(`${code}: expected ${durations[code] ?? 150} minutes`);
   if (paper.question_count !== counts[code] || paper.questions.length !== counts[code]) {
     throw new Error(`${code}: expected ${counts[code]} questions`);
   }

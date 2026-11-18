@@ -29,6 +29,8 @@ COUNTS = {
     "CDM2103": 100,
     # 100 items, one mark each, five choices: POL1101 lecture 1 30:17, lecture 2 01:13, lecture 16 53:04.
     "POL1101": 100,
+    # 100 five-choice items in two hours: POL2106 lecture 1 03:46.
+    "POL2106": 100,
 }
 # These are authoring allocations across the recorded syllabus, not official chapter weightings.
 BLOCKS = {
@@ -83,6 +85,7 @@ BLOCKS = {
     },
     # The lecturers describe recall and understanding items only, so no shared material.
     "POL1101": {},
+    "POL2106": {},
 }
 DESIGN = {
     "ACC1101": "Thai financial accounting. Balance compact transactions/account classification, presentation of statements, adjusting entries, and calculations in line with the source. Use basic-calculator amounts and realistic Thai account names. A shared accounting data set must have consistent dates, debit/credit directions and opening versus closing balances.",
@@ -93,8 +96,11 @@ DESIGN = {
     "CDM2103": "Communication theory. Test discrimination between closely related theories, models, assumptions and research approaches that the lecture teaches, such as encoding versus decoding, quantitative versus qualitative paradigms, media-effects theories, critical schools, normative theories of the press, new-media theories and applied models with stages. The lecturer describes four-choice items and items that match situations to concepts: a case presents a short new Thai situation or several labelled mini-situations, and each linked question asks which concept, stage or theory a specific detail exemplifies. No arithmetic. Do not ask for exact years or names unless the lecture stresses them.",
 }
 DESIGN["POL1101"] = "Thai politics and government. Test the concepts, institutions, structures, processes and history the lecture teaches: meanings of politics and government, forms of government, ideologies, constitutions, the two-chamber parliament and the roles in it, the cabinet, courts and independent bodies, elections and parties, central, provincial and local administration. The lecturers warn about items such as 'which is NOT' and choices that swap similar offices or institutions; use such close contrasts. Never ask about current office-holders, current parties in power or events that may have changed since the recording. No arithmetic."
-# Choices per question where a course is not four: POL1101 lecture 2 01:13, lecture 16 53:35.
-CHOICES = {"POL1101": 5}
+DESIGN["POL2106"] = "Introduction to political philosophy. The lecturer names three kinds of item: recall (which philosopher holds an idea, which work it comes from), understanding of the content, and 'ตุ๊กตา' items that give a new hypothetical situation and ask what a named philosopher's idea implies for it (for example how Nozick would distribute a resource, or what law Rawls's veil of ignorance would choose). Mix all three across the philosophers and concepts this lecture teaches; distractors are other philosophers or neighbouring ideas students mix up. Only what the lecture and its text teach. No arithmetic."
+# Choices per question where a course is not four: POL1101 lecture 2 01:13, lecture 16 53:35; POL2106 lecture 1 03:46, lecture 6 05:51.
+CHOICES = {"POL1101": 5, "POL2106": 5}
+# Exam length in minutes where it is not 150: POL2106 lecture 1 03:46 ("เวลาสอบสองชั่วโมง").
+DURATIONS = {"POL2106": 120}
 LABEL = re.compile(r"^(?:[กขคงจ][.)]|[A-E][.)]|[1-5][.)]\s)")
 GIVEAWAY = re.compile(r"^(?:ถูกทุกข้อ|ไม่มีข้อใดถูก|ถูกทั้งข้อ|all of the above|none of the above)$", re.IGNORECASE)
 
@@ -1017,8 +1023,8 @@ def publish(args, plans):
             "form_key": args.form,
             "version": args.form + "-" + digest(published)[:16],
             "model": MODEL,
-            "duration_min": 150,
-            "duration_minutes": 150,
+            "duration_min": DURATIONS.get(code, 150),
+            "duration_minutes": DURATIONS.get(code, 150),
             "question_count": expected,
             "sources": sources,
             "questions": published,

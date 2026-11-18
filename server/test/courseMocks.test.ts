@@ -13,10 +13,12 @@ import { importCourseMocks, type CourseMockQuestion } from "../src/importCourseM
 const sizes: Record<string, number> = { ACC1101: 80, MGT3204: 100, RAM1103: 120, RAM1132: 120 };
 const communication: Record<string, number> = { CDM1101: 100, CDM2103: 100 };
 const politics: Record<string, number> = { POL1101: 100 };
-const choiceCounts: Record<string, number> = { POL1101: 5 };
+const philosophy: Record<string, number> = { POL2106: 100 };
+const choiceCounts: Record<string, number> = { POL1101: 5, POL2106: 5 };
+const minutes: Record<string, number> = { POL2106: 120 };
 const formats: Record<string, NonNullable<CourseMockQuestion["stimulus"]>["kind"][]> = {
   ACC1101: ["case","table"], MGT3204: ["case","grid"], RAM1103: ["passage","poster"], RAM1132: ["record","table","passage"],
-  CDM1101: ["case"], CDM2103: ["case"], POL1101: [],
+  CDM1101: ["case"], CDM2103: ["case"], POL1101: [], POL2106: [],
 };
 const student = "legacy-user-0001", other = "second-student", signedOut = "anonymous";
 let db: DB, server: Server, base: string, now: number;
@@ -51,7 +53,7 @@ function fixtures(set = sizes) {
         kind: formats[course_code][Math.floor(index/2)], title: "Records", text: "A record to interpret",
         columns: ["Item","Count"], rows:[["A","15"]] } : null,
     }));
-    return { course_code, form_key: "A", version: edition(questions), model: "deepseek-v4-pro", duration_min: 150,
+    return { course_code, form_key: "A", version: edition(questions), model: "deepseek-v4-pro", duration_min: minutes[course_code] ?? 150,
       question_count, questions, sources, receipts: ["author","blind_review"].map(role => ({ model: "deepseek-v4-pro", response_id: role, role })) };
   });
 }
@@ -178,6 +180,39 @@ describe("private transcript course mock exams", () => {
     expect((await progress(acc.id, { revision: 0, changes: [{ position: 1, choice: 4 }] })).status).toBe(400);
     expect((await progress(acc.id, { revision: 0, changes: [{ position: 1, choice: 5 }] })).status).toBe(400);
     expect((await get(acc.id)).questions[0].choice).toBeNull();
+  });
+
+  it("keeps each paper's own exam length: two hours for POL2106, 150 minutes for the rest", async () => {
+    const four = fixtures();
+    const pol = fixtures(philosophy);
+    const long = structuredClone(pol);
+    long[0].duration_min = 150;
+    expect(() => importCourseMocks(db, long)).toThrow(/expected 120 minutes/);
+    const short = structuredClone(four);
+    short[0].duration_min = 120;
+    expect(() => importCourseMocks(db, short)).toThrow(/expected 150 minutes/);
+    importCourseMocks(db, four);
+    importCourseMocks(db, pol);
+    const lengths = Object.fromEntries((await (await api("/catalog?forms=all")).json() as { courses: { code: string; duration_min: number }[] })
+      .courses.map(c => [c.code, c.duration_min]));
+    expect(lengths).toMatchObject({ POL2106: 120, ACC1103: 150, MGT3204: 150, RAM1103: 150, RAM1132: 150 });
+    const a = await start("POL2106");
+    expect(a.questions[0].options).toHaveLength(5);
+    expect(a.deadline_ms - a.started_ms).toBe(120 * 60000);
+    const acc = await start("ACC1103");
+    expect(acc.deadline_ms - acc.started_ms).toBe(150 * 60000);
+    // The two-hour paper expires at two hours; the 150-minute one is still running.
+    expect((await progress(a.id, { revision: 0, changes: [{ position: 1, choice: 4 }] })).status).toBe(200);
+    now = a.deadline_ms;
+    expect(expireCourseMocks(db, now)).toBe(1);
+    expect(await get(a.id)).toMatchObject({ status: "completed", expired: true, finished_ms: a.deadline_ms });
+    expect(await get(acc.id)).toMatchObject({ status: "in_progress" });
+    expect((await progress(a.id, { revision: 1, changes: [{ position: 2, choice: 0 }] })).status).toBe(200);
+    expect((await get(a.id)).questions[1].choice).toBeNull();
+    // The database itself refuses a deadline that does not match the paper's length.
+    const paper = (db.prepare("SELECT paper_id FROM course_mock_attempts WHERE id=?").get(a.id) as { paper_id: number }).paper_id;
+    expect(() => db.prepare("INSERT INTO course_mock_attempts(user_id,paper_id,started_ms,deadline_ms) VALUES(?,?,?,?)")
+      .run(other, paper, now, now + 150 * 60000)).toThrow(/paper length/);
   });
 
   it("keeps one clock and saved responses across concurrent starts, refresh, deadline and a retake", async () => {
