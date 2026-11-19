@@ -21,7 +21,7 @@ import { BASE } from "../base.ts";
 import { readLectureLink } from "../lectureLink.ts";
 
 import { AnnotationSearch } from "../components/AnnotationSearch.tsx";
-import { SavedLecture, LectureShortcuts, loadLectureCourses, type OpenLecture, type LectureCourse } from "../components/SavedLecture.tsx";
+import { SavedLecture, LectureShortcuts, loadLectureCourses, loadLectureList, type OpenLecture, type LectureCourse, type UnrecordedCourse } from "../components/SavedLecture.tsx";
 
 type View = "list" | "detail" | "pages" | "transcript";
 
@@ -149,8 +149,10 @@ function LibraryContents() {
 export function LectureLinks({ onRead, initialCourse }: { onRead: (t: OpenLecture) => void; initialCourse?: string }) {
   const { t, lang } = useT();
   const [courses, setCourses] = useState<LectureCourse[]>([]);
+  const [unrecorded, setUnrecorded] = useState<UnrecordedCourse[]>([]);
   const [loadFailed, setLoadFailed] = useState(false);
   const [open, setOpen] = useState<string | null>(initialCourse ?? null);
+  const [showOthers, setShowOthers] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [showHelp, setShowHelp] = useState(false);
@@ -159,8 +161,9 @@ export function LectureLinks({ onRead, initialCourse }: { onRead: (t: OpenLectur
 
   const load = useCallback(async () => {
     try {
-      const result = await loadLectureCourses();
-      setCourses(result);
+      const result = await loadLectureList();
+      setCourses(result.courses);
+      setUnrecorded(result.unrecorded);
       setLoadFailed(false);
     } catch {
       setLoadFailed(true);
@@ -169,6 +172,11 @@ export function LectureLinks({ onRead, initialCourse }: { onRead: (t: OpenLectur
   useEffect(() => {
     void load();
   }, [load]);
+  // A course opened from elsewhere (back from a lecture, a link, an import) that sits in
+  // "Other subjects" opens that group too, once.
+  useEffect(() => {
+    if (open !== null && courses.some((c) => c.code === open && !c.mine)) setShowOthers(true);
+  }, [open, courses]);
 
   // React refuses javascript: links in JSX, so the bookmark's address is set here.
   useEffect(() => {
@@ -196,7 +204,80 @@ export function LectureLinks({ onRead, initialCourse }: { onRead: (t: OpenLectur
     }
   }
 
-  if (courses.length === 0 && !loadFailed) return null;
+  if (courses.length === 0 && unrecorded.length === 0 && !loadFailed) return null;
+  // Her own courses for the term first; the rest (trial access shows every recorded subject) fold
+  // away under "Other subjects". With no courses chosen yet, the list stays as one.
+  const mine = courses.filter((c) => c.mine);
+  const grouped = mine.length > 0 || unrecorded.length > 0;
+  const others = grouped ? courses.filter((c) => !c.mine) : courses;
+  const othersOpen = !grouped || showOthers;
+  const courseItem = (c: LectureCourse) => {
+    const isOpen = open === c.code;
+    const saved = c.lectures.filter((l) => l.transcript).length;
+    const summaries = c.lectures.filter((l) => l.has_summary).length;
+    return (
+      <li key={c.code} className="rounded-xl border" style={{ borderColor: "var(--border-light)" }}>
+        <button
+          onClick={() => setOpen(isOpen ? null : c.code)}
+          aria-expanded={isOpen}
+          className="w-full flex items-center gap-2 px-3 py-3 text-left min-h-11"
+        >
+          <span className="flex-1 min-w-0">
+            <span className="block text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+              <CourseChip code={c.code} className="mr-1.5" />
+              {lang === "en" && c.name_en ? c.name_en : c.name_th}
+            </span>
+            <span className="block text-xs" style={{ color: "var(--text-tertiary)" }}>
+              {t("lib.lectureCount", { n: c.lectures.length })}
+              {summaries > 0 && ` · ${t("lib.summaryCount", { n: summaries })}`}
+              {saved > 0 && ` · ${t("lib.transcriptCount", { n: saved })}`}
+            </span>
+          </span>
+          <span aria-hidden style={{ color: "var(--text-tertiary)" }}>{isOpen ? "▾" : "▸"}</span>
+        </button>
+        {isOpen && (
+          <ul className="px-3 pb-3 space-y-1.5">
+            {c.lectures.map((l) => (
+              <li key={l.no} className="flex flex-wrap items-center gap-2">
+                <span className="basis-full sm:basis-auto sm:flex-1 min-w-0 text-sm" style={{ color: "var(--text-primary)" }}>
+                  {t("lib.lectureNo", { n: l.no })}
+                  {l.transcript && (
+                    <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+                      {" · "}{t("lib.minutes", { n: l.transcript.minutes })}
+                    </span>
+                  )}
+                </span>
+                <LectureShortcuts code={c.code} lecture={l} onOpen={onRead}/>
+                {l.transcript && (
+                  <button
+                    onClick={() => onRead({ code: c.code, lecture: l, tab: "transcript" })}
+                    aria-label={t("lec.transcript")} title={t("lec.transcript")}
+                    className="inline-flex items-center gap-1.5 rounded-lg px-3 min-h-11 min-w-11 justify-center text-sm font-medium"
+                    style={{ backgroundColor: "var(--accent-light)", color: "var(--accent-text)" }}
+                  >
+                    <Icon name="transcript" size={18}/>
+                    {/* Icon alone on a phone; icon and label from iPad width up (owner 2026-11-16). */}
+                    <span className="hidden sm:inline" aria-hidden>{t("lec.transcript")}</span>
+                  </button>
+                )}
+                <a
+                  href={l.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label={t("lib.watchExternal")} title={t("lib.watchExternal")}
+                  className="inline-flex items-center gap-1.5 rounded-lg px-3 min-h-11 min-w-11 justify-center text-sm font-medium"
+                  style={{ backgroundColor: "var(--accent-light)", color: "var(--accent-text)" }}
+                >
+                  <Icon name="watch" size={18}/>
+                  <span className="hidden sm:inline" aria-hidden>{t("lib.watch")} ↗</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
+      </li>
+    );
+  };
 
   return (
     <Card>
@@ -211,75 +292,33 @@ export function LectureLinks({ onRead, initialCourse }: { onRead: (t: OpenLectur
         }
       }}/>
 
-      <ul className="space-y-1.5">
-        {courses.map((c) => {
-          const isOpen = open === c.code;
-          const saved = c.lectures.filter((l) => l.transcript).length;
-          const summaries = c.lectures.filter((l) => l.has_summary).length;
-          return (
-            <li key={c.code} className="rounded-xl border" style={{ borderColor: "var(--border-light)" }}>
-              <button
-                onClick={() => setOpen(isOpen ? null : c.code)}
-                aria-expanded={isOpen}
-                className="w-full flex items-center gap-2 px-3 py-3 text-left min-h-11"
-              >
-                <span className="flex-1 min-w-0">
-                  <span className="block text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-                    <CourseChip code={c.code} className="mr-1.5" />
-                    {lang === "en" && c.name_en ? c.name_en : c.name_th}
-                  </span>
-                  <span className="block text-xs" style={{ color: "var(--text-tertiary)" }}>
-                    {t("lib.lectureCount", { n: c.lectures.length })}
-                    {summaries > 0 && ` · ${t("lib.summaryCount", { n: summaries })}`}
-                    {saved > 0 && ` · ${t("lib.transcriptCount", { n: saved })}`}
-                  </span>
-                </span>
-                <span aria-hidden style={{ color: "var(--text-tertiary)" }}>{isOpen ? "▾" : "▸"}</span>
-              </button>
-              {isOpen && (
-                <ul className="px-3 pb-3 space-y-1.5">
-                  {c.lectures.map((l) => (
-                    <li key={l.no} className="flex flex-wrap items-center gap-2">
-                      <span className="basis-full sm:basis-auto sm:flex-1 min-w-0 text-sm" style={{ color: "var(--text-primary)" }}>
-                        {t("lib.lectureNo", { n: l.no })}
-                        {l.transcript && (
-                          <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
-                            {" · "}{t("lib.minutes", { n: l.transcript.minutes })}
-                          </span>
-                        )}
-                      </span>
-                      <LectureShortcuts code={c.code} lecture={l} onOpen={onRead}/>
-                      {l.transcript && (
-                        <button
-                          onClick={() => onRead({ code: c.code, lecture: l, tab: "transcript" })}
-                          aria-label={t("lec.transcript")} title={t("lec.transcript")}
-                          className="inline-flex items-center gap-1.5 rounded-lg px-3 min-h-11 min-w-11 justify-center text-sm font-medium"
-                          style={{ backgroundColor: "var(--accent-light)", color: "var(--accent-text)" }}
-                        >
-                          <Icon name="transcript" size={18}/>
-                          {/* Icon alone on a phone; icon and label from iPad width up (owner 2026-11-16). */}
-                          <span className="hidden sm:inline" aria-hidden>{t("lec.transcript")}</span>
-                        </button>
-                      )}
-                      <a
-                        href={l.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        aria-label={t("lib.watchExternal")} title={t("lib.watchExternal")}
-                        className="inline-flex items-center gap-1.5 rounded-lg px-3 min-h-11 min-w-11 justify-center text-sm font-medium"
-                        style={{ backgroundColor: "var(--accent-light)", color: "var(--accent-text)" }}
-                      >
-                        <Icon name="watch" size={18}/>
-                        <span className="hidden sm:inline" aria-hidden>{t("lib.watch")} ↗</span>
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+      {grouped && <ul className="space-y-1.5">
+        {[...mine, ...unrecorded].sort((x, y) => x.code.localeCompare(y.code)).map((c) => "lectures" in c ? courseItem(c as LectureCourse) : (
+          <li key={c.code} className="rounded-xl border px-3 py-3" style={{ borderColor: "var(--border-light)" }}>
+            <span className="block text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+              <CourseChip code={c.code} className="mr-1.5" />
+              {lang === "en" && c.name_en ? c.name_en : c.name_th}
+            </span>
+            <span className="block text-xs" style={{ color: "var(--text-tertiary)" }}>{t("lib.noRecordings")}</span>
+          </li>
+        ))}
+      </ul>}
+
+      {grouped && others.length > 0 && (
+        <button onClick={() => {
+          // Folding the group also closes a course left open inside it, so it stays folded.
+          if (othersOpen && open !== null && others.some((c) => c.code === open)) setOpen(null);
+          setShowOthers(!othersOpen);
+        }} aria-expanded={othersOpen}
+          className="mt-3 w-full flex items-center gap-2 text-left text-sm font-medium min-h-11"
+          style={{ color: "var(--text-secondary)" }}>
+          <span className="flex-1">{t("lib.otherSubjects", { n: others.length })}</span>
+          <span aria-hidden style={{ color: "var(--text-tertiary)" }}>{othersOpen ? "▾" : "▸"}</span>
+        </button>
+      )}
+      {othersOpen && others.length > 0 && <ul className="space-y-1.5">
+        {others.map(courseItem)}
+      </ul>}
 
       {/* Import a transcript file made by the collector */}
       <div className="mt-3 flex flex-wrap items-center gap-2">

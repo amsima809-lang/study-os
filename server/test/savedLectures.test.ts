@@ -76,6 +76,33 @@ describe("saved lectures", () => {
       .toEqual({ course_code: "LAW1101" });
     expect(await listed(outside)).not.toContain("LAW1101");
   });
+  it("puts her term's courses first and names her courses that have no recording", async () => {
+    importSavedLectures(db, root);
+    const user = "lecture-test-term";
+    process.env.SHARED_LECTURE_USERS = [a, b, user].join(",");
+    db.prepare("INSERT INTO users (id,email,name,created_at,last_login_at) VALUES (?, ?, ?, datetime('now'),datetime('now'))").run(user, user + "@example.test", user);
+    db.prepare("INSERT INTO user_profiles (user_id, university_id, program_id, onboarded) VALUES (?, 'ru', 'bus-adpr', 1)").run(user);
+    type Listing = { courses: { code: string; mine: boolean }[]; unrecorded: { code: string; name_th: string }[] };
+    const before = (await (await request("/lectures", user)).json()) as Listing;
+    expect(before.courses.every((c) => !c.mine)).toBe(true);
+    expect(before.unrecorded).toEqual([]);
+    for (const code of ["POL1101", "ACC1101", "ECO1121"]) {
+      db.prepare("INSERT INTO plan_items (user_id, term_id, course_code) VALUES (?, '2/69', ?)").run(user, code);
+    }
+    const after = (await (await request("/lectures", user)).json()) as Listing;
+    expect(after.courses.slice(0, 2).map((c) => [c.code, c.mine])).toEqual([["ACC1103", true], ["POL1101", true]]);
+    expect(after.courses.slice(2).every((c) => !c.mine)).toBe(true);
+    expect(after.courses.map((c) => c.code).sort()).toEqual(before.courses.map((c) => c.code).sort());
+    expect(after.unrecorded.map((c) => c.code)).toEqual(["ECO1121"]);
+    expect(after.unrecorded[0].name_th).toBeTruthy();
+    process.env.OWN_COURSES_ONLY_USERS = "someone-else, " + user;
+    const own = (await (await request("/lectures", user)).json()) as Listing;
+    expect(own.courses.map((c) => c.code)).toEqual(["ACC1103", "POL1101"]);
+    expect(own.unrecorded.map((c) => c.code)).toEqual(["ECO1121"]);
+    expect(((await (await request("/lectures", a)).json()) as Listing).courses.length).toBe(before.courses.length);
+    delete process.env.OWN_COURSES_ONLY_USERS;
+    process.env.SHARED_LECTURE_USERS = [a, b].join(",");
+  });
   it("imports each recording once, serves both catalogue aliases, and keeps private edits on re-import", async () => {
     expect(importSavedLectures(db, root)).toEqual({recordings:112, catalogueLinks:157});
     expect(await (await request(summary)).json()).toMatchObject({ summary_md: "Original [00:02]" });

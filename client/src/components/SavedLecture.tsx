@@ -14,11 +14,17 @@ import { CourseChip } from "./CourseTitle.tsx";
 import { nearestCue, stampPattern, summaryCitations, type Cue } from "../lectureCitations.ts";
 
 export type Lecture = { no: number; url: string; has_summary: boolean; transcript: { cues: number; minutes: number } | null };
-export type LectureCourse = { code: string; name_th: string; name_en: string | null; lectures: Lecture[] };
+export type LectureCourse = { code: string; name_th: string; name_en: string | null; mine?: boolean; lectures: Lecture[] };
+export type UnrecordedCourse = { code: string; name_th: string; name_en: string | null };
+
+/** Her term's courses first (`mine`), then the rest; plus her courses with no recording at all. */
+export async function loadLectureList(): Promise<{ courses: LectureCourse[]; unrecorded: UnrecordedCourse[] }> {
+  const r = await getJSON<{ courses: LectureCourse[]; unrecorded?: UnrecordedCourse[] }>("/api/lectures");
+  return { courses: r.courses, unrecorded: r.unrecorded ?? [] };
+}
 
 export async function loadLectureCourses(): Promise<LectureCourse[]> {
-  const { courses } = await getJSON<{ courses: LectureCourse[] }>("/api/lectures");
-  return courses;
+  return (await loadLectureList()).courses;
 }
 type Tab = "notes" | "transcript";
 export type OpenLecture = { code: string; lecture: Lecture; tab: Tab; annotationId?: number; atMs?: number };

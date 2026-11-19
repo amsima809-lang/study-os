@@ -17,6 +17,14 @@ export function canReadSharedLectures(userId: string) {
   return ids.includes("*") || ids.includes(userId);
 }
 
+/**
+ * Accounts whose lecture list shows only their own term's courses (OWN_COURSES_ONLY_USERS, comma-
+ * separated ids). Everyone else with shared access also sees the other recorded subjects, folded.
+ */
+export function ownCoursesOnly(userId: string) {
+  return (process.env.OWN_COURSES_ONLY_USERS ?? "").split(",").map((s) => s.trim()).includes(userId);
+}
+
 /** One listing per preloaded recording. Prefer the student's programme code when a recording has aliases. */
 export function lectureFilter(db: DB, userId: string) {
   const mine = programFilter(db, userId, "cl.course_code");

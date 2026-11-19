@@ -10,11 +10,11 @@ import { Router } from "express";
 import { z } from "zod";
 import type { DB } from "./db.js";
 import type { LectureChanged } from "./createdLectureNotes.js";
-import { hasCatalog, programFilter } from "./api.js";
+import { currentTermId, hasCatalog, programFilter, termCourses } from "./api.js";
 import { sketchSources } from "./sketchRoutes.js";
 import { createAnnotationReader, visibleAnnotations } from "./lectureAnnotations.js";
 
-import { canReadSharedLectures, getLecture, getLectureSummary, lectureFilter, type LectureNoteMode } from "./savedLectures.js";
+import { canReadSharedLectures, getLecture, getLectureSummary, lectureFilter, ownCoursesOnly, type LectureNoteMode } from "./savedLectures.js";
 
 const Cue = z.object({
   startMs: z.number().int().min(0),
@@ -116,12 +116,21 @@ export function createLecturesRouter(db: DB, schedule = createAnnotationReader(d
 
     type Course = {
       code: string; name_th: string; name_en: string | null;
+      /** Chosen for the current term: her own courses come first, the rest fold away. */
+      mine: boolean;
       lectures: { no: number; url: string; has_summary: boolean; note_mode: LectureNoteMode; image_count: number; transcript: { cues: number; minutes: number } | null }[];
     };
+    const term = termCourses(db, userId, currentTermId(db));
+    // A recording listed under another code of the same course (ACC1101/ACC1103) is still hers.
+    const chosen = new Set([...term, ...(term.length === 0 ? [] : (db.prepare(
+      `SELECT DISTINCT alias.course_code FROM course_lectures picked
+       JOIN course_lectures alias ON alias.shared_transcript_id = picked.shared_transcript_id
+       WHERE picked.course_code IN (${term.map(() => "?").join(",")})`,
+    ).all(...term) as { course_code: string }[]).map((r) => r.course_code))]);
     const byCourse = new Map<string, Course>();
     for (const r of rows) {
       if (!byCourse.has(r.course_code)) {
-        byCourse.set(r.course_code, { code: r.course_code, name_th: r.name_th, name_en: r.name_en, lectures: [] });
+        byCourse.set(r.course_code, { code: r.course_code, name_th: r.name_th, name_en: r.name_en, mine: chosen.has(r.course_code), lectures: [] });
       }
       byCourse.get(r.course_code)!.lectures.push({
         no: r.session_no,
@@ -129,7 +138,16 @@ export function createLecturesRouter(db: DB, schedule = createAnnotationReader(d
         transcript: r.cue_count ? { cues: r.cue_count, minutes: Math.round((r.duration_ms ?? 0) / 60000) } : null,
       });
     }
-    res.json({ courses: [...byCourse.values()] });
+    const listed = [...byCourse.values()];
+    // Her chosen courses with no recording at all in the catalogue (not merely hidden by the
+    // programme filter), so the page can say so instead of leaving the course out.
+    const recorded = new Set((db.prepare("SELECT DISTINCT course_code FROM course_lectures").all() as { course_code: string }[])
+      .map((r) => r.course_code));
+    const unrecorded = term.filter((code) => !recorded.has(code)).map((code) =>
+      db.prepare("SELECT code, name_th, name_en FROM courses WHERE code = ?").get(code) as { code: string; name_th: string; name_en: string | null } | undefined)
+      .filter((c) => c !== undefined);
+    const others = ownCoursesOnly(userId) && term.length > 0 ? [] : listed.filter((c) => !c.mine);
+    res.json({ courses: [...listed.filter((c) => c.mine), ...others], unrecorded });
   });
 
   // Import a bundle made by the collector script.
