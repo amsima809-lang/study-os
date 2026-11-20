@@ -326,6 +326,13 @@ html.keyboard-open [role="alertdialog"] {
 .trail-path .trail-steps { animation: trail-climb 2.4s linear infinite; }
 @keyframes trail-climb { to { stroke-dashoffset: 11.1; } }
 @media (prefers-reduced-motion: reduce) { .trail-path .trail-steps { animation: none; } }
+/* The landing page's city (landing/futureScene.js) rests while the first screen is out of sight.
+   Its animations are taken away, not paused: a paused animation still costs Safari work on every
+   frame. Trail.tsx keeps the scene's clock and sets it again when the scene wakes. */
+.trail-path.fv-resting [class*="fv-"] { animation: none !important; }
+/* So do the friends along the trail (landing/trailFriends.js), each while it is off screen:
+   their small movements only (.tf-a), never the hop of hello. */
+.tf-friend.tf-away .tf-a { animation: none !important; }
 
 /* ── Note input bar: the big mic while it listens, and the note's text box above the keyboard ── */
 @keyframes mic-ring { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); } 100% { box-shadow: 0 0 0 22px transparent; } }

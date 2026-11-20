@@ -15,23 +15,25 @@ import { inNativeApp, APP_STORE_URL } from "../native.ts";
 import { withBase } from "../base.ts";
 import Icon from "./Icon.tsx";
 import { PhoneDemo, type NotesDemo } from "./LandingNotesDemo.tsx";
+import { TrailFriend } from "./TrailFriend.tsx";
+import type { FriendId } from "../landing/trailFriends.js";
 
 /**
  * The features with a screenshot, in the order they are shown. The planning comes first (owner
  * 2026-11-16: "the trail planner and auto-scheduling of near-term and long-term activities …
  * that's the killer app"): the whole degree, then the study week, then the rest.
  */
-const SHOWN: { shot?: string; demo?: NotesDemo; key: string; icon: string }[] = [
-  { shot: "trail", key: "trail", icon: "flag" },
-  { shot: "studyplan", key: "studyplan", icon: "bookOpen" },
+const SHOWN: { shot?: string; demo?: NotesDemo; key: string; icon: string; /** Who waits at this stop (TrailFriend.tsx). */ friend: FriendId }[] = [
+  { shot: "trail", key: "trail", icon: "flag", friend: "planner" },
+  { shot: "studyplan", key: "studyplan", icon: "bookOpen", friend: "timekeeper" },
   // The lecture notes that write themselves (owner 2026-11-16: "these are very unique capabilities"),
   // right after the planning. Drawn illustrations until real screenshots are taken (LandingNotesDemo.tsx).
-  { demo: "lecture", key: "lecture", icon: "transcript" },
-  { demo: "annotate", key: "annotate", icon: "pen" },
-  { demo: "combine", key: "combine", icon: "notebook" },
-  { shot: "exams", key: "exams", icon: "fileEdit" },
-  { shot: "timetable", key: "timetable", icon: "calendarRange" },
-  { shot: "map", key: "map", icon: "mapPin" },
+  { demo: "lecture", key: "lecture", icon: "transcript", friend: "listener" },
+  { demo: "annotate", key: "annotate", icon: "pen", friend: "scribe" },
+  { demo: "combine", key: "combine", icon: "notebook", friend: "weaver" },
+  { shot: "exams", key: "exams", icon: "fileEdit", friend: "coach" },
+  { shot: "timetable", key: "timetable", icon: "calendarRange", friend: "conductor" },
+  { shot: "map", key: "map", icon: "mapPin", friend: "pathfinder" },
 ];
 /** And the rest, as small cards. */
 const MORE: { icon: string; key: string }[] = [
@@ -104,6 +106,24 @@ function Stop({ icon, size = 48 }: { icon: string; size?: number }) {
   );
 }
 
+/**
+ * A stop with the friend who waits there (TrailFriend.tsx). The trail leaves each stop to one
+ * side, the sides alternating down the page; the friend stands on the other, facing the marker.
+ * Beside a left-aligned heading (a feature's text on a wide screen) the friend keeps to the
+ * right, so the marker stays above the heading's first letter. The trail often arrives from the
+ * friend's side: its dots then pass behind the friend, who is drawn above it.
+ */
+function Milestone({ icon, friend, nth, centred = false }: { icon: string; friend: FriendId; /** Which stop this is, from the top (0 first). */ nth: number; /** The text under it is centred at every width. */ centred?: boolean }) {
+  const onLeft = nth % 2 === 1;
+  const when = (cls: string, wide: string) => (onLeft ? (centred ? cls : `${cls} ${wide}`) : "");
+  return (
+    <span className={`inline-flex items-end gap-3 ${when("flex-row-reverse", "md:flex-row")}`}>
+      <Stop icon={icon} />
+      <TrailFriend id={friend} className={when("-scale-x-100", "md:scale-x-100")} />
+    </span>
+  );
+}
+
 /** Cards that the trail passes behind are solid, so it never runs through their text. */
 const SOLID = { backgroundColor: "#1a1934", borderColor: "rgba(255,255,255,0.09)" };
 
@@ -114,7 +134,7 @@ export default function LandingMore({ onSignIn }: { onSignIn: () => void }) {
     <div id="features" style={{ background: "linear-gradient(180deg, #24243e 0%, #14132a 30%, #0b0b18 100%)", color: "#fff" }}>
       {/* Everything here sits above the trail, which is drawn behind the whole page. */}
       <section data-trail-row className="relative z-[2] max-w-5xl mx-auto px-9 md:px-6 pt-16 text-center">
-        <Stop icon="flag" />
+        <Milestone icon="flag" friend="guide" nth={0} centred />
         <h2 className="mt-4 text-2xl md:text-4xl font-extrabold tracking-tight">{t("land.featuresTitle")}</h2>
         <p className="text-sm md:text-base mt-2" style={{ color: "rgba(255,255,255,0.6)" }}>{t("land.featuresIntro")}</p>
       </section>
@@ -124,7 +144,7 @@ export default function LandingMore({ onSignIn }: { onSignIn: () => void }) {
         {SHOWN.map((f, i) => (
           <section key={f.key} data-trail-row className={`flex flex-col gap-8 md:gap-16 items-center ${i % 2 ? "md:flex-row-reverse" : "md:flex-row"}`}>
             <div className="flex-1 max-w-md text-center md:text-left">
-              <Stop icon={f.icon} />
+              <Milestone icon={f.icon} friend={f.friend} nth={i + 1} />
               <h3 className="mt-4 text-xl md:text-2xl font-bold">{t(`land.f.${f.key}`)}</h3>
               <p className="mt-2 text-sm md:text-base" style={{ color: "rgba(255,255,255,0.66)" }}>{t(`land.f.${f.key}.body`)}</p>
             </div>
@@ -136,7 +156,7 @@ export default function LandingMore({ onSignIn }: { onSignIn: () => void }) {
       </div>
 
       <section data-trail-row className="relative z-[2] max-w-5xl mx-auto px-9 md:px-6 pb-8 text-center">
-        <Stop icon="sparkles" />
+        <Milestone icon="sparkles" friend="giftbearer" nth={SHOWN.length + 1} centred />
         <h2 className="mt-4 text-lg font-bold">{t("land.moreTitle")}</h2>
         <ul className="mt-5 grid gap-3 sm:grid-cols-3 text-left">
           {MORE.map((f) => (
@@ -153,7 +173,7 @@ export default function LandingMore({ onSignIn }: { onSignIn: () => void }) {
 
       {!native && (
         <section data-trail-row className="relative z-[2] max-w-5xl mx-auto px-9 md:px-6 py-12 text-center">
-          <Stop icon="download" />
+          <Milestone icon="download" friend="porter" nth={SHOWN.length + 2} centred />
           <div className="mt-4 rounded-3xl border p-6 md:p-8 flex flex-col md:flex-row md:items-center gap-5 text-left" style={SOLID}>
             {/* The app's own icon, as it looks on the Home Screen. */}
             <img src={withBase("/apple-touch-icon.png")} alt="" width={56} height={56} className="w-14 h-14 rounded-2xl shrink-0" />
@@ -170,11 +190,13 @@ export default function LandingMore({ onSignIn }: { onSignIn: () => void }) {
       <section className="relative z-[2] max-w-5xl mx-auto px-6 pt-8 pb-16 text-center">
         <h2 className="text-xl font-bold">{t("land.readyTitle")}</h2>
         <p className="text-sm mt-1" style={{ color: "rgba(255,255,255,0.6)" }}>{t("land.readyBody")}</p>
+        {/* The last friend, or the first: waiting on the button to walk up with you. */}
+        <span className="mt-4 flex justify-center"><TrailFriend id="trailmate" /></span>
         <button
           type="button"
           data-trail-start
           onClick={onSignIn}
-          className="mt-5 inline-flex items-center justify-center gap-2 rounded-2xl px-6 min-h-12 font-semibold"
+          className="inline-flex items-center justify-center gap-2 rounded-2xl px-6 min-h-12 font-semibold"
           style={{ backgroundColor: "#fff", color: "#24243e", boxShadow: "0 0 0 6px rgba(251,191,36,0.12)" }}
         >
           <Icon name="flag" size={16} />

@@ -15,7 +15,8 @@
  * Both are measured from the page as laid out, so they follow any screen width, language or
  * font, and are drawn again whenever the page changes size.
  */
-import { useEffect, useState, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import type { SceneApi, SceneLayers } from "../landing/futureScene.js";
 
 type Pt = { x: number; y: number };
 
@@ -59,8 +60,65 @@ const CAP_BASE: [number, number] = [721, 58];
 /** The trail's switchbacks up the mountain, from its foot to the summit (same grid). */
 const CLIMB: [number, number][] = [[770, 400], [610, 330], [800, 250], [655, 170], [745, 95]];
 
+/** The grid y of a ridge's top edge at grid x: the ridges are straight lines between their points. */
+function ridgeY(ridge: number, gx: number): number {
+  const p = RIDGES[ridge].points;
+  if (gx <= p[0][0]) return p[0][1];
+  for (let k = 0; k < p.length - 1; k++) {
+    if (gx <= p[k + 1][0]) return p[k][1] + ((gx - p[k][0]) / (p[k + 1][0] - p[k][0])) * (p[k + 1][1] - p[k][1]);
+  }
+  return p[p.length - 1][1];
+}
+
 export function TrailPath({ root, faint = false }: { root: RefObject<HTMLDivElement | null>; /** A campus photo is behind: keep the mountain light. */ faint?: boolean }) {
   const [shape, setShape] = useState<{ w: number; h: number; trail: string; ridges: string[]; rim: string; cap: string } | null>(null);
+  // The near-future city around the mountain (landing/futureScene.js): drawn for the page as
+  // measured, and only again when that changes, so its animations are not restarted by a
+  // re-measure that found nothing new. Loaded apart from the app: only this page shows it.
+  const [scene, setScene] = useState<SceneLayers | null>(null);
+  const [sceneOn, setSceneOn] = useState(true);
+  const sceneKey = useRef("");
+  const sceneApi = useRef<SceneApi | null>(null);
+  const draw = useRef<((a: SceneApi) => SceneLayers) | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void import("../landing/futureScene.js").then((m) => {
+      if (!alive) return;
+      draw.current = m.drawScene;
+      if (sceneApi.current) setScene(m.drawScene(sceneApi.current));
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
+  // Out of sight (scrolled down the page), the scene's animations rest.
+  useEffect(() => {
+    const hero = root.current?.querySelector("[data-trail-summit]")?.closest("section");
+    if (!hero || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(([e]) => setSceneOn(e.isIntersecting));
+    io.observe(hero);
+    return () => io.disconnect();
+  }, [root]);
+  // The scene's own clock: how long it has been moving, not counting its rests. A new drawing
+  // (the page changed size: a turned phone, or a phone's address bar sliding away) starts its
+  // animations from nothing, so each is set to this clock and the rocket carries on from where
+  // it was instead of jumping back to its pad.
+  const svg = useRef<SVGSVGElement>(null);
+  const clock = useRef({ ran: 0, since: 0, moving: true, started: false });
+  useEffect(() => {
+    const c = clock.current, now = performance.now();
+    if (c.started && c.moving && !sceneOn) c.ran += now - c.since;
+    c.since = now;
+    c.moving = sceneOn;
+  }, [sceneOn]);
+  useLayoutEffect(() => {
+    const c = clock.current;
+    if (!scene || !svg.current || typeof svg.current.getAnimations !== "function") return;
+    if (!c.started) { c.started = true; c.since = performance.now(); return; }
+    const t = c.ran + (c.moving ? performance.now() - c.since : 0);
+    for (const a of svg.current.getAnimations({ subtree: true })) {
+      if ((a as CSSAnimation).animationName?.startsWith("fv-")) a.currentTime = t;
+    }
+    // Also when the scene wakes from a rest: its animations were taken away and begin again.
+  }, [scene, sceneOn]);
 
   // After the page is in place: the page's own reference (the parent's ref) is only attached
   // once its children's layout effects have run.
@@ -118,6 +176,23 @@ export function TrailPath({ root, faint = false }: { root: RefObject<HTMLDivElem
         pts.push({ x: pts[pts.length - 1].x, y: mid.y });
         pts.push(at(sb, fromRight ? 1 : 0, 0.5));
         setShape({ w: W, h: H, trail: smoothPath(pts, margin, W - margin), ridges, rim, cap: poly(CAP) });
+
+        // The scene, for this layout. Whole pixels in the key: a sub-pixel wobble is not a new layout.
+        const col = summit.getBoundingClientRect();
+        const beside = summit.nextElementSibling?.getBoundingClientRect();
+        const rect = (r: DOMRect) => ({ x: r.left - box.left, y: r.top - box.top, w: r.width, h: r.height });
+        const key = [W, foot, peak.x, peak.y, col.top - box.top, col.width, beside?.width ?? 0].map(Math.round).join(",");
+        if (key !== sceneKey.current) {
+          sceneKey.current = key;
+          sceneApi.current = {
+            W, H: foot, phone: W < 640, s: ky, kx, ky,
+            place: (gx, gy) => place([gx, gy]), ridgeY,
+            gxMin: SUMMIT.x + (0 - peak.x) / kx, gxMax: SUMMIT.x + (W - peak.x) / kx,
+            trailBand: [590, 830], peak, climb: [...CLIMB, CAP_BASE].map(place),
+            column: rect(col), mock: beside && beside.width > 0 ? rect(beside) : null,
+          };
+          if (draw.current) setScene(draw.current(sceneApi.current));
+        }
       });
     };
     measure();
@@ -138,25 +213,36 @@ export function TrailPath({ root, faint = false }: { root: RefObject<HTMLDivElem
   if (!shape) return null;
   return (
     <svg
+      ref={svg}
       aria-hidden="true"
-      className="trail-path absolute left-0 top-0 pointer-events-none"
+      className={`trail-path absolute left-0 top-0 pointer-events-none${sceneOn ? "" : " fv-resting"}`}
       width={shape.w}
       height={shape.h}
       viewBox={`0 0 ${shape.w} ${shape.h}`}
       style={{ zIndex: 1 }}
     >
+      {scene?.css && <style>{scene.css}</style>}
+      {/* The scene's layers go between the ridges, back to front: sky, then what stands on each ridge. */}
       <g opacity={faint ? 0.75 : 1}>
+        <SceneLayer markup={scene?.sky} />
         {shape.ridges.map((points, i) => (
           <g key={i}>
             <polygon points={points} fill={RIDGES[i].fill} fillOpacity={RIDGES[i].opacity} />
             {/* The summit's ridge catches the light along its top edge, so its slopes read against the sky. */}
             {RIDGES[i].rim && <polyline points={shape.rim} fill="none" stroke="rgba(196,187,255,0.28)" strokeWidth={1.5} strokeLinejoin="round" />}
+            {RIDGES[i].rim && <polygon points={shape.cap} fill="#fbbf24" fillOpacity={0.6} />}
+            <SceneLayer markup={[scene?.far, scene?.mid, scene?.near][i]} />
           </g>
         ))}
-        <polygon points={shape.cap} fill="#fbbf24" fillOpacity={0.6} />
       </g>
       <path d={shape.trail} fill="none" stroke="rgba(251,191,36,0.10)" strokeWidth={14} strokeLinecap="round" strokeLinejoin="round" />
       <path className="trail-steps" d={shape.trail} fill="none" stroke="#fbbf24" strokeOpacity={0.7} strokeWidth={3} strokeLinecap="round" strokeDasharray="0.1 11" />
+      <SceneLayer markup={scene?.top} />
     </svg>
   );
+}
+
+/** One depth of the scene: markup our own drawing code made (no visitor's text is in it). */
+function SceneLayer({ markup }: { markup?: string }) {
+  return markup ? <g dangerouslySetInnerHTML={{ __html: markup }} /> : null;
 }
