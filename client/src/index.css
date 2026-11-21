@@ -1,12 +1,17 @@
 @import "tailwindcss";
 
-/* ── Design tokens ── */
+/* ── Design tokens ──
+   The accent colours here are the brand's indigo and amber (BRAND in theme.ts) as
+   computed by accentVars() for each mode, so the very first paint is already
+   in brand colours. theme.ts sets the same values (and any other theme) once
+   the app starts. If BRAND changes, recompute and update all three blocks. */
 :root {
-  --font-sans: "Sarabun", system-ui, -apple-system, "Segoe UI", "Noto Sans Thai", sans-serif;
+  --accent-2: #ae8419;
+  --font-sans: "IBM Plex Sans Thai Looped", system-ui, -apple-system, "Segoe UI", "Noto Sans Thai", "Thonburi", sans-serif;
   --bg-base: #f8f7fc;
   --bg-surface: #ffffff;
   --bg-surface-hover: #f3f1f9;
-  --bg-accent: #ede9fe;
+  --bg-accent: #edebfb;
   --border: #e5e2ee;
   --border-light: #efedf5;
   --text-primary: #1a1625;
@@ -14,12 +19,18 @@
   --text-tertiary: #8f8a9d;
   --text-inverse: #ffffff;
   --accent: #6d5cdf;
-  --accent-hover: #5a48cc;
-  --accent-light: #ede9fe;
-  --accent-text: #6d5cdf;
+  --accent-hover: #6051c4;
+  --accent-light: #edebfb;
+  --accent-text: #6455ce;
   --success: #10b981;
   --success-bg: #ecfdf5;
   --warning: #f59e0b;
+  --amber-text: #b45309; /* e-Testing text: 5.0:1 on white */
+  --mark-class: #a16207; /* calendar: a class (yellow), 4.9:1 on white */
+  --mark-exam: #be123c; /* calendar: an exam, a final (circled) or a booked e-Test (rose: "attention", not the error red), 6.3:1 on white */
+  --mark-study: #0f766e; /* calendar: a study-plan task (teal), 5.5:1 on white */
+  --mark-window: var(--text-tertiary); /* calendar: a day she could e-Test (grey, faded) */
+  --mark-window-opacity: 0.7;
   --warning-bg: #fffbeb;
   --danger: #ef4444;
   --danger-bg: #fef2f2;
@@ -37,20 +48,27 @@
     --bg-base: #0f0e17;
     --bg-surface: #1a1929;
     --bg-surface-hover: #252436;
-    --bg-accent: #1f1d3a;
+    --bg-accent: #2f2a57;
     --border: #2a2840;
     --border-light: #211f38;
     --text-primary: #eae8f4;
     --text-secondary: #a09bb0;
     --text-tertiary: #6d6880;
     --text-inverse: #0f0e17;
-    --accent: #8b7ff0;
-    --accent-hover: #a096f5;
-    --accent-light: #1f1d3a;
-    --accent-text: #a096f5;
+    --accent: #6d5cdf;
+    --accent-hover: #7f70e3;
+    --accent-light: #2f2a57;
+    --accent-text: #9a8ee9;
+    --accent-2: #fbbf24;
     --success: #34d399;
     --success-bg: #0d2818;
     --warning: #fbbf24;
+    --amber-text: #fbbf24;
+    --mark-class: #facc15;
+    --mark-exam: #fb7185;
+    --mark-study: #2dd4bf;
+    --mark-window: #e7e5e4; /* off-white: grey was hard to read on dark */
+    --mark-window-opacity: 1;
     --warning-bg: #271d08;
     --danger: #f87171;
     --danger-bg: #2a1010;
@@ -64,20 +82,27 @@
   --bg-base: #0f0e17;
   --bg-surface: #1a1929;
   --bg-surface-hover: #252436;
-  --bg-accent: #1f1d3a;
+  --bg-accent: #2f2a57;
   --border: #2a2840;
   --border-light: #211f38;
   --text-primary: #eae8f4;
   --text-secondary: #a09bb0;
   --text-tertiary: #6d6880;
   --text-inverse: #0f0e17;
-  --accent: #8b7ff0;
-  --accent-hover: #a096f5;
-  --accent-light: #1f1d3a;
-  --accent-text: #a096f5;
+  --accent: #6d5cdf;
+  --accent-hover: #7f70e3;
+  --accent-light: #2f2a57;
+  --accent-text: #9a8ee9;
+  --accent-2: #fbbf24;
   --success: #34d399;
   --success-bg: #0d2818;
   --warning: #fbbf24;
+  --amber-text: #fbbf24;
+  --mark-class: #facc15;
+  --mark-exam: #fb7185;
+  --mark-study: #2dd4bf;
+  --mark-window: #e7e5e4;
+  --mark-window-opacity: 1;
   --warning-bg: #271d08;
   --danger: #f87171;
   --danger-bg: #2a1010;
@@ -160,3 +185,159 @@ input {
 .animate-slide-up {
   animation: slideUp 350ms ease-out both;
 }
+
+/* A control that has to stay visually small (a colour dot, a tick box, an × on
+   a photo) still gets a 44px touch area around it. */
+.tap-area:not(.absolute) { position: relative; }
+.tap-area::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100%, 44px);
+  height: max(100%, 44px);
+  transform: translate(-50%, -50%);
+}
+
+/* Honour the device's "reduce motion" setting: no fades, slides or drifting shapes. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Layout by device ──
+   The shell sets data-layout="phone" | "rail" | "sidebar" (see useLayout in App.tsx). */
+
+/* The hour grid's own scroll area: most of a tall screen, nearly all of a short one. */
+.timegrid-scroll { max-height: 60dvh; }
+@media (max-height: 500px) {
+  .timegrid-scroll { max-height: calc(100dvh - 4.5rem); }
+}
+
+@media (min-width: 1200px) {
+  /* Today: calendar on the left, to-dos and the day's lists beside it. */
+  [data-layout="sidebar"] .today-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+    grid-template-rows: auto auto 1fr;
+    column-gap: 1.25rem;
+    row-gap: 1rem;
+    align-items: start;
+  }
+  [data-layout="sidebar"] .today-grid > * { margin-top: 0; }
+  [data-layout="sidebar"] .today-head { grid-column: 1 / -1; }
+  [data-layout="sidebar"] .today-cal { grid-column: 1; grid-row: 2 / span 2; }
+  [data-layout="sidebar"] .today-top { grid-column: 2; grid-row: 2; }
+  [data-layout="sidebar"] .today-rest { grid-column: 2; grid-row: 3; }
+  [data-layout="sidebar"] .today-cal .timegrid-scroll { max-height: calc(100dvh - 19rem); }
+
+  /* A list of cards becomes two columns instead of one very wide one. */
+  [data-layout="sidebar"] .wide-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem 1rem;
+    align-items: start;
+  }
+  [data-layout="sidebar"] .wide-grid > * { margin-top: 0; }
+  [data-layout="sidebar"] .wide-grid > .span-all { grid-column: 1 / -1; }
+  [data-layout="sidebar"] .wide-grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* ── Printing a note (Notes → Print / PDF) ──
+   Only the note is printed: no menus, no buttons, black on white whatever the theme. */
+@media print {
+  aside, header, nav, .no-print, [role="status"], [role="alert"] { display: none !important; }
+  html, body, #root, [data-layout], main { background: #fff !important; }
+  [data-layout] > div { margin-left: 0 !important; }
+  main { max-width: none !important; padding: 0 !important; }
+  .print-area, .print-area * {
+    color: #000 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+  .print-area .rounded-2xl { border-color: #bbb !important; break-inside: avoid; }
+  .print-area img { max-width: 100%; break-inside: avoid; }
+  .animate-fade-in, .animate-slide-up { animation: none !important; opacity: 1 !important; transform: none !important; }
+}
+
+/* Hints that only make sense with a mouse (drag a file here, paste an image). */
+.pointer-fine-only { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  .pointer-fine-only { display: block; }
+}
+
+/* The app has its own pull-to-refresh (it reloads the screen's data and keeps
+   drafts); stop the browser's, which would reload the whole page on top of it. */
+html { overscroll-behavior-y: contain; }
+
+/* ── On-screen keyboard (see useKeyboardInset in App.tsx) ──
+   Lift bottom sheets and dialogs above the keyboard, and keep them no taller
+   than the space that is left, so their fields and buttons stay reachable. */
+:has(> [role="dialog"]),
+:has(> [role="alertdialog"]) {
+  padding-bottom: var(--keyboard-inset, 0px);
+}
+html.keyboard-open [role="dialog"],
+html.keyboard-open [role="alertdialog"] {
+  max-height: calc(100dvh - var(--keyboard-inset, 0px) - 0.5rem) !important;
+  overflow-y: auto;
+}
+
+/* The tabs of a section scroll sideways on a narrow phone, without a scrollbar. */
+.section-tabs { scrollbar-width: none; }
+.section-tabs::-webkit-scrollbar { display: none; }
+
+.lecture-highlight,
+.lecture-source-text::selection,
+.lecture-source-text ::selection {
+  background-color: #fff2a8;
+  color: #302710;
+}
+
+/* A row you tick in a list of courses (choosing this term's courses, marking passed ones).
+   Rows sit apart with a thin outline each, and a ticked row is outlined in the accent colour.
+   Before, a ticked row was only a filled block: several in a row ran together into one. */
+.pick-list > li + li {
+  margin-top: 0.375rem;
+}
+.pick-row {
+  width: 100%;
+  min-height: 2.75rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.4375rem 0.625rem;
+  text-align: left;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: transparent;
+}
+.pick-row[aria-checked="true"] {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent-light) 40%, transparent);
+}
+
+/* The front page's trail (components/Trail.tsx): its dots creep slowly up towards the sign-in
+   card. Still for anyone who asks for less motion. */
+.trail-path .trail-steps { animation: trail-climb 2.4s linear infinite; }
+@keyframes trail-climb { to { stroke-dashoffset: 11.1; } }
+@media (prefers-reduced-motion: reduce) { .trail-path .trail-steps { animation: none; } }
+/* The landing page's city (landing/futureScene.js) rests while the first screen is out of sight.
+   Its animations are taken away, not paused: a paused animation still costs Safari work on every
+   frame. Trail.tsx keeps the scene's clock and sets it again when the scene wakes. */
+.trail-path.fv-resting [class*="fv-"] { animation: none !important; }
+/* So do the friends along the trail (landing/trailFriends.js), each while it is off screen:
+   their small movements only (.tf-a), never the hop of hello. */
+.tf-friend.tf-away .tf-a { animation: none !important; }
+
+/* ── Note input bar: the big mic while it listens, and the note's text box above the keyboard ── */
+@keyframes mic-ring { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); } 100% { box-shadow: 0 0 0 22px transparent; } }
+.mic-live { animation: mic-ring 1.4s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) { .mic-live { animation: none; outline: 4px solid color-mix(in srgb, var(--accent) 40%, transparent); } }
+/* While the on-screen keyboard is up, the note's text box is never taller than the
+   space left above it, so the line being typed stays in sight (it scrolls inside). */
+html.keyboard-open .note-text:focus { max-height: calc(100dvh - var(--keyboard-inset, 0px) - 7rem); }

@@ -7,35 +7,58 @@
 import express from "express";
 import cookieParser from "cookie-parser";
 import session from "express-session";
+import { SqliteSessionStore } from "./sessionStore.js";
 import passport from "passport";
 import { join } from "node:path";
-import { env, isProd } from "./env.js";
+import { env, isProd, signInMethods } from "./env.js";
 import { openDb } from "./db.js";
-import { seedDatabase } from "./seed.js";
+import { seedDatabase, needsSeed } from "./seed.js";
 import { setupAuth, requireAuth } from "./auth.js";
+import { onlyInvited } from "./allowlist.js";
 import { scheduleDailyBackups } from "./backup.js";
+import { AI_IS_FREE } from "./ai.js";
 import { createApiRouter } from "./api.js";
+import { createAutomaticLectureNotes, createLectureNotesRouter } from "./createdLectureNotes.js";
+import { createSketchRouter } from "./sketchRoutes.js";
+import { createUploadsRouter } from "./uploads.js";
 import { createNotesRouter } from "./notes.js";
 import { createQuizRouter } from "./quiz.js";
+import { createCourseMockRouter, expireCourseMocks } from "./courseMocks.js";
+import { createLectureQuizRouter } from "./lectureQuizzes.js";
 import { createFlashcardsRouter } from "./flashcards.js";
 import { createAnalyticsRouter } from "./analytics.js";
 import { createPlannerRouter } from "./planner.js";
 import { createMockRouter } from "./mock.js";
 import { createMaterialsRouter } from "./materials.js";
 import { createStudyPlanRouter } from "./studyplan.js";
+import { createAnnotationReader, createLectureAnnotationsRouter } from "./lectureAnnotations.js";
+import { createLecturesRouter } from "./lectures.js";
+import { createRemindersRouter } from "./reminders.js";
+import { createTrailRouter, entryYearOf } from "./trailRoutes.js";
+import { createMyExamsRouter } from "./myExams.js";
+import { createEtestingRouter } from "./etestingBookings.js";
+import { createCalendarFeedRouter, serveFeed } from "./calendarFeed.js";
+import { createPushRouter, loadVapidKeys, startPushScheduler } from "./push.js";
+import { parseOldAddresses, movedMiddleware } from "./moved.js";
 
 const app = express();
 const db = openDb(env.dbPath);
 
-if ((db.prepare("SELECT COUNT(*) n FROM courses").get() as { n: number }).n === 0) {
-  seedDatabase(db);
-  console.log("[StudyOS] empty database — seeded curriculum data.");
+if (needsSeed(db)) {
+  seedDatabase(db, { reset: false });
+  console.log("[StudyOS] new database — seeded curriculum data.");
 }
+
+// In production the app sits behind the host's HTTPS proxy (Fly). Without this,
+// Express sees every request as plain HTTP, refuses to send the "secure" session
+// cookie, and nobody can stay signed in.
+if (isProd) app.set("trust proxy", 1);
 
 app.use(express.json({ limit: "50mb" }));
 app.use(cookieParser(env.sessionSecret));
 app.use(
   session({
+    store: new SqliteSessionStore(db),
     secret: env.sessionSecret,
     resave: false,
     saveUninitialized: false,
@@ -44,22 +67,39 @@ app.use(
       httpOnly: true,
       maxAge: 30 * 24 * 60 * 60 * 1000,
       sameSite: "lax",
+      // Under a sub-path, keep the cookie to this app: other apps may share the site.
+      path: env.basePath || "/",
     },
   }),
 );
 app.use(passport.initialize());
 app.use(passport.session());
+// Invite-only trial: accounts not in ALLOWED_EMAILS are signed out (allowlist.ts).
+app.use("/api", onlyInvited());
 
 // --- public routes ---
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, app: "StudyOS", phase: 20, tz: env.tz, time: new Date().toISOString() });
+  res.json({ ok: true, app: "StudyOS", phase: 78, tz: env.tz, time: new Date().toISOString() });
+});
+// A student's private calendar feed, for Google or iPhone Calendar to subscribe to (calendarFeed.ts).
+// Public: a calendar app cannot sign in; the random token in the address is the key.
+app.get("/cal/:token.ics", serveFeed(db));
+// Every answer from the API is about now: never kept by a browser or the iOS app's web view, so
+// a screen that saves and then asks again (the trail after a change to its goal) gets the new answer.
+// (Uploaded note photos and documents never change once stored, so they may be kept.)
+app.use("/api", (req, res, next) => { if (!req.path.startsWith("/uploads/")) res.set("Cache-Control", "no-store"); next(); });
+// A fresh entry point for shared lecture links. Even earlier offline workers send
+// /api/ navigations to the server. This only serves the public app shell; study
+// content is loaded through the same authenticated lecture routes as usual.
+if (isProd) app.get("/api/open/lectures", (_req, res) => {
+  res.sendFile(join(env.clientDist, "index.html"), { cacheControl: false });
 });
 app.use("/api", setupAuth(db));
 
 // --- everything else under /api needs auth ---
 app.use("/api", requireAuth);
 
-app.use("/api/uploads", express.static(env.uploadDir));
+app.use("/api/uploads", createUploadsRouter(db, env.uploadDir));
 
 app.get("/api/stats", (req, res) => {
   const userId = req.user!.id;
@@ -86,8 +126,8 @@ app.get("/api/catalog/faculties", (_req, res) => {
 app.get("/api/catalog/programs", (req, res) => {
   const facultyId = req.query.faculty_id as string | undefined;
   const rows = facultyId
-    ? db.prepare("SELECT id, faculty_id, code, name_th, name_en, degree, total_credits FROM programs WHERE faculty_id = ? ORDER BY name_th").all(facultyId)
-    : db.prepare("SELECT id, faculty_id, code, name_th, name_en, degree, total_credits FROM programs ORDER BY name_th").all();
+    ? db.prepare("SELECT id, faculty_id, code, name_th, name_en, degree, total_credits FROM programs WHERE faculty_id = ? ORDER BY rowid").all(facultyId)
+    : db.prepare("SELECT id, faculty_id, code, name_th, name_en, degree, total_credits FROM programs ORDER BY rowid").all();
   res.json(rows);
 });
 
@@ -150,15 +190,23 @@ app.get("/api/profile", (req, res) => {
 
 app.put("/api/profile", (req, res) => {
   const userId = req.user!.id;
-  const { faculty_id, program_id, entry_year, entry_term, target_years } = req.body as {
+  const { university_id, faculty_id, program_id, entry_year, entry_term, target_years } = req.body as {
+    university_id?: string;
     faculty_id?: string;
     program_id?: string;
     entry_year?: string;
     entry_term?: string;
     target_years?: number;
   };
+  // university_id is a short slug from the client's university list.
+  if (university_id !== undefined && !/^[a-z]{2,12}$/.test(university_id)) {
+    return res.status(400).json({ error: "Invalid university_id" });
+  }
+  // Kept as two digits ("69") however it was typed ("2569", "69"); unreadable is not stored.
+  const entry = entry_year === undefined || entry_year === "" ? null : entryYearOf(entry_year);
   db.prepare(
     `UPDATE user_profiles SET
+       university_id = COALESCE(?, university_id),
        faculty_id = COALESCE(?, faculty_id),
        program_id = COALESCE(?, program_id),
        entry_year = COALESCE(?, entry_year),
@@ -166,19 +214,42 @@ app.put("/api/profile", (req, res) => {
        target_years = COALESCE(?, target_years),
        onboarded = 1
      WHERE user_id = ?`,
-  ).run(faculty_id ?? null, program_id ?? null, entry_year ?? null, entry_term ?? null, target_years ?? null, userId);
+  ).run(university_id ?? null, faculty_id ?? null, program_id ?? null, entry, entry_term ?? null, target_years ?? null, userId);
   res.json({ ok: true });
 });
 
 app.use("/api", createApiRouter(db));
-app.use("/api", createNotesRouter(db));
+const combinedNotes = createAutomaticLectureNotes(db);
+const sketches = createSketchRouter(db, undefined, undefined, combinedNotes.changed);
+app.use("/api", createNotesRouter(db, combinedNotes.changed, sketches.startLecturePages));
+app.use("/api", createLectureNotesRouter(db, undefined, combinedNotes));
+app.use("/api", sketches);
 app.use("/api", createQuizRouter(db));
+app.use("/api/lecture-quizzes", createLectureQuizRouter(db));
+app.use("/api/course-mocks", createCourseMockRouter(db));
+setInterval(() => {
+  try { expireCourseMocks(db); }
+  catch (error) { console.error("Could not finalize expired course mocks", error); }
+}, 30000).unref();
 app.use("/api", createFlashcardsRouter(db));
 app.use("/api", createAnalyticsRouter(db));
 app.use("/api", createPlannerRouter(db));
 app.use("/api", createMockRouter(db));
 app.use("/api", createMaterialsRouter(db));
 app.use("/api", createStudyPlanRouter(db));
+const readAnnotation = createAnnotationReader(db);
+app.use("/api", createLecturesRouter(db, readAnnotation, combinedNotes.changed, sketches.lectureReading));
+app.use("/api", createLectureAnnotationsRouter(db, undefined, readAnnotation, combinedNotes.changed));
+app.use("/api", createRemindersRouter(db));
+app.use("/api", createTrailRouter(db));
+app.use("/api", createEtestingRouter(db));
+app.use("/api", createCalendarFeedRouter(db));
+app.use("/api", createMyExamsRouter(db));
+
+// Notifications when the app is closed: routes for devices, and the half-minute check for due items.
+const vapidKeys = loadVapidKeys(db);
+app.use("/api", createPushRouter(db, vapidKeys));
+startPushScheduler(db, vapidKeys);
 
 // --- subscription ---
 app.get("/api/subscription", (req, res) => {
@@ -187,7 +258,8 @@ app.get("/api/subscription", (req, res) => {
     "SELECT * FROM subscriptions WHERE user_id = ? AND status = 'active' AND expires_at > datetime('now') ORDER BY expires_at DESC LIMIT 1",
   ).get(userId) as any;
   const user = db.prepare("SELECT plan FROM users WHERE id = ?").get(userId) as { plan: string };
-  res.json({ plan: user.plan, subscription: sub ?? null, isPremium: user.plan === "premium" || !!sub });
+  // While AI is free (ai.ts AI_IS_FREE) everyone counts as Premium, so no paywall shows.
+  res.json({ plan: user.plan, subscription: sub ?? null, isPremium: AI_IS_FREE || user.plan === "premium" || !!sub });
 });
 
 app.post("/api/subscription/activate", (req, res) => {
@@ -215,6 +287,14 @@ app.get("/api/ai/usage", (req, res) => {
 
 // --- production: serve the built client + SPA fallback ---
 if (isProd) {
+  // "Share → StudyOS" is normally taken by the service worker (client/public/share-sw.js).
+  // If it is not running yet, open the app instead of answering 404; the shared
+  // content is not read or stored here.
+  app.post("/share", (_req, res) => res.redirect(303, `${env.basePath}/`));
+  app.get(["/sw.js", "/registerSW.js"], (_req, res, next) => {
+    res.set("Cache-Control", "no-store");
+    next();
+  });
   app.use(express.static(env.clientDist));
   app.use((req, res) => {
     if (req.method === "GET" && !req.path.startsWith("/api")) {
@@ -225,8 +305,32 @@ if (isProd) {
   });
 }
 
-app.listen(env.port, () => {
-  console.log(`[StudyOS] server listening on http://localhost:${env.port} (${env.nodeEnv})`);
-});
+// Under a sub-path (BASE_PATH=/termtrail) the whole app is mounted there: every route
+// above keeps its own address, and anything outside the sub-path is "not found".
+// In front of it: a request that still arrives at an old address of the site (MOVED_FROM)
+// is sent on to the new one.
+const oldAddresses = parseOldAddresses(env.movedFrom);
+const wrapped = !!env.basePath || oldAddresses.length > 0;
+const site = wrapped ? express() : app;
+if (wrapped) {
+  if (isProd) site.set("trust proxy", 1);
+  if (oldAddresses.length > 0) site.use(movedMiddleware(oldAddresses, env.appUrl));
+  site.use(env.basePath || "/", app);
+}
+const onListening = () => {
+  console.log(`[StudyOS] server listening on http://${env.host ?? "localhost"}:${env.port}${env.basePath} (${env.nodeEnv})`);
+  if (isProd) {
+    const methods = signInMethods(env);
+    if (methods.devLogin && methods.needsCode) {
+      console.warn("[StudyOS] Trial sign-in is on: anyone holding DEV_LOGIN_CODE can sign in as any email address. Configure Google sign-in before real students use this.");
+    } else if (methods.devLogin) {
+      console.warn("[StudyOS] WARNING: ALLOW_DEV_LOGIN is on in production with no DEV_LOGIN_CODE. Anyone can sign in as any email address, with no password. Set DEV_LOGIN_CODE, or configure Google sign-in and remove it, before this is on the internet.");
+    } else if (!methods.google) {
+      console.warn("[StudyOS] WARNING: no way to sign in is configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET (see docs/DEPLOY.md).");
+    }
+  }
+};
+if (env.host) site.listen(env.port, env.host, onListening);
+else site.listen(env.port, onListening);
 
 if (isProd) scheduleDailyBackups(db, env.dbPath);

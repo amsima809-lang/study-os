@@ -14,21 +14,73 @@ import {
   type ApiError,
 } from "../api.ts";
 import { useSubscription, handleSubscriptionError } from "../components/SubscriptionGate.tsx";
-import { Card, ErrorBox, Loading } from "../components/ui.tsx";
+import { AddButton, Card, ConfirmDialog, ErrorBox, Loading } from "../components/ui.tsx";
+import { CourseChip } from "../components/CourseTitle.tsx";
+import { hasPendingUpload, takePendingUpload } from "../shareIntake.ts";
+import { BASE } from "../base.ts";
+import { readLectureLink } from "../lectureLink.ts";
 
-type View = "list" | "detail" | "pages";
+import { AnnotationSearch } from "../components/AnnotationSearch.tsx";
+import { SavedLecture, LectureShortcuts, loadLectureCourses, loadLectureList, type OpenLecture, type LectureCourse, type UnrecordedCourse } from "../components/SavedLecture.tsx";
+
+type View = "list" | "detail" | "pages" | "transcript";
 
 export default function Library() {
+  const [target, setTarget] = useState(readLectureLink);
+  if (target && target !== "1") {
+    return <LinkedLecture target={target} onBack={() => setTarget(null)} />;
+  }
+  return <LibraryContents />;
+}
+
+function LinkedLecture({ target, onBack }: { target: string; onBack: () => void }) {
+  const { t } = useT();
+  const [which, setWhich] = useState<OpenLecture | null>(null);
+  const [status, setStatus] = useState<"loading" | "missing" | "failed">("loading");
+  const [retry, setRetry] = useState(0);
+  useEffect(() => {
+    let active = true;
+    setStatus("loading");
+    loadLectureCourses().then(courses => {
+      if (!active) return;
+      const [session, at] = target.split("@");
+      const code = session.split("-")[0];
+      const lecture = courses.find(c => c.code === code)?.lectures.find(l => `${code}-${l.no}` === session);
+      if (at !== undefined && lecture?.transcript) {
+        setWhich({ code, lecture, tab: "transcript", atMs: Number(at) });
+      } else if (at === undefined && lecture?.has_summary) {
+        setWhich({ code, lecture, tab: "notes" });
+      } else {
+        setStatus("missing");
+      }
+    }).catch(() => { if (active) setStatus("failed"); });
+    return () => { active = false; };
+  }, [target, retry]);
+
+  return <div className="space-y-3">
+    <button onClick={onBack} className="text-sm min-h-11" style={{ color: "var(--accent-text)" }}>
+      ← {t("lib.lectures")}
+    </button>
+    {which ? <SavedLecture which={which} onDeleted={onBack} />
+      : status === "loading" ? <Loading>{t("status.connecting")}</Loading>
+      : status === "missing" ? <ErrorBox>{t(target.includes("@") ? "lib.transcriptMissing" : "lec.summaryUnavailable")}</ErrorBox>
+      : <ErrorBox onRetry={() => setRetry(n => n + 1)}>{t("lib.loadFailed")}</ErrorBox>}
+  </div>;
+}
+
+function LibraryContents() {
   const { t } = useT();
   const [view, setView] = useState<View>("list");
   const [materials, setMaterials] = useState<Material[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [selected, setSelected] = useState<Material | null>(null);
+  const [transcript, setTranscript] = useState<OpenLecture | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
     try {
+      setError("");
       setLoading(true);
       const [m, c] = await Promise.all([
         getJSON<{ materials: Material[] }>("/api/materials"),
@@ -37,7 +89,7 @@ export default function Library() {
       setMaterials(m.materials);
       setCourses(c.courses);
     } catch {
-      setError("โหลดข้อมูลไม่สำเร็จ");
+      setError(t("lib.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -52,13 +104,17 @@ export default function Library() {
       {view !== "list" && (
         <button
           onClick={() => { setView("list"); setSelected(null); }}
-          className="text-sm"
+          className="text-sm min-h-11"
           style={{ color: "var(--accent-text)" }}
         >
           ← {t("lib.title")}
         </button>
       )}
 
+      {view === "list" && <LectureLinks initialCourse={transcript?.code} onRead={(tr) => { setTranscript(tr); setView("transcript"); }} />}
+      {view === "transcript" && transcript && (
+        <SavedLecture which={transcript} onDeleted={() => { setView("list"); setTranscript(null); }} />
+      )}
       {view === "list" && (
         <MaterialList
           materials={materials}
@@ -83,6 +139,244 @@ export default function Library() {
   );
 }
 
+/**
+ * The university's recorded lectures for the student's courses.
+ * - "Watch" opens the lecture on the RU site (the student signs in there).
+ * - A student can import their own transcripts: the collector script
+ *   (/collector/ru-vod.js) runs on the RU site in their signed-in browser and
+ *   saves a .json file, which is imported here. See docs/LECTURE_TRANSCRIPTS_PLAN.md.
+ */
+export function LectureLinks({ onRead, initialCourse }: { onRead: (t: OpenLecture) => void; initialCourse?: string }) {
+  const { t, lang } = useT();
+  const [courses, setCourses] = useState<LectureCourse[]>([]);
+  const [unrecorded, setUnrecorded] = useState<UnrecordedCourse[]>([]);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [open, setOpen] = useState<string | null>(initialCourse ?? null);
+  const [showOthers, setShowOthers] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const [showHelp, setShowHelp] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const bookmarkRef = useRef<HTMLAnchorElement>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const result = await loadLectureList();
+      setCourses(result.courses);
+      setUnrecorded(result.unrecorded);
+      setLoadFailed(false);
+    } catch {
+      setLoadFailed(true);
+    }
+  }, []);
+  useEffect(() => {
+    void load();
+  }, [load]);
+  // A course opened from elsewhere (back from a lecture, a link, an import) that sits in
+  // "Other subjects" opens that group too, once.
+  useEffect(() => {
+    if (open !== null && courses.some((c) => c.code === open && !c.mine)) setShowOthers(true);
+  }, [open, courses]);
+
+  // React refuses javascript: links in JSX, so the bookmark's address is set here.
+  useEffect(() => {
+    const src = `${window.location.origin}${BASE}/collector/ru-vod.js`;
+    bookmarkRef.current?.setAttribute(
+      "href",
+      `javascript:(function(){var s=document.createElement('script');s.src='${src}?'+Date.now();document.body.appendChild(s)})()`,
+    );
+  }, [showHelp]);
+
+  async function importFile(file: File) {
+    setBusy(true);
+    setMessage(null);
+    try {
+      const bundle = JSON.parse(await file.text());
+      const r = await postJSON<{ courses: string[]; saved: number }>("/api/lectures/transcripts/import", bundle);
+      setMessage({ ok: true, text: t("lib.importDone", { n: r.saved, course: r.courses.join(", ") }) });
+      setOpen(r.courses[0] ?? null);
+      await load();
+    } catch (e) {
+      setMessage({ ok: false, text: (e as ApiError)?.error ?? t("lib.importBad") });
+    } finally {
+      setBusy(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  if (courses.length === 0 && unrecorded.length === 0 && !loadFailed) return null;
+  // Her own courses for the term first; the rest (trial access shows every recorded subject) fold
+  // away under "Other subjects". With no courses chosen yet, the list stays as one.
+  const mine = courses.filter((c) => c.mine);
+  const grouped = mine.length > 0 || unrecorded.length > 0;
+  const others = grouped ? courses.filter((c) => !c.mine) : courses;
+  const othersOpen = !grouped || showOthers;
+  const courseItem = (c: LectureCourse) => {
+    const isOpen = open === c.code;
+    const saved = c.lectures.filter((l) => l.transcript).length;
+    const summaries = c.lectures.filter((l) => l.has_summary).length;
+    return (
+      <li key={c.code} className="rounded-xl border" style={{ borderColor: "var(--border-light)" }}>
+        <button
+          onClick={() => setOpen(isOpen ? null : c.code)}
+          aria-expanded={isOpen}
+          className="w-full flex items-center gap-2 px-3 py-3 text-left min-h-11"
+        >
+          <span className="flex-1 min-w-0">
+            <span className="block text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+              <CourseChip code={c.code} className="mr-1.5" />
+              {lang === "en" && c.name_en ? c.name_en : c.name_th}
+            </span>
+            <span className="block text-xs" style={{ color: "var(--text-tertiary)" }}>
+              {t("lib.lectureCount", { n: c.lectures.length })}
+              {summaries > 0 && ` · ${t("lib.summaryCount", { n: summaries })}`}
+              {saved > 0 && ` · ${t("lib.transcriptCount", { n: saved })}`}
+            </span>
+          </span>
+          <span aria-hidden style={{ color: "var(--text-tertiary)" }}>{isOpen ? "▾" : "▸"}</span>
+        </button>
+        {isOpen && (
+          <ul className="px-3 pb-3 space-y-1.5">
+            {c.lectures.map((l) => (
+              <li key={l.no} className="flex flex-wrap items-center gap-2">
+                <span className="basis-full sm:basis-auto sm:flex-1 min-w-0 text-sm" style={{ color: "var(--text-primary)" }}>
+                  {t("lib.lectureNo", { n: l.no })}
+                  {l.transcript && (
+                    <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+                      {" · "}{t("lib.minutes", { n: l.transcript.minutes })}
+                    </span>
+                  )}
+                </span>
+                <LectureShortcuts code={c.code} lecture={l} onOpen={onRead}/>
+                {l.transcript && (
+                  <button
+                    onClick={() => onRead({ code: c.code, lecture: l, tab: "transcript" })}
+                    aria-label={t("lec.transcript")} title={t("lec.transcript")}
+                    className="inline-flex items-center gap-1.5 rounded-lg px-3 min-h-11 min-w-11 justify-center text-sm font-medium"
+                    style={{ backgroundColor: "var(--accent-light)", color: "var(--accent-text)" }}
+                  >
+                    <Icon name="transcript" size={18}/>
+                    {/* Icon alone on a phone; icon and label from iPad width up (owner 2026-11-16). */}
+                    <span className="hidden sm:inline" aria-hidden>{t("lec.transcript")}</span>
+                  </button>
+                )}
+                <a
+                  href={l.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label={t("lib.watchExternal")} title={t("lib.watchExternal")}
+                  className="inline-flex items-center gap-1.5 rounded-lg px-3 min-h-11 min-w-11 justify-center text-sm font-medium"
+                  style={{ backgroundColor: "var(--accent-light)", color: "var(--accent-text)" }}
+                >
+                  <Icon name="watch" size={18}/>
+                  <span className="hidden sm:inline" aria-hidden>{t("lib.watch")} ↗</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
+      </li>
+    );
+  };
+
+  return (
+    <Card>
+      <h2 className="font-semibold" style={{ color: "var(--text-primary)" }}>{t("lib.lectures")}</h2>
+      {loadFailed && <ErrorBox onRetry={load}>{t("lib.loadFailed")}</ErrorBox>}
+      <p className="text-xs mt-0.5 mb-2" style={{ color: "var(--text-tertiary)" }}>{t("lib.lecturesHint")}</p>
+
+      <AnnotationSearch onOpen={(code, no, annotationId, source) => {
+        const lecture = courses.find((c) => c.code === code)?.lectures.find((l) => l.no === no);
+        if (lecture && (source === "transcript" ? lecture.transcript : lecture.has_summary)) {
+          onRead({ code, lecture, tab: source === "transcript" ? "transcript" : "notes", annotationId });
+        }
+      }}/>
+
+      {grouped && <ul className="space-y-1.5">
+        {[...mine, ...unrecorded].sort((x, y) => x.code.localeCompare(y.code)).map((c) => "lectures" in c ? courseItem(c as LectureCourse) : (
+          <li key={c.code} className="rounded-xl border px-3 py-3" style={{ borderColor: "var(--border-light)" }}>
+            <span className="block text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+              <CourseChip code={c.code} className="mr-1.5" />
+              {lang === "en" && c.name_en ? c.name_en : c.name_th}
+            </span>
+            <span className="block text-xs" style={{ color: "var(--text-tertiary)" }}>{t("lib.noRecordings")}</span>
+          </li>
+        ))}
+      </ul>}
+
+      {grouped && others.length > 0 && (
+        <button onClick={() => {
+          // Folding the group also closes a course left open inside it, so it stays folded.
+          if (othersOpen && open !== null && others.some((c) => c.code === open)) setOpen(null);
+          setShowOthers(!othersOpen);
+        }} aria-expanded={othersOpen}
+          className="mt-3 w-full flex items-center gap-2 text-left text-sm font-medium min-h-11"
+          style={{ color: "var(--text-secondary)" }}>
+          <span className="flex-1">{t("lib.otherSubjects", { n: others.length })}</span>
+          <span aria-hidden style={{ color: "var(--text-tertiary)" }}>{othersOpen ? "▾" : "▸"}</span>
+        </button>
+      )}
+      {othersOpen && others.length > 0 && <ul className="space-y-1.5">
+        {others.map(courseItem)}
+      </ul>}
+
+      {/* Import a transcript file made by the collector */}
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".json,application/json"
+          className="hidden"
+          onChange={(e) => e.target.files?.[0] && importFile(e.target.files[0])}
+        />
+        <button
+          onClick={() => fileRef.current?.click()}
+          disabled={busy}
+          className="rounded-lg border px-3 min-h-11 text-sm font-medium disabled:opacity-50"
+          style={{ borderColor: "var(--border)", color: "var(--text-primary)" }}
+        >
+          {busy ? t("lib.importing") : t("lib.importTranscripts")}
+        </button>
+        <button
+          onClick={() => setShowHelp((v) => !v)}
+          aria-expanded={showHelp}
+          className="text-sm min-h-11 px-1"
+          style={{ color: "var(--accent-text)" }}
+        >
+          {t("lib.howToGet")}
+        </button>
+      </div>
+      {message && (
+        <p role="status" className="text-sm mt-2" style={{ color: message.ok ? "var(--success)" : "var(--danger)" }}>
+          {message.text}
+        </p>
+      )}
+      {showHelp && (
+        <div className="mt-2 rounded-xl p-3 text-sm space-y-2" style={{ backgroundColor: "var(--bg-base)", color: "var(--text-secondary)" }}>
+          <p>{t("lib.help.intro")}</p>
+          <ol className="list-decimal pl-5 space-y-1">
+            <li>
+              {t("lib.help.step1")}{" "}
+              <a
+                ref={bookmarkRef}
+                onClick={(e) => e.preventDefault()}
+                className="inline-block rounded-lg px-2 py-1 font-medium cursor-grab"
+                style={{ backgroundColor: "var(--accent-light)", color: "var(--accent-text)" }}
+              >
+                {t("app.name")}: {t("lib.help.bookmark")}
+              </a>
+            </li>
+            <li>{t("lib.help.step2")}</li>
+            <li>{t("lib.help.step3")}</li>
+            <li>{t("lib.help.step4")}</li>
+          </ol>
+          <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{t("lib.help.privacy")}</p>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 function MaterialList({
   materials, courses, error, onSelect, onReload,
 }: {
@@ -93,31 +387,26 @@ function MaterialList({
   onReload: () => void;
 }) {
   const { t } = useT();
-  const [showUpload, setShowUpload] = useState(false);
+  // Opens on the upload form when a document was just shared into the app.
+  const [showUpload, setShowUpload] = useState(hasPendingUpload);
 
   return (
     <>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{t("lib.title")}</h1>
-        <button
-          onClick={() => setShowUpload(!showUpload)}
-          className="w-10 h-10 rounded-full text-xl flex items-center justify-center"
-          style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
-        >
-          +
-        </button>
+        <AddButton label={t("lib.upload")} expanded={showUpload} onClick={() => { setShowUpload(!showUpload); window.scrollTo({ top: 0, behavior: "smooth" }); /* the form opens at the top */ }} />
       </div>
 
-      {error && <ErrorBox>{error}</ErrorBox>}
+      {error && <ErrorBox onRetry={onReload}>{error}</ErrorBox>}
       {showUpload && <UploadForm courses={courses} onDone={() => { setShowUpload(false); onReload(); }} />}
 
       {materials.length === 0 ? (
         <p className="text-sm text-center py-8" style={{ color: "var(--text-tertiary)" }}>{t("lib.empty")}</p>
       ) : (
-        <ul className="space-y-2">
+        <ul className="wide-grid space-y-2">
           {materials.map((m) => (
             <li key={m.id}>
-              <button onClick={() => onSelect(m)} className="w-full text-left">
+              <button onClick={() => onSelect(m)} className="w-full text-left min-h-11">
                 <Card>
                   <div className="flex items-center gap-3">
                     <Icon name={m.file_type === "pdf" ? "fileText" : m.file_type === "image" ? "image" : "edit"} size={22} style={{ color: "var(--accent-text)" }} />
@@ -152,7 +441,7 @@ function StatusBadge({ status, pagesDone, totalPages }: { status: string; pagesD
 
   return (
     <span
-      className="text-xs px-2 py-0.5 rounded-full"
+      className="text-xs font-semibold px-2 py-0.5 rounded-full"
       style={{ backgroundColor: s.bg, color: s.text }}
     >
       {status === "processing" && totalPages
@@ -170,6 +459,17 @@ function UploadForm({ courses, onDone }: { courses: Course[]; onDone: () => void
   const [err, setErr] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // A document shared from another app: put it in the file field, ready to upload.
+  const [sharedName, setSharedName] = useState("");
+  useEffect(() => {
+    const file = takePendingUpload();
+    if (!file || !fileRef.current) return;
+    const one = new DataTransfer();
+    one.items.add(file);
+    fileRef.current.files = one.files;
+    setSharedName(file.name);
+  }, []);
+
   async function handleUpload() {
     const file = fileRef.current?.files?.[0];
     if (!courseCode || !file) return;
@@ -183,7 +483,7 @@ function UploadForm({ courses, onDone }: { courses: Course[]; onDone: () => void
       await postForm<{ id: number }>("/api/materials/upload", fd);
       onDone();
     } catch (e) {
-      setErr((e as ApiError)?.error ?? "อัปโหลดไม่สำเร็จ");
+      setErr((e as ApiError)?.error ?? t("lib.uploadFailed"));
     } finally {
       setUploading(false);
     }
@@ -191,15 +491,45 @@ function UploadForm({ courses, onDone }: { courses: Course[]; onDone: () => void
 
   const selectStyle = { backgroundColor: "var(--bg-surface)", borderColor: "var(--border)", color: "var(--text-primary)" };
 
+  // On a computer: drop a file onto the form instead of using the file picker.
+  const [dragging, setDragging] = useState(false);
+  const ACCEPT = /\.(pdf|jpe?g|png|heic|heif|webp|txt)$/i;
+  function onDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (!file || !fileRef.current) return;
+    if (!ACCEPT.test(file.name)) { setErr(t("lib.uploadFailed")); return; }
+    const one = new DataTransfer();
+    one.items.add(file);
+    fileRef.current.files = one.files; // the file field now shows this file
+    setErr("");
+  }
+
   return (
+    <div
+      onDragOver={(e) => { if (Array.from(e.dataTransfer.types).includes("Files")) { e.preventDefault(); setDragging(true); } }}
+      onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragging(false); }}
+      onDrop={onDrop}
+      className="relative rounded-2xl"
+      style={dragging ? { outline: "2px dashed var(--accent-text)", outlineOffset: 2 } : undefined}
+    >
+    {dragging && (
+      <div
+        className="absolute inset-0 z-10 rounded-2xl flex items-center justify-center text-lg font-semibold pointer-events-none"
+        style={{ backgroundColor: "color-mix(in srgb, var(--accent-light) 92%, transparent)", color: "var(--accent-text)" }}
+      >
+        {t("lib.dropHere")}
+      </div>
+    )}
     <Card>
       <div className="space-y-3">
-        <h3 className="font-medium" style={{ color: "var(--text-primary)" }}>{t("lib.upload")}</h3>
+        <h3 className="font-semibold" style={{ color: "var(--text-primary)" }}>{t("lib.upload")}</h3>
         {err && <ErrorBox>{err}</ErrorBox>}
-        <select
+        <select aria-label={t("field.course")}
           value={courseCode}
           onChange={(e) => setCourseCode(e.target.value)}
-          className="w-full rounded-lg border p-2 text-sm"
+          className="w-full rounded-lg border p-2 text-sm min-h-11"
           style={selectStyle}
         >
           <option value="">{t("lib.selectCourse")}</option>
@@ -209,10 +539,10 @@ function UploadForm({ courses, onDone }: { courses: Course[]; onDone: () => void
             </option>
           ))}
         </select>
-        <select
+        <select aria-label={t("lib.pickKind")}
           value={kind}
           onChange={(e) => setKind(e.target.value)}
-          className="w-full rounded-lg border p-2 text-sm"
+          className="w-full rounded-lg border p-2 text-sm min-h-11"
           style={selectStyle}
         >
           {(["textbook", "past_exam", "notes", "other"] as const).map((k) => (
@@ -223,19 +553,22 @@ function UploadForm({ courses, onDone }: { courses: Course[]; onDone: () => void
           ref={fileRef}
           type="file"
           accept=".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp,.txt"
-          className="w-full text-sm"
+          className="w-full text-sm min-h-11"
           style={{ color: "var(--text-secondary)" }}
         />
+        {sharedName && <p role="status" className="text-sm" style={{ color: "var(--text-primary)" }}>{t("lib.sharedFile", { name: sharedName })}</p>}
+        <p className="pointer-fine-only text-xs" style={{ color: "var(--text-tertiary)" }}>{t("lib.dropHint")}</p>
         <button
           onClick={handleUpload}
           disabled={!courseCode || uploading}
-          className="w-full rounded-lg py-2 text-sm font-medium disabled:opacity-50"
-          style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
+          className="w-full rounded-lg py-2 text-sm font-medium disabled:opacity-50 min-h-11"
+          style={{ backgroundColor: "var(--accent)", color: "#fff" }}
         >
-          {uploading ? "กำลังอัปโหลด…" : t("lib.upload")}
+          {uploading ? t("lib.uploading") : t("lib.upload")}
         </button>
       </div>
     </Card>
+    </div>
   );
 }
 
@@ -274,7 +607,7 @@ function MaterialDetail({
       await postJSON(`/api/materials/${material.id}/process`, {});
       onReload();
     } catch (e) {
-      setErr((e as ApiError)?.error ?? "ผิดพลาด");
+      setErr((e as ApiError)?.error ?? t("status.failed"));
     } finally {
       setBusy("");
     }
@@ -289,20 +622,21 @@ function MaterialDetail({
     } catch (e) {
       const err2 = e as ApiError;
       if (handleSubscriptionError(err2, showPaywall)) { setBusy(""); return; }
-      setErr(err2?.error ?? "ผิดพลาด");
+      setErr(err2?.error ?? t("status.failed"));
     } finally {
       setBusy("");
     }
   }
 
+  const [confirmDelete, setConfirmDelete] = useState(false);
   async function handleDelete() {
-    if (!confirm("ลบเอกสารนี้?")) return;
+    setConfirmDelete(false);
     try {
       await deleteJSON(`/api/materials/${material.id}`);
       onReload();
       onBack();
     } catch (e) {
-      setErr((e as ApiError)?.error ?? "ลบไม่สำเร็จ");
+      setErr((e as ApiError)?.error ?? t("status.failed"));
     }
   }
 
@@ -313,7 +647,7 @@ function MaterialDetail({
       <Card>
         <h2 className="font-bold text-lg truncate" style={{ color: "var(--text-primary)" }}>{material.filename}</h2>
         <div className="flex flex-wrap gap-2 text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>
-          <span>{material.course_code}</span>
+          <CourseChip code={material.course_code} />
           <span>·</span>
           <span>{t(`lib.kind.${material.material_kind}`)}</span>
           <span>·</span>
@@ -345,8 +679,8 @@ function MaterialDetail({
           <button
             onClick={handleExtract}
             disabled={!!busy}
-            className="rounded-lg py-2 text-sm font-medium disabled:opacity-50"
-            style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
+            className="rounded-lg py-2 text-sm font-medium disabled:opacity-50 min-h-11"
+            style={{ backgroundColor: "var(--accent)", color: "#fff" }}
           >
             {busy === "extract" ? t("lib.extracting") : t("lib.extract")}
           </button>
@@ -354,7 +688,7 @@ function MaterialDetail({
         {material.upload_status === "done" && (
           <button
             onClick={onViewPages}
-            className="rounded-lg py-2 text-sm font-medium"
+            className="rounded-lg py-2 text-sm font-medium min-h-11"
             style={{ backgroundColor: "var(--bg-surface-hover)", color: "var(--text-primary)" }}
           >
             {t("lib.viewPages")}
@@ -364,15 +698,25 @@ function MaterialDetail({
           <button
             onClick={handleParseExam}
             disabled={!!busy}
-            className="rounded-lg py-2 text-sm font-medium disabled:opacity-50"
+            className="rounded-lg py-2 text-sm font-medium disabled:opacity-50 min-h-11"
             style={{ backgroundColor: "var(--warning)", color: "var(--text-inverse)" }}
           >
             {busy === "parse" ? t("lib.parsing") : t("lib.parseExam")}
           </button>
         )}
+        {confirmDelete && (
+          <ConfirmDialog
+            title={t("lib.deleteDocTitle")}
+            message={t("lib.deleteDocMsg")}
+            confirmLabel={t("confirm.delete")}
+            cancelLabel={t("nav.cancel")}
+            onConfirm={handleDelete}
+            onCancel={() => setConfirmDelete(false)}
+          />
+        )}
         <button
-          onClick={handleDelete}
-          className="rounded-lg py-2 text-sm font-medium"
+          onClick={() => setConfirmDelete(true)}
+          className="rounded-lg py-2 text-sm font-medium min-h-11"
           style={{ backgroundColor: "var(--danger-bg)", color: "var(--danger)" }}
         >
           {t("lib.delete")}
@@ -419,7 +763,7 @@ function PageViewer({ materialId, filename }: { materialId: number; filename: st
 
   return (
     <div className="space-y-3">
-      <h2 className="font-bold" style={{ color: "var(--text-primary)" }}>{filename}</h2>
+      <h2 className="font-bold text-lg truncate" style={{ color: "var(--text-primary)" }}>{filename}</h2>
       {pages.map((p) => (
         <Card key={p.page_num}>
           <div className="flex items-center justify-between mb-1">
@@ -433,7 +777,7 @@ function PageViewer({ materialId, filename }: { materialId: number; filename: st
           </div>
           {editing === p.page_num ? (
             <div className="space-y-2">
-              <textarea
+              <textarea aria-label={t("lib.pageText")}
                 value={editText}
                 onChange={(e) => setEditText(e.target.value)}
                 rows={6}
@@ -443,12 +787,12 @@ function PageViewer({ materialId, filename }: { materialId: number; filename: st
               <div className="flex gap-2">
                 <button
                   onClick={() => saveEdit(p.page_num)}
-                  className="text-sm px-3 py-1 rounded-lg"
-                  style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
+                  className="text-sm px-3 py-1 rounded-lg min-h-11"
+                  style={{ backgroundColor: "var(--accent)", color: "#fff" }}
                 >
                   {t("lib.saveText")}
                 </button>
-                <button onClick={() => setEditing(null)} className="text-sm" style={{ color: "var(--text-tertiary)" }}>
+                <button onClick={() => setEditing(null)} className="text-sm min-h-11" style={{ color: "var(--text-tertiary)" }}>
                   ยกเลิก
                 </button>
               </div>
@@ -456,11 +800,11 @@ function PageViewer({ materialId, filename }: { materialId: number; filename: st
           ) : (
             <>
               <p className="text-sm whitespace-pre-wrap line-clamp-6" style={{ color: "var(--text-secondary)" }}>
-                {p.extracted_text || "(ไม่มีข้อความ)"}
+                {p.extracted_text || t("lib.noText")}
               </p>
               <button
                 onClick={() => { setEditing(p.page_num); setEditText(p.extracted_text ?? ""); }}
-                className="text-xs mt-1"
+                className="text-xs mt-1 min-h-11"
                 style={{ color: "var(--accent-text)" }}
               >
                 {t("lib.editText")}
@@ -524,7 +868,9 @@ function ChapterManager({ courseCode, materialId }: { courseCode: string; materi
     await load();
   }
 
+  const [removing, setRemoving] = useState<{ id: number; name: string } | null>(null);
   async function deleteChapter(id: number) {
+    setRemoving(null);
     await deleteJSON(`/api/chapters/${id}`);
     await load();
   }
@@ -535,11 +881,11 @@ function ChapterManager({ courseCode, materialId }: { courseCode: string; materi
     <Card>
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="font-medium" style={{ color: "var(--text-primary)" }}>{t("chap.title")}</h3>
+          <h3 className="font-semibold" style={{ color: "var(--text-primary)" }}>{t("chap.title")}</h3>
           <button
             onClick={suggestChapters}
             disabled={!!busy}
-            className="text-xs px-2 py-1 rounded-lg disabled:opacity-50"
+            className="text-xs px-2 py-1 rounded-lg disabled:opacity-50 min-h-11"
             style={{ backgroundColor: "var(--accent-light)", color: "var(--accent-text)" }}
           >
             {busy === "suggest" ? t("chap.suggesting") : t("chap.suggest")}
@@ -554,8 +900,8 @@ function ChapterManager({ courseCode, materialId }: { courseCode: string; materi
             <button
               onClick={addSuggested}
               disabled={busy === "add"}
-              className="text-sm px-3 py-1 rounded-lg mt-1"
-              style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
+              className="text-sm px-3 py-1 rounded-lg mt-1 min-h-11"
+              style={{ backgroundColor: "var(--accent)", color: "#fff" }}
             >
               {t("chap.addAll")}
             </button>
@@ -570,26 +916,41 @@ function ChapterManager({ courseCode, materialId }: { courseCode: string; materi
           {chapters.map((ch) => (
             <li key={ch.id} className="flex items-center justify-between text-sm">
               <span style={{ color: "var(--text-primary)" }}>{ch.name}</span>
-              <button onClick={() => deleteChapter(ch.id)} className="text-xs" style={{ color: "var(--danger)" }}>
+              <button
+                onClick={() => setRemoving({ id: ch.id, name: ch.name })}
+                aria-label={`${t("confirm.delete")}: ${ch.name}`}
+                className="w-11 h-11 -mr-2 flex items-center justify-center text-lg"
+                style={{ color: "var(--danger)" }}
+              >
                 ×
               </button>
             </li>
           ))}
         </ul>
+        {removing && (
+          <ConfirmDialog
+            title={t("lib.deleteChapterTitle", { name: removing.name })}
+            message={t("confirm.cannotUndo")}
+            confirmLabel={t("confirm.delete")}
+            cancelLabel={t("nav.cancel")}
+            onConfirm={() => deleteChapter(removing.id)}
+            onCancel={() => setRemoving(null)}
+          />
+        )}
 
         <div className="flex gap-2">
           <input
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             placeholder={t("chap.name")}
-            className="flex-1 border rounded-lg px-2 py-1 text-sm"
+            className="flex-1 border rounded-lg px-2 py-1 text-sm min-h-11"
             style={{ borderColor: "var(--border)", backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}
             onKeyDown={(e) => e.key === "Enter" && addManual()}
           />
           <button
             onClick={addManual}
             disabled={!newName.trim()}
-            className="text-sm px-3 py-1 rounded-lg disabled:opacity-50"
+            className="text-sm px-3 py-1 rounded-lg disabled:opacity-50 min-h-11"
             style={{ backgroundColor: "var(--bg-surface-hover)", color: "var(--text-primary)" }}
           >
             +

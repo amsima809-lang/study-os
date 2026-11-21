@@ -1,0 +1,42 @@
+/*
+ * Colours of the campus maps (ru-huamak.svg, ru-bangna.svg), taken from the app's theme.
+ * Put a map's SVG inline (not as an <img>: an image cannot see these variables) inside an
+ * element with class "campus-map". To highlight a building, add class "is-selected" to the
+ * polygon or rect inside its group: <g id="SSB" data-code="SSB">.
+ */
+.campus-map {
+  --map-outside: var(--bg-base);
+  --map-ground: var(--bg-surface);
+  --map-road: color-mix(in srgb, var(--text-tertiary) 32%, var(--bg-base));
+  --map-building: color-mix(in srgb, var(--accent) 22%, var(--bg-surface));
+  --map-building-2: color-mix(in srgb, var(--text-tertiary) 16%, var(--bg-surface));
+  --map-line: color-mix(in srgb, var(--accent) 62%, var(--bg-surface));
+  --map-green: color-mix(in srgb, var(--success) 26%, var(--bg-surface));
+  --map-water: color-mix(in srgb, #38bdf8 30%, var(--bg-surface));
+  --map-plaza: color-mix(in srgb, var(--accent-2, var(--accent)) 38%, var(--bg-surface));
+  /* A selected building is the app's own "selected" look: the accent, with white lettering. */
+  --map-highlight: var(--accent);
+  --map-highlight-line: var(--accent-text, var(--accent));
+  --map-highlight-label: #fff;
+  --map-label: var(--text-primary);
+  --map-label-soft: var(--text-secondary);
+}
+.campus-map svg { display: block; width: 100%; height: auto; }
+
+/* "You are here": a soft disc as wide as the position is uncertain, and a dot at its centre. */
+.campus-map .me { pointer-events: none; }
+.campus-map .me-halo { fill: color-mix(in srgb, #2563eb 22%, transparent); stroke: color-mix(in srgb, #2563eb 55%, transparent); stroke-width: 2; }
+.campus-map .me-dot { fill: #2563eb; stroke: #fff; stroke-width: 4; }
+
+/* The box the map sits in (CampusMap.tsx, maps/panZoom.ts). It does not scroll by itself: one
+   finger scrolls the page, two fingers move and pinch the map, a mouse drags it. */
+.map-viewport { overflow: hidden; touch-action: pan-x pan-y; cursor: grab; -webkit-user-select: none; user-select: none; }
+.map-viewport.is-panning { cursor: grabbing; }
+.map-viewport .campus-map g[data-code] { cursor: pointer; }
+.map-viewport.is-panning .campus-map g[data-code] { cursor: grabbing; }
+
+/* The pin over a class's building (components/RoomMap.tsx), in the second accent colour (the
+   brand's amber): its tip a few pixels above the building's code, the same size on screen
+   whatever the zoom. */
+.campus-map .room-pin { position: absolute; transform: translate(-50%, calc(-100% - 4px)); pointer-events: none; filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); line-height: 0; }
+.campus-map .room-pin svg { width: 34px; height: 44px; }

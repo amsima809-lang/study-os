@@ -4,6 +4,11 @@
  */
 import { Router } from "express";
 import type { DB } from "./db.js";
+import { env } from "./env.js";
+import { itemsForToday, occurrencesInRange } from "./reminders.js";
+import { courseExams, termExamWindows } from "./termExams.js";
+import { myExams } from "./myExams.js";
+import { ETESTING_PERIODS } from "./etestingBookings.js";
 
 // ---------- date helpers (Asia/Bangkok) ----------
 const TZ = "Asia/Bangkok";
@@ -23,6 +28,19 @@ export function bangkokToday(now = new Date()): string {
 export function bangkokWeekday(now = new Date()): number {
   const short = new Intl.DateTimeFormat("en-US", { timeZone: TZ, weekday: "short" }).format(now);
   return WD_SHORT[short] ?? 1;
+}
+
+/**
+ * The next day of the week (after `weekday`, 1 = Monday .. 7 = Sunday) that has classes, and
+ * those classes. Null when there are no classes on any other day.
+ */
+export function nextClassDay<T extends { weekday: number }>(classes: T[], weekday: number): { weekday: number; classes: T[] } | null {
+  for (let i = 1; i <= 6; i++) {
+    const day = ((weekday - 1 + i) % 7) + 1;
+    const onDay = classes.filter((c) => c.weekday === day);
+    if (onDay.length > 0) return { weekday: day, classes: onDay };
+  }
+  return null;
 }
 
 /** Whole days from date-only `from` to `to` (both "YYYY-MM-DD"). */
@@ -66,7 +84,7 @@ export function setSetting(db: DB, key: string, value: string, userId?: string):
   }
 }
 
-function currentTermId(db: DB): string {
+export function currentTermId(db: DB): string {
   return getSetting(db, "current_term_id", "2/69");
 }
 
@@ -87,31 +105,46 @@ function currentTermCourses(db: DB, termId: string, userId: string): CourseRow[]
 }
 
 /**
- * Weekly + daily study-hour target per course, using the points system:
- * difficulty 3=3pts, 2=2pts, 1=1pt. weekly_target_hours / total points =
- * hours per point; a course's weekly hours = its points × hours-per-point.
+ * This week's study hours per course: what her active study plan gives each course from Monday to
+ * Sunday (owner 2026-11-15: no hidden target — this used to split an unseen, unchangeable 36 hours
+ * a week by difficulty). With no plan there is no target (null), and nothing is called behind.
  */
 export function studyTargets(db: DB, termId: string, userId: string) {
   const courses = currentTermCourses(db, termId, userId);
-  const weeklyTarget = Number(getSetting(db, "weekly_target_hours", "36", userId));
-  const totalPoints = courses.reduce((s, c) => s + c.difficulty, 0);
-  const hoursPerPoint = totalPoints > 0 ? weeklyTarget / totalPoints : 0;
-
+  const plan = db.prepare("SELECT id FROM study_plans WHERE status = 'active' AND user_id = ? ORDER BY id DESC LIMIT 1").get(userId) as { id: number } | undefined;
+  const today = bangkokToday(), weekday = bangkokWeekday();
+  const monday = addDaysISO(today, -(weekday - 1)), sunday = addDaysISO(monday, 6);
+  const minutes = new Map<string, number>();
+  if (plan) {
+    for (const r of db.prepare("SELECT course_code, SUM(minutes) AS m FROM study_tasks WHERE plan_id = ? AND date >= ? AND date <= ? GROUP BY course_code").all(plan.id, monday, sunday) as { course_code: string; m: number }[]) minutes.set(r.course_code, r.m);
+  }
+  const hours = (m: number) => Math.round((m / 60) * 10) / 10;
   return {
-    weeklyTarget,
-    totalPoints,
-    courses: courses.map((c) => {
-      const weekly = c.difficulty * hoursPerPoint;
-      return {
-        code: c.code,
-        name_th: c.name_th,
-        name_en: c.name_en,
-        difficulty: c.difficulty,
-        weeklyHours: Math.round(weekly * 10) / 10,
-        dailyHours: Math.round((weekly / 7) * 10) / 10,
-      };
-    }),
+    /** Hours her plan gives this week, or null with no plan. */
+    weeklyTarget: plan ? hours([...minutes.values()].reduce((a, b) => a + b, 0)) : null,
+    fromPlan: !!plan,
+    courses: courses.map((c) => ({
+      code: c.code, name_th: c.name_th, name_en: c.name_en, difficulty: c.difficulty,
+      weeklyHours: plan ? hours(minutes.get(c.code) ?? 0) : null,
+    })),
   };
+}
+
+/** Today's study tasks from her active plan (courses she still takes), and how many are overdue. */
+export function studyToday(db: DB, termId: string, userId: string) {
+  const plan = db.prepare("SELECT id FROM study_plans WHERE status = 'active' AND user_id = ? ORDER BY id DESC LIMIT 1").get(userId) as { id: number } | undefined;
+  if (!plan) return { hasPlan: false, tasks: [], overdue: 0 };
+  const today = bangkokToday();
+  const taking = myCoursesFilter(db, userId, termId, "st.course_code");
+  const tasks = db.prepare(
+    `SELECT st.id, st.course_code, c.name_th, c.name_en, st.task_type, st.description, st.minutes, st.done
+     FROM study_tasks st JOIN courses c ON c.code = st.course_code
+     WHERE st.plan_id = ? AND st.date = ?${taking.sql} ORDER BY st.sort_order`,
+  ).all(plan.id, today, ...taking.params) as Array<{ id: number; course_code: string; name_th: string; name_en: string | null; task_type: string; description: string; minutes: number; done: number }>;
+  // Overdue only for courses with an exam still ahead: after it, there is nothing to catch up for.
+  const ahead = myExams(db, userId, termId, today).filter((e) => e.next).map((e) => e.course_code);
+  const overdue = ahead.length === 0 ? 0 : (db.prepare(`SELECT COUNT(*) n FROM study_tasks st WHERE st.plan_id = ? AND st.done = 0 AND st.date < ? AND st.course_code IN (${ahead.map(() => "?").join(",")})`).get(plan.id, today, ...ahead) as { n: number }).n;
+  return { hasPlan: true, tasks, overdue };
 }
 
 type ClassRow = {
@@ -124,16 +157,67 @@ type ClassRow = {
   room: string | null;
 };
 
-function weekClasses(db: DB, termId: string): ClassRow[] {
+/**
+ * The timetable and exam data belong to Ramkhamhaeng only. A student who chose
+ * another university at onboarding has no catalogue yet, so they get none of it.
+ * (university_id is null for accounts created before the university step.)
+ */
+export function hasCatalog(db: DB, userId: string): boolean {
+  const row = db.prepare("SELECT university_id FROM user_profiles WHERE user_id = ?").get(userId) as
+    { university_id: string | null } | undefined;
+  return !row?.university_id || row.university_id === "ru";
+}
+
+/**
+ * SQL filter that keeps only courses in the student's own program (major).
+ * Add `sql` to a WHERE clause and append `params` to the query's parameters.
+ * Accounts with no program yet (never onboarded) are left unfiltered.
+ */
+export function programFilter(db: DB, userId: string, column: string): { sql: string; params: string[] } {
+  const row = db.prepare("SELECT program_id FROM user_profiles WHERE user_id = ?").get(userId) as
+    { program_id: string | null } | undefined;
+  if (!row?.program_id) return { sql: "", params: [] };
+  return {
+    sql: ` AND ${column} IN (SELECT course_code FROM program_courses WHERE program_id = ?)`,
+    params: [row.program_id],
+  };
+}
+
+/** The courses a student has chosen for a term (plan_items), in code order. */
+export function termCourses(db: DB, userId: string, termId: string): string[] {
+  return (
+    db
+      .prepare("SELECT DISTINCT course_code FROM plan_items WHERE user_id = ? AND term_id = ? AND course_code IS NOT NULL ORDER BY course_code")
+      .all(userId, termId) as { course_code: string }[]
+  ).map((r) => r.course_code);
+}
+
+/**
+ * SQL filter for "my courses this term": the courses the student has chosen
+ * for the term, and nothing else. Until they choose, it keeps NOTHING: showing
+ * every course of the major instead (as it once did) put some sixty classes
+ * that were not theirs on a new student's timetable, and looked broken.
+ */
+export function myCoursesFilter(db: DB, userId: string, termId: string, column: string): { sql: string; params: string[] } {
+  if (termCourses(db, userId, termId).length === 0) return { sql: " AND 0", params: [] };
+  return {
+    sql: ` AND ${column} IN (SELECT course_code FROM plan_items WHERE user_id = ? AND term_id = ? AND course_code IS NOT NULL)`,
+    params: [userId, termId],
+  };
+}
+
+export function weekClasses(db: DB, termId: string, userId: string): ClassRow[] {
+  if (!hasCatalog(db, userId)) return [];
+  const mine = myCoursesFilter(db, userId, termId, "cs.course_code");
   return db
     .prepare(
       `SELECT cs.course_code, c.name_th, c.name_en, cs.weekday, cs.start_time, cs.end_time, cs.room
        FROM class_sessions cs
        JOIN courses c ON c.code = cs.course_code
-       WHERE cs.term_id = ?
+       WHERE cs.term_id = ?${mine.sql}
        ORDER BY cs.weekday, cs.start_time`,
     )
-    .all(termId) as ClassRow[];
+    .all(termId, ...mine.params) as ClassRow[];
 }
 
 type ExamRow = {
@@ -146,16 +230,36 @@ type ExamRow = {
   location: string | null;
 };
 
-function termExams(db: DB, termId: string): ExamRow[] {
+export function termExams(db: DB, termId: string, userId: string): ExamRow[] {
+  if (!hasCatalog(db, userId)) return [];
+  const mine = myCoursesFilter(db, userId, termId, "e.course_code");
   return db
     .prepare(
       `SELECT e.course_code, c.name_th, c.name_en, e.datetime_start, e.datetime_end, e.slot, e.location
        FROM exams e
        JOIN courses c ON c.code = e.course_code
-       WHERE e.term_id = ?
+       WHERE e.term_id = ?${mine.sql}
        ORDER BY e.datetime_start`,
     )
-    .all(termId) as ExamRow[];
+    .all(termId, ...mine.params) as ExamRow[];
+}
+
+/**
+ * The student's courses this term whose exam the university does NOT schedule:
+ * the registrar prints "คณะจัดสอบเอง" (the faculty arranges it) instead of a date.
+ * They have no row in `exams`, so without this list they would look exam-free.
+ */
+export function facultyArrangedExams(db: DB, termId: string, userId: string): Array<{ course_code: string; name_th: string; name_en: string | null; note: string }> {
+  if (!hasCatalog(db, userId)) return [];
+  const mine = myCoursesFilter(db, userId, termId, "o.course_code");
+  return db
+    .prepare(
+      `SELECT o.course_code, c.name_th, c.name_en, o.exam_note AS note
+       FROM term_offerings o JOIN courses c ON c.code = o.course_code
+       WHERE o.term_id = ? AND o.exam_date IS NULL AND o.exam_note IS NOT NULL${mine.sql}
+       ORDER BY o.course_code`,
+    )
+    .all(termId, ...mine.params) as Array<{ course_code: string; name_th: string; name_en: string | null; note: string }>;
 }
 
 /**
@@ -169,21 +273,36 @@ export function findExamClashes(exams: ExamRow[]): Array<{ date: string; courses
     const date = e.datetime_start.slice(0, 10);
     (byDate.get(date) ?? byDate.set(date, []).get(date)!).push(e);
   }
-
+  // Two printed finals clash when their periods overlap; an exam with no period (a date she
+  // entered for a faculty-arranged exam) clashes by its hours, or with anything that day if it
+  // has none.
+  const hours = (e: ExamRow) => [e.datetime_start.slice(11, 16), e.datetime_end.slice(11, 16)] as const;
+  const overlaps = (a: ExamRow, b: ExamRow) => {
+    if (a.slot && b.slot) {
+      const sa = new Set(a.slot.split(",").map((s) => s.trim()));
+      return b.slot.split(",").map((s) => s.trim()).some((s) => s && sa.has(s));
+    }
+    const [a1, a2] = hours(a), [b1, b2] = hours(b);
+    return a1 < b2 && b1 < a2;
+  };
   const clashes: Array<{ date: string; courses: string[] }> = [];
   for (const [date, list] of byDate) {
     for (let i = 0; i < list.length; i++) {
       for (let j = i + 1; j < list.length; j++) {
-        const a = new Set((list[i].slot ?? "").split(",").map((s) => s.trim()));
-        const b = new Set((list[j].slot ?? "").split(",").map((s) => s.trim()));
-        const overlap = [...a].some((s) => s && b.has(s));
-        if (overlap) {
-          clashes.push({ date, courses: [list[i].course_code, list[j].course_code] });
-        }
+        if (overlaps(list[i], list[j])) clashes.push({ date, courses: [list[i].course_code, list[j].course_code] });
       }
     }
   }
   return clashes;
+}
+
+/** Her faculty-arranged exams that she has dated (myExams.ts), as exam rows for the clash check. */
+function ownExamRows(db: DB, userId: string, termId: string): ExamRow[] {
+  return myExams(db, userId, termId).filter((e) => e.own).map((e) => ({
+    course_code: e.course_code, name_th: e.name_th, name_en: e.name_en,
+    datetime_start: `${e.own!.date}T${e.own!.start ?? "00:00"}:00+07:00`, datetime_end: `${e.own!.date}T${e.own!.end ?? "23:59"}:00+07:00`,
+    slot: null, location: null,
+  }));
 }
 
 function dueFlashcardCount(db: DB, today: string, userId: string): number {
@@ -198,19 +317,25 @@ function dueFlashcardCount(db: DB, today: string, userId: string): number {
 export function createApiRouter(db: DB): Router {
   const router = Router();
 
+  // The Google Maps embed key, if the site has one (see env.googleMapsEmbedKey).
+  router.get("/maps/config", (_req, res) => {
+    res.json({ embedKey: env.googleMapsEmbedKey || null });
+  });
+
   router.get("/today", (req, res) => {
     const userId = req.user!.id;
     const term = currentTermId(db);
     const today = bangkokToday();
     const weekday = bangkokWeekday();
 
-    const todayClasses = weekClasses(db, term).filter((c) => c.weekday === weekday);
+    const allClasses = weekClasses(db, term, userId);
+    const todayClasses = allClasses.filter((c) => c.weekday === weekday);
 
-    const exams = termExams(db, term);
-    const upcoming = exams
-      .map((e) => ({ ...e, daysLeft: daysBetween(today, e.datetime_start.slice(0, 10)) }))
-      .filter((e) => e.daysLeft >= 0)
-      .sort((a, b) => a.daysLeft - b.daysLeft);
+    // Her next exam: a booked e-Test before its course's final, a faculty-arranged exam she dated (myExams.ts).
+    const upcoming = myExams(db, userId, term, today)
+      .filter((e) => e.next)
+      .map((e) => ({ ...e, next: e.next!, daysLeft: daysBetween(today, e.next!.date) }))
+      .sort((a, b) => a.daysLeft - b.daysLeft || (a.next.start ?? "").localeCompare(b.next.start ?? ""));
     const nextExam = upcoming[0] ?? null;
 
     res.json({
@@ -218,24 +343,92 @@ export function createApiRouter(db: DB): Router {
       today,
       weekday,
       classes: todayClasses,
+      // With no class today, the next day that has some: Today shows where to go next.
+      nextClasses: todayClasses.length === 0 ? nextClassDay(allClasses, weekday) : null,
       nextExam: nextExam
         ? {
             course_code: nextExam.course_code,
             name_th: nextExam.name_th,
             name_en: nextExam.name_en,
-            date: nextExam.datetime_start.slice(0, 10),
-            slot: nextExam.slot,
+            date: nextExam.next.date,
+            slot: nextExam.next.kind === "final" ? nextExam.final?.slot ?? null : null,
+            kind: nextExam.next.kind,
+            start: nextExam.next.start,
+            end: nextExam.next.end,
+            // Her seat is the one for her final: not shown for an e-Test (another centre).
+            seat: nextExam.next.kind === "etesting" ? null : nextExam.seat,
             daysLeft: nextExam.daysLeft,
           }
         : null,
       dueFlashcards: dueFlashcardCount(db, today, userId),
-      studyTargets: studyTargets(db, term, userId),
+      reminders: itemsForToday(db, userId, today),
+      // How many courses the student chose for this term (0 = not chosen: the whole program shows).
+      chosenCourses: termCourses(db, userId, term).length,
+      canChooseCourses: hasCatalog(db, userId),
+      studyToday: studyToday(db, term, userId),
     });
   });
 
-  router.get("/schedule/week", (_req, res) => {
+  // --- the student's courses for the current term ---
+  // `options` are the courses of their program that the university offers this
+  // term (the registrar's record, term_offerings), with the registrar's note on
+  // who may register; `chosen` is what they picked (empty = not chosen yet).
+  router.get("/term-courses", (req, res) => {
+    const userId = req.user!.id;
     const term = currentTermId(db);
-    res.json({ term, classes: weekClasses(db, term) });
+    if (!hasCatalog(db, userId)) return res.json({ term, chosen: [], options: [] });
+    const mine = programFilter(db, userId, "c.code");
+    const options = db
+      .prepare(
+        `SELECT c.code, c.name_th, c.name_en, COALESCE(pc.category, c.category) AS category,
+                (SELECT GROUP_CONCAT(cs.weekday || ' ' || cs.start_time || '-' || cs.end_time || '|' || COALESCE(cs.kind, ''), ';')
+                   FROM class_sessions cs WHERE cs.course_code = c.code AND cs.term_id = @term) AS classes,
+                (SELECT o.notes FROM term_offerings o WHERE o.course_code = c.code AND o.term_id = @term) AS note
+         FROM courses c
+         LEFT JOIN program_courses pc ON pc.course_code = c.code
+              AND pc.program_id = (SELECT program_id FROM user_profiles WHERE user_id = @user)
+         WHERE (EXISTS (SELECT 1 FROM term_offerings o WHERE o.course_code = c.code AND o.term_id = @term)
+             OR EXISTS (SELECT 1 FROM class_sessions cs WHERE cs.course_code = c.code AND cs.term_id = @term)
+             OR EXISTS (SELECT 1 FROM exams e WHERE e.course_code = c.code AND e.term_id = @term))
+           ${mine.sql.replace("?", "@program")}
+         ORDER BY c.code`,
+      )
+      .all({ term, user: userId, program: mine.params[0] ?? null }) as { code: string }[];
+    // Each course's final and whether it can be taken early by e-Testing, and the term's windows,
+    // so the picker can show how the exams of what she ticks fall (components/ExamFit.tsx).
+    const exams = courseExams(db, term, options.map((o) => o.code));
+    res.json({ term, chosen: termCourses(db, userId, term), options: options.map((o) => ({ ...o, ...exams[o.code] })), windows: termExamWindows(db, term) });
+  });
+
+  // Replace the student's courses for the current term. Placeholders in the plan are kept.
+  router.put("/term-courses", (req, res) => {
+    const userId = req.user!.id;
+    const term = currentTermId(db);
+    const codes = req.body?.codes;
+    if (!Array.isArray(codes) || codes.length > 40 || !codes.every((c) => typeof c === "string" && /^[A-Z]{3}\d{4}$/.test(c))) {
+      return res.status(400).json({ error: "รายการวิชาไม่ถูกต้อง", code: "BAD_COURSES" });
+    }
+    const wanted = [...new Set(codes as string[])];
+    const known = new Set(
+      (db.prepare(`SELECT code FROM courses WHERE code IN (${wanted.map(() => "?").join(",") || "''"})`).all(...wanted) as { code: string }[]).map((r) => r.code),
+    );
+    if (wanted.some((c) => !known.has(c))) return res.status(400).json({ error: "ไม่พบบางวิชา", code: "BAD_COURSES" });
+    if (!db.prepare("SELECT 1 FROM plan_terms WHERE term_id = ?").get(term)) {
+      return res.status(400).json({ error: "ยังไม่มีข้อมูลภาคเรียนนี้", code: "NO_TERM" });
+    }
+    const tx = db.transaction(() => {
+      db.prepare("DELETE FROM plan_items WHERE user_id = ? AND term_id = ? AND course_code IS NOT NULL").run(userId, term);
+      const ins = db.prepare("INSERT INTO plan_items (user_id, term_id, course_code) VALUES (?, ?, ?)");
+      for (const c of wanted) ins.run(userId, term, c);
+    });
+    tx();
+    res.json({ term, chosen: termCourses(db, userId, term) });
+  });
+
+  router.get("/schedule/week", (req, res) => {
+    const term = currentTermId(db);
+    // `chosen` lets the screen tell "pick your courses first" from "no class this week".
+    res.json({ term, classes: weekClasses(db, term, req.user!.id), chosen: termCourses(db, req.user!.id, term).length > 0 });
   });
 
   router.get("/calendar", (req, res) => {
@@ -248,18 +441,23 @@ export function createApiRouter(db: DB): Router {
     const firstDay = `${month}-01`;
     const lastDay = new Date(Date.UTC(year, mon, 0)).toISOString().slice(0, 10);
 
-    const classes = weekClasses(db, term);
-    const exams = termExams(db, term);
+    const classes = weekClasses(db, term, userId);
+    // Her faculty-arranged exams that she dated count as exams on the calendar too.
+    const exams = [...termExams(db, term, userId), ...ownExamRows(db, userId, term)];
 
     // term date boundaries: classes run from start_date to day before first exam
     const termRow = db
       .prepare("SELECT start_date FROM plan_terms WHERE term_id = ?")
       .get(term) as { start_date: string | null } | undefined;
     const termStart = termRow?.start_date ?? null;
-    const firstExamDate = exams.length > 0 ? exams[0].datetime_start.slice(0, 10) : null;
+    // Classes stop at the registrar's finals, not at a date she entered for a faculty exam.
+    const printed = exams.filter((e) => e.slot !== null).sort((a, b) => a.datetime_start.localeCompare(b.datetime_start));
+    const firstExamDate = printed.length > 0 ? printed[0].datetime_start.slice(0, 10) : null;
 
     type CalEvent = {
-      type: "class" | "exam" | "task" | "etesting" | "custom";
+      type: "class" | "exam" | "task" | "etesting" | "etbooked" | "reminder" | "todo" | "event";
+      /** For "etesting": a registration day, or a day the central centre tests. */
+      etesting_kind?: "registration" | "testing";
       course_code: string;
       name_th: string;
       name_en: string | null;
@@ -273,6 +471,8 @@ export function createApiRouter(db: DB): Router {
       done?: boolean;
       note?: string | null;
       event_id?: number;
+      reminder_id?: number;
+      repeat?: string;
     };
 
     const events: Record<string, CalEvent[]> = {};
@@ -325,15 +525,17 @@ export function createApiRouter(db: DB): Router {
       .prepare("SELECT id FROM study_plans WHERE status = 'active' AND user_id = ? ORDER BY id DESC LIMIT 1")
       .get(userId) as { id: number } | undefined;
     if (plan) {
+      // Only for courses she still takes this term: a dropped course's reading is not hers any more.
+      const taking = myCoursesFilter(db, userId, currentTermId(db), "st.course_code");
       const tasks = db
         .prepare(
           `SELECT st.course_code, c.name_th, c.name_en, st.date, st.task_type, st.description, st.done
            FROM study_tasks st
            JOIN courses c ON c.code = st.course_code
-           WHERE st.plan_id = ? AND st.date >= ? AND st.date <= ?
+           WHERE st.plan_id = ? AND st.date >= ? AND st.date <= ?${taking.sql}
            ORDER BY st.sort_order`,
         )
-        .all(plan.id, firstDay, lastDay) as Array<{
+        .all(plan.id, firstDay, lastDay, ...taking.params) as Array<{
         course_code: string;
         name_th: string;
         name_en: string | null;
@@ -355,58 +557,86 @@ export function createApiRouter(db: DB): Router {
       }
     }
 
-    // e-Testing exam period events
-    const etestingSched = db.prepare("SELECT * FROM etesting_schedule WHERE term_id = ?").get(term) as
-      { exam_start: string; exam_end: string } | undefined;
-    if (etestingSched) {
-      const eStart = etestingSched.exam_start;
-      const eEnd = etestingSched.exam_end;
-      if (eStart <= lastDay && eEnd >= firstDay) {
-        const regStart = eStart < firstDay ? firstDay : eStart;
-        const regEnd = eEnd > lastDay ? lastDay : eEnd;
-        const ed = new Date(`${regStart}T00:00:00Z`);
-        const regEndD = new Date(`${regEnd}T00:00:00Z`);
-        while (ed <= regEndD) {
-          const iso = ed.toISOString().slice(0, 10);
-          push(iso, {
-            type: "etesting",
-            course_code: "",
-            name_th: "ช่วงสอบ e-Testing",
-            name_en: "e-Testing exam period",
-            description: "09:00–20:30",
-          });
-          ed.setUTCDate(ed.getUTCDate() + 1);
-        }
+    // e-Testing (etesting_schedule, migrations 019 + 040), for Ramkhamhaeng students: every term's
+    // registration days, and the days the central centre tests, skipping the days it is closed.
+    // Marked as e-Testing, never as an exam: a student sits one only if she registers for it.
+    // Hours as the announcement prints them: three periods on weekdays (09:00–17:30), four at
+    // weekends (09:00–20:30).
+    const ru = (db.prepare("SELECT university_id FROM user_profiles WHERE user_id = ?").get(userId) as { university_id: string | null } | undefined)?.university_id === "ru";
+    const schedules = !ru ? [] : db.prepare(
+      `SELECT registration_start, registration_end, registration_opens, exam_start, exam_end, central_closed FROM etesting_schedule
+       WHERE (registration_start <= ? AND registration_end >= ?) OR (exam_start <= ? AND exam_end >= ?)`,
+    ).all(lastDay, firstDay, lastDay, firstDay) as
+      { registration_start: string; registration_end: string; registration_opens: string | null; exam_start: string; exam_end: string; central_closed: string | null }[];
+    for (const et of schedules) {
+      const closed = (et.central_closed ? JSON.parse(et.central_closed) : []) as [string, string][];
+      const isClosed = (iso: string) => closed.some(([a, b]) => iso >= a && iso <= b);
+      const eachDay = (from: string, to: string, f: (iso: string, weekday: number) => void) => {
+        const a = from < firstDay ? firstDay : from, b = to > lastDay ? lastDay : to;
+        for (const d = new Date(`${a}T00:00:00Z`), end = new Date(`${b}T00:00:00Z`); d <= end; d.setUTCDate(d.getUTCDate() + 1)) f(d.toISOString().slice(0, 10), d.getUTCDay());
+      };
+      eachDay(et.registration_start, et.registration_end, (iso) => push(iso, {
+        type: "etesting", etesting_kind: "registration", course_code: "",
+        name_th: "ลงทะเบียนสอบ e-Testing (E-SERVICE)", name_en: "e-Testing registration (E-SERVICE)",
+        ...(iso === et.registration_start && et.registration_opens ? { start_time: et.registration_opens } : {}),
+      }));
+      eachDay(et.exam_start, et.exam_end, (iso, weekday) => {
+        if (isClosed(iso)) return;
+        const weekend = weekday === 0 || weekday === 6;
+        push(iso, { type: "etesting", etesting_kind: "testing", course_code: "", name_th: "ช่วงสอบ e-Testing", name_en: "e-Testing exam period", description: weekend ? "09:00–20:30" : "09:00–17:30" });
+      });
+    }
+
+    // Her own e-Testing bookings (etestingBookings.ts): the course, the day and the period she chose.
+    // Marked apart from the window above ("etbooked"): this one she has registered and paid for.
+    // Only for a course she is still registered in that term: one she dropped is not shown.
+    if (ru) {
+      const booked = db.prepare(
+        `SELECT b.course_code, b.date, b.period, b.centre, c.name_th, c.name_en FROM etesting_bookings b
+         JOIN plan_items pi ON pi.user_id = b.user_id AND pi.term_id = b.term_id AND pi.course_code = b.course_code
+         LEFT JOIN courses c ON c.code = b.course_code WHERE b.user_id = ? AND b.date BETWEEN ? AND ?`,
+      ).all(userId, firstDay, lastDay) as { course_code: string; date: string; period: 1 | 2 | 3 | 4; centre: string; name_th: string | null; name_en: string | null }[];
+      for (const b of booked) {
+        push(b.date, {
+          type: "etbooked", course_code: b.course_code, name_th: b.name_th ?? b.course_code, name_en: b.name_en,
+          start_time: ETESTING_PERIODS[b.period][0], end_time: ETESTING_PERIODS[b.period][1],
+          location: b.centre === "central" ? "หัวหมาก (Hua Mak)" : "ศูนย์ส่วนภูมิภาค (regional centre)",
+        });
       }
     }
 
-    // custom user events
-    const customEvts = db
-      .prepare("SELECT * FROM custom_events WHERE user_id = ? AND date >= ? AND date <= ? ORDER BY date, start_time")
-      .all(userId, firstDay, lastDay) as Array<{
-      id: number; title: string; date: string; start_time: string | null;
-      end_time: string | null; note: string | null; color: string;
-    }>;
-    for (const ce of customEvts) {
-      push(ce.date, {
-        type: "custom",
-        course_code: "",
-        name_th: ce.title,
-        name_en: null,
-        start_time: ce.start_time ?? undefined,
-        end_time: ce.end_time ?? undefined,
-        note: ce.note,
-        event_id: ce.id,
-      });
+    // the student's reminders, to-dos and events (repeating ones are expanded per day)
+    for (const [date, list] of Object.entries(occurrencesInRange(db, userId, firstDay, lastDay))) {
+      for (const o of list) {
+        push(date, {
+          type: o.kind,
+          course_code: "",
+          name_th: o.title,
+          name_en: null,
+          start_time: o.time ?? undefined,
+          end_time: o.end_time ?? undefined,
+          note: o.note,
+          description: o.course_code ?? undefined,
+          done: o.done,
+          reminder_id: o.id,
+          repeat: o.repeat,
+        });
+      }
+    }
+
+    // Within a day: earliest first; things with no time go last.
+    for (const list of Object.values(events)) {
+      list.sort((a, b) => (a.start_time ?? "99:99").localeCompare(b.start_time ?? "99:99"));
     }
 
     res.json({ month, term, today: bangkokToday(), events });
   });
 
-  router.get("/exams", (_req, res) => {
+  router.get("/exams", (req, res) => {
+    const userId = req.user!.id;
     const term = currentTermId(db);
     const today = bangkokToday();
-    const exams = termExams(db, term).map((e) => ({
+    const exams = termExams(db, term, userId).map((e) => ({
       course_code: e.course_code,
       name_th: e.name_th,
       name_en: e.name_en,
@@ -417,45 +647,18 @@ export function createApiRouter(db: DB): Router {
       location: e.location,
       daysLeft: daysBetween(today, e.datetime_start.slice(0, 10)),
     }));
-    res.json({ term, today, exams, clashes: findExamClashes(termExams(db, term)) });
+    // `chosen` lets the screen tell "pick your courses first" from "no exam".
+    const chosen = termCourses(db, userId, term).length > 0;
+    res.json({
+      term, today, exams, chosen,
+      clashes: chosen ? findExamClashes([...termExams(db, term, userId), ...ownExamRows(db, userId, term)]) : [],
+      facultyArranged: facultyArrangedExams(db, term, userId),
+      // Her e-Testing bookings, the dates she entered and her seats, by course (myExams.ts).
+      mine: myExams(db, userId, term, today),
+    });
   });
 
   // ── Custom events CRUD ──
-  router.post("/custom-events", (req, res) => {
-    const userId = req.user!.id;
-    const { title, date, start_time, end_time, note, color } = req.body as {
-      title: string; date: string; start_time?: string; end_time?: string; note?: string; color?: string;
-    };
-    if (!title || !date) return res.status(400).json({ error: "title and date required" });
-    const r = db.prepare(
-      "INSERT INTO custom_events (user_id, title, date, start_time, end_time, note, color) VALUES (?,?,?,?,?,?,?)",
-    ).run(userId, title, date, start_time ?? null, end_time ?? null, note ?? null, color ?? "#6366f1");
-    res.json({ id: r.lastInsertRowid });
-  });
-
-  router.put("/custom-events/:id", (req, res) => {
-    const userId = req.user!.id;
-    const id = Number(req.params.id);
-    const { title, date, start_time, end_time, note, color } = req.body as {
-      title?: string; date?: string; start_time?: string; end_time?: string; note?: string; color?: string;
-    };
-    db.prepare(
-      `UPDATE custom_events SET
-         title = COALESCE(?, title), date = COALESCE(?, date),
-         start_time = COALESCE(?, start_time), end_time = COALESCE(?, end_time),
-         note = COALESCE(?, note), color = COALESCE(?, color)
-       WHERE id = ? AND user_id = ?`,
-    ).run(title ?? null, date ?? null, start_time ?? null, end_time ?? null, note ?? null, color ?? null, id, userId);
-    res.json({ ok: true });
-  });
-
-  router.delete("/custom-events/:id", (req, res) => {
-    const userId = req.user!.id;
-    const id = Number(req.params.id);
-    db.prepare("DELETE FROM custom_events WHERE id = ? AND user_id = ?").run(id, userId);
-    res.json({ ok: true });
-  });
-
   // ── Fee structure + cost calculator ──
   router.get("/fees", (_req, res) => {
     const fees = db.prepare("SELECT * FROM fee_structure ORDER BY category, campus").all();

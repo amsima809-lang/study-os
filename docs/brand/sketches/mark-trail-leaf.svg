@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Logo mark: a dotted trail that arrives at a lifted page, together forming a tick">
+  <!-- The trail: three steps, each a little bigger, where the book's left page was -->
+  <circle cx="9.500" cy="29.500" r="3.100" fill="currentColor" opacity=".5"/>
+  <circle cx="15.800" cy="37.800" r="3.700" fill="currentColor" opacity=".72"/>
+  <circle cx="22.600" cy="46.300" r="4.300" fill="currentColor"/>
+  <!-- Where it arrives: the lifted page, the long stroke of the tick -->
+  <path fill="var(--logo-tick, currentColor)" d="M28 25.800 49.200 8.300c2.900-2.400 7.200 0.800 5.600 4.200L36.600 51.800c-1.500 3.200-5.600 4-8.600 1.200z"/>
+</svg>

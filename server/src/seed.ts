@@ -10,6 +10,7 @@
  */
 import { openDb, type DB } from "./db.js";
 import { env } from "./env.js";
+import { rebuildTermSchedule } from "./termSchedule.js";
 
 type Category = "GE" | "CORE" | "MAJOR_REQ" | "MAJOR_ELEC" | "FREE";
 
@@ -174,41 +175,33 @@ const PLACEHOLDERS: Array<{ label: string; term: string }> = [
   { label: "เลือกเสรี #2", term: "1/73" },
 ];
 
-// ---------- Class schedule 2/2569 ----------
-// Source: มร.30 (26 ส.ค. 2569) + ตารางสอบไล่ ภาค 2/2569
-type ClassSeed = {
-  code: string; weekday: number; start: string; end: string; room: string;
-  instructor: string; examDate: string; slot: "A" | "B";
-};
-const SCHEDULE_2_69: ClassSeed[] = [
-  { code: "RAM1111", weekday: 1, start: "08:30", end: "11:00", room: "KTB 301", instructor: "ASST.PROF.TIPPA-U-SA", examDate: "2027-03-14", slot: "B" },
-  { code: "ACC1103", weekday: 1, start: "11:10", end: "13:40", room: "KTB 301", instructor: "DR.NATCHAREE", examDate: "2027-03-12", slot: "A" },
-  { code: "ECO1121", weekday: 2, start: "13:50", end: "16:20", room: "KTB 201", instructor: "ASSOC.PROF.BOONTHAM", examDate: "2027-03-21", slot: "A" },
-  { code: "MGT2101", weekday: 3, start: "09:30", end: "11:20", room: "VPB 501", instructor: "ASST.PROF.DR.MUNLIKAR", examDate: "2027-03-18", slot: "B" },
-  { code: "RAM1212", weekday: 3, start: "13:50", end: "16:20", room: "KTB 401", instructor: "ASST.PROF.DR.NANTHAWAN", examDate: "2027-03-16", slot: "B" },
-  { code: "MKT2101", weekday: 4, start: "09:30", end: "11:20", room: "KLB 201", instructor: "DR.USA, THITIKUL", examDate: "2027-03-13", slot: "B" },
-  { code: "RAM1301", weekday: 5, start: "09:30", end: "11:20", room: "KLB 201", instructor: "ASSOC.PROF.DR.KRISDA", examDate: "2027-03-10", slot: "B" },
-  { code: "RAM1131", weekday: 5, start: "11:10", end: "13:40", room: "KTB 301", instructor: "ASST.PROF.DR.SATHIT", examDate: "2027-03-09", slot: "A" },
-];
-
-const SLOT_TIMES: Record<"A" | "B", { start: string; end: string }> = {
-  A: { start: "09:30", end: "12:00" },
-  B: { start: "14:00", end: "16:30" },
-};
-
 const DEFAULT_SETTINGS: Array<[string, string]> = [
   ["current_term_id", "2/69"],
   ["weekly_target_hours", "36"],
 ];
 
-/** Insert every seed row. Idempotent: clears seed tables first, then re-inserts. */
-export function seedDatabase(db: DB): void {
+/**
+ * True when the seed data has never been loaded. `plan_terms` is the marker:
+ * only the seed fills it (migrations add courses, so "courses is empty" is NOT
+ * a safe test — migration 017 inserts courses on a brand-new database).
+ */
+export function needsSeed(db: DB): boolean {
+  return (db.prepare("SELECT COUNT(*) n FROM plan_terms").get() as { n: number }).n === 0;
+}
+
+/**
+ * Insert every seed row.
+ * - reset (default, `npm run seed` and tests): clears the seed tables first.
+ * - reset: false (first start of a new database): ADDS the seed data next to
+ *   what the migrations already inserted, deleting nothing.
+ */
+export function seedDatabase(db: DB, { reset = true }: { reset?: boolean } = {}): void {
   db.pragma("foreign_keys = OFF");
   const tx = db.transaction(() => {
     const insSetting = db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)");
     for (const [k, v] of DEFAULT_SETTINGS) insSetting.run(k, v);
 
-    db.exec(`
+    if (reset) db.exec(`
       DELETE FROM exams;
       DELETE FROM class_sessions;
       DELETE FROM plan_items;
@@ -219,17 +212,23 @@ export function seedDatabase(db: DB): void {
     `);
 
     const insGroup = db.prepare(
-      "INSERT INTO course_groups (id, choose, required, note) VALUES (@id, @choose, @required, @note)",
+      "INSERT OR IGNORE INTO course_groups (id, choose, required, note) VALUES (@id, @choose, @required, @note)",
     );
     for (const g of GROUPS) {
       insGroup.run({ id: g.id, choose: g.choose, required: g.required ? 1 : 0, note: g.note ?? null });
     }
 
     const insCourse = db.prepare(
+      // The seed is the official record for its courses, so it wins over a
+      // same-code row a migration may already have inserted.
       `INSERT INTO courses (code, name_th, name_en, credits, category, difficulty, choose_group, notes)
-       VALUES (@code, @name_th, @name_en, @credits, @category, @difficulty, @choose_group, @notes)`,
+       VALUES (@code, @name_th, @name_en, @credits, @category, @difficulty, @choose_group, @notes)
+       ON CONFLICT(code) DO UPDATE SET
+         name_th = excluded.name_th, name_en = excluded.name_en, credits = excluded.credits,
+         category = excluded.category, difficulty = excluded.difficulty,
+         choose_group = excluded.choose_group, notes = excluded.notes`,
     );
-    const insPre = db.prepare("INSERT INTO prerequisites (course_code, requires_code) VALUES (?, ?)");
+    const insPre = db.prepare("INSERT OR IGNORE INTO prerequisites (course_code, requires_code) VALUES (?, ?)");
     for (const c of COURSES) {
       insCourse.run({
         code: c.code,
@@ -268,28 +267,15 @@ export function seedDatabase(db: DB): void {
       insItem.run({ user_id: legacyId, term_id: p.term, course_code: null, placeholder_label: p.label });
     }
 
-    const insClass = db.prepare(
-      `INSERT INTO class_sessions (course_code, term_id, weekday, start_time, end_time, room, instructor)
-       VALUES (@code, '2/69', @weekday, @start, @end, @room, @instructor)`,
-    );
-    const insExam = db.prepare(
-      `INSERT INTO exams (course_code, term_id, datetime_start, datetime_end, slot, location)
-       VALUES (@code, '2/69', @start, @end, @slot, @room)`,
-    );
-    for (const s of SCHEDULE_2_69) {
-      insClass.run({ code: s.code, weekday: s.weekday, start: s.start, end: s.end, room: s.room, instructor: s.instructor });
-      const times = SLOT_TIMES[s.slot];
-      insExam.run({
-        code: s.code,
-        start: `${s.examDate}T${times.start}:00+07:00`,
-        end: `${s.examDate}T${times.end}:00+07:00`,
-        slot: s.slot,
-        room: null,
-      });
-    }
+    // Which courses belong to which major is NOT decided here any more: migration 033
+    // holds each major's official lists (and adds every course they name).
   });
   tx();
   db.pragma("foreign_keys = ON");
+  // The timetable and exams come from the registrar's own record of the term
+  // (term_offerings, migration 032). Rebuilt here because the seed has just
+  // added courses the migration could not see on a brand-new database.
+  rebuildTermSchedule(db, "2/69");
 }
 
 function summarize(db: DB) {

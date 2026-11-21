@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Logo mark: a practice loop that ends in a tick">
+  <!-- The loop: practise, again and again. Open at the top right. -->
+  <path d="M51.3 26.8A20 20 0 1 1 37.2 12.7"/>
+  <!-- The tick: now you know it. Its long arm leaves through the gap. -->
+  <path d="M22.5 31.5l8 8.5L50.5 15"/>
+</svg>

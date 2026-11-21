@@ -1,0 +1,17 @@
+{
+  "name": "@study-os/native",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The iOS shell for the web app (Capacitor). Not an npm workspace: nothing here is needed to run or deploy the web app.",
+  "scripts": {
+    "sync": "cap sync ios",
+    "open": "cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "^8.6.2",
+    "@capacitor/ios": "^8.6.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.6.2"
+  }
+}

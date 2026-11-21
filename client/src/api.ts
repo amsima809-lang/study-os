@@ -1,30 +1,56 @@
+import { withBase } from "./base.ts";
 /** Client-side fetch helpers + shared types for the Phase 2 screens. */
 
-export type StudyTarget = {
-  code: string;
-  name_th: string;
-  name_en: string | null;
-  difficulty: number;
-  weeklyHours: number;
-  dailyHours: number;
-};
+/** A study task of today, from her active plan. */
+export type TodayStudyTask = { id: number; course_code: string; name_th: string; name_en: string | null; task_type: "read" | "quiz" | "review" | "mock"; description: string; minutes: number; done: number };
 
 export type TodayData = {
   term: string;
   today: string;
   weekday: number;
   classes: ClassSession[];
+  /** With no class today: the next day of the week that has classes. */
+  nextClasses?: { weekday: number; classes: ClassSession[] } | null;
   nextExam: {
     course_code: string;
     name_th: string;
     name_en: string | null;
     date: string;
     slot: string | null;
+    /** A booked e-Test (before the final), the final, or a faculty-arranged exam she dated. */
+    kind: "etesting" | "final" | "own";
+    start: string | null;
+    end: string | null;
+    /** Her room and seat, as she copied them from e-Service. */
+    seat: string | null;
     daysLeft: number;
   } | null;
   dueFlashcards: number;
-  studyTargets: { weeklyTarget: number; totalPoints: number; courses: StudyTarget[] };
+  reminders: ReminderOccurrence[];
+  chosenCourses: number;
+  canChooseCourses: boolean;
+  studyToday: { hasPlan: boolean; tasks: TodayStudyTask[]; overdue: number };
 };
+
+export type ReminderRule = {
+  id: number;
+  kind: "reminder" | "todo" | "event";
+  title: string;
+  note: string | null;
+  course_code: string | null;
+  course_name_th: string | null;
+  course_name_en: string | null;
+  date: string | null;
+  time: string | null;
+  /** Events only: when it ends. */
+  end_time: string | null;
+  repeat: "none" | "daily" | "weekdays" | "weekly" | "monthly";
+  repeat_until: string | null;
+};
+/** A rule on one day. `on` is "" for a to-do with no date. */
+export type ReminderOccurrence = ReminderRule & { on: string; done: boolean; overdue: boolean };
+/** A rule in the manage list: `next` is the next day it falls on. */
+export type ReminderListItem = ReminderRule & { next: string | null; finished: boolean; overdue: boolean };
 
 export type ClassSession = {
   course_code: string;
@@ -36,7 +62,7 @@ export type ClassSession = {
   room: string | null;
 };
 
-export type WeekData = { term: string; classes: ClassSession[] };
+export type WeekData = { term: string; classes: ClassSession[]; /** False until the student has chosen their courses for the term. */ chosen?: boolean };
 
 export type Exam = {
   course_code: string;
@@ -55,11 +81,33 @@ export type ExamsData = {
   today: string;
   exams: Exam[];
   clashes: Array<{ date: string; courses: string[] }>;
+  /** Courses whose exam the faculty arranges itself: the university publishes no date. */
+  facultyArranged?: { course_code: string; name_th: string; name_en: string | null; note: string }[];
+  /** False until the student has chosen their courses for the term: nothing is listed until then. */
+  chosen?: boolean;
+  /** Her e-Testing bookings, dates she entered and seats, by course (server/src/myExams.ts). */
+  mine?: MyExam[];
+};
+
+/** One of her courses' exams this term, from every source (server/src/myExams.ts). */
+export type MyExam = {
+  course_code: string;
+  name_th: string;
+  name_en: string | null;
+  final: { date: string; slot: string | null; start: string; end: string } | null;
+  facultySet: boolean;
+  own: { date: string; start: string | null; end: string | null } | null;
+  booking: { date: string; period: number; centre: string; start: string; end: string } | null;
+  seat: string | null;
+  next: { date: string; kind: "etesting" | "final" | "own"; start: string | null; end: string | null } | null;
 };
 
 // ---------- Calendar ----------
 export type CalEvent = {
-  type: "class" | "exam" | "task" | "etesting" | "custom";
+  /** "etesting": the university's e-Testing days (registration, testing); "etbooked": an e-Testing exam she booked. */
+  type: "class" | "exam" | "task" | "etesting" | "etbooked" | "reminder" | "todo" | "event";
+  /** For "etesting": a registration day, or a day the central centre tests. */
+  etesting_kind?: "registration" | "testing";
   course_code: string;
   name_th: string;
   name_en: string | null;
@@ -73,6 +121,9 @@ export type CalEvent = {
   done?: boolean;
   note?: string | null;
   event_id?: number;
+  /** Set for reminders and to-dos: the rule this occurrence comes from. */
+  reminder_id?: number;
+  repeat?: string;
 };
 
 export type CalendarData = {
@@ -82,8 +133,28 @@ export type CalendarData = {
   events: Record<string, CalEvent[]>;
 };
 
+/** Fired when the server says the student is no longer signed in. */
+export const SIGNED_OUT = "studyos:signed-out";
+
+/**
+ * Every request goes through here, so two things are handled in one place:
+ * - no connection: fail with a clear OFFLINE error instead of a raw exception;
+ * - the session has ended (401): tell the app, which returns to the login page.
+ */
+async function send(url: string, init?: RequestInit): Promise<Response> {
+  let r: Response;
+  try {
+    r = await fetch(withBase(url), init);
+  } catch {
+    throw { error: "ออฟไลน์อยู่ เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ลองใหม่เมื่อมีอินเทอร์เน็ต", code: "OFFLINE" } as ApiError;
+  }
+  if (r.status === 401 && !url.startsWith("/api/auth/")) window.dispatchEvent(new Event(SIGNED_OUT));
+  return r;
+}
+
 export async function getJSON<T>(url: string): Promise<T> {
-  const r = await fetch(url);
+  // Never an answer kept from before (the server also says no-store): screens re-read after a save.
+  const r = await send(url, { cache: "no-store" });
   if (!r.ok) throw new Error(`${r.status} ${url}`);
   return (await r.json()) as T;
 }
@@ -100,11 +171,13 @@ export type NoteLearning = {
   mindmap_md: string;
   topics: string[];
   image_paths?: string[];
+  handwriting_image_index?: number | null;
   ai_skipped?: boolean;
 };
 
 export type NoteListItem = {
   id: number;
+  lecture_no: number | null;
   course_code: string | null;
   course_name: string | null;
   course_name_en: string | null;
@@ -114,22 +187,28 @@ export type NoteListItem = {
 
 export type NoteDetail = {
   id: number;
+  lecture_no: number | null;
   course_code: string | null;
   created_at: string;
   title: string | null;
   raw_text: string | null;
   image_paths: string[];
+  handwriting_image_index?: number | null;
   ai_summary_md: string | null;
+  summary_edited: boolean;
   ai_mindmap_md: string | null;
   key_terms: KeyTerm[];
   topics: string[];
 };
 
+/** One result of a note search (GET /api/notes/search). */
+export type NoteHit = { id: number; course_code: string | null; title: string | null; created_at: string; snippet: string };
+
 export type ApiError = { error: string; code?: string };
 
 /** POST multipart form; returns parsed JSON or throws an ApiError-shaped error. */
 export async function postForm<T>(url: string, form: FormData): Promise<T> {
-  const r = await fetch(url, { method: "POST", body: form });
+  const r = await send(url, { method: "POST", body: form });
   const data = await r.json().catch(() => ({ error: "unknown" }));
   if (!r.ok) throw data as ApiError;
   return data as T;
@@ -137,7 +216,7 @@ export async function postForm<T>(url: string, form: FormData): Promise<T> {
 
 /** POST JSON; returns parsed JSON or throws an ApiError-shaped error. */
 export async function postJSON<T>(url: string, body: unknown): Promise<T> {
-  const r = await fetch(url, {
+  const r = await send(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -149,7 +228,7 @@ export async function postJSON<T>(url: string, body: unknown): Promise<T> {
 
 /** PUT JSON; returns parsed JSON or throws. */
 export async function putJSON<T>(url: string, body: unknown): Promise<T> {
-  const r = await fetch(url, {
+  const r = await send(url, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -161,7 +240,7 @@ export async function putJSON<T>(url: string, body: unknown): Promise<T> {
 
 /** DELETE request; returns parsed JSON or throws. */
 export async function deleteJSON<T>(url: string): Promise<T> {
-  const r = await fetch(url, { method: "DELETE" });
+  const r = await send(url, { method: "DELETE" });
   const data = await r.json().catch(() => ({ error: "unknown" }));
   if (!r.ok) throw data as ApiError;
   return data as T;
@@ -246,7 +325,7 @@ export type MockChapterScore = {
 
 export type GradeCutoff = { label: string; min_pct: number };
 
-// ---------- Phase 7: degree planner ----------
+// ---------- Grades (began as the Phase 7 degree planner) ----------
 export type PlanItem = {
   course_code: string | null;
   placeholder_label: string | null;
@@ -254,8 +333,7 @@ export type PlanItem = {
   name_en: string | null;
   credits: number;
   category: string | null;
-  difficulty: number | null;
-  status: "PLANNED" | "PASSED" | "FAILED" | "ENROLLED" | "WITHDRAWN" | null;
+  status: "PLANNED" | "PASSED" | "FAILED" | null;
   grade: string | null;
 };
 
@@ -264,7 +342,6 @@ export type PlanTerm = {
   ord: number;
   max_credits: number;
   credits: number;
-  runningTotal: number;
   items: PlanItem[];
   gpa: number | null;
 };
@@ -274,13 +351,6 @@ export type GpaResult = {
   totalCredits: number;
   totalPoints: number;
   courseCount: number;
-};
-
-export type PlanPace = {
-  remainingCredits: number;
-  futureTerms: number;
-  creditsPerTerm: number;
-  status: "on_track" | "heavy" | "behind";
 };
 
 export type PlanGradeScale = { grade: string; points: number };
@@ -294,16 +364,13 @@ export type WhatIfResult = {
 };
 
 export type PlanData = {
+  /** The terms she has courses in, with how each course went. */
   terms: PlanTerm[];
-  totalPassedCredits: number;
-  totalPlannedCredits: number;
-  categoryProgress: { category: string; required: number; passed: number }[];
-  failed: { course_code: string; name_th: string; retakeTerm: string | null }[];
+  /** Courses passed before she used the app: no term. */
+  before: { course_code: string; name_th: string; name_en: string | null; credits: number; grade: string | null }[];
   blocked: { course_code: string; name_th: string; dueTo: string[] }[];
-  internship: { eligible: boolean; rules: { id: string; ok: boolean; detail: string }[] };
   gpa: GpaResult;
   gradeScale: PlanGradeScale[];
-  pace: PlanPace;
 };
 
 // ---------- Phase 6: analytics ----------
@@ -312,7 +379,8 @@ export type CourseAnalytics = {
   name_th: string;
   name_en: string | null;
   difficulty: number;
-  targetWeeklyHours: number;
+  /** What her study plan gives it this week; null with no plan. */
+  targetWeeklyHours: number | null;
   actualWeeklyHours: number;
   quizAverage: number | null;
   attempts: number;
@@ -325,7 +393,7 @@ export type CourseAnalytics = {
 export type AnalyticsData = {
   term: string;
   weekStart: string;
-  weeklyTarget: number;
+  weeklyTarget: number | null;
   courses: CourseAnalytics[];
 };
 
@@ -395,6 +463,8 @@ export type PlanSettings = {
   weekend_hours: number;
   reading_speed: number;
   blocked_dates: string[];
+  /** Hours on a long day (6 h or more of her own events, such as a work shift). */
+  workday_hours: number;
 };
 
 export type PlanChapter = {
@@ -411,6 +481,8 @@ export type PlanCourse = {
   name_th: string;
   name_en: string | null;
   exam_date: string;
+  /** What the plan prepares for: a booked e-Test, the final, or a date she entered. */
+  exam_kind: "etesting" | "final" | "own";
   chapters: PlanChapter[];
   total_pages: number;
 };
@@ -453,8 +525,12 @@ export type StudyPlanData = {
     generated_at: string;
     feasibility: "ok" | "tight" | "impossible";
     warnings: string[];
+    /** Her courses, exams, chapters, hours or shifts changed since it was made. */
+    stale: boolean;
   } | null;
   tasks: StudyTask[];
+  /** Courses in the plan with no exam ahead (over, or dropped): their tasks are not overdue. */
+  expired?: string[];
   statuses: CourseStatus[];
   today: string;
 };

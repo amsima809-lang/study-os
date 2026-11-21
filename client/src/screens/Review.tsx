@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useT } from "../i18n.tsx";
 import { getJSON, postJSON, type DueCard } from "../api.ts";
-import { Card, Loading } from "../components/ui.tsx";
+import { Card, ErrorBox, Loading } from "../components/ui.tsx";
 import { CourseTitle } from "../components/CourseTitle.tsx";
 import Icon from "../components/Icon.tsx";
 
@@ -15,16 +15,21 @@ export default function Review() {
   const [idx, setIdx] = useState(0);
   const [remembered, setRemembered] = useState(0);
 
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+
   useEffect(() => {
+    setFailed(false);
     getJSON<{ cards: DueCard[]; totalDue: number; limit: number }>("/api/flashcards/due")
       .then((d) => {
         setCards(d.cards);
         setTotalDue(d.totalDue);
         setLimit(d.limit);
       })
-      .catch(() => setCards([]));
-  }, []);
+      .catch(() => setFailed(true)); // not "nothing due": the cards could not be read
+  }, [attempt]);
 
+  if (failed) return <ErrorBox onRetry={() => setAttempt((n) => n + 1)} />;
   if (!cards) return <Loading>{t("status.connecting")}</Loading>;
 
   return (
@@ -43,7 +48,7 @@ export default function Review() {
           <div className="flex-1 rounded-full h-2" style={{ backgroundColor: "var(--border-light)" }}>
             <div
               className="rounded-full h-2 transition-all"
-              style={{ width: `${Math.min((idx / cards.length) * 100, 100)}%`, backgroundColor: "var(--accent)" }}
+              style={{ width: `${Math.min((idx / cards.length) * 100, 100)}%`, background: "linear-gradient(90deg, var(--accent), var(--accent-2, var(--accent)))" }}
             />
           </div>
           {totalDue > cards.length && (
@@ -56,7 +61,7 @@ export default function Review() {
 
       {cards.length === 0 ? (
         <Card>
-          <p className="text-center py-8" style={{ color: "var(--text-tertiary)" }}>{t("review.empty")}</p>
+          <p className="text-sm text-center py-8" style={{ color: "var(--text-tertiary)" }}>{t("review.empty")}</p>
         </Card>
       ) : idx >= cards.length ? (
         <Done reviewed={cards.length} remembered={remembered} totalDue={totalDue} />
@@ -168,28 +173,28 @@ function Flashcard({ card, onRate }: { card: DueCard; onRate: (confidence: numbe
           <div className="grid grid-cols-4 gap-2">
             <button
               onClick={() => onRate(1)}
-              className="font-medium rounded-xl py-3 text-sm"
+              className="font-medium rounded-xl py-3 text-sm min-h-11"
               style={{ backgroundColor: "var(--danger-bg)", color: "var(--danger)" }}
             >
               {t("review.conf1")}
             </button>
             <button
               onClick={() => onRate(2)}
-              className="font-medium rounded-xl py-3 text-sm"
+              className="font-medium rounded-xl py-3 text-sm min-h-11"
               style={{ backgroundColor: "var(--warning-bg)", color: "var(--warning)" }}
             >
               {t("review.conf2")}
             </button>
             <button
               onClick={() => onRate(3)}
-              className="font-medium rounded-xl py-3 text-sm"
+              className="font-medium rounded-xl py-3 text-sm min-h-11"
               style={{ backgroundColor: "var(--warning-bg)", color: "var(--warning)" }}
             >
               {t("review.conf3")}
             </button>
             <button
               onClick={() => onRate(4)}
-              className="font-medium rounded-xl py-3 text-sm"
+              className="font-medium rounded-xl py-3 text-sm min-h-11"
               style={{ backgroundColor: "var(--success-bg)", color: "var(--success)" }}
             >
               {t("review.conf4")}

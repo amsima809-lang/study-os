@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useT } from "../i18n.tsx";
 import {
   getJSON,
@@ -10,19 +10,58 @@ import {
   type Course,
   type Chapter,
 } from "../api.ts";
-import { Card, ErrorBox, Loading } from "../components/ui.tsx";
+import { Card, ConfirmDialog, ErrorBox, Loading } from "../components/ui.tsx";
+import { draftOwner } from "../noteDraft.ts";
+import { setUnsaved } from "../unsaved.ts";
 import Icon from "../components/Icon.tsx";
 import { useSubscription, handleSubscriptionError } from "../components/SubscriptionGate.tsx";
+import LectureQuizzes from "../components/LectureQuizzes.tsx";
 
 type Phase = "setup" | "loading" | "quiz" | "done";
 
+/**
+ * A quiz in progress, kept in this browser so that tapping another tab, a
+ * refresh or a locked phone does not throw away the questions (which cost an
+ * AI call to make) or the student's place in them. One per student, dropped
+ * when the quiz is finished or left, and ignored after a day.
+ */
+type Progress = { questions: QuizQuestion[]; idx: number; answer: string; result: AnswerResult | null; results: AnswerResult[]; savedAt: number };
+const progressKey = () => `studyos.quiz:${draftOwner()}`;
+function loadProgress(): Progress | null {
+  try {
+    const p = JSON.parse(localStorage.getItem(progressKey()) ?? "null") as Progress | null;
+    const fresh = p && Array.isArray(p.questions) && p.questions.length > 0 && Date.now() - p.savedAt < 24 * 60 * 60 * 1000;
+    return fresh ? p : null;
+  } catch {
+    return null;
+  }
+}
+function saveProgress(p: Omit<Progress, "savedAt">) {
+  try { localStorage.setItem(progressKey(), JSON.stringify({ ...p, savedAt: Date.now() })); } catch { /* storage full or blocked */ }
+}
+function clearProgress() {
+  try { localStorage.removeItem(progressKey()); } catch { /* nothing to remove */ }
+}
+
 export default function Quiz() {
   const { t } = useT();
-  const [phase, setPhase] = useState<Phase>("setup");
-  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
+  const [resumed] = useState(loadProgress);
+  const [phase, setPhase] = useState<Phase>(resumed ? "quiz" : "setup");
+  const [source, setSource] = useState<"auto" | "transcripts" | "personal">(resumed ? "personal" : "auto");
+  const selectedSource = source === "auto" ? "transcripts" : source;
+  const onEmptyCatalog = useCallback(() => setSource(s => s === "auto" ? "personal" : s), []);
+  const [takingLectureQuiz, setTakingLectureQuiz] = useState(false);
+  const [questions, setQuestions] = useState<QuizQuestion[]>(resumed?.questions ?? []);
   const [results, setResults] = useState<AnswerResult[]>([]);
 
+  // While the questions are being written, leaving would throw the request away.
+  useEffect(() => {
+    setUnsaved("quiz", phase === "loading" ? "leave.quizGenerating" : null);
+    return () => setUnsaved("quiz", null);
+  }, [phase]);
+
   function reset() {
+    clearProgress();
     setQuestions([]);
     setResults([]);
     setPhase("setup");
@@ -32,7 +71,20 @@ export default function Quiz() {
     <div className="space-y-4">
       <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{t("quiz.title")}</h1>
 
-      {(phase === "setup" || phase === "loading") && (
+      {phase === "setup" && !takingLectureQuiz && (
+        <div className="flex gap-1 rounded-xl p-1" role="group" aria-label={t("quiz.pickSource")}
+          style={{ backgroundColor: "var(--bg-surface-hover)" }}>
+          {(["transcripts", "personal"] as const).map(id => (
+            <button type="button" key={id} aria-pressed={selectedSource === id} onClick={() => setSource(id)}
+              className="min-h-11 flex-1 rounded-lg px-2 text-sm font-semibold"
+              style={selectedSource === id ? { background: "var(--bg-surface)", color: "var(--accent-text)" } : { color: "var(--text-secondary)" }}>
+              {t(id === "transcripts" ? "quiz.transcripts" : "quiz.personal")}
+            </button>
+          ))}
+        </div>
+      )}
+      {phase === "setup" && selectedSource === "transcripts" && <LectureQuizzes onTaking={setTakingLectureQuiz} onEmpty={onEmptyCatalog}/>}
+      {source === "personal" && (phase === "setup" || phase === "loading") && (
         // Stay mounted while loading so the error message and picked source survive a failed request.
         <div hidden={phase === "loading"}>
           <Setup
@@ -50,7 +102,10 @@ export default function Quiz() {
       {phase === "quiz" && (
         <Runner
           questions={questions}
+          resumed={resumed && resumed.questions === questions ? resumed : null}
+          onLeave={reset}
           onComplete={(rs) => {
+            clearProgress();
             setResults(rs);
             setPhase("done");
           }}
@@ -86,15 +141,19 @@ function Setup({
   const [qType, setQType] = useState("mixed");
   const [count, setCount] = useState("10");
 
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+
   useEffect(() => {
+    setLoadFailed(false);
     Promise.all([
-      getJSON<{ notes: NoteListItem[] }>("/api/notes").catch(() => ({ notes: [] as NoteListItem[] })),
-      getJSON<{ courses: Course[] }>("/api/courses").catch(() => ({ courses: [] as Course[] })),
+      getJSON<{ notes: NoteListItem[] }>("/api/notes"),
+      getJSON<{ courses: Course[] }>("/api/courses"),
     ]).then(([n, c]) => {
       setNotes(n.notes);
       setAllCourses(c.courses);
-    });
-  }, []);
+    }).catch(() => setLoadFailed(true));
+  }, [attempt]);
 
   useEffect(() => {
     if (!matCourseCode) { setChapters([]); return; }
@@ -109,7 +168,7 @@ function Setup({
     return [...map.entries()];
   }, [notes]);
 
-  if (!notes) return <Loading>{t("status.connecting")}</Loading>;
+  if (!notes) return loadFailed ? <ErrorBox onRetry={() => setAttempt(n => n + 1)}/> : <Loading>{t("status.connecting")}</Loading>;
 
   async function start() {
     setError(null);
@@ -166,7 +225,7 @@ function Setup({
             <button
               key={m.id}
               onClick={() => setMode(m.id)}
-              className="flex-1 rounded-lg py-2 text-sm font-medium transition-colors"
+              className="flex-1 rounded-lg py-2 text-sm font-medium transition-colors min-h-11"
               style={{
                 backgroundColor: mode === m.id ? "var(--accent)" : "var(--bg-surface-hover)",
                 color: mode === m.id ? "var(--text-inverse)" : "var(--text-tertiary)",
@@ -178,10 +237,10 @@ function Setup({
         </div>
 
         {mode === "note" && (
-          <select
+          <select aria-label={t("quiz.pickNote")}
             value={noteId}
             onChange={(e) => setNoteId(e.target.value)}
-            className="w-full rounded-lg border px-3 py-2 text-sm"
+            className="w-full rounded-lg border px-3 py-2 text-sm min-h-11"
             style={selectStyle}
           >
             <option value="">{t("quiz.selectNote")}</option>
@@ -194,10 +253,10 @@ function Setup({
         )}
 
         {mode === "course" && (
-          <select
+          <select aria-label={t("field.course")}
             value={courseCode}
             onChange={(e) => setCourseCode(e.target.value)}
-            className="w-full rounded-lg border px-3 py-2 text-sm"
+            className="w-full rounded-lg border px-3 py-2 text-sm min-h-11"
             style={selectStyle}
           >
             <option value="">{t("quiz.selectCourse")}</option>
@@ -211,10 +270,10 @@ function Setup({
 
         {mode === "material" && (
           <div className="space-y-2">
-            <select
+            <select aria-label={t("field.course")}
               value={matCourseCode}
               onChange={(e) => { setMatCourseCode(e.target.value); setChapterId(""); }}
-              className="w-full rounded-lg border px-3 py-2 text-sm"
+              className="w-full rounded-lg border px-3 py-2 text-sm min-h-11"
               style={selectStyle}
             >
               <option value="">{t("quiz.selectCourse")}</option>
@@ -223,10 +282,10 @@ function Setup({
               ))}
             </select>
             {chapters.length > 0 && (
-              <select
+              <select aria-label={t("quiz.pickChapter")}
                 value={chapterId}
                 onChange={(e) => setChapterId(e.target.value)}
-                className="w-full rounded-lg border px-3 py-2 text-sm"
+                className="w-full rounded-lg border px-3 py-2 text-sm min-h-11"
                 style={selectStyle}
               >
                 <option value="">{t("quiz.selectChapter")}</option>
@@ -238,7 +297,7 @@ function Setup({
             <div className="grid grid-cols-3 gap-2">
               <div>
                 <label className="text-xs" style={{ color: "var(--text-tertiary)" }}>{t("quiz.difficulty")}</label>
-                <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)} className="w-full rounded-lg border px-2 py-1 text-sm" style={selectStyle}>
+                <select aria-label={t("quiz.difficulty")} value={difficulty} onChange={(e) => setDifficulty(e.target.value)} className="w-full rounded-lg border px-2 py-1 text-sm min-h-11" style={selectStyle}>
                   <option value="0">ทุกระดับ</option>
                   <option value="1">{t("quiz.diff.1")}</option>
                   <option value="2">{t("quiz.diff.2")}</option>
@@ -247,7 +306,7 @@ function Setup({
               </div>
               <div>
                 <label className="text-xs" style={{ color: "var(--text-tertiary)" }}>{t("quiz.format")}</label>
-                <select value={qType} onChange={(e) => setQType(e.target.value)} className="w-full rounded-lg border px-2 py-1 text-sm" style={selectStyle}>
+                <select aria-label={t("quiz.format")} value={qType} onChange={(e) => setQType(e.target.value)} className="w-full rounded-lg border px-2 py-1 text-sm min-h-11" style={selectStyle}>
                   <option value="mixed">{t("quiz.format.mixed")}</option>
                   <option value="mcq">{t("quiz.format.mcq")}</option>
                   <option value="short">{t("quiz.format.short")}</option>
@@ -255,7 +314,7 @@ function Setup({
               </div>
               <div>
                 <label className="text-xs" style={{ color: "var(--text-tertiary)" }}>{t("quiz.count")}</label>
-                <select value={count} onChange={(e) => setCount(e.target.value)} className="w-full rounded-lg border px-2 py-1 text-sm" style={selectStyle}>
+                <select aria-label={t("quiz.count")} value={count} onChange={(e) => setCount(e.target.value)} className="w-full rounded-lg border px-2 py-1 text-sm min-h-11" style={selectStyle}>
                   {[5, 10, 15, 20].map((n) => (
                     <option key={n} value={n}>{n}</option>
                   ))}
@@ -265,12 +324,13 @@ function Setup({
           </div>
         )}
 
+        {loadFailed && <ErrorBox onRetry={() => setAttempt((n) => n + 1)} />}
         {error && <ErrorBox>{error}</ErrorBox>}
 
         <button
           onClick={start}
-          className="w-full font-medium rounded-lg py-2"
-          style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
+          className="w-full font-medium rounded-lg py-2 min-h-11"
+          style={{ backgroundColor: "var(--accent)", color: "#fff" }}
         >
           {t("quiz.start")}
         </button>
@@ -283,19 +343,30 @@ function Setup({
 
 function Runner({
   questions,
+  resumed,
+  onLeave,
   onComplete,
 }: {
   questions: QuizQuestion[];
+  /** Where the student was, when this quiz is being picked up again. */
+  resumed: Progress | null;
+  onLeave: () => void;
   onComplete: (results: AnswerResult[]) => void;
 }) {
   const { t } = useT();
   const { showPaywall } = useSubscription();
-  const [idx, setIdx] = useState(0);
-  const [answer, setAnswer] = useState("");
-  const [result, setResult] = useState<AnswerResult | null>(null);
+  const [idx, setIdx] = useState(resumed ? Math.min(resumed.idx, questions.length - 1) : 0);
+  const [answer, setAnswer] = useState(resumed?.answer ?? "");
+  const [result, setResult] = useState<AnswerResult | null>(resumed?.result ?? null);
   const [busy, setBusy] = useState(false);
-  const [results, setResults] = useState<AnswerResult[]>([]);
+  const [results, setResults] = useState<AnswerResult[]>(resumed?.results ?? []);
   const [error, setError] = useState<string | null>(null);
+  const [leaving, setLeaving] = useState(false);
+
+  // Keep the place: every answer typed, every question graded, every step forward.
+  useEffect(() => {
+    saveProgress({ questions, idx, answer, result, results });
+  }, [questions, idx, answer, result, results]);
 
   const q = questions[idx];
   const answered = result !== null;
@@ -366,8 +437,8 @@ function Runner({
             ))}
           </div>
         ) : (
-          <div>
-            <span className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t("quiz.yourAnswer")}</span>
+          <label className="block">
+            <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>{t("quiz.yourAnswer")}</span>
             <textarea
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
@@ -377,7 +448,7 @@ function Runner({
               className="mt-1 w-full rounded-lg border px-3 py-2 text-sm disabled:opacity-60"
               style={{ borderColor: "var(--border)", backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}
             />
-          </div>
+          </label>
         )}
 
         {error && <ErrorBox>{error}</ErrorBox>}
@@ -389,7 +460,7 @@ function Runner({
               <span className="text-sm" style={{ color: "var(--text-secondary)" }}>{result.feedback}</span>
             </div>
             <div className="text-sm rounded-lg px-3 py-2" style={{ backgroundColor: "var(--bg-surface-hover)" }}>
-              <span style={{ color: "var(--text-tertiary)" }}>{t("quiz.modelAnswer")}: </span>
+              <span className="text-xs font-medium" style={{ color: "var(--text-tertiary)" }}>{t("quiz.modelAnswer")}: </span>
               <span style={{ color: "var(--text-primary)" }}>{result.modelAnswer}</span>
             </div>
             {result.explanation && (
@@ -415,19 +486,36 @@ function Runner({
           <button
             onClick={submit}
             disabled={!canSubmit}
-            className="w-full font-medium rounded-lg py-2 disabled:opacity-40"
-            style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
+            className="w-full font-medium rounded-lg py-2 disabled:opacity-40 min-h-11"
+            style={{ backgroundColor: "var(--accent)", color: "#fff" }}
           >
             {t("quiz.submit")}
           </button>
         ) : (
           <button
             onClick={next}
-            className="w-full font-medium rounded-lg py-2"
+            className="w-full font-medium rounded-lg py-2 min-h-11"
             style={{ backgroundColor: "var(--text-primary)", color: "var(--text-inverse)" }}
           >
             {idx + 1 >= questions.length ? t("quiz.finish") : t("quiz.next")}
           </button>
+        )}
+
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{t("quiz.kept")}</p>
+          <button onClick={() => setLeaving(true)} className="shrink-0 px-2 min-h-11 text-sm" style={{ color: "var(--text-secondary)" }}>
+            {t("quiz.leave")}
+          </button>
+        </div>
+        {leaving && (
+          <ConfirmDialog
+            title={t("quiz.leaveTitle")}
+            message={t("quiz.leaveMsg", { n: questions.length - results.length })}
+            confirmLabel={t("quiz.leave")}
+            cancelLabel={t("quiz.stay")}
+            onConfirm={onLeave}
+            onCancel={() => setLeaving(false)}
+          />
         )}
       </div>
     </Card>
@@ -469,8 +557,8 @@ function Summary({
         <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t("quiz.cardsMade", { n: cards })}</p>
         <button
           onClick={onAgain}
-          className="mt-3 font-medium rounded-lg py-2 px-6"
-          style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
+          className="mt-3 font-medium rounded-lg py-2 px-6 min-h-11"
+          style={{ backgroundColor: "var(--accent)", color: "#fff" }}
         >
           {t("quiz.again")}
         </button>

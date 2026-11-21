@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Logo mark: an open book; a dotted trail crosses the left page and the right page lifts into a tick">
+  <defs>
+    <!-- The trail is cut OUT of the left page, so the mark works on any background. -->
+    <mask id="trail-cut">
+      <rect width="64" height="64" fill="#fff"/>
+      <circle cx="13.500" cy="27.500" r="2.300" fill="#000"/>
+      <circle cx="18.300" cy="34.800" r="2.600" fill="#000"/>
+      <circle cx="23" cy="42.300" r="2.900" fill="#000"/>
+    </mask>
+  </defs>
+  <!-- Left page, with the trail -->
+  <path fill="currentColor" opacity=".55" mask="url(#trail-cut)" d="M8 21.500c0-1.900 1.600-3.300 3.500-3 6.300 1 11.800 3.400 16.500 7.300V53c-4.700-3.700-10.300-6-16.700-6.900C9.400 45.900 8 44.300 8 42.400z"/>
+  <!-- Right page, lifted: where the trail arrives -->
+  <path fill="var(--logo-tick, currentColor)" d="M28 25.800 49.200 8.300c2.900-2.400 7.200 0.800 5.600 4.200L36.600 51.800c-1.500 3.200-5.600 4-8.600 1.200z"/>
+</svg>

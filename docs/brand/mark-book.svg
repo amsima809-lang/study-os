@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="currentColor" role="img" aria-label="Logo mark: an open book whose right page rises into a tick">
+  <!-- Left page of an open book: the short stroke of a tick -->
+  <path d="M8 21.500c0-1.900 1.600-3.300 3.500-3 6.300 1 11.800 3.400 16.500 7.300V53c-4.700-3.700-10.300-6-16.700-6.900C9.400 45.900 8 44.300 8 42.400z" opacity=".5"/>
+  <!-- Right page, lifted: the long stroke of the tick -->
+  <path d="M28 25.800 49.200 8.300c2.900-2.400 7.200 0.800 5.600 4.200L36.600 51.800c-1.500 3.200-5.600 4-8.600 1.200z"/>
+</svg>

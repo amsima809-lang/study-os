@@ -11,6 +11,7 @@
 import { Router } from "express";
 import type { DB } from "./db.js";
 import { bangkokToday, bangkokWeekday, addDaysISO, daysBetween, studyTargets } from "./api.js";
+import { myExams } from "./myExams.js";
 
 export type RiskFlag = "green" | "yellow" | "red";
 
@@ -83,14 +84,13 @@ export function createAnalyticsRouter(db: DB): Router {
        WHERE q.course_code = ? AND a.user_id = ? AND q.topic IS NOT NULL
        GROUP BY q.topic`,
     );
-    const examStmt = db.prepare(
-      "SELECT MIN(datetime_start) AS d FROM exams WHERE course_code = ? AND term_id = ?",
-    );
+    const nextExam = new Map(myExams(db, userId, term, today).filter((e) => e.next).map((e) => [e.course_code, e.next!.date]));
 
     const courses = targets.courses.map((c) => {
       const minutes = (hoursStmt.get(c.code, weekStartTs, userId) as { m: number }).m;
       const actualWeeklyHours = Math.round((minutes / 60) * 10) / 10;
-      const hoursRatio = c.weeklyHours > 0 ? actualWeeklyHours / c.weeklyHours : 1;
+      // No plan, or nothing planned for it this week: no target, so hours never make it look behind.
+      const hoursRatio = c.weeklyHours ? actualWeeklyHours / c.weeklyHours : 1;
 
       const quizRow = quizStmt.get(c.code, userId) as { avg: number | null; n: number };
       const quizAverage = quizRow.n > 0 && quizRow.avg != null ? Math.round((quizRow.avg / 2) * 100) : null;
@@ -99,8 +99,9 @@ export function createAnalyticsRouter(db: DB): Router {
         .map((t) => ({ name: t.topic, mastery: Math.round((t.avg / 2) * 100) }))
         .sort((a, b) => a.mastery - b.mastery);
 
-      const examRow = examStmt.get(c.code, term) as { d: string | null };
-      const daysToExam = examRow.d ? daysBetween(today, examRow.d.slice(0, 10)) : null;
+      // Her next exam for it: a booked e-Test before the final (myExams.ts).
+      const next = nextExam.get(c.code);
+      const daysToExam = next ? daysBetween(today, next) : null;
 
       const risk = computeRisk({ hoursRatio, quizAvg: quizAverage, daysToExam });
 

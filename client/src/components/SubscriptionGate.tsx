@@ -57,6 +57,13 @@ function PaywallModal({ onClose, onActivated }: { onClose: () => void; onActivat
     }
   }
 
+  // Escape closes it, like every other dialog in the app.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center px-5"
@@ -64,7 +71,10 @@ function PaywallModal({ onClose, onActivated }: { onClose: () => void; onActivat
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
-        className="w-full max-w-sm rounded-3xl p-7 animate-slide-up relative"
+        role="dialog"
+        aria-modal="true"
+        aria-label={t("sub.title")}
+        className="w-full max-w-sm max-h-[92dvh] overflow-y-auto rounded-3xl p-7 animate-slide-up relative"
         style={{
           backgroundColor: "var(--bg-surface)",
           boxShadow: "var(--shadow-lg)",
@@ -73,7 +83,8 @@ function PaywallModal({ onClose, onActivated }: { onClose: () => void; onActivat
       >
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1 rounded-lg"
+          aria-label={t("uni.close")}
+          className="absolute top-2 right-2 w-11 h-11 flex items-center justify-center rounded-lg"
           style={{ color: "var(--text-tertiary)" }}
         >
           <Icon name="x" size={20} />
@@ -83,7 +94,7 @@ function PaywallModal({ onClose, onActivated }: { onClose: () => void; onActivat
           <div
             className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4"
             style={{
-              background: "linear-gradient(135deg, var(--accent) 0%, #8b5cf6 100%)",
+              background: "linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%)",
             }}
           >
             <Icon name="sparkles" size={28} style={{ color: "#fff" }} />
@@ -121,10 +132,10 @@ function PaywallModal({ onClose, onActivated }: { onClose: () => void; onActivat
         <button
           onClick={activate}
           disabled={busy}
-          className="w-full py-3.5 rounded-2xl font-semibold text-white disabled:opacity-50 transition-all active:scale-[0.98]"
+          className="w-full py-3.5 rounded-2xl font-semibold text-white disabled:opacity-50 transition-all active:scale-[0.98] min-h-11"
           style={{
-            background: "linear-gradient(135deg, var(--accent) 0%, #8b5cf6 100%)",
-            boxShadow: "0 4px 16px rgba(91,79,199,0.3)",
+            background: "linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%)",
+            boxShadow: "0 4px 16px color-mix(in srgb, var(--accent) 30%, transparent)",
           }}
         >
           {busy ? t("sub.activating") : t("sub.activate")}

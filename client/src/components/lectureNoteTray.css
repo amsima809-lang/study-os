@@ -1,0 +1,136 @@
+html.lecture-writing { overflow: hidden; }
+/* A retained entry transform would position the fixed reader relative to the page header. */
+html.lecture-writing .animate-fade-in:has(.lecture-tray-reader) { animation: none; }
+
+.lecture-tray-reader,
+.lecture-note-tray {
+  --lecture-editor-height: calc(var(--lecture-vh, 100dvh) * var(--lecture-tray-share, .5));
+  position: fixed;
+  box-sizing: border-box;
+  left: var(--lecture-vleft, 0px);
+  width: var(--lecture-vw, 100vw);
+  margin: 0;
+  background: var(--bg-base);
+  color: var(--text-primary);
+}
+.lecture-tray-reader {
+  top: var(--lecture-vtop, 0px);
+  height: calc(var(--lecture-vh, 100dvh) - var(--lecture-editor-height));
+  z-index: 40;
+  padding: max(.75rem, env(safe-area-inset-top)) max(1rem, calc((100% - 54rem) / 2), env(safe-area-inset-right)) 1rem
+    max(1rem, calc((100% - 54rem) / 2), env(safe-area-inset-left));
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.lecture-note-tray {
+  top: calc(var(--lecture-vtop, 0px) + var(--lecture-vh, 100dvh) - var(--lecture-editor-height));
+  height: var(--lecture-editor-height);
+  z-index: 41;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border);
+  border-radius: 1rem 1rem 0 0;
+  background: var(--bg-surface);
+  box-shadow: 0 -2px 12px rgb(0 0 0 / .08);
+  overflow: hidden;
+}
+.lecture-note-tray[data-full="true"] {
+  padding-top: env(safe-area-inset-top);
+  border-radius: 0;
+}
+.lecture-tray-resizer {
+  flex: none;
+  height: 1.5rem;
+  display: grid;
+  place-items: center;
+  cursor: ns-resize;
+  touch-action: none;
+  user-select: none;
+}
+.lecture-tray-resizer::before {
+  content: "";
+  width: 2.75rem;
+  height: .25rem;
+  border-radius: 1rem;
+  background: var(--text-tertiary);
+}
+.lecture-tray-resizer:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.lecture-tray-header,
+.lecture-tray-form {
+  padding-inline: max(1rem, calc((100% - 54rem) / 2), env(safe-area-inset-left)) max(1rem, calc((100% - 54rem) / 2), env(safe-area-inset-right));
+}
+.lecture-tray-header {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  min-height: 3rem;
+  border-bottom: 1px solid var(--border-light);
+}
+.lecture-tray-header button { min-width: 2.75rem; min-height: 2.75rem; color: var(--accent-text); }
+.lecture-tray-header button:last-child { font-size: 1.5rem; color: var(--text-secondary); }
+.lecture-tray-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-top: .75rem;
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+.lecture-compose, .lecture-compose-fields {
+  display: flex;
+  flex-direction: column;
+  flex: 1 0 auto;
+  min-width: 0;
+}
+.lecture-compose-fields { gap: .6rem; }
+.lecture-compose-fields > * { flex-shrink: 0; }
+.lecture-compose-fields > .lecture-writing-field {
+  flex: 1 0 6rem;
+  min-height: 6rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.lecture-tray-form textarea.lecture-writing-field,
+.lecture-tray-form .lecture-writing-field textarea {
+  display: block;
+  resize: none;
+  overflow-y: auto;
+}
+.lecture-tray-form .lecture-writing-field textarea {
+  flex: 1;
+  min-height: 3rem;
+  height: 0;
+}
+.lecture-tray-form form label.lecture-writing-field { display: flex; }
+.lecture-tray-form form label { display: block; font-size: .875rem; }
+.lecture-tray-form form :is(input, textarea) {
+  display: block;
+  width: 100%;
+  min-height: 2.75rem;
+  margin-block-start: .25rem;
+  padding: .5rem .75rem;
+  border: 1px solid var(--border);
+  border-radius: .5rem;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+html.keyboard-open .lecture-note-tray[role="dialog"] {
+  max-height: none !important;
+  overflow: hidden;
+}
+
+.annotation-sheet {
+  padding-inline: max(.5rem, calc((100% - 54rem) / 2), env(safe-area-inset-left)) max(.5rem, calc((100% - 54rem) / 2), env(safe-area-inset-right));
+  padding-bottom: max(.5rem, env(safe-area-inset-bottom));
+}
+.annotation-sheet-paper {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}

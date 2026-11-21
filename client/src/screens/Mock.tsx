@@ -14,8 +14,10 @@ import {
   type ApiError,
 } from "../api.ts";
 import { Card, ErrorBox, Loading } from "../components/ui.tsx";
+import { CourseMockExams } from "../components/CourseMockExams.tsx";
 import { CourseTitle } from "../components/CourseTitle.tsx";
 import Icon from "../components/Icon.tsx";
+import { ChooseCoursesCard } from "../components/TermCourses.tsx";
 
 type MockQuestion = QuizQuestion & { chapter_id?: number | null };
 type GradeCutoff = { label: string; min_pct: number };
@@ -64,17 +66,18 @@ type Tab = "exam" | "history" | "settings";
 export default function Mock() {
   const { t } = useT();
   const [tab, setTab] = useState<Tab>("exam");
+  const [readingPaper, setReadingPaper] = useState(false);
 
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{t("mock.title")}</h1>
 
-      <div className="flex gap-1 rounded-lg p-1" style={{ backgroundColor: "var(--bg-surface-hover)" }}>
+      {!readingPaper && <div className="flex gap-1 rounded-lg p-1" style={{ backgroundColor: "var(--bg-surface-hover)" }}>
         {(["exam", "history", "settings"] as Tab[]).map((tb) => (
           <button
             key={tb}
             onClick={() => setTab(tb)}
-            className="flex-1 text-sm py-1.5 rounded-md font-medium transition-colors"
+            className="flex-1 text-sm py-1.5 rounded-md font-medium transition-colors min-h-11"
             style={{
               backgroundColor: tab === tb ? "var(--bg-surface)" : "transparent",
               color: tab === tb ? "var(--accent-text)" : "var(--text-tertiary)",
@@ -84,10 +87,10 @@ export default function Mock() {
             {t(`mock.tab.${tb}`)}
           </button>
         ))}
-      </div>
+      </div>}
 
-      {tab === "exam" && <ExamTab />}
-      {tab === "history" && <HistoryTab />}
+      {tab !== "settings" && <CourseMockExams key={tab} history={tab === "history"} onReading={setReadingPaper}
+        legacy={tab === "exam" ? <ExamTab /> : <HistoryTab />} />}
       {tab === "settings" && <SettingsTab />}
     </div>
   );
@@ -197,7 +200,11 @@ function CourseList({
   const [duration, setDuration] = useState(90);
   const [selectedChapters, setSelectedChapters] = useState<number[]>([]);
 
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+
   useEffect(() => {
+    setFailed(false);
     Promise.all([
       getJSON<{ courses: AvailableCourse[] }>("/api/mock/available"),
       getJSON<{ exams: InProgressExam[] }>("/api/mock/in-progress"),
@@ -206,11 +213,19 @@ function CourseList({
         setCourses(c.courses);
         setInProgress(ip.exams);
       })
-      .catch(() => setCourses([]));
-  }, []);
+      .catch(() => setFailed(true));
+  }, [attempt]);
 
+  if (failed) return <ErrorBox onRetry={() => setAttempt((n) => n + 1)} />;
   if (!courses) return <Loading>{t("status.connecting")}</Loading>;
-  if (courses.length === 0) return <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t("mock.empty")}</p>;
+  if (courses.length === 0)
+    return (
+      <div className="space-y-3">
+        {/* No exams listed may simply mean no courses chosen yet: offer that first. */}
+        <ChooseCoursesCard onChanged={() => setAttempt((n) => n + 1)} />
+        <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>{t("mock.empty")}</p>
+      </div>
+    );
 
   async function startExam(code: string) {
     setError(null);
@@ -255,8 +270,8 @@ function CourseList({
   const inputStyle = { borderColor: "var(--border)", backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" };
 
   return (
-    <div className="space-y-3">
-      {error && <ErrorBox>{error}</ErrorBox>}
+    <div className="wide-grid space-y-3">
+      {error && <div className="span-all"><ErrorBox>{error}</ErrorBox></div>}
 
       {inProgress.map((ip) => (
         <Card key={ip.id}>
@@ -277,7 +292,7 @@ function CourseList({
             </div>
             <button
               onClick={() => resumeExam(ip.id)}
-              className="text-sm font-medium rounded-lg px-4 py-2"
+              className="text-sm font-medium rounded-lg px-4 py-2 min-h-11"
               style={{ backgroundColor: "var(--warning)", color: "var(--text-inverse)" }}
             >
               {t("mock.resume")}
@@ -301,7 +316,7 @@ function CourseList({
                   setExpanded(expanded === c.code ? null : c.code);
                   setSelectedChapters([]);
                 }}
-                className="text-xs underline"
+                className="text-xs underline min-h-11"
                 style={{ color: "var(--accent-text)" }}
               >
                 {t("mock.settings")}
@@ -316,7 +331,7 @@ function CourseList({
                         type="number" min={5} max={Math.min(c.bankCount, 200)}
                         value={questionCount}
                         onChange={(e) => setQuestionCount(Number(e.target.value) || 40)}
-                        className="w-full mt-0.5 rounded border px-2 py-1 text-sm"
+                        className="w-full mt-0.5 rounded border px-2 py-1 text-sm min-h-11"
                         style={inputStyle}
                       />
                     </label>
@@ -326,7 +341,7 @@ function CourseList({
                         type="number" min={5} max={300}
                         value={duration}
                         onChange={(e) => setDuration(Number(e.target.value) || 90)}
-                        className="w-full mt-0.5 rounded border px-2 py-1 text-sm"
+                        className="w-full mt-0.5 rounded border px-2 py-1 text-sm min-h-11"
                         style={inputStyle}
                       />
                     </label>
@@ -338,7 +353,7 @@ function CourseList({
                       <div className="flex flex-wrap gap-1.5 mt-1">
                         <button
                           onClick={() => setSelectedChapters([])}
-                          className="text-xs rounded-full px-2 py-0.5"
+                          className="text-xs rounded-full px-2 py-0.5 min-h-11"
                           style={{
                             backgroundColor: selectedChapters.length === 0 ? "var(--accent-light)" : "var(--bg-surface)",
                             color: selectedChapters.length === 0 ? "var(--accent-text)" : "var(--text-tertiary)",
@@ -350,7 +365,7 @@ function CourseList({
                           <button
                             key={ch.id}
                             onClick={() => toggleChapter(ch.id)}
-                            className="text-xs rounded-full px-2 py-0.5"
+                            className="text-xs rounded-full px-2 py-0.5 min-h-11"
                             style={{
                               backgroundColor: selectedChapters.includes(ch.id) ? "var(--accent-light)" : "var(--bg-surface)",
                               color: selectedChapters.includes(ch.id) ? "var(--accent-text)" : "var(--text-tertiary)",
@@ -367,8 +382,8 @@ function CourseList({
 
               <button
                 onClick={() => startExam(c.code)}
-                className="w-full text-sm font-medium rounded-lg py-2"
-                style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
+                className="w-full text-sm font-medium rounded-lg py-2 min-h-11"
+                style={{ backgroundColor: "var(--accent)", color: "#fff" }}
               >
                 {t("mock.startExam")}
               </button>
@@ -542,7 +557,7 @@ function Runner({
       >
         <button
           onClick={() => setShowGrid(!showGrid)}
-          className="text-xs font-medium px-2 py-1 rounded-lg"
+          className="text-xs font-medium px-2 py-1 rounded-lg min-h-11"
           style={{ backgroundColor: "var(--accent-light)", color: "var(--accent-text)" }}
         >
           {t("mock.grid")} {answeredCount}/{questions.length}
@@ -585,7 +600,7 @@ function Runner({
               const isCurrent = i === idx;
 
               let bg: string; let fg: string;
-              if (isCurrent) { bg = "var(--accent)"; fg = "var(--text-inverse)"; }
+              if (isCurrent) { bg = "var(--accent)"; fg = "#fff"; }
               else if (isFlagged && isAnswered) { bg = "var(--warning)"; fg = "var(--text-inverse)"; }
               else if (isFlagged) { bg = "var(--warning-bg)"; fg = "var(--warning)"; }
               else if (isAnswered) { bg = "var(--accent-light)"; fg = "var(--accent-text)"; }
@@ -610,11 +625,11 @@ function Runner({
       <Card>
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs">
-            {q.topic && <span style={{ color: "var(--accent-text)" }}>{q.topic}</span>}
+            {q.topic && <span style={{ color: "var(--text-tertiary)" }}>{q.topic}</span>}
           </span>
           <button
             onClick={toggleFlag}
-            className="text-xs px-2 py-0.5 rounded-full"
+            className="text-xs px-2 py-0.5 rounded-full min-h-11"
             style={{
               backgroundColor: flags.has(idx) ? "var(--warning-bg)" : "var(--bg-surface-hover)",
               color: flags.has(idx) ? "var(--warning)" : "var(--text-tertiary)",
@@ -665,7 +680,7 @@ function Runner({
         <button
           onClick={() => goToQuestion(Math.max(0, idx - 1))}
           disabled={idx === 0}
-          className="flex-1 font-medium rounded-lg py-2 text-sm disabled:opacity-30"
+          className="flex-1 font-medium rounded-lg py-2 disabled:opacity-30 min-h-11"
           style={{ backgroundColor: "var(--bg-surface-hover)", color: "var(--text-secondary)" }}
         >
           ←
@@ -673,15 +688,15 @@ function Runner({
         {idx + 1 < questions.length ? (
           <button
             onClick={() => goToQuestion(idx + 1)}
-            className="flex-1 font-medium rounded-lg py-2 text-sm"
-            style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
+            className="flex-1 font-medium rounded-lg py-2 min-h-11"
+            style={{ backgroundColor: "var(--accent)", color: "#fff" }}
           >
             {t("mock.next")}
           </button>
         ) : (
           <button
             onClick={handleSubmitClick}
-            className="flex-1 font-medium rounded-lg py-2 text-sm"
+            className="flex-1 font-medium rounded-lg py-2 min-h-11"
             style={{ backgroundColor: "var(--success)", color: "var(--text-inverse)" }}
           >
             {t("mock.submit")}
@@ -692,7 +707,7 @@ function Runner({
       {idx + 1 < questions.length && (
         <button
           onClick={handleSubmitClick}
-          className="w-full text-xs py-1 underline"
+          className="w-full text-xs py-1 underline min-h-11"
           style={{ color: "var(--text-tertiary)" }}
         >
           {t("mock.submit")}
@@ -703,10 +718,13 @@ function Runner({
       {showConfirm && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={t("mock.confirm")}
             className="rounded-2xl p-5 max-w-sm w-full space-y-3"
             style={{ backgroundColor: "var(--bg-surface)" }}
           >
-            <p className="font-medium text-center" style={{ color: "var(--text-primary)" }}>
+            <h2 className="text-lg font-bold text-center" style={{ color: "var(--text-primary)" }}>
               {(() => {
                 const unanswered = questions.filter(
                   (q2) => !answers[String(q2.id)]?.trim(),
@@ -715,11 +733,11 @@ function Runner({
                   ? t("mock.confirmSubmit", { n: unanswered })
                   : t("mock.confirmSubmitAll");
               })()}
-            </p>
+            </h2>
             <div className="flex gap-2">
               <button
                 onClick={() => setShowConfirm(false)}
-                className="flex-1 font-medium rounded-lg py-2 text-sm"
+                className="flex-1 font-medium rounded-lg py-2 min-h-11"
                 style={{ backgroundColor: "var(--bg-surface-hover)", color: "var(--text-secondary)" }}
               >
                 {t("mock.cancel")}
@@ -729,7 +747,7 @@ function Runner({
                   setShowConfirm(false);
                   void doFinish();
                 }}
-                className="flex-1 font-medium rounded-lg py-2 text-sm"
+                className="flex-1 font-semibold rounded-lg py-2 min-h-11"
                 style={{ backgroundColor: "var(--success)", color: "var(--text-inverse)" }}
               >
                 {t("mock.confirm")}
@@ -774,7 +792,7 @@ function ResultView({ result, onDone }: { result: MockResultData; onDone: () => 
 
       {result.chapterScores.length > 0 && (
         <Card>
-          <h3 className="font-medium mb-2" style={{ color: "var(--text-primary)" }}>{t("mock.chapterBreakdown")}</h3>
+          <h2 className="font-semibold mb-2" style={{ color: "var(--text-primary)" }}>{t("mock.chapterBreakdown")}</h2>
           <div className="space-y-2">
             {result.chapterScores.map((cs) => {
               const barColor = cs.pct >= 70 ? "var(--success)" : cs.pct >= 50 ? "var(--warning)" : "var(--danger)";
@@ -790,7 +808,7 @@ function ResultView({ result, onDone }: { result: MockResultData; onDone: () => 
                       style={{ width: `${Math.min(cs.pct, 100)}%`, backgroundColor: barColor }}
                     />
                   </div>
-                  <p className="text-[10px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                  <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>
                     {cs.score}/{cs.max} · {cs.count} ข้อ
                   </p>
                 </div>
@@ -802,7 +820,7 @@ function ResultView({ result, onDone }: { result: MockResultData; onDone: () => 
 
       {result.weakTopics.length > 0 && (
         <Card>
-          <p className="text-sm mb-1" style={{ color: "var(--text-tertiary)" }}>{t("mock.weak")}</p>
+          <h2 className="font-semibold mb-2" style={{ color: "var(--text-primary)" }}>{t("mock.weak")}</h2>
           <div className="flex flex-wrap gap-1">
             {result.weakTopics.map((w, i) => (
               <span
@@ -820,8 +838,8 @@ function ResultView({ result, onDone }: { result: MockResultData; onDone: () => 
       <p className="text-xs text-center" style={{ color: "var(--warning)" }}>{t("mock.madeCards")}</p>
       <button
         onClick={onDone}
-        className="w-full font-medium rounded-lg py-2"
-        style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
+        className="w-full font-medium rounded-lg py-2 min-h-11"
+        style={{ backgroundColor: "var(--accent)", color: "#fff" }}
       >
         {t("mock.done")}
       </button>
@@ -850,7 +868,7 @@ function HistoryTab() {
     <div className="space-y-4">
       {trendData.length >= 2 && (
         <Card>
-          <h3 className="font-medium mb-2" style={{ color: "var(--text-primary)" }}>{t("mock.trend")}</h3>
+          <h2 className="font-semibold mb-2" style={{ color: "var(--text-primary)" }}>{t("mock.trend")}</h2>
           <TrendChart data={trendData} />
         </Card>
       )}
@@ -867,7 +885,7 @@ function HistoryTab() {
                   name_en={h.name_en}
                   className="font-medium text-sm"
                 />
-                <p className="text-[10px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>
                   {new Date(h.finished_at).toLocaleDateString("th-TH", {
                     day: "numeric",
                     month: "short",
@@ -894,15 +912,17 @@ function HistoryTab() {
 function TrendChart({ data }: { data: HistoryItem[] }) {
   const W = 300;
   const H = 120;
-  const PAD = 20;
+  const PAD = 28;
+  // The y-axis numbers get their own column, so the first point's label never sits on them.
+  const LEFT = 44;
 
   if (data.length < 2) return null;
 
   const maxPct = 100;
-  const xStep = (W - PAD * 2) / (data.length - 1);
+  const xStep = (W - LEFT - PAD) / (data.length - 1);
 
   const points = data.map((d, i) => ({
-    x: PAD + i * xStep,
+    x: LEFT + i * xStep,
     y: H - PAD - ((d.pct / maxPct) * (H - PAD * 2)),
     label: d.pct,
   }));
@@ -915,8 +935,8 @@ function TrendChart({ data }: { data: HistoryItem[] }) {
         const y = H - PAD - ((pct / maxPct) * (H - PAD * 2));
         return (
           <g key={pct}>
-            <line x1={PAD} y1={y} x2={W - PAD} y2={y} stroke="var(--border-light)" strokeWidth={0.5} />
-            <text x={PAD - 4} y={y + 3} textAnchor="end" fontSize={8} fill="var(--text-tertiary)">
+            <line x1={LEFT} y1={y} x2={W - PAD} y2={y} stroke="var(--border-light)" strokeWidth={0.5} />
+            <text x={LEFT - 8} y={y + 5} textAnchor="end" fontSize={14} fill="var(--text-tertiary)">
               {pct}
             </text>
           </g>
@@ -926,7 +946,7 @@ function TrendChart({ data }: { data: HistoryItem[] }) {
       {points.map((p, i) => (
         <g key={i}>
           <circle cx={p.x} cy={p.y} r={3} fill="var(--accent)" />
-          <text x={p.x} y={p.y - 7} textAnchor="middle" fontSize={8} fill="var(--accent-text)" fontWeight="bold">
+          <text x={p.x} y={p.y - 9} textAnchor="middle" fontSize={14} fill="var(--accent-text)" fontWeight="bold">
             {p.label}%
           </text>
         </g>
@@ -968,9 +988,9 @@ function SettingsTab() {
   return (
     <Card>
       <div className="flex items-center justify-between mb-3">
-        <h3 className="font-medium" style={{ color: "var(--text-primary)" }}>{t("mock.cutoffs")}</h3>
+        <h2 className="font-semibold" style={{ color: "var(--text-primary)" }}>{t("mock.cutoffs")}</h2>
         {!editing && (
-          <button onClick={startEdit} className="text-xs underline" style={{ color: "var(--accent-text)" }}>
+          <button onClick={startEdit} className="text-sm min-h-11" style={{ color: "var(--accent-text)" }}>
             {t("mock.editCutoffs")}
           </button>
         )}
@@ -980,7 +1000,7 @@ function SettingsTab() {
         <div className="space-y-2">
           {draft.map((c, i) => (
             <div key={i} className="flex items-center gap-2">
-              <input
+              <input aria-label={t("field.grade")}
                 type="text"
                 value={c.label}
                 onChange={(e) => {
@@ -988,11 +1008,11 @@ function SettingsTab() {
                   next[i] = { ...c, label: e.target.value };
                   setDraft(next);
                 }}
-                className="w-16 rounded border px-2 py-1 text-sm text-center"
+                className="w-16 rounded border px-2 py-1 text-sm text-center min-h-11"
                 style={inputStyle}
               />
               <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>{t("mock.minPct")}</span>
-              <input
+              <input aria-label={t("mock.minPct")}
                 type="number" min={0} max={100}
                 value={c.min_pct}
                 onChange={(e) => {
@@ -1000,15 +1020,15 @@ function SettingsTab() {
                   next[i] = { ...c, min_pct: Number(e.target.value) || 0 };
                   setDraft(next);
                 }}
-                className="w-16 rounded border px-2 py-1 text-sm text-center"
+                className="w-16 rounded border px-2 py-1 text-sm text-center min-h-11"
                 style={inputStyle}
               />
             </div>
           ))}
           <button
             onClick={save}
-            className="w-full text-sm font-medium rounded-lg py-2 mt-2"
-            style={{ backgroundColor: "var(--accent)", color: "var(--text-inverse)" }}
+            className="w-full text-sm font-medium rounded-lg py-2 mt-2 min-h-11"
+            style={{ backgroundColor: "var(--accent)", color: "#fff" }}
           >
             {t("mock.saveCutoffs")}
           </button>

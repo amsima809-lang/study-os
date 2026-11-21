@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useT } from "../i18n.tsx";
 import { getJSON } from "../api.ts";
 import Icon from "../components/Icon.tsx";
+import { ErrorBox } from "../components/ui.tsx";
 
 type CostEstimate = {
   campus: string;
@@ -39,30 +40,34 @@ export default function Costs() {
   const [creditsPerCourse, setCreditsPerCourse] = useState(3);
   const [data, setData] = useState<CostEstimate | null>(null);
 
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+
   useEffect(() => {
+    setFailed(false);
     getJSON<CostEstimate>(
       `/api/cost-estimate?campus=${campus}&courses=${courses}&etesting=${etesting}&retake=${retake}&credits_per_course=${creditsPerCourse}`,
-    ).then(setData);
-  }, [campus, courses, etesting, retake, creditsPerCourse]);
+    ).then(setData).catch(() => setFailed(true));
+  }, [campus, courses, etesting, retake, creditsPerCourse, attempt]);
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
-        <Icon name="coins" size={24} style={{ color: "var(--accent-text)" }} />
+      <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>
         {t("costs.title")}
       </h1>
 
+      {failed && <ErrorBox onRetry={() => setAttempt((n) => n + 1)} />}
+
       {/* Campus toggle */}
-      <div className="flex gap-2">
+      <div className="flex gap-1 rounded-xl p-1" style={{ backgroundColor: "var(--bg-surface)" }}>
         {(["central", "regional"] as const).map((c) => (
           <button
             key={c}
             onClick={() => setCampus(c)}
-            className="flex-1 rounded-xl py-2.5 text-sm font-medium transition-all"
+            className="flex-1 rounded-lg py-2.5 text-sm font-medium transition-all min-h-11"
             style={{
-              background: campus === c ? "var(--accent-text)" : "var(--bg-surface)",
+              background: campus === c ? "var(--accent)" : "transparent",
               color: campus === c ? "#fff" : "var(--text-secondary)",
-              border: `1px solid ${campus === c ? "var(--accent-text)" : "var(--border-light)"}`,
             }}
           >
             {t(`costs.${c}`)}
@@ -121,9 +126,9 @@ export default function Costs() {
               style={{ borderBottom: "1px solid var(--border-light)", background: "var(--bg-surface-hover)" }}
             >
               <Icon name="calendar" size={18} style={{ color: "var(--accent-text)" }} />
-              <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+              <h2 className="font-semibold" style={{ color: "var(--text-primary)" }}>
                 {t("costs.semesterBreakdown")}
-              </span>
+              </h2>
             </div>
             <div className="px-4 py-3 space-y-2">
               <CostRow label={t("costs.creditFee")} sub={`${data.semester.credits} ${t("costs.credits")} × ฿${campus === "central" ? 25 : 50}`} amount={data.semester.credit_fee} />
@@ -162,9 +167,9 @@ export default function Costs() {
               style={{ borderBottom: "1px solid var(--border-light)", background: "var(--bg-surface-hover)" }}
             >
               <Icon name="graduationCap" size={18} style={{ color: "var(--accent-text)" }} />
-              <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+              <h2 className="font-semibold" style={{ color: "var(--text-primary)" }}>
                 {t("costs.graduationProjection")}
-              </span>
+              </h2>
             </div>
             <div className="px-4 py-3 space-y-2">
               <CostRow label={t("costs.enrollmentFees")} amount={data.projection.enrollment_fees} />
@@ -218,13 +223,13 @@ function SliderInput({
           {value} {suffix}
         </span>
       </div>
-      <input
+      <input aria-label={label}
         type="range"
         min={min}
         max={max}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full accent-[var(--accent-text)]"
+        className="w-full h-11 accent-[var(--accent-text)]"
       />
     </div>
   );
@@ -239,7 +244,7 @@ function CostRow({ label, sub, amount }: { label: string; sub?: string; amount: 
           <span className="text-xs ml-1" style={{ color: "var(--text-tertiary)" }}>({sub})</span>
         )}
       </div>
-      <span className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
+      <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
         ฿{fmt(amount)}
       </span>
     </div>

@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="188 355 2096 1352" role="img" aria-labelledby="map-title">
+<title id="map-title">Ramkhamhaeng University, Hua Mak campus</title>
+<!-- A redrawing of the university's own campus map, for the app: the same buildings in the same
+     places, plain shapes, colours set by the app's theme. South is at the top, as on the original.
+     Each building is <g id="CODE" data-code="CODE">; add class "is-selected" to its polygon to highlight it. -->
+<style>
+  .outside { fill: var(--map-outside, #eef0f7); }
+  .road { fill: var(--map-road, #c6c9d6); }
+  .ground { fill: var(--map-ground, #ffffff); }
+  .green { fill: var(--map-green, #cfe8d3); }
+  .pitch { fill: none; stroke: var(--map-ground, #ffffff); stroke-width: 3; }
+  .water { fill: var(--map-water, #cfe5f6); }
+  .plaza { fill: var(--map-plaza, #fde9a8); stroke: var(--map-line, #8b80e3); stroke-width: 2; }
+  .site { fill: none; stroke: var(--map-line, #8b80e3); stroke-width: 2; stroke-dasharray: 7 6; }
+  .b { fill: var(--map-building, #dedaf8); stroke: var(--map-line, #8b80e3); stroke-width: 2; stroke-linejoin: round; }
+  .b.other { fill: var(--map-building-2, #eceaf6); }
+  .b.has-class { stroke: var(--map-highlight, #6d5cdf); stroke-width: 4; }
+  .b { cursor: pointer; }
+  .b.is-selected { fill: var(--map-highlight, #6d5cdf); stroke: var(--map-highlight-line, #4f3fd0); }
+  .b.is-selected ~ text { fill: var(--map-highlight-label, #ffffff); }
+  text { font-family: var(--map-font, "IBM Plex Sans Thai Looped", "IBM Plex Sans", system-ui, sans-serif); fill: var(--map-label, #1f1d33); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+  .code { font-size: 19px; font-weight: 700; }
+  .code.small { font-size: 14px; }
+  .note { font-size: 14px; font-weight: 500; fill: var(--map-label-soft, #5d5a78); }
+  .bus { fill: var(--map-ground, #ffffff); stroke: var(--map-line, #8b80e3); stroke-width: 2; }
+</style>
+<rect class="outside" x="188" y="355" width="2096" height="1352"/>
+<polygon class="road" points="208,375 2264,375 209,375"/>
+<polygon class="road" points="1995,398 1996,443 1951,460 1945,466 1945,485 2084,1260 2099,1261 2111,1254 2109,1358 1723,1585 1708,1578 1688,1580 1676,1591 1672,1615 1549,1687 884,1686 362,1587 362,1504 480,1526 487,1545 500,1554 523,1553 539,1537 900,1605 921,1605 1078,1552 1193,1552 1193,1556 1157,1556 1156,1571 1188,1572 1190,1588 1208,1588 1234,1587 1235,1572 1280,1571 1279,1556 1231,1556 1232,1551 1347,1551 1531,1596 1548,1596 1755,1467 1766,1472 1788,1470 1802,1456 1805,1436 2063,1276 2063,1256 1922,438 1917,432 365,431 365,412 1905,412 1923,417 1945,417 1974,410 1994,399"/>
+<polygon class="ground" points="1142,444 1197,444 1198,455 1318,455 1316,613 1315,574 1198,574 1189,615 1188,647 1315,647 1317,635 1318,643 1473,643 1475,584 1769,584 1754,455 1900,455 2037,1264 2011,1280 2008,1283 2011,1288 2004,1293 2002,1286 1998,1289 1990,1280 1986,1284 1994,1299 1988,1303 1983,1296 1956,1312 1958,1322 1949,1327 1945,1323 1948,1319 1935,1313 1935,1328 1940,1327 1943,1331 1932,1338 1925,1331 1793,1415 1770,1413 1761,1416 1748,1429 1744,1446 1541,1574 1384,1540 1383,1527 1369,1529 1369,1544 1347,1544 1346,1530 1311,1530 1310,1544 1287,1544 1298,1525 1290,1523 1289,1505 1280,1506 1280,1524 1273,1524 1283,1544 1262,1544 1261,1530 1226,1530 1213,1522 1198,1530 1166,1530 1165,1544 1147,1544 1147,1527 1154,1525 1141,1505 1129,1526 1136,1527 1136,1544 1117,1544 1116,1530 1080,1530 1079,1544 1057,1544 1057,1527 1044,1526 1043,1540 936,1575 934,1582 921,1583 918,1574 905,1577 904,1573 903,1580 898,1577 901,1583 906,1579 908,1583 910,1578 916,1583 896,1585 894,1577 693,1540 682,1539 681,1547 654,1542 656,1534 641,1531 640,1527 638,1534 636,1528 634,1534 639,1536 642,1533 641,1536 649,1537 650,1541 626,1537 622,1536 619,1527 587,1522 595,1523 596,1518 585,1517 583,1512 579,1520 576,1520 575,1513 567,1513 566,1509 563,1515 563,1509 561,1513 557,1510 556,1516 537,1513 527,1501 516,1496 504,1496 490,1504 437,1494 428,1500 410,1496 410,1489 387,1485 390,1469 396,1468 397,1464 399,1468 401,1464 403,1479 491,1494 507,1446 509,1428 483,1380 501,1381 501,1375 487,1376 498,1369 499,1364 503,1368 502,1361 513,1350 508,1341 517,1345 518,1336 506,1337 478,1274 448,1274 445,1277 433,1335 421,1339 422,1345 429,1340 427,1362 422,1361 417,1367 413,1361 416,1347 421,1344 418,1337 513,892 961,892 962,454 1141,454 1142,445"/>
+<polygon class="green" points="1650,678 1770,679 1791,894 1551,893 1523,826 1481,763 1647,762 1649,679"/>
+<polygon class="green" points="1801,679 1877,679 1884,718 1875,683 1810,683 1813,732 1807,733 1801,680"/>
+<polygon class="green" points="755,931 839,931 839,967 754,967 754,932"/>
+<polygon class="green" points="871,931 962,931 962,967 871,967 871,932"/>
+<polygon class="green" points="1160,1333 1267,1333 1256,1354 1226,1360 1171,1355 1160,1334"/>
+<polygon class="green" points="1108,1139 1112,1139 1112,1303 1108,1303 1108,1140"/>
+<polygon class="green" points="1317,1139 1321,1139 1321,1303 1317,1303 1317,1140"/>
+<polygon class="pitch" points="1712,707 1726,708 1736,718 1743,772 1718,775 1714,769 1699,769 1694,779 1670,782 1664,737 1666,720 1680,711 1711,708"/>
+<polygon class="water" points="994,931 1064,931 1064,967 993,967 993,932"/>
+<polygon class="water" points="1359,931 1428,931 1428,967 1359,967 1359,932"/>
+<polygon class="water" points="1462,931 1525,931 1526,967 1462,967 1462,932"/>
+<polygon class="water" points="1559,931 1636,931 1636,967 1558,967 1558,932"/>
+<polygon class="water" points="1657,931 1734,931 1734,967 1656,967 1656,932"/>
+<polygon class="water" points="1537,1380 1677,1382 1543,1478 1529,1393 1537,1381"/>
+<rect class="water" x="1155" y="1099" width="116" height="214" rx="10"/><polygon class="b other" points="1268,1190 1268,1229 1267,1222 1221,1222 1220,1226 1207,1226 1206,1222 1161,1222 1160,1229 1160,1195 1267,1195 1268,1191"/>
+<polygon class="site" points="1154,777 1173,848 1138,862 1109,886 1093,871 1071,859 1034,859 1086,809 1127,786 1153,778"/>
+<g id="KRS" data-code="KRS"><title>KRS · King Ramkhamhaeng the Great Statue</title><polygon class="plaza" points="1209,903 1228,905 1252,917 1267,934 1276,960 1274,986 1264,1007 1242,1026 1219,1033 1195,1031 1168,1016 1155,999 1148,976 1150,950 1161,928 1181,911 1208,904"/><text class="code" x="1212" y="965">KRS</text></g>
+<g id="DS" data-code="DS"><title>DS · Ramkhamhaeng University Demonstration School</title><polygon class="b" points="1320,457 1752,457 1767,582 1473,582 1472,641 1320,641 1320,458"/><text class="code" x="1518" y="534">DS</text></g>
+<g id="SLL" data-code="SLL"><title>SLL · Si Chulalak Building</title><polygon class="b" points="1199,460 1314,460 1314,511 1199,511 1199,461"/><text class="code small" x="1256" y="484">SLL</text></g>
+<g id="BPB" data-code="BPB"><title>BPB · Bekphon Building</title><polygon class="b" points="1803,460 1893,461 1914,589 1820,589 1802,461"/><text class="code" x="1857" y="526">BPB</text></g>
+<g id="GB1" data-code="GB1"><title>GB1 · Gymnasium Building 1</title><polygon class="b" points="974,461 1139,461 1139,543 974,543 974,462"/><text class="code" x="1057" y="501">GB1</text></g>
+<g id="PYB" data-code="PYB"><polygon class="b" points="1199,515 1313,515 1314,571 1199,571 1199,516"/><text class="code" x="1257" y="543">PYB</text></g>
+<g id="LTB" data-code="LTB"><title>LTB · Laisue Thai Building (Faculty of Engineering)</title><polygon class="b" points="973,546 1140,546 1140,645 974,646 973,547"/><text class="code" x="1057" y="595">LTB</text></g>
+<g id="SCL" data-code="SCL"><title>SCL · Science Laboratory Building</title><polygon class="b" points="1199,577 1314,577 1314,644 1189,644 1199,578"/><text class="code" x="1259" y="612">SCL</text></g>
+<g id="KMB" data-code="KMB"><title>KMB · Khiri Mat Building</title><polygon class="b" points="1487,594 1694,594 1695,644 1487,644 1487,595"/><text class="code" x="1591" y="619">KMB</text></g>
+<g><polygon class="b other" points="1703,595 1765,595 1770,643 1703,644 1703,596"/><text class="note" x="1736" y="619">Cafeteria</text></g>
+<g id="STB" data-code="STB"><title>STB · Department of Statistics Building</title><polygon class="b" points="1044,678 1143,678 1147,721 1044,721 1044,679"/><text class="code small" x="1093" y="698">STB</text></g>
+<g id="SCO" data-code="SCO"><title>SCO · Faculty of Science</title><polygon class="b" points="1207,679 1250,682 1302,693 1292,756 1245,744 1189,743 1189,681 1206,680"/><text class="code" x="1244" y="714">SCO</text></g>
+<g id="SOB" data-code="SOB"><title>SOB · Sports Office</title><polygon class="b" points="1376,679 1630,679 1630,750 1469,750 1428,713 1377,679"/><text class="code" x="1527" y="712">SOB</text></g>
+<g id="GB4" data-code="GB4"><title>GB4 · Gymnasium Building 4</title><polygon class="b" points="1810,686 1874,686 1884,748 1818,751 1811,687"/><text class="code small" x="1847" y="718">GB4</text></g>
+<g id="SLB" data-code="SLB"><polygon class="b" points="1891,704 1935,704 1957,834 1912,840 1891,705"/><text class="code small" x="1924" y="772">SLB</text></g>
+<g id="SWB" data-code="SWB"><title>SWB · Sawankhalok Building</title><polygon class="b" points="1335,705 1397,739 1363,792 1325,769 1334,706"/><text class="code small" x="1357" y="749">SWB</text></g>
+<g id="TTM" data-code="TTM"><title>TTM · Thai Traditional Medicine Building</title><polygon class="b" points="1044,733 1148,733 1149,751 1089,771 1088,776 1044,808 1044,734"/><text class="code small" x="1084" y="757">TTM</text></g>
+<g id="LOB2" data-code="LOB2"><title>LOB2 · Faculty of Law Building 2</title><polygon class="b" points="1408,748 1430,766 1439,776 1440,783 1449,788 1467,812 1417,850 1396,820 1372,799 1407,749"/><text class="code small" x="1418" y="800">LOB2</text></g>
+<g id="TC" data-code="TC"><title>TC · Tennis Court</title><polygon class="b" points="1871,756 1884,758 1897,835 1827,840 1819,759 1870,757"/><text class="code small" x="1857" y="799">TC</text></g>
+<g id="HUB" data-code="HUB"><title>HUB · Faculty of Humanities</title><polygon class="b" points="1192,770 1249,772 1290,783 1278,858 1243,845 1201,843 1189,776 1191,771"/><text class="code" x="1240" y="808">HUB</text></g>
+<g id="LOB" data-code="LOB"><title>LOB · Faculty of Law</title><polygon class="b" points="1316,796 1348,816 1384,849 1404,876 1413,896 1327,896 1302,873 1316,797"/><text class="code" x="1348" y="856">LOB</text></g>
+<g id="SCB" data-code="SCB"><title>SCB · Si Chum Building</title><polygon class="b" points="1473,823 1487,840 1510,896 1442,896 1424,857 1472,824"/><text class="code small" x="1466" y="865">SCB</text></g>
+<g id="NB" data-code="NB"><polygon class="b" points="1905,849 1925,934 1881,934 1865,854 1904,850"/><text class="code small" x="1895" y="893">NB</text></g>
+<g id="NMB" data-code="NMB"><title>NMB · Noppamat Building</title><polygon class="b" points="534,898 723,898 724,984 518,984 533,899"/><text class="code" x="625" y="941">NMB</text></g>
+<g id="DSE2" data-code="DSE2"><title>DSE2 · Demonstration School (Elementary) 2</title><polygon class="b" points="1972,938 1984,996 1935,1000 1924,942 1971,939"/><text class="code small" x="1952" y="968">DSE2</text></g>
+<g data-code="SB"><polygon class="b" points="508,1008 724,1008 728,1057 738,1108 608,1142 597,1088 490,1094 508,1009"/></g>
+<g id="POB" data-code="POB"><title>POB · Faculty of Political Science</title><polygon class="b" points="753,1008 841,1008 850,1077 766,1099 757,1059 753,1009"/><text class="code" x="798" y="1048">POB</text></g>
+<g id="SAB" data-code="SAB"><title>SAB · Student Activities Building</title><polygon class="b" points="869,1008 963,1008 968,1044 878,1067 869,1009"/><text class="code small" x="914" y="1031">SAB</text></g>
+<g id="LIB" data-code="LIB"><title>LIB · Central Library</title><polygon class="b" points="1362,1008 1435,1008 1430,1045 1418,1080 1404,1107 1377,1142 1337,1078 1354,1042 1361,1009"/><text class="code" x="1386" y="1063">LIB</text></g>
+<g id="SIB" data-code="SIB"><title>SIB · Si Intharathit Building</title><polygon class="b" points="1462,1008 1526,1008 1525,1041 1516,1076 1513,1078 1454,1056 1462,1009"/><text class="code small" x="1495" y="1040">SIB</text></g>
+<g id="PMB" data-code="PMB"><title>PMB · Pha Mueang Building</title><polygon class="b" points="1563,1008 1638,1008 1638,1055 1557,1055 1563,1009"/><text class="code small" x="1600" y="1031">PMB</text></g>
+<g id="ECB" data-code="ECB"><title>ECB · Faculty of Economics</title><polygon class="b" points="1657,1008 1738,1008 1738,1055 1679,1055 1678,1051 1657,1047 1657,1009"/><text class="code small" x="1698" y="1030">ECB</text></g>
+<g id="GB2" data-code="GB2"><title>GB2 · Gymnasium Building 2</title><polygon class="b" points="1764,1008 1864,1008 1872,1055 1764,1055 1764,1009"/><text class="code small" x="1816" y="1030">GB2</text></g>
+<g id="SBB" data-code="SBB"><title>SBB · Sila Bat Building</title><polygon class="b" points="993,1009 1063,1009 1071,1044 1091,1081 1050,1137 1032,1118 1012,1084 999,1048 993,1010"/><text class="code" x="1040" y="1065">SBB</text></g>
+<g id="DSE1" data-code="DSE1"><title>DSE1 · Demonstration School (Elementary) 1</title><polygon class="b" points="1983,1009 1987,1009 1988,1014 2015,1180 1972,1202 1943,1039 1946,1038 1946,1014 1982,1010"/><text class="code" x="1980" y="1104">DSE1</text></g>
+<g id="SB" data-code="SB"><title>SB · Si Sattha Building</title><polygon class="b" points="522,1018 710,1018 720,1100 616,1127 603,1076 509,1080 522,1019"/><text class="code" x="624" y="1062">SB</text></g>
+<g id="NCB" data-code="NCB"><title>NCB · Nakhon Chum Building</title><polygon class="b" points="1451,1070 1511,1094 1482,1153 1433,1112 1451,1071"/><text class="code small" x="1472" y="1107">NCB</text></g>
+<g id="KRA" data-code="KRA"><title>KRA · King Ramkhamhaeng the Great Auditorium</title><polygon class="b" points="969,1075 987,1120 1013,1157 922,1157 895,1099 968,1076"/><text class="code" x="949" y="1121">KRA</text></g>
+<g id="SKB" data-code="SKB"><title>SKB · Sukhothai Building</title><polygon class="b" points="1551,1083 1615,1129 1690,1129 1706,1183 1689,1188 1689,1242 1519,1160 1538,1121 1550,1084"/><text class="code" x="1618" y="1162">SKB</text></g>
+<g><polygon class="b other" points="584,1094 591,1094 602,1145 482,1182 489,1101 583,1095"/><text class="note" x="537" y="1133">Student clubs</text></g>
+<g id="VKB" data-code="VKB"><title>VKB · Viang Kham Building</title><polygon class="b" points="856,1103 893,1186 821,1235 791,1177 774,1128 855,1104"/><text class="code" x="831" y="1165">VKB</text></g>
+<g id="ECB2" data-code="ECB2"><title>ECB2 · Faculty of Economics Building 2</title><polygon class="b" points="1802,1111 1803,1243 1728,1244 1730,1182 1714,1129 1763,1129 1801,1112"/><text class="code" x="1765" y="1180">ECB2</text></g>
+<g id="EOB" data-code="EOB"><title>EOB · Faculty of Education</title><polygon class="b" points="1421,1131 1435,1133 1476,1168 1467,1178 1405,1179 1393,1165 1420,1132"/><text class="code small" x="1432" y="1159">EOB</text></g>
+<g id="CPB" data-code="CPB"><title>CPB · Car Park Building</title><polygon class="b" points="744,1135 773,1206 798,1253 689,1329 647,1252 617,1172 743,1136"/><text class="code" x="706" y="1225">CPB</text></g>
+<g data-code="KRA"><polygon class="b" points="1000,1161 1001,1165 1016,1164 1026,1170 1022,1171 1022,1179 1015,1185 1015,1191 987,1237 956,1206 925,1165 999,1162"/></g>
+<g id="CIB" data-code="CIB"><title>CIB · Computer Institute</title><polygon class="b" points="1816,1167 1892,1167 1911,1288 1816,1288 1816,1168"/><text class="code" x="1859" y="1229">CIB</text></g>
+<g id="TCB" data-code="TCB"><title>TCB · Tha Chai Building</title><polygon class="b" points="1516,1169 1634,1230 1566,1281 1489,1204 1515,1170"/><text class="code" x="1554" y="1223">TCB</text></g>
+<g data-code="EOB"><polygon class="b" points="1438,1179 1461,1184 1450,1192 1450,1197 1430,1218 1416,1198 1416,1191 1407,1184 1437,1180"/></g>
+<g id="VPB" data-code="VPB"><title>VPB · Viang Pha Building</title><polygon class="b" points="578,1181 610,1265 658,1350 577,1407 551,1366 522,1309 486,1212 577,1182"/><text class="code" x="569" y="1284">VPB</text></g>
+<g id="AOB" data-code="AOB"><title>AOB · Admissions and Records Office</title><polygon class="b" points="910,1208 941,1247 978,1280 965,1300 959,1303 959,1309 929,1354 879,1310 879,1305 868,1298 838,1259 909,1209"/><text class="code" x="910" y="1278">AOB</text></g>
+<g id="SPC" data-code="SPC"><polygon class="b" points="1461,1238 1482,1257 1497,1257 1512,1241 1560,1290 1531,1341 1495,1306 1495,1301 1490,1300 1444,1254 1460,1239"/><text class="code small" x="1507" y="1284">SPC</text></g>
+<g id="SSB" data-code="SSB"><title>SSB · Faculty of Business Administration (Si Satchanalai Building)</title><polygon class="b" points="1435,1262 1524,1352 1506,1380 1522,1488 1451,1505 1447,1503 1410,1284 1410,1280 1434,1263"/><text class="code" x="1466" y="1388">SSB</text></g>
+<g id="IIS" data-code="IIS"><title>IIS · Institute of International Studies · Ramkhamhaeng University Press (RPB)</title><polygon class="b" points="462,1276 477,1276 504,1343 510,1349 485,1375 485,1390 507,1429 490,1491 404,1476 447,1280 448,1277 461,1277"/><text class="code" x="460" y="1395">IIS · RPB</text></g>
+<g id="KLB" data-code="KLB"><title>KLB · Kong Krailat Building</title><polygon class="b" points="813,1276 863,1333 915,1381 892,1450 824,1450 767,1389 730,1335 812,1277"/><text class="code" x="827" y="1368">KLB</text></g>
+<g id="OPB" data-code="OPB"><title>OPB · Office of the President · Academic Services and Administration Building (AAB)</title><polygon class="b" points="1003,1299 1042,1321 1042,1524 947,1524 947,1390 1002,1300"/><text class="code" x="999" y="1424">OPB · AAB</text></g>
+<g id="RTB" data-code="RTB"><title>RTB · Rattanathan Building</title><polygon class="b" points="520,1368 541,1404 522,1407 521,1415 505,1384 520,1369"/><text class="code small" x="521" y="1391">RTB</text></g>
+<g id="SAS" data-code="SAS"><title>SAS · Si Akson Building</title><polygon class="b" points="673,1374 747,1462 677,1522 634,1481 594,1430 672,1375"/><text class="code" x="670" y="1448">SAS</text></g>
+<g data-code="RTB"><polygon class="b" points="534,1408 545,1410 546,1420 554,1424 556,1432 565,1440 565,1445 552,1457 535,1437 534,1429 525,1422 525,1416 531,1415 534,1409"/></g>
+<g id="MHB" data-code="MHB"><title>MHB · Medical Treatment and Health Care Building</title><polygon class="b" points="819,1464 890,1464 890,1562 819,1553 819,1465"/><text class="code small" x="855" y="1512">MHB</text></g>
+<text class="note" x="1612" y="862">Sports field</text>
+<text class="note" x="1211" y="1136">Pond</text>
+<text class="note" x="1212" y="1519">Gate 1–2</text>
+<g><circle class="bus" cx="1774" cy="1442" r="26"/><text class="note" x="1774" y="1442">Bus</text></g>
+<g><circle class="bus" cx="510" cy="1525" r="26"/><text class="note" x="510" y="1525">Bus</text></g>
+<g><circle class="bus" cx="1702" cy="1607" r="26"/><text class="note" x="1702" y="1607">Bus</text></g>
+<g><circle class="bus" cx="376" cy="1621" r="26"/><text class="note" x="376" y="1621">Bus</text></g>
+<text class="note" x="955" y="1671">Ramkhamhaeng Road</text>
+<g transform="translate(518 655)"><path class="b" d="M0 34 L-13 -6 L0 2 L13 -6 Z"/><text class="code small" y="52">N</text></g>
+</svg>

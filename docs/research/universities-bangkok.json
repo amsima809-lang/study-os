@@ -1,0 +1,3147 @@
+[
+  {
+    "name_th": "จุฬาลงกรณ์มหาวิทยาลัย",
+    "name_en": "Chulalongkorn University",
+    "abbreviation": "จฬ. / CU",
+    "type": "autonomous",
+    "province": "Bangkok",
+    "main_campus": "Pathum Wan, Bangkok",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีชมพู",
+      "names_en": "Pink (Chula Pink)",
+      "hex": [
+        {
+          "name": "Chula Pink (Pantone 7424 U)",
+          "hex": "#DB5F8E",
+          "hex_source": "official_subdomain_document",
+          "source_url": "https://chem.sc.chula.ac.th/wp-content/uploads/2022/11/ChemChula-corporate_indentity_book.pdf"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": "หอประชุมจุฬาลงกรณ์มหาวิทยาลัย",
+        "name_en": "Chulalongkorn University Auditorium"
+      },
+      {
+        "name_th": "พระบรมราชานุสาวรีย์สองรัชกาล",
+        "name_en": "Monument of the Two Kings (Rama V and Rama VI)",
+        "sensitivity": "royal monument/image: treat respectfully, avoid cropping, overlaying UI or decorative tinting"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Chulalongkorn University Auditorium",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:CUAuditorium_06.23.jpg",
+        "licence": "CC BY 4.0",
+        "author": "Supanut Arunoprayote",
+        "pixels": "6654x3743"
+      },
+      {
+        "landmark": "Monument of the Two Kings",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:CUMonument56.JPG",
+        "licence": "CC BY-SA 4.0",
+        "author": "BunBn",
+        "pixels": "2228x3110",
+        "note": "portrait orientation"
+      }
+    ],
+    "colour_sources": [
+      {
+        "url": "https://www.chula.ac.th/en/about/symbols/the-colour-pink",
+        "kind": "official (colour name; via search result, site blocks automated fetch)"
+      },
+      {
+        "url": "https://www.inter.chula.ac.th/wp-content/uploads/2023/03/Mascot_Announcement-20230303.pdf",
+        "kind": "official_subdomain"
+      },
+      {
+        "url": "https://th.wikipedia.org/wiki/จุฬาลงกรณ์มหาวิทยาลัย",
+        "kind": "wikipedia_th_fallback"
+      }
+    ],
+    "confidence": "medium",
+    "notes": "CONFLICT on hex: Chula subdomain documents print #DB5F8E with RGB 222/92/142 (which converts to #DE5C8E); Thai Wikipedia gives #DF5D8D citing the central CI guideline (CU_CI_Guidelines_20180621.pdf), which could not be opened (bot protection). Colour name is certain; confirm hex against the central manual before shipping."
+  },
+  {
+    "name_th": "มหาวิทยาลัยธรรมศาสตร์",
+    "name_en": "Thammasat University",
+    "abbreviation": "มธ. / TU",
+    "type": "autonomous",
+    "province": "Bangkok",
+    "main_campus": "Tha Phra Chan, Phra Nakhon, Bangkok",
+    "other_campuses_in_region": [
+      "Rangsit Centre, Khlong Luang, Pathum Thani (largest undergraduate campus)"
+    ],
+    "colours": {
+      "names_th": "สีเหลือง-แดง",
+      "names_en": "Yellow and red",
+      "hex": [
+        {
+          "name": "Thammasat Yellow (Pantone 122 C)",
+          "hex": "#FFD13F",
+          "hex_source": "official",
+          "source_url": "https://tu.ac.th/thammasat-identity/"
+        },
+        {
+          "name": "Thammasat Red (Pantone 200 C)",
+          "hex": "#C3002F",
+          "hex_source": "official",
+          "source_url": "https://tu.ac.th/thammasat-identity/"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": "ตึกโดม",
+        "name_en": "Dome Building (Tha Phra Chan)"
+      },
+      {
+        "name_th": "อนุสาวรีย์ปรีดี พนมยงค์",
+        "name_en": "Pridi Banomyong Monument"
+      },
+      {
+        "name_th": "อาคารโดมบริหาร ศูนย์รังสิต",
+        "name_en": "Dome Administration Building (Rangsit)"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Dome Building with Pridi Banomyong Monument",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:Dome_buildings,_TU_(I).jpg",
+        "licence": "CC BY 4.0",
+        "author": "Supanut Arunoprayote",
+        "pixels": "5454x7634",
+        "note": "portrait orientation, high resolution"
+      },
+      {
+        "landmark": "Dome Administration Building, Rangsit",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:TU_Dome_P002.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "APINANT Phongmethakul",
+        "pixels": "2848x4288",
+        "note": "portrait orientation"
+      },
+      {
+        "landmark": "Pond, Rangsit campus",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:Thammasat_University_pond.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "gorlapraveen",
+        "pixels": "4160x3120"
+      }
+    ],
+    "colour_sources": [
+      {
+        "url": "https://tu.ac.th/identity/",
+        "kind": "official"
+      },
+      {
+        "url": "https://tu.ac.th/thammasat-identity/",
+        "kind": "official"
+      },
+      {
+        "url": "https://tu.ac.th/app/uploads/2024/08/Final_ppt-Branding.pdf",
+        "kind": "official"
+      }
+    ],
+    "confidence": "high",
+    "notes": "Official brand guideline also defines secondary colours (#4298B5, #6E2B62, #67823A, #BE4D00, #63666A). Logo guideline forbids recolouring/altering the logo; no third-party clause found."
+  },
+  {
+    "name_th": "มหาวิทยาลัยเกษตรศาสตร์",
+    "name_en": "Kasetsart University",
+    "abbreviation": "มก. / KU",
+    "type": "autonomous",
+    "province": "Bangkok",
+    "main_campus": "Bang Khen, Chatuchak, Bangkok",
+    "other_campuses_in_region": [
+      "Kamphaeng Saen campus, Nakhon Pathom"
+    ],
+    "colours": {
+      "names_th": "สีเขียวใบไม้",
+      "names_en": "Leaf green (KU Green)",
+      "hex": [
+        {
+          "name": "KU Green (PMS 329 C)",
+          "hex": "#006664",
+          "hex_source": "official",
+          "source_url": "https://ku.ac.th/th/kulogo/download/2097"
+        },
+        {
+          "name": "KU Fresh Green (PMS 383 C)",
+          "hex": "#B2BB1E",
+          "hex_source": "official",
+          "source_url": "https://ku.ac.th/th/kulogo/download/2097"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": "หอประชุมมหาวิทยาลัยเกษตรศาสตร์",
+        "name_en": "Kasetsart University Main Auditorium"
+      },
+      {
+        "name_th": "อนุสาวรีย์สามบูรพาจารย์",
+        "name_en": "Monument of the Three Founding Professors"
+      },
+      {
+        "name_th": "พระพิรุณทรงนาค",
+        "name_en": "Phra Phirun (rain deity on Naga, university emblem)",
+        "sensitivity": "deity figure used as the official emblem; logo rules apply"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Main Auditorium",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:Kasetsart_University_Auditorium.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "David Supervid",
+        "pixels": "3872x2592"
+      },
+      {
+        "landmark": "Main Auditorium",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:Main_auditorium_of_Kasetsart_University_(Bangkok).jpg",
+        "licence": "Public domain",
+        "author": "abhichartt",
+        "pixels": "1600x1200"
+      }
+    ],
+    "colour_sources": [
+      {
+        "url": "https://ku.ac.th/th/kulogo/download/2097",
+        "kind": "official CI manual (KSU_Manual_20171206.pdf)"
+      },
+      {
+        "url": "https://www.ku.ac.th/en/the-identity-of-ku",
+        "kind": "official"
+      }
+    ],
+    "confidence": "high",
+    "notes": "CI manual p.110-112 gives a full palette (also PMS 431 C #74787B, 7518 C #6E4B32, 109 C #FFD800); mapping of palette names to secondary swatches was inferred from layout. No free photo of the Three Professors monument found on Commons."
+  },
+  {
+    "name_th": "มหาวิทยาลัยมหิดล",
+    "name_en": "Mahidol University",
+    "abbreviation": "ม.มหิดล / MU",
+    "type": "autonomous",
+    "province": "Nakhon Pathom",
+    "main_campus": "Salaya, Phutthamonthon, Nakhon Pathom",
+    "other_campuses_in_region": [
+      "Phaya Thai campus, Bangkok",
+      "Bangkok Noi (Siriraj) campus, Bangkok"
+    ],
+    "colours": {
+      "names_th": "สีน้ำเงิน (น้ำเงินแก่)",
+      "names_en": "Blue (dark blue)",
+      "hex": [
+        {
+          "name": "Blue (Pantone 286 C per unverified snippet)",
+          "hex": "#0035AD",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": "มหิดลสิทธาคาร",
+        "name_en": "Prince Mahidol Hall"
+      },
+      {
+        "name_th": "อาคารศูนย์การเรียนรู้มหิดล",
+        "name_en": "Mahidol Learning Center (MLC)"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Prince Mahidol Hall",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:Prince_Mahidol_Hall_2022.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "Athikhun.suw",
+        "pixels": "4032x3024"
+      },
+      {
+        "landmark": "Mahidol Learning Center",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:Mahidol_Learning_Center_2.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "Sean Schepers",
+        "pixels": "2560x1705"
+      }
+    ],
+    "colour_sources": [
+      {
+        "url": "https://th.wikipedia.org/wiki/มหาวิทยาลัยมหิดล",
+        "kind": "wikipedia_th_fallback"
+      }
+    ],
+    "confidence": "medium",
+    "notes": "All mahidol.ac.th hosts refused automated access, so no official page was opened. #0035AD (Pantone 286 C) and gold #FFC726 (Pantone 123 C) appear in Wikipedia and in search snippets of the MUIC CI guidebook; a Mahidol Collection sub-brand guide instead gives navy #2A3373. A 2024 university guideline on logo/name/identity (Thai only) exists and should be checked by hand. Thai colour wording not confirmed from an official page."
+  },
+  {
+    "name_th": "มหาวิทยาลัยศิลปากร",
+    "name_en": "Silpakorn University",
+    "abbreviation": "มศก. / SU",
+    "type": "autonomous",
+    "province": "Bangkok",
+    "main_campus": "Wang Tha Phra, Phra Nakhon, Bangkok",
+    "other_campuses_in_region": [
+      "Sanam Chandra Palace campus, Mueang Nakhon Pathom (largest campus)",
+      "City Campus Muang Thong Thani, Nonthaburi"
+    ],
+    "colours": {
+      "names_th": "สีเขียวตั้งแช (เขียวเวอร์ริเดียน)",
+      "names_en": "Viridian green",
+      "hex": [
+        {
+          "name": "Viridian green",
+          "hex": "#007569",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": "สะพานสระแก้ว วิทยาเขตพระราชวังสนามจันทร์",
+        "name_en": "Sa Kaeo Bridge, Sanam Chandra Palace campus"
+      },
+      {
+        "name_th": "วังท่าพระ",
+        "name_en": "Wang Tha Phra campus"
+      },
+      {
+        "name_th": "อนุสาวรีย์ศาสตราจารย์ศิลป์ พีระศรี",
+        "name_en": "Silpa Bhirasri Monument"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Sa Kaeo Bridge",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:Sapan_Sa_Kaeo_Bridge,_Sanam_Chandra_Palace_Campus.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "Z3144228",
+        "pixels": "5170x2908"
+      },
+      {
+        "landmark": "Wang Tha Phra campus",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:Silpakorn_university_Wang_Tha_Phra_campus.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "Z3144228",
+        "pixels": "6000x3376"
+      }
+    ],
+    "colour_sources": [
+      {
+        "url": "https://th.wikipedia.org/wiki/มหาวิทยาลัยศิลปากร",
+        "kind": "wikipedia_th_fallback"
+      }
+    ],
+    "confidence": "low",
+    "notes": "su.ac.th pages opened state no colour. Wikipedia cites an SU executive-committee minute (president.su.ac.th, 4/2560) for the colour, which was not opened. No free photo of the Silpa Bhirasri monument was checked."
+  },
+  {
+    "name_th": "มหาวิทยาลัยศรีนครินทรวิโรฒ",
+    "name_en": "Srinakharinwirot University",
+    "abbreviation": "มศว / SWU",
+    "type": "autonomous",
+    "province": "Bangkok",
+    "main_campus": "Prasarnmit, Watthana, Bangkok",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีเทา-แดง",
+      "names_en": "Grey and red",
+      "hex": [
+        {
+          "name": "Grey",
+          "hex": "#808080",
+          "hex_source": "approximate"
+        },
+        {
+          "name": "Red",
+          "hex": "#FF0000",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": null,
+        "name_en": "Main building, Prasarnmit campus (as captioned on Commons)"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Main building, Prasarnmit",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:Srinakharinwirot_University_Bangkok.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "Chainwit.",
+        "pixels": "4032x3696"
+      },
+      {
+        "landmark": "Campus tower, Prasarnmit",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:SWU_Srinakharinwirot_University_Bangkok_Skyscraper.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "Chainwit.",
+        "pixels": "3024x4032",
+        "note": "portrait orientation"
+      }
+    ],
+    "colour_sources": [
+      {
+        "url": "https://th.wikipedia.org/wiki/มหาวิทยาลัยศรีนครินทรวิโรฒ",
+        "kind": "wikipedia_th_fallback"
+      },
+      {
+        "url": "https://studentaffairs.op.swu.ac.th/Portals/25/งานบริหารและศิษย์เก่าสัมพันธ์/คู่มือนิสิตใหม่/คู่มือนิสิตใหม่.pdf",
+        "kind": "official_subdomain (indirect: building named \"เทา - แดง\")"
+      }
+    ],
+    "confidence": "low",
+    "notes": "swu.ac.th is behind a bot challenge; colour comes from Thai Wikipedia with only indirect official corroboration. Thai Wikipedia shows an image titled \"SWU Identity Manual\", so an official manual with exact values likely exists. Ongkharak campus is in Nakhon Nayok (outside region). Thai landmark name not verified."
+  },
+  {
+    "name_th": "มหาวิทยาลัยเทคโนโลยีพระจอมเกล้าธนบุรี",
+    "name_en": "King Mongkut's University of Technology Thonburi",
+    "abbreviation": "มจธ. / KMUTT",
+    "type": "autonomous",
+    "province": "Bangkok",
+    "main_campus": "Bang Mod, Thung Khru, Bangkok",
+    "other_campuses_in_region": [
+      "Bang Khun Thian campus, Bangkok"
+    ],
+    "colours": {
+      "names_th": "สีแสด-เหลือง",
+      "names_en": "Orange (saed) and yellow",
+      "hex": [
+        {
+          "name": "Orange (Pantone 172 C, RGB 240/78/35)",
+          "hex": "#F04E23",
+          "hex_source": "converted_from_official_rgb",
+          "source_url": "https://www.kmutt.ac.th/wp-content/uploads/pdf/CI_KMUTT-2022.pdf"
+        },
+        {
+          "name": "Yellow (Pantone 123 C, RGB 255/194/51)",
+          "hex": "#FFC233",
+          "hex_source": "converted_from_official_rgb",
+          "source_url": "https://www.kmutt.ac.th/wp-content/uploads/pdf/CI_KMUTT-2022.pdf"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": "พระมหาพิชัยมงกุฎ",
+        "name_en": "Phra Maha Phichai Mongkut (Great Crown of Victory sculpture, the university emblem)",
+        "sensitivity": "royal regalia symbol: use respectfully"
+      },
+      {
+        "name_th": null,
+        "name_en": "Bang Mod campus view"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Phra Maha Phichai Mongkut",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:Phra_Maha_Phichai_Mongkut_KMUTT.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "OraMAAG",
+        "pixels": "2836x4080",
+        "note": "portrait; taken during a student oath ceremony, people may be visible"
+      },
+      {
+        "landmark": "Bang Mod campus view",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:KMUTT_Bangmod_1.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "OraMAAG",
+        "pixels": "4000x3000"
+      }
+    ],
+    "colour_sources": [
+      {
+        "url": "https://www.kmutt.ac.th/wp-content/uploads/pdf/CI_KMUTT-2022.pdf",
+        "kind": "official CI manual 2022, p.21"
+      }
+    ],
+    "confidence": "high",
+    "notes": "The CI manual prints Pantone/CMYK/RGB, not hex; hex here is arithmetic conversion of the stated RGB. The manual is internally inconsistent (p.61 gives RGB 255/70/18 and 255/198/39 for the same Pantones). Logo misuse rules on p.29-33."
+  },
+  {
+    "name_th": "สถาบันเทคโนโลยีพระจอมเกล้าเจ้าคุณทหารลาดกระบัง",
+    "name_en": "King Mongkut's Institute of Technology Ladkrabang",
+    "abbreviation": "สจล. / KMITL",
+    "type": "autonomous",
+    "province": "Bangkok",
+    "main_campus": "Lat Krabang, Bangkok",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีแสด",
+      "names_en": "Orange (saed)",
+      "hex": [
+        {
+          "name": "Orange (saed)",
+          "hex": "#F16322",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": "อนุสาวรีย์ท่านเจ้าคุณทหาร",
+        "name_en": "Chao Khun Thahan Monument"
+      },
+      {
+        "name_th": "อาคารบุนนาค",
+        "name_en": "Bunnag Building"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Chao Khun Thahan Monument",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:ChaokhunTahan_Monument_in_2023.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "Adirach Toumlamoon",
+        "pixels": "3500x1131",
+        "note": "wide panorama; crop needed for portrait"
+      },
+      {
+        "landmark": "Bunnag Building",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:Bunnag_Building_KMITL_in_2023.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "Adirach Toumlamoon",
+        "pixels": "2000x1331"
+      }
+    ],
+    "colour_sources": [
+      {
+        "url": "https://www.kmitl.ac.th/kmitl-symbols",
+        "kind": "official"
+      }
+    ],
+    "confidence": "high",
+    "notes": "CONFLICT: Thai Wikipedia says แสด-ขาว (orange-white); the official symbols page states สีแสด only. No official hex found."
+  },
+  {
+    "name_th": "มหาวิทยาลัยเทคโนโลยีพระจอมเกล้าพระนครเหนือ",
+    "name_en": "King Mongkut's University of Technology North Bangkok",
+    "abbreviation": "มจพ. / KMUTNB",
+    "type": "autonomous",
+    "province": "Bangkok",
+    "main_campus": "Wong Sawang, Bang Sue, Bangkok",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีแดงหมากสุก",
+      "names_en": "Maksuk red (\"vermilion, a brilliant orange\")",
+      "hex": [
+        {
+          "name": "Maksuk red",
+          "hex": "#ED6721",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": null,
+        "name_en": "Campus seen from the Chao Phraya River"
+      },
+      {
+        "name_th": "หลวงพ่อสิงห์",
+        "name_en": "Luang Pho Sing Buddha image",
+        "sensitivity": "religious image: may be inappropriate as a decorative background"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Campus from the Chao Phraya River",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:King_Mongkut%27s_University_of_Technology_North_Bangkok_(view_from_Chao_Phraya_River).jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "Sry85",
+        "pixels": "3968x2976"
+      },
+      {
+        "landmark": "TGGS building",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:KMUTNBBKK.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "Poonpun2016",
+        "pixels": "1706x960"
+      }
+    ],
+    "colour_sources": [
+      {
+        "url": "https://green.kmutnb.ac.th/upload/document/2021_kmutnb_information_booklet.pdf",
+        "kind": "official_subdomain (information booklet p.9)"
+      },
+      {
+        "url": "https://th.wikipedia.org/wiki/มหาวิทยาลัยเทคโนโลยีพระจอมเกล้าพระนครเหนือ",
+        "kind": "wikipedia_th_fallback"
+      }
+    ],
+    "confidence": "medium",
+    "notes": "CONFLICT: Thai Wikipedia says แสด-ดำ (orange-black, #ED6721/#000000); the official booklet says สีแดงหมากสุก only. A search snippet attributed \"Maksuk Red #AC3520\" to a faculty page that now returns 404; unverified. Main site unreachable. Other campuses are in Prachinburi and Rayong (outside region)."
+  },
+  {
+    "name_th": "สถาบันบัณฑิตพัฒนบริหารศาสตร์",
+    "name_en": "National Institute of Development Administration",
+    "abbreviation": "สพบ. / NIDA",
+    "type": "autonomous",
+    "province": "Bangkok",
+    "main_campus": "Bang Kapi, Bangkok",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีเหลือง (วิกิพีเดีย: เหลืองราชพฤกษ์)",
+      "names_en": "Yellow",
+      "hex": [
+        {
+          "name": "Yellow",
+          "hex": "#FFC709",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": "อาคารนวมินทราธิราช",
+        "name_en": "Navamindradhiraj Building"
+      },
+      {
+        "name_th": "อาคารมาลัย หุวะนันทน์",
+        "name_en": "Malai Huvanandana Building"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Navamindradhiraj Building",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:%E0%B8%AD%E0%B8%B2%E0%B8%84%E0%B8%B2%E0%B8%A3%E0%B8%99%E0%B8%A7%E0%B8%A1%E0%B8%B4%E0%B8%99%E0%B8%97%E0%B8%A3%E0%B8%B2%E0%B8%98%E0%B8%B4%E0%B8%A3%E0%B8%B2%E0%B8%8A_%E0%B8%99%E0%B8%B4%E0%B8%94%E0%B9%89%E0%B8%B2.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "Mfenida",
+        "pixels": "2848x4288",
+        "note": "portrait orientation"
+      },
+      {
+        "landmark": "Malai Huvanandana Building",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:NIDA_malai_huwanan_building.jpg",
+        "licence": "CC BY 4.0",
+        "author": "Mapleonade",
+        "pixels": "8160x6120"
+      }
+    ],
+    "colour_sources": [
+      {
+        "url": "https://edserv.nida.ac.th/wp-content/uploads/2024/08/student-manual-en.pdf",
+        "kind": "official_subdomain (English student manual p.11: \"The Institute: Yellow\")"
+      },
+      {
+        "url": "https://th.wikipedia.org/wiki/สถาบันบัณฑิตพัฒนบริหารศาสตร์",
+        "kind": "wikipedia_th_fallback"
+      }
+    ],
+    "confidence": "medium",
+    "notes": "Official source confirms only \"Yellow\" in English; the Thai wording เหลืองราชพฤกษ์ and the hex come from Wikipedia. Graduate-only institute."
+  },
+  {
+    "name_th": "มหาวิทยาลัยสวนดุสิต",
+    "name_en": "Suan Dusit University",
+    "abbreviation": "มสด. / SDU",
+    "type": "autonomous",
+    "province": "Bangkok",
+    "main_campus": "Dusit, Bangkok",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีฟ้าน้ำทะเล",
+      "names_en": "Sea blue",
+      "hex": [
+        {
+          "name": "Sea blue",
+          "hex": "#34B3D1",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": null,
+    "photo_candidates": null,
+    "colour_sources": [
+      {
+        "url": "https://www.dusit.ac.th/home/university-logo-and-colors",
+        "kind": "official"
+      }
+    ],
+    "confidence": "high",
+    "notes": "Colour name is official; hex is the Wikipedia infobox value. No landmark verified and no free campus photo found on Commons."
+  },
+  {
+    "name_th": "มหาวิทยาลัยนวมินทราธิราช",
+    "name_en": "Navamindradhiraj University",
+    "abbreviation": "นมร. / NMU",
+    "type": "autonomous (under Bangkok Metropolitan Administration)",
+    "province": "Bangkok",
+    "main_campus": "Dusit, Bangkok",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีเขียวเข้ม",
+      "names_en": "Dark green",
+      "hex": [
+        {
+          "name": "NMU Dark Green",
+          "hex": "#1B341A",
+          "hex_source": "official",
+          "source_url": "https://drive.google.com/file/d/1cKFDP3QNIC7QzaXl_l6NC6D4BfFLzCoe/view"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": null,
+        "name_en": "University building, Dusit (as captioned on Commons)"
+      },
+      {
+        "name_th": "คณะแพทยศาสตร์วชิรพยาบาล",
+        "name_en": "Faculty of Medicine Vajira Hospital"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "University building",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:Navamindradhiraj_University_(2026).jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "Medelam",
+        "pixels": "3000x4000",
+        "note": "portrait orientation"
+      },
+      {
+        "landmark": "Faculty of Medicine Vajira Hospital",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:%E0%B8%84%E0%B8%93%E0%B8%B0%E0%B9%81%E0%B8%9E%E0%B8%97%E0%B8%A2%E0%B8%A8%E0%B8%B2%E0%B8%AA%E0%B8%95%E0%B8%A3%E0%B9%8C%E0%B8%A7%E0%B8%8A%E0%B8%B4%E0%B8%A3%E0%B8%9E%E0%B8%A2%E0%B8%B2%E0%B8%9A%E0%B8%B2%E0%B8%A5_%E0%B8%A1%E0%B8%AB%E0%B8%B2%E0%B8%A7%E0%B8%B4%E0%B8%97%E0%B8%A2%E0%B8%B2%E0%B8%A5%E0%B8%B1%E0%B8%A2%E0%B8%99%E0%B8%A7%E0%B8%A1%E0%B8%B4%E0%B8%99%E0%B8%97%E0%B8%A3%E0%B8%B2%E0%B8%98%E0%B8%B4%E0%B8%A3%E0%B8%B2%E0%B8%8A_Faculty_of_Medicine_Vajira_Hospital.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "Chainwit.",
+        "pixels": "4032x3024"
+      }
+    ],
+    "colour_sources": [
+      {
+        "url": "https://www.nmu.ac.th/content/6a589972e45e9a246295a890",
+        "kind": "official page linking the identity manual"
+      },
+      {
+        "url": "https://drive.google.com/file/d/1cKFDP3QNIC7QzaXl_l6NC6D4BfFLzCoe/view",
+        "kind": "official identity manual p.6, p.28"
+      }
+    ],
+    "confidence": "high",
+    "notes": "Manual palette also lists yellow #FDEC09, orange #E97026, red #ED1C24, dark blue #3F5398, light blue #BACCE9. Thai Wikipedia hex (#063606) differs from the manual; use the manual."
+  },
+  {
+    "name_th": "มหาวิทยาลัยมหามกุฏราชวิทยาลัย",
+    "name_en": "Mahamakut Buddhist University",
+    "abbreviation": "มมร. / MBU",
+    "type": "autonomous (Buddhist university)",
+    "province": "Nakhon Pathom",
+    "main_campus": "Salaya, Phutthamonthon, Nakhon Pathom",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีแสด",
+      "names_en": "Orange (saed)",
+      "hex": [
+        {
+          "name": "Orange (saed)",
+          "hex": "#FF7F00",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": null,
+    "photo_candidates": null,
+    "colour_sources": [
+      {
+        "url": "https://www.mbu.ac.th/about/post-2616/",
+        "kind": "official"
+      }
+    ],
+    "confidence": "high",
+    "notes": "Colour name official; hex approximate. No landmark verified and no free campus photo found. Monastic institution: any imagery is likely to be religious."
+  },
+  {
+    "name_th": "ราชวิทยาลัยจุฬาภรณ์",
+    "name_en": "Chulabhorn Royal Academy",
+    "abbreviation": "CRA",
+    "type": "autonomous (royal academy)",
+    "province": "Bangkok",
+    "main_campus": "Lak Si, Bangkok",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีส้ม และ สีน้ำเงิน",
+      "names_en": "Orange and blue",
+      "hex": [
+        {
+          "name": "Orange (Pantone 1505 C)",
+          "hex": "#FF6B00",
+          "hex_source": "approximate"
+        },
+        {
+          "name": "Blue (Pantone 287 C)",
+          "hex": "#003087",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": null,
+        "name_en": "Academy buildings, Lak Si (as captioned on Commons)"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Academy buildings",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:Chulabhorn_Royal_Academy_2022.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "Athikhun.suw",
+        "pixels": "4032x3024"
+      }
+    ],
+    "colour_sources": [
+      {
+        "url": "https://www.cra.ac.th/th/featured_stories/view/organizational-logo",
+        "kind": "official"
+      },
+      {
+        "url": "https://drive.google.com/file/d/1nU3dDkQy-RyAuuxuptxJcIT_7kdvqWa1/view",
+        "kind": "official CI manual p.35-36"
+      }
+    ],
+    "confidence": "high",
+    "notes": "CONFLICT: Thai Wikipedia lists orange only; the official CI manual says orange and blue. Manual gives Pantone only (1375 C to 1505 C gradient; 287 C), so hex values are approximations of those Pantones. The logo download page asks users to accept a usage policy."
+  },
+  {
+    "name_th": "สถาบันดนตรีกัลยาณิวัฒนา",
+    "name_en": "Princess Galyani Vadhana Institute of Music",
+    "abbreviation": "สกว. / PGVIM",
+    "type": "autonomous",
+    "province": "Bangkok",
+    "main_campus": "Bang Yi Khan, Bang Phlat, Bangkok",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "ฟ้าเทอร์ควอยซ์",
+      "names_en": "Turquoise blue",
+      "hex": [
+        {
+          "name": "Turquoise blue",
+          "hex": "#007FA3",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": null,
+    "photo_candidates": null,
+    "colour_sources": [
+      {
+        "url": "https://th.wikipedia.org/wiki/สถาบันดนตรีกัลยาณิวัฒนา",
+        "kind": "wikipedia_th_fallback"
+      }
+    ],
+    "confidence": "low",
+    "notes": "No colour statement found on pgvim.ac.th. No free campus photo found."
+  },
+  {
+    "name_th": "สถาบันเทคโนโลยีจิตรลดา",
+    "name_en": "Chitralada Technology Institute",
+    "abbreviation": "สจด. / CDTI",
+    "type": "autonomous",
+    "province": "Bangkok",
+    "main_campus": "Dusit, Bangkok",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีเหลือง-ฟ้า",
+      "names_en": "Yellow and light blue",
+      "hex": [
+        {
+          "name": "Yellow",
+          "hex": "#FFD700",
+          "hex_source": "approximate"
+        },
+        {
+          "name": "Light blue",
+          "hex": "#87CEEB",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": "อาคาร ๖๐ พรรษา ราชสุดาสมภพ",
+        "name_en": "60th Birthday Anniversary (Ratchasuda Somphop) Building"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Institute building (exact building not confirmed)",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:%E0%B8%AA%E0%B8%96%E0%B8%B2%E0%B8%9A%E0%B8%B1%E0%B8%99%E0%B9%80%E0%B8%97%E0%B8%84%E0%B9%82%E0%B8%99%E0%B9%82%E0%B8%A5%E0%B8%A2%E0%B8%B5%E0%B8%88%E0%B8%B4%E0%B8%95%E0%B8%A3%E0%B8%A5%E0%B8%94%E0%B8%B2_Chitralada_Technology_Institute.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "Chainwit.",
+        "pixels": "4032x3024"
+      }
+    ],
+    "colour_sources": [
+      {
+        "url": "https://www.cdti.ac.th/about/",
+        "kind": "official"
+      }
+    ],
+    "confidence": "high",
+    "notes": "Colour names official; hex approximate."
+  },
+  {
+    "name_th": "มหาวิทยาลัยรามคำแหง",
+    "name_en": "Ramkhamhaeng University",
+    "abbreviation": "มร. / RU",
+    "type": "open (public)",
+    "province": "Bangkok",
+    "main_campus": "Hua Mak, Bang Kapi, Bangkok",
+    "other_campuses_in_region": [
+      "Bang Na campus (Ramkhamhaeng 2), Bangkok"
+    ],
+    "colours": {
+      "names_th": "สีน้ำเงิน-ทอง",
+      "names_en": "Blue and gold",
+      "hex": [
+        {
+          "name": "Blue",
+          "hex": "#191970",
+          "hex_source": "approximate"
+        },
+        {
+          "name": "Gold",
+          "hex": "#DAA520",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": "พระบรมราชานุสาวรีย์พ่อขุนรามคำแหงมหาราช",
+        "name_en": "King Ramkhamhaeng the Great Monument",
+        "sensitivity": "royal monument/image: treat respectfully, avoid cropping, overlaying UI or decorative tinting; students pay respects here"
+      },
+      {
+        "name_th": "หอประชุมพ่อขุนรามคำแหงมหาราช",
+        "name_en": "King Ramkhamhaeng the Great Auditorium"
+      },
+      {
+        "name_th": "ศิลาจารึกพ่อขุนรามคำแหง",
+        "name_en": "Ramkhamhaeng Inscription (university emblem)"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Hua Mak campus view (specific subject not captioned)",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:Ramkhamhaeng_University_in_Bang_Kapi_District,_Bangkok,_Thailand.jpg",
+        "licence": "CC BY-SA 3.0",
+        "author": "Globe-trotter",
+        "pixels": "3888x2592"
+      },
+      {
+        "landmark": "King Ramkhamhaeng the Great Monument",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:Lamp_Sakkapoom_in_front_of_King_Ramkhamhaeng_the_Great_Statue.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "JRV.nutmeg",
+        "pixels": "874x624",
+        "note": "low resolution and an identifiable person is in frame; not suitable as-is"
+      }
+    ],
+    "colour_sources": [
+      {
+        "url": "http://www.oasc.ru.ac.th/index.php/keiyw-kab-mhawithyalay-laea-sanakngan/sample-article/kerd-na-ru-keiyw-kab-mhawithyalay",
+        "kind": "official (Office of the President)"
+      },
+      {
+        "url": "https://www.ru.ac.th/th/AboutUs/page?view=Emblem",
+        "kind": "official (emblem and tree only)"
+      }
+    ],
+    "confidence": "high",
+    "notes": "Conflict resolved: Sanook Campus says น้ำเงิน-เหลือง, the university page says น้ำเงิน-ทอง. No official hex. No clean free photo of the monument at the university was found (the well-known Commons photo \"Ram Khamhaeng the Great (I)\" is the Sukhothai statue, not RU)."
+  },
+  {
+    "name_th": "มหาวิทยาลัยสุโขทัยธรรมาธิราช",
+    "name_en": "Sukhothai Thammathirat Open University",
+    "abbreviation": "มสธ. / STOU",
+    "type": "open (public)",
+    "province": "Nonthaburi",
+    "main_campus": "Bang Phut, Pak Kret, Nonthaburi",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีเขียว และ สีทอง",
+      "names_en": "Green and gold",
+      "hex": [
+        {
+          "name": "Green",
+          "hex": "#228B22",
+          "hex_source": "approximate"
+        },
+        {
+          "name": "Gold",
+          "hex": "#BDB76B",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": "ศาลาพุ่มข้าวบิณฑ์",
+        "name_en": "Sala Phum Khao Bin"
+      },
+      {
+        "name_th": "อุทยานการศึกษารัชมังคลาภิเษก",
+        "name_en": "Ratchamangkhalaphisek Educational Park"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Sala Phum Khao Bin",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:Sukhothai_Thammathirat_Open_University,_Pakkret,_Nonthaburi_07.11.2025_(03).jpg",
+        "licence": "CC0",
+        "author": "Tvcccp",
+        "pixels": "4032x3024"
+      },
+      {
+        "landmark": "Ratchamangkhalaphisek Educational Park",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:Ratchamangklaphisek_Educational_Park,_Sukhothai_Thammathirat_Open_University,_Pakkret,_Nonthaburi_11.11.2025.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "Tvcccp",
+        "pixels": "4032x3024"
+      }
+    ],
+    "colour_sources": [
+      {
+        "url": "https://www.stou.ac.th/main/symbols.html",
+        "kind": "official"
+      }
+    ],
+    "confidence": "high",
+    "notes": "Official page shows a swatch image without codes; hex approximate."
+  },
+  {
+    "name_th": "สถาบันเทคโนโลยีปทุมวัน",
+    "name_en": "Pathumwan Institute of Technology",
+    "abbreviation": "สทป. / PIT",
+    "type": "public",
+    "province": "Bangkok",
+    "main_campus": "Wang Mai, Pathum Wan, Bangkok",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีเลือดหมู สีเหลือง",
+      "names_en": "Maroon (oxblood) and yellow",
+      "hex": [
+        {
+          "name": "Maroon",
+          "hex": "#8B0000",
+          "hex_source": "approximate"
+        },
+        {
+          "name": "Yellow",
+          "hex": "#FFFF00",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": null,
+        "name_en": "Main building on Rama I Road (as captioned on Commons)"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Main building",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:Pathumwan_Institute_of_Technology_-_Bangkok_IMG_7302.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "Bjoertvedt",
+        "pixels": "4032x3024"
+      },
+      {
+        "landmark": "Main building at night",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:202307_Pathumwan_Institute_of_Technology_at_night.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "Jonashtand",
+        "pixels": "3840x2160"
+      }
+    ],
+    "colour_sources": [
+      {
+        "url": "https://eng.pit.ac.th/page/article-full",
+        "kind": "official_subdomain (Faculty of Engineering)"
+      }
+    ],
+    "confidence": "medium",
+    "notes": "www.pit.ac.th is behind a bot check; colour taken from the engineering faculty subdomain. English Wikipedia renders it \"yellow, scarlet\", which mistranslates เลือดหมู."
+  },
+  {
+    "name_th": "มหาวิทยาลัยราชภัฏจันทรเกษม",
+    "name_en": "Chandrakasem Rajabhat University",
+    "abbreviation": "มจษ. / CRU",
+    "type": "Rajabhat",
+    "province": "Bangkok",
+    "main_campus": "Chan Kasem, Chatuchak, Bangkok",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีเทา-เหลือง",
+      "names_en": "Grey and yellow",
+      "hex": [
+        {
+          "name": "Grey",
+          "hex": "#808080",
+          "hex_source": "approximate"
+        },
+        {
+          "name": "Yellow",
+          "hex": "#FFD700",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": "ประตูจันทร์",
+        "name_en": "Chan Gate"
+      },
+      {
+        "name_th": "หอนาฬิกาจันทรเกษม",
+        "name_en": "Chandrakasem Clock Tower"
+      },
+      {
+        "name_th": "หลวงพ่อใหญ่",
+        "name_en": "Luang Pho Yai Buddha image",
+        "sensitivity": "religious image: may be inappropriate as a decorative background"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Chan Gate",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%95%E0%B8%B9%E0%B8%88%E0%B8%B1%E0%B8%99%E0%B8%97%E0%B8%A3%E0%B9%80%E0%B8%81%E0%B8%A9%E0%B8%A1.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "พระรักข์",
+        "pixels": "759x569",
+        "note": "low resolution"
+      },
+      {
+        "landmark": "Clock Tower",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:%E0%B8%AB%E0%B8%AD%E0%B8%99%E0%B8%B2%E0%B8%AC%E0%B8%B4%E0%B8%81%E0%B8%B2%E0%B8%88%E0%B8%B1%E0%B8%99%E0%B8%97%E0%B8%A3%E0%B9%80%E0%B8%81%E0%B8%A9%E0%B8%A1.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "พระรักข์",
+        "pixels": "759x569",
+        "note": "low resolution"
+      }
+    ],
+    "colour_sources": [
+      {
+        "url": "https://th.wikipedia.org/wiki/มหาวิทยาลัยราชภัฏจันทรเกษม",
+        "kind": "wikipedia_th_fallback"
+      },
+      {
+        "url": "https://www.chandra.ac.th/?page_id=9038",
+        "kind": "official page \"สีประจำ มจษ.\" (listed in search results; could not be opened, SSL failure)"
+      }
+    ],
+    "confidence": "medium",
+    "notes": "Colour from Wikipedia, corroborated only by a search-engine summary of the official page. Landmark names are from Commons/Wikipedia captions."
+  },
+  {
+    "name_th": "มหาวิทยาลัยราชภัฏธนบุรี",
+    "name_en": "Dhonburi Rajabhat University",
+    "abbreviation": "มรธ. / DRU",
+    "type": "Rajabhat",
+    "province": "Bangkok",
+    "main_campus": "Hiranruchi, Thon Buri, Bangkok",
+    "other_campuses_in_region": [
+      "DRU Samut Prakan, Bang Phli, Samut Prakan"
+    ],
+    "colours": {
+      "names_th": "สีขาว-เหลือง (ขาวพิกุล / เหลืองลูกจัน)",
+      "names_en": "White and yellow",
+      "hex": [
+        {
+          "name": "เหลืองลูกจัน (yellow)",
+          "hex": "#FDB913",
+          "hex_source": "official_subdomain",
+          "source_url": "https://sp.dru.ac.th/new/?page_id=10"
+        },
+        {
+          "name": "ขาวพิกุล (white)",
+          "hex": "#FFFFFF",
+          "hex_source": "official_subdomain",
+          "source_url": "https://sp.dru.ac.th/new/?page_id=10"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": null,
+        "name_en": "University entrance, Itsaraphap Road"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "University entrance",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:Entrance_of_Dhonburi_Rajabhat_University.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "Sry85",
+        "pixels": "2976x3968",
+        "note": "portrait orientation"
+      }
+    ],
+    "colour_sources": [
+      {
+        "url": "https://grad.dru.ac.th/history.php",
+        "kind": "official_subdomain"
+      },
+      {
+        "url": "https://sp.dru.ac.th/new/?page_id=10",
+        "kind": "official_subdomain (Samut Prakan campus; swatch image with hex)"
+      }
+    ],
+    "confidence": "high",
+    "notes": "Hex comes from a campus-site swatch image, not a CI manual."
+  },
+  {
+    "name_th": "มหาวิทยาลัยราชภัฏนครปฐม",
+    "name_en": "Nakhon Pathom Rajabhat University",
+    "abbreviation": "มรน. / NPRU",
+    "type": "Rajabhat",
+    "province": "Nakhon Pathom",
+    "main_campus": "Mueang Nakhon Pathom, Nakhon Pathom",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีชมพู สีแดง",
+      "names_en": "Pink and red",
+      "hex": [
+        {
+          "name": "Pink",
+          "hex": "#FFC0CB",
+          "hex_source": "approximate"
+        },
+        {
+          "name": "Red",
+          "hex": "#FF0000",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": "พระพุทธศรีทวารวดีสิริราชภัฏ",
+        "name_en": "Phra Phuttha Si Thawarawadi Siri Rajabhat (university Buddha image)",
+        "sensitivity": "religious image: may be inappropriate as a decorative background"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Campus view (subject not captioned)",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:NPRU_06.12.2017_(17).jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "Pitpisit",
+        "pixels": "2048x1361"
+      },
+      {
+        "landmark": "University Buddha image",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:%E0%B8%9E%E0%B8%A3%E0%B8%B0%E0%B8%9E%E0%B8%B8%E0%B8%97%E0%B8%98%E0%B8%A8%E0%B8%A3%E0%B8%B5%E0%B8%97%E0%B8%A7%E0%B8%B2%E0%B8%A3%E0%B8%A7%E0%B8%94%E0%B8%B5%E0%B8%AA%E0%B8%B4%E0%B8%A3%E0%B8%B4%E0%B8%A3%E0%B8%B2%E0%B8%8A%E0%B8%A0%E0%B8%B1%E0%B8%8F.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "009earth",
+        "pixels": "300x400",
+        "note": "300x400 only and its description cites npru.ac.th as origin, so the CC licence claim is doubtful; do not use without checking"
+      }
+    ],
+    "colour_sources": [
+      {
+        "url": "https://www.npru.ac.th/about3.php",
+        "kind": "official"
+      }
+    ],
+    "confidence": "high",
+    "notes": "Colour names official; hex approximate."
+  },
+  {
+    "name_th": "มหาวิทยาลัยราชภัฏบ้านสมเด็จเจ้าพระยา",
+    "name_en": "Bansomdejchaopraya Rajabhat University",
+    "abbreviation": "มบส. / BSRU",
+    "type": "Rajabhat",
+    "province": "Bangkok",
+    "main_campus": "Hiranruchi, Thon Buri, Bangkok",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีม่วง-ขาว",
+      "names_en": "Purple and white",
+      "hex": [
+        {
+          "name": "Purple",
+          "hex": "#800080",
+          "hex_source": "approximate"
+        },
+        {
+          "name": "White",
+          "hex": "#FFFFFF",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": "บ้านเอกะนาค",
+        "name_en": "Baan Ekanak (heritage house)"
+      },
+      {
+        "name_th": "ป้ายมหาวิทยาลัย",
+        "name_en": "University name sign"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Baan Ekanak",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:Baan_Ekanak,_Bansomdejchaopraya_Rajabhat_University.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "MOS ss",
+        "pixels": "5500x3991"
+      },
+      {
+        "landmark": "University name sign",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:%E0%B8%9B%E0%B9%89%E0%B8%B2%E0%B8%A2_%E0%B8%A1%E0%B8%A3%E0%B8%A0.%E0%B8%9A%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%AA%E0%B8%A1%E0%B9%80%E0%B8%94%E0%B9%87%E0%B8%88.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "Ronnatad",
+        "pixels": "3917x2894"
+      }
+    ],
+    "colour_sources": [
+      {
+        "url": "https://th.wikipedia.org/wiki/มหาวิทยาลัยราชภัฏบ้านสมเด็จเจ้าพระยา",
+        "kind": "wikipedia_th_fallback"
+      },
+      {
+        "url": "https://www.bsru.ac.th/history-en",
+        "kind": "official (listed in search results as stating purple and white; blocked by bot check, not opened)"
+      }
+    ],
+    "confidence": "medium",
+    "notes": "Colour from Wikipedia, corroborated only by a search summary of the official page."
+  },
+  {
+    "name_th": "มหาวิทยาลัยราชภัฏพระนคร",
+    "name_en": "Phranakhon Rajabhat University",
+    "abbreviation": "มรภ.พน. / PNRU",
+    "type": "Rajabhat",
+    "province": "Bangkok",
+    "main_campus": "Anusawari, Bang Khen, Bangkok",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีเขียวแก่",
+      "names_en": "Dark green",
+      "hex": [
+        {
+          "name": "Dark green",
+          "hex": "#006400",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": null,
+    "photo_candidates": null,
+    "colour_sources": [
+      {
+        "url": "https://mplan.pnru.ac.th/files/upload-files/uploadfile/40/ceea9d4e814eb9abf782842a92769656.pdf",
+        "kind": "official_subdomain (Annual Report 2562, p.7)"
+      },
+      {
+        "url": "https://th.wikipedia.org/wiki/มหาวิทยาลัยราชภัฏพระนคร",
+        "kind": "wikipedia_th_fallback"
+      }
+    ],
+    "confidence": "medium",
+    "notes": "Wikipedia says เขียว; the annual report says เขียวแก่. No landmark verified; no free campus photo found (Commons results are the nearby MRT station and Lak Si monument, not the university)."
+  },
+  {
+    "name_th": "มหาวิทยาลัยราชภัฏวไลยอลงกรณ์ ในพระบรมราชูปถัมภ์",
+    "name_en": "Valaya Alongkorn Rajabhat University under the Royal Patronage",
+    "abbreviation": "มรวอ. / VRU",
+    "type": "Rajabhat",
+    "province": "Pathum Thani",
+    "main_campus": "Khlong Nueng, Khlong Luang, Pathum Thani",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีเขียว",
+      "names_en": "Green",
+      "hex": [
+        {
+          "name": "Green",
+          "hex": "#008000",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": null,
+        "name_en": "University entrance, Phahonyothin Road"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "University entrance",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:Entrance_of_Valaya_Alongkorn_Rajabhat_University.jpg",
+        "licence": "CC BY-SA 3.0",
+        "author": "Sry85",
+        "pixels": "2315x1619",
+        "note": "2009 photo"
+      }
+    ],
+    "colour_sources": [
+      {
+        "url": "https://www.vru.ac.th/university-logo/",
+        "kind": "official"
+      }
+    ],
+    "confidence": "high",
+    "notes": "Colour name official; hex approximate."
+  },
+  {
+    "name_th": "มหาวิทยาลัยราชภัฏสวนสุนันทา",
+    "name_en": "Suan Sunandha Rajabhat University",
+    "abbreviation": "มรภ.สส. / SSRU",
+    "type": "Rajabhat",
+    "province": "Bangkok",
+    "main_campus": "Dusit, Bangkok",
+    "other_campuses_in_region": [
+      "Nakhon Pathom Education Centre, Phutthamonthon, Nakhon Pathom"
+    ],
+    "colours": {
+      "names_th": "สีน้ำเงิน สีชมพู",
+      "names_en": "Blue and pink",
+      "hex": [
+        {
+          "name": "Blue",
+          "hex": "#0000FF",
+          "hex_source": "approximate"
+        },
+        {
+          "name": "Pink",
+          "hex": "#FFC0CB",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": "พระรูปสมเด็จพระนางเจ้าสุนันทากุมารีรัตน์",
+        "name_en": "Statue of Queen Sunandha Kumariratana",
+        "sensitivity": "royal monument/image: treat respectfully, avoid cropping, overlaying UI or decorative tinting"
+      },
+      {
+        "name_th": "หอพระ",
+        "name_en": "Buddha shrine hall",
+        "sensitivity": "religious image: may be inappropriate as a decorative background"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Campus view (described on Commons only as SSRU, Dusit; subject not confirmed)",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:%E0%B8%AA_%E0%B8%9E%E0%B8%A3%E0%B8%B0%E0%B8%A1%E0%B8%87%E0%B8%81%E0%B8%B8%E0%B8%8E.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "Wuttipong deedo",
+        "pixels": "2321x1450"
+      }
+    ],
+    "colour_sources": [
+      {
+        "url": "https://ssru.ac.th/about_university-color.php",
+        "kind": "official"
+      }
+    ],
+    "confidence": "high",
+    "notes": "Official page shows a swatch image without codes; hex approximate. Photo subject needs a visual check."
+  },
+  {
+    "name_th": "มหาวิทยาลัยเทคโนโลยีราชมงคลกรุงเทพ",
+    "name_en": "Rajamangala University of Technology Krungthep",
+    "abbreviation": "มทร.กรุงเทพ / RMUTK (UTK)",
+    "type": "Rajamangala",
+    "province": "Bangkok",
+    "main_campus": "Thung Maha Mek, Sathon, Bangkok",
+    "other_campuses_in_region": [
+      "Bophit Phimuk Mahamek and Phra Nakhon Tai campuses, Bangkok"
+    ],
+    "colours": {
+      "names_th": "สีเขียว",
+      "names_en": "Green",
+      "hex": [
+        {
+          "name": "Green",
+          "hex": "#008000",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": null,
+    "photo_candidates": null,
+    "colour_sources": [
+      {
+        "url": "https://www.rmutk.ac.th/?page_id=54815",
+        "kind": "official"
+      },
+      {
+        "url": "https://www.rmutk.ac.th/?page_id=2603",
+        "kind": "official (links a Pantone guide and Brand UTK manual on Google Drive; links returned 404)"
+      }
+    ],
+    "confidence": "high",
+    "notes": "Official Pantone guide exists but could not be retrieved. No landmark verified; no free campus photo found."
+  },
+  {
+    "name_th": "มหาวิทยาลัยเทคโนโลยีราชมงคลธัญบุรี",
+    "name_en": "Rajamangala University of Technology Thanyaburi",
+    "abbreviation": "มทร.ธัญบุรี / RMUTT",
+    "type": "Rajamangala",
+    "province": "Pathum Thani",
+    "main_campus": "Khlong Hok, Khlong Luang, Pathum Thani",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีน้ำเงินเข้ม (Royal Blue)",
+      "names_en": "Dark blue (Royal Blue)",
+      "hex": [
+        {
+          "name": "Royal Blue",
+          "hex": "#162B75",
+          "hex_source": "official",
+          "source_url": "https://www.rmutt.ac.th/symbol-rmutt/"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": null,
+        "name_en": "Campus view, Khlong Hok (as captioned on Commons)"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Campus view",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:%E0%B8%A1%E0%B8%AB%E0%B8%B2%E0%B8%A7%E0%B8%B4%E0%B8%97%E0%B8%A2%E0%B8%B2%E0%B8%A5%E0%B8%B1%E0%B8%A2%E0%B9%80%E0%B8%97%E0%B8%84%E0%B9%82%E0%B8%99%E0%B9%82%E0%B8%A5%E0%B8%A2%E0%B8%B5%E0%B8%A3%E0%B8%B2%E0%B8%8A%E0%B8%A1%E0%B8%87%E0%B8%84%E0%B8%A5%E0%B8%98%E0%B8%B1%E0%B8%8D%E0%B8%9A%E0%B8%B8%E0%B8%A3%E0%B8%B5_%E0%B8%AD.%E0%B8%84%E0%B8%A5%E0%B8%AD%E0%B8%87%E0%B8%AB%E0%B8%A5%E0%B8%A7%E0%B8%87_%E0%B8%88.%E0%B8%9B%E0%B8%97%E0%B8%B8%E0%B8%A1%E0%B8%98%E0%B8%B2%E0%B8%99%E0%B8%B5_rajamangala_university_of_technology_thanyaburi_(2).jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "กสิณธร ราชโอรส",
+        "pixels": "4320x3240"
+      }
+    ],
+    "colour_sources": [
+      {
+        "url": "https://www.rmutt.ac.th/symbol-rmutt/",
+        "kind": "official"
+      }
+    ],
+    "confidence": "high",
+    "notes": "Hex is stated on the official symbols page (wording there mislabels it as CMYK); no separate CI manual found. Photo subject needs a visual check."
+  },
+  {
+    "name_th": "มหาวิทยาลัยเทคโนโลยีราชมงคลพระนคร",
+    "name_en": "Rajamangala University of Technology Phra Nakhon",
+    "abbreviation": "มทร.พระนคร / RMUTP",
+    "type": "Rajamangala",
+    "province": "Bangkok",
+    "main_campus": "Wachiraphayaban, Dusit, Bangkok (Thewet)",
+    "other_campuses_in_region": [
+      "Chotiwet, Phanitchayakan Phra Nakhon and Phra Nakhon Nuea centres, Bangkok"
+    ],
+    "colours": {
+      "names_th": "สีม่วง",
+      "names_en": "Purple",
+      "hex": [
+        {
+          "name": "Purple (Pantone P 93-8 C, CMYK 70/100/0/0)",
+          "hex": "#662D91",
+          "hex_source": "converted_from_official_cmyk",
+          "source_url": "https://cci.rmutp.ac.th/2558/wp-content/uploads/2023/04/RMUTP-CI-2023-a.pdf"
+        }
+      ]
+    },
+    "landmarks": null,
+    "photo_candidates": null,
+    "colour_sources": [
+      {
+        "url": "https://cci.rmutp.ac.th/2558/wp-content/uploads/2023/04/RMUTP-CI-2023-a.pdf",
+        "kind": "official CI manual 2566, p.13, p.16-17"
+      }
+    ],
+    "confidence": "high",
+    "notes": "Manual gives Pantone/CMYK only; hex is an approximate conversion. No landmark verified; no free campus photo found."
+  },
+  {
+    "name_th": "มหาวิทยาลัยเทคโนโลยีราชมงคลรัตนโกสินทร์",
+    "name_en": "Rajamangala University of Technology Rattanakosin",
+    "abbreviation": "มทร.รัตนโกสินทร์ / RMUTR",
+    "type": "Rajamangala",
+    "province": "Nakhon Pathom",
+    "main_campus": "Salaya, Phutthamonthon, Nakhon Pathom",
+    "other_campuses_in_region": [
+      "Poh-Chang Academy of Arts, Phra Nakhon, Bangkok",
+      "Bophit Phimuk Chakkrawat, Bangkok"
+    ],
+    "colours": {
+      "names_th": "สีแดงเลือดนก",
+      "names_en": "Vermilion red",
+      "hex": [
+        {
+          "name": "Vermilion red (CMYK 0/100/100/0)",
+          "hex": "#ED1C24",
+          "hex_source": "converted_from_official_cmyk",
+          "source_url": "https://www.rmutr.ac.th/about-us/"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": "วิทยาลัยเพาะช่าง",
+        "name_en": "Poh-Chang Academy of Arts (Bangkok campus)"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Poh-Chang Academy of Arts",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:%E0%B8%A7%E0%B8%B4%E0%B8%97%E0%B8%A2%E0%B8%B2%E0%B8%A5%E0%B8%B1%E0%B8%A2%E0%B9%80%E0%B8%9E%E0%B8%B2%E0%B8%B0%E0%B8%8A%E0%B9%88%E0%B8%B2%E0%B8%87_%E0%B8%A1%E0%B8%AB%E0%B8%B2%E0%B8%A7%E0%B8%B4%E0%B8%97%E0%B8%A2%E0%B8%B2%E0%B8%A5%E0%B8%B1%E0%B8%A2%E0%B9%80%E0%B8%97%E0%B8%84%E0%B9%82%E0%B8%99%E0%B9%82%E0%B8%A5%E0%B8%A2%E0%B8%B5%E0%B8%A3%E0%B8%B2%E0%B8%8A%E0%B8%A1%E0%B8%87%E0%B8%84%E0%B8%A5%E0%B8%A3%E0%B8%B1%E0%B8%95%E0%B8%99%E0%B9%82%E0%B8%81%E0%B8%AA%E0%B8%B4%E0%B8%99%E0%B8%97%E0%B8%A3%E0%B9%8C.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "Dharmadana",
+        "pixels": "3968x2976",
+        "note": "Bangkok campus, not the Salaya main campus"
+      }
+    ],
+    "colour_sources": [
+      {
+        "url": "https://www.rmutr.ac.th/about-us/",
+        "kind": "official"
+      }
+    ],
+    "confidence": "high",
+    "notes": "Official page gives CMYK only; hex is a conversion. Poh-Chang uses its own red-black colours. Other campus (Wang Klai Kangwon) is in Prachuap Khiri Khan."
+  },
+  {
+    "name_th": "มหาวิทยาลัยกรุงเทพ",
+    "name_en": "Bangkok University",
+    "abbreviation": "มกท. / BU",
+    "type": "private",
+    "province": "Pathum Thani",
+    "main_campus": "Rangsit campus, Khlong Luang, Pathum Thani",
+    "other_campuses_in_region": [
+      "City campus (Kluaynamthai), Khlong Toei, Bangkok"
+    ],
+    "colours": {
+      "names_th": "สีม่วง-แสด",
+      "names_en": "Purple and orange",
+      "hex": [
+        {
+          "name": "Purple",
+          "hex": "#6600CC",
+          "hex_source": "approximate"
+        },
+        {
+          "name": "Orange",
+          "hex": "#FF7F00",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": null,
+        "name_en": "Rangsit campus buildings (as captioned on Commons)"
+      },
+      {
+        "name_th": "อาคาร ดร.เจริญ คันธวงศ์ (อาคาร 9) วิทยาเขตกล้วยน้ำไท",
+        "name_en": "Dr. Charoen Kanthawongs Building (Building 9), City campus"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Rangsit campus building",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:Beautiful_building_@_Bangkok_University_,_%E0%B8%95%E0%B8%B6%E0%B8%81%E0%B8%A3%E0%B8%B9%E0%B8%9B%E0%B8%97%E0%B8%A3%E0%B8%87%E0%B8%AA%E0%B8%A7%E0%B8%A2%E0%B8%87%E0%B8%B2%E0%B8%A1%E0%B8%97%E0%B8%B5%E0%B9%88%E0%B8%A1%E0%B8%AB%E0%B8%B2%E0%B8%A7%E0%B8%B4%E0%B8%97%E0%B8%A2%E0%B8%B2%E0%B8%A5%E0%B8%B1%E0%B8%A2%E0%B8%81%E0%B8%A3%E0%B8%B8%E0%B8%87%E0%B9%80%E0%B8%97%E0%B8%9E_-_panoramio.jpg",
+        "licence": "CC BY-SA 3.0",
+        "author": "::::=UT=:::: (Panoramio)",
+        "pixels": "3648x2736"
+      },
+      {
+        "landmark": "Rangsit campus",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:Bangkok_University.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "gorlapraveen",
+        "pixels": "3120x4160",
+        "note": "portrait orientation"
+      }
+    ],
+    "colour_sources": [
+      {
+        "url": "https://th.wikipedia.org/wiki/มหาวิทยาลัยกรุงเทพ",
+        "kind": "wikipedia_th_fallback"
+      }
+    ],
+    "confidence": "low",
+    "notes": "bu.ac.th about/history/downloads pages state no university colour (only per-faculty hex codes). ม่วง-แสด is Wikipedia only."
+  },
+  {
+    "name_th": "มหาวิทยาลัยกรุงเทพธนบุรี",
+    "name_en": "Bangkokthonburi University",
+    "abbreviation": "มกธ. / BTU",
+    "type": "private",
+    "province": "Bangkok",
+    "main_campus": "Thawi Watthana, Bangkok",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีแดง-ทอง",
+      "names_en": "Red and gold",
+      "hex": [
+        {
+          "name": "Red",
+          "hex": "#FF0000",
+          "hex_source": "approximate"
+        },
+        {
+          "name": "Gold",
+          "hex": "#FFD700",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": "อาคารชาญชัย อะคาเดเมี่ยม",
+        "name_en": "Chanchai Acadium"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Chanchai Acadium",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:%E0%B8%AD%E0%B8%B2%E0%B8%84%E0%B8%B2%E0%B8%A3%E0%B8%8A%E0%B8%B2%E0%B8%8D%E0%B8%8A%E0%B8%B1%E0%B8%A2_%E0%B8%AD%E0%B9%80%E0%B8%84%E0%B9%80%E0%B8%94%E0%B8%B5%E0%B9%89%E0%B8%A2%E0%B8%A1_%E0%B8%A1%E0%B8%AB%E0%B8%B2%E0%B8%A7%E0%B8%B4%E0%B8%97%E0%B8%A2%E0%B8%B2%E0%B8%A5%E0%B8%B1%E0%B8%A2%E0%B8%81%E0%B8%A3%E0%B8%B8%E0%B8%87%E0%B9%80%E0%B8%97%E0%B8%9E%E0%B8%98%E0%B8%99%E0%B8%9A%E0%B8%B8%E0%B8%A3%E0%B8%B5_-_panoramio.jpg",
+        "licence": "CC BY 3.0",
+        "author": "Charin ninsu",
+        "pixels": "4592x3056"
+      },
+      {
+        "landmark": "Campus view",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:%E0%B8%A1%E0%B8%AB%E0%B8%B2%E0%B8%A7%E0%B8%B4%E0%B8%97%E0%B8%A2%E0%B8%B2%E0%B8%A5%E0%B8%B1%E0%B8%A2%E0%B8%81%E0%B8%A3%E0%B8%B8%E0%B8%87%E0%B9%80%E0%B8%97%E0%B8%9E%E0%B8%98%E0%B8%99%E0%B8%9A%E0%B8%B8%E0%B8%A3%E0%B8%B5_-_panoramio.jpg",
+        "licence": "CC BY 3.0",
+        "author": "Charin ninsu",
+        "pixels": "4592x3056"
+      }
+    ],
+    "colour_sources": [
+      {
+        "url": "https://th.wikipedia.org/wiki/มหาวิทยาลัยกรุงเทพธนบุรี",
+        "kind": "wikipedia_th_fallback"
+      }
+    ],
+    "confidence": "low",
+    "notes": "Official symbol page (bkkthon.ac.th/home/th/about_university/about-9) has logo images only, no colour text."
+  },
+  {
+    "name_th": "มหาวิทยาลัยเกริก",
+    "name_en": "Krirk University",
+    "abbreviation": "ม.กร. / KRU",
+    "type": "private",
+    "province": "Bangkok",
+    "main_campus": "Anusawari, Bang Khen, Bangkok",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีเขียว",
+      "names_en": "Green",
+      "hex": [
+        {
+          "name": "Green",
+          "hex": "#008000",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": null,
+    "photo_candidates": null,
+    "colour_sources": [
+      {
+        "url": "https://th.wikipedia.org/wiki/มหาวิทยาลัยเกริก",
+        "kind": "wikipedia_th_fallback"
+      }
+    ],
+    "confidence": "low",
+    "notes": "krirk.ac.th symbol page offers logo downloads but states no colour. No landmark or free photo found."
+  },
+  {
+    "name_th": "มหาวิทยาลัยคริสเตียน",
+    "name_en": "Christian University of Thailand",
+    "abbreviation": "ม.ค.ต. / CUT",
+    "type": "private",
+    "province": "Nakhon Pathom",
+    "main_campus": "Don Yai Hom, Mueang Nakhon Pathom, Nakhon Pathom",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีน้ำเงิน และสีทอง",
+      "names_en": "Blue and gold",
+      "hex": [
+        {
+          "name": "Blue",
+          "hex": "#0000CD",
+          "hex_source": "approximate"
+        },
+        {
+          "name": "Gold",
+          "hex": "#FFD700",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": "อาคารศรีสิรินธร",
+        "name_en": "Sri Sirindhorn Building"
+      }
+    ],
+    "photo_candidates": null,
+    "colour_sources": [
+      {
+        "url": "https://www.christian.ac.th/emblem-color/",
+        "kind": "official"
+      }
+    ],
+    "confidence": "high",
+    "notes": "Colour names official; hex approximate. No free photo found on Commons. Sub-district not verified on the official site."
+  },
+  {
+    "name_th": "มหาวิทยาลัยเซนต์จอห์น",
+    "name_en": "Saint John's University",
+    "abbreviation": "มซจ. / SJU",
+    "type": "private",
+    "province": "Bangkok",
+    "main_campus": "Chatuchak, Bangkok",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": null,
+      "names_en": null,
+      "hex": null
+    },
+    "landmarks": null,
+    "photo_candidates": null,
+    "colour_sources": [],
+    "confidence": "low",
+    "notes": "No colour information found on the official site or Thai Wikipedia. District not verified. The only Commons hit (\"Sju.jpg\") is an unrelated Swedish building. Recommend leaving this theme generic."
+  },
+  {
+    "name_th": "มหาวิทยาลัยปทุมธานี",
+    "name_en": "Pathumthani University",
+    "abbreviation": "ม.ป.ท. / PTU",
+    "type": "private",
+    "province": "Pathum Thani",
+    "main_campus": "Mueang Pathum Thani, Pathum Thani",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีน้ำเงิน และสีชมพู",
+      "names_en": "Blue and pink",
+      "hex": [
+        {
+          "name": "Blue",
+          "hex": "#0000FF",
+          "hex_source": "approximate"
+        },
+        {
+          "name": "Pink",
+          "hex": "#FFC0CB",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": null,
+    "photo_candidates": null,
+    "colour_sources": [
+      {
+        "url": "https://www.ptu.ac.th/",
+        "kind": "official (history page linked from homepage: \"สีประจำมหาวิทยาลัย คือสีน้ำเงิน และสีชมพู\")"
+      }
+    ],
+    "confidence": "high",
+    "notes": "Colour names official; hex approximate. No landmark or free photo found."
+  },
+  {
+    "name_th": "มหาวิทยาลัยชินวัตร",
+    "name_en": "Shinawatra University",
+    "abbreviation": "มชว. / SIU",
+    "type": "private",
+    "province": "Pathum Thani",
+    "main_campus": "Sam Khok, Pathum Thani",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีเทา-เขียว-ส้ม",
+      "names_en": "Grey, green and orange",
+      "hex": [
+        {
+          "name": "Grey",
+          "hex": "#808080",
+          "hex_source": "approximate"
+        },
+        {
+          "name": "Green",
+          "hex": "#008000",
+          "hex_source": "approximate"
+        },
+        {
+          "name": "Orange",
+          "hex": "#FFA500",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": null,
+        "name_en": "Main campus buildings, Sam Khok"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Main campus",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:SIU_campus.jpg",
+        "licence": "Public domain",
+        "author": "Vincentvalentine289",
+        "pixels": "1024x768",
+        "note": "2007 photo, 1024x768"
+      }
+    ],
+    "colour_sources": [
+      {
+        "url": "https://th.wikipedia.org/wiki/มหาวิทยาลัยชินวัตร",
+        "kind": "wikipedia_th_fallback"
+      }
+    ],
+    "confidence": "low",
+    "notes": "siu.ac.th is behind a bot challenge. Per Thai Wikipedia the university was renamed มหาวิทยาลัยเมธารัถย์ (Metharath University) in 2565 and reverted to Shinawatra University in 2567; current naming on the official site was not confirmed. Offer both names in search."
+  },
+  {
+    "name_th": "มหาวิทยาลัยรัตนบัณฑิต",
+    "name_en": "Rattana Bundit University",
+    "abbreviation": "มรบ. / RBAC",
+    "type": "private",
+    "province": "Bangkok",
+    "main_campus": "Khlong Chan, Bang Kapi, Bangkok",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีน้ำเงิน-ทอง",
+      "names_en": "Blue and gold",
+      "hex": [
+        {
+          "name": "Blue",
+          "hex": "#191970",
+          "hex_source": "approximate"
+        },
+        {
+          "name": "Gold",
+          "hex": "#FFA500",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": null,
+    "photo_candidates": null,
+    "colour_sources": [
+      {
+        "url": "https://th.wikipedia.org/wiki/มหาวิทยาลัยรัตนบัณฑิต",
+        "kind": "wikipedia_th_fallback"
+      }
+    ],
+    "confidence": "low",
+    "notes": "rbac.ac.th has a สัญลักษณ์ tab with no colour text. Site footer forbids reuse of website content without permission. No free photo found."
+  },
+  {
+    "name_th": "มหาวิทยาลัยราชพฤกษ์",
+    "name_en": "Rajapruk University",
+    "abbreviation": "มรพ. / RPU",
+    "type": "private",
+    "province": "Nonthaburi",
+    "main_campus": "Bang Khanun, Bang Kruai, Nonthaburi",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีเหลือง-เงิน",
+      "names_en": "Yellow and silver",
+      "hex": [
+        {
+          "name": "Yellow",
+          "hex": "#FFC116",
+          "hex_source": "approximate"
+        },
+        {
+          "name": "Silver",
+          "hex": "#959697",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": null,
+    "photo_candidates": null,
+    "colour_sources": [
+      {
+        "url": "https://www.rpu.ac.th/?page_id=12042",
+        "kind": "official"
+      }
+    ],
+    "confidence": "medium",
+    "notes": "Official page gives the two colours and their meanings, but the heading \"สีประจำมหาวิทยาลัย\" was not in the extracted text (likely an image). Hex is the Wikipedia infobox value."
+  },
+  {
+    "name_th": "มหาวิทยาลัยศรีปทุม",
+    "name_en": "Sripatum University",
+    "abbreviation": "มศป. / SPU",
+    "type": "private",
+    "province": "Bangkok",
+    "main_campus": "Sena Nikhom, Chatuchak, Bangkok (Bang Khen campus)",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีฟ้า-ชมพู (ดั้งเดิม); สีหลักของแบรนด์ปัจจุบัน: ชมพู",
+      "names_en": "Sky blue and pink (traditional); current brand primary: pink",
+      "hex": [
+        {
+          "name": "SPU Pink (CMYK 0/100/0/0)",
+          "hex": "#EC008B",
+          "hex_source": "official",
+          "source_url": "https://www.spu.ac.th/wp-content/uploads/2025/02/MKT-2024_07_351_SPU-Brand-Book.pdf"
+        },
+        {
+          "name": "Sky blue (traditional, not in brand book)",
+          "hex": "#00BFFF",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": null,
+        "name_en": "Bang Khen campus seen from BTS Bang Bua station"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Campus from BTS Bang Bua",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:BTS_Bang_Bua_-_SPU_viewing_from_ticketing_office_floor.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "Rachasak Ragkamnerd",
+        "pixels": "4000x6000",
+        "note": "portrait orientation"
+      }
+    ],
+    "colour_sources": [
+      {
+        "url": "https://www.spu.ac.th/wp-content/uploads/2025/02/MKT-2024_07_351_SPU-Brand-Book.pdf",
+        "kind": "official brand book, p.11, p.40-41"
+      },
+      {
+        "url": "https://th.wikipedia.org/wiki/มหาวิทยาลัยศรีปทุม",
+        "kind": "wikipedia_th_fallback"
+      }
+    ],
+    "confidence": "medium",
+    "notes": "CONFLICT: Wikipedia says ฟ้า-ชมพู; the 2024 brand book uses pink as the single primary with black/grey support (#231F20, #808284, light pink #F286B6) and mentions ฟ้า-ชมพู only in song lyrics. Brand book forbids altering the seal. Other campuses (Chonburi, Khon Kaen) are outside the region."
+  },
+  {
+    "name_th": "มหาวิทยาลัยหัวเฉียวเฉลิมพระเกียรติ",
+    "name_en": "Huachiew Chalermprakiet University",
+    "abbreviation": "มฉก. / HCU",
+    "type": "private (non-profit)",
+    "province": "Samut Prakan",
+    "main_campus": "Bang Chalong, Bang Phli, Samut Prakan",
+    "other_campuses_in_region": [
+      "Yotse campus, Pom Prap Sattru Phai, Bangkok"
+    ],
+    "colours": {
+      "names_th": "สีเหลืองทอง",
+      "names_en": "Golden yellow",
+      "hex": [
+        {
+          "name": "Golden yellow (RGB 255/203/5, CMYK 0/20/100/0)",
+          "hex": "#FFCB05",
+          "hex_source": "converted_from_official_rgb",
+          "source_url": "https://www.hcu.ac.th/upload/files/2563/061.pdf"
+        }
+      ]
+    },
+    "landmarks": null,
+    "photo_candidates": null,
+    "colour_sources": [
+      {
+        "url": "https://www.hcu.ac.th/upload/files/2563/061.pdf",
+        "kind": "official announcement on emblem use (2563), clause 5"
+      }
+    ],
+    "confidence": "high",
+    "notes": "RESTRICTION: the announcement (clauses 7-10) says the emblem is for university business only, other use needs the university's permission, and the emblem is copyrighted. Colours alone are not restricted. The PDF is an unnumbered copy and may be a draft. A \"สถานที่สำคัญ\" page exists on hcu.ac.th but was not read; no free photo found. Sub-district not verified on the official site."
+  },
+  {
+    "name_th": "มหาวิทยาลัยอัสสัมชัญ",
+    "name_en": "Assumption University",
+    "abbreviation": "มอช. / AU (ABAC)",
+    "type": "private (Catholic)",
+    "province": "Samut Prakan",
+    "main_campus": "Suvarnabhumi campus, Bang Sao Thong, Samut Prakan",
+    "other_campuses_in_region": [
+      "Hua Mak campus, Bang Kapi, Bangkok"
+    ],
+    "colours": {
+      "names_th": "สีน้ำเงิน-ขาว-แดง",
+      "names_en": "Blue, white and red",
+      "hex": [
+        {
+          "name": "Blue",
+          "hex": "#0000CD",
+          "hex_source": "approximate"
+        },
+        {
+          "name": "White",
+          "hex": "#FFFFFF",
+          "hex_source": "approximate"
+        },
+        {
+          "name": "Red",
+          "hex": "#FF0000",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": "อาสนวิหารแห่งการเรียนรู้",
+        "name_en": "Cathedral of Learning (Suvarnabhumi campus)"
+      },
+      {
+        "name_th": "พระรูปพระมารดาแห่งปรีชาญาณ",
+        "name_en": "Sedes Sapientiae (Seat of Wisdom statue)",
+        "sensitivity": "Catholic devotional statue: religious image: may be inappropriate as a decorative background"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Cathedral of Learning",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:ABAC_Suvarnabhumi_campus.jpg",
+        "licence": "CC BY-SA 3.0",
+        "author": "Yoav David",
+        "pixels": "2052x2736",
+        "note": "portrait orientation"
+      },
+      {
+        "landmark": "Sedes Sapientiae",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:Sedes_Sapientiae_Assumption_University.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "U5113499",
+        "pixels": "1404x1932",
+        "note": "portrait orientation"
+      }
+    ],
+    "colour_sources": [
+      {
+        "url": "https://th.wikipedia.org/wiki/มหาวิทยาลัยอัสสัมชัญ",
+        "kind": "wikipedia_th_fallback"
+      }
+    ],
+    "confidence": "low",
+    "notes": "au.edu history/symbols pages name Sedes Sapientiae and the Ashoka tree but state no university colours. Thai name of the Sedes Sapientiae statue is a translation, not taken from an official page."
+  },
+  {
+    "name_th": "มหาวิทยาลัยอีสเทิร์นเอเชีย",
+    "name_en": "Eastern Asia University",
+    "abbreviation": "EAU",
+    "type": "private",
+    "province": "Pathum Thani",
+    "main_campus": "Rangsit, Thanyaburi, Pathum Thani",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีน้ำเงิน-ขาว",
+      "names_en": "Blue and white",
+      "hex": [
+        {
+          "name": "Blue",
+          "hex": "#0000FF",
+          "hex_source": "approximate"
+        },
+        {
+          "name": "White",
+          "hex": "#FFFFFF",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": null,
+    "photo_candidates": null,
+    "colour_sources": [
+      {
+        "url": "https://www.eau.ac.th/information",
+        "kind": "official"
+      }
+    ],
+    "confidence": "high",
+    "notes": "Colour names official; hex approximate. No landmark or free photo found."
+  },
+  {
+    "name_th": "มหาวิทยาลัยเอเชียอาคเนย์",
+    "name_en": "Southeast Asia University",
+    "abbreviation": "ม.อ.อ. / SAU",
+    "type": "private",
+    "province": "Bangkok",
+    "main_campus": "Nong Khang Phlu, Nong Khaem, Bangkok",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีน้ำเงิน และ สีทอง",
+      "names_en": "Blue and gold",
+      "hex": [
+        {
+          "name": "Blue (dark)",
+          "hex": "#00008B",
+          "hex_source": "approximate"
+        },
+        {
+          "name": "Gold",
+          "hex": "#FFD700",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": "ต้นไทรย้อยร้อยปี",
+        "name_en": "Century-old banyan tree"
+      }
+    ],
+    "photo_candidates": null,
+    "colour_sources": [
+      {
+        "url": "https://www.sau.ac.th/th/history.html",
+        "kind": "official"
+      }
+    ],
+    "confidence": "high",
+    "notes": "Colour names official (emblem described as dark blue); hex approximate. No free photo found."
+  },
+  {
+    "name_th": "มหาวิทยาลัยเซาธ์อีสท์บางกอก",
+    "name_en": "Southeast Bangkok University",
+    "abbreviation": "ซ.อ.บ. / SBU",
+    "type": "private",
+    "province": "Bangkok",
+    "main_campus": "Bang Na, Bangkok",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีม่วง-ขาว",
+      "names_en": "Purple and white",
+      "hex": [
+        {
+          "name": "Purple",
+          "hex": "#800080",
+          "hex_source": "approximate"
+        },
+        {
+          "name": "White",
+          "hex": "#FFFFFF",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": null,
+    "photo_candidates": null,
+    "colour_sources": [
+      {
+        "url": "https://th.wikipedia.org/wiki/มหาวิทยาลัยเซาธ์อีสท์บางกอก",
+        "kind": "wikipedia_th_fallback"
+      }
+    ],
+    "confidence": "low",
+    "notes": "southeast.ac.th about page has an emblem image but no colour text. No landmark or free photo found."
+  },
+  {
+    "name_th": "มหาวิทยาลัยสยาม",
+    "name_en": "Siam University",
+    "abbreviation": "มส. / SU",
+    "type": "private",
+    "province": "Bangkok",
+    "main_campus": "Bang Wa, Phasi Charoen, Bangkok",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีเหลือง-น้ำตาล",
+      "names_en": "Yellow and brown",
+      "hex": [
+        {
+          "name": "Yellow",
+          "hex": "#FFFF00",
+          "hex_source": "approximate"
+        },
+        {
+          "name": "Brown",
+          "hex": "#A52A2A",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": null,
+    "photo_candidates": null,
+    "colour_sources": [
+      {
+        "url": "https://th.wikipedia.org/wiki/มหาวิทยาลัยสยาม",
+        "kind": "wikipedia_th_fallback"
+      }
+    ],
+    "confidence": "low",
+    "notes": "siam.edu has a \"Corporate Identity (CI)\" footer item with a dead link and no colour statement. No free campus photo found. Abbreviation SU collides with Silpakorn."
+  },
+  {
+    "name_th": "มหาวิทยาลัยหอการค้าไทย",
+    "name_en": "University of the Thai Chamber of Commerce",
+    "abbreviation": "มกค. / UTCC",
+    "type": "private",
+    "province": "Bangkok",
+    "main_campus": "Ratchadaphisek, Din Daeng, Bangkok",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีฟ้า",
+      "names_en": "Light blue",
+      "hex": [
+        {
+          "name": "Light blue",
+          "hex": "#87CEEB",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": null,
+        "name_en": "Campus buildings, Vibhavadi Rangsit Road (as captioned on Commons)"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Campus building",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:UTCC_1.jpg",
+        "licence": "CC0",
+        "author": "Mx. Granger",
+        "pixels": "4096x3072"
+      },
+      {
+        "landmark": "Campus building",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:UTCC_2.jpg",
+        "licence": "CC0",
+        "author": "Mx. Granger",
+        "pixels": "3072x4096",
+        "note": "portrait orientation"
+      }
+    ],
+    "colour_sources": [
+      {
+        "url": "https://th.wikipedia.org/wiki/มหาวิทยาลัยหอการค้าไทย",
+        "kind": "wikipedia_th_fallback"
+      }
+    ],
+    "confidence": "low",
+    "notes": "utcc.ac.th logo/history pages state no colour. The logo page releases the licensed brand font on request only."
+  },
+  {
+    "name_th": "มหาวิทยาลัยเกษมบัณฑิต",
+    "name_en": "Kasem Bundit University",
+    "abbreviation": "มกบ. / KBU",
+    "type": "private",
+    "province": "Bangkok",
+    "main_campus": "Phatthanakan campus, Suan Luang, Bangkok",
+    "other_campuses_in_region": [
+      "Rom Klao campus, Min Buri, Bangkok"
+    ],
+    "colours": {
+      "names_th": "สีแสด",
+      "names_en": "Orange (saed)",
+      "hex": [
+        {
+          "name": "Orange (saed)",
+          "hex": "#FF4500",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": null,
+        "name_en": "Phatthanakan campus building"
+      },
+      {
+        "name_th": null,
+        "name_en": "Rom Klao campus"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Phatthanakan campus",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:Kasem_Bundit_Univ_Bangkok.JPG",
+        "licence": "CC BY-SA 3.0",
+        "author": "Bjoertvedt",
+        "pixels": "3888x2592"
+      },
+      {
+        "landmark": "Rom Klao campus",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:%E0%B8%A1%E0%B8%AB%E0%B8%B2%E0%B8%A7%E0%B8%B4%E0%B8%97%E0%B8%A2%E0%B8%B2%E0%B8%A5%E0%B8%B1%E0%B8%A2%E0%B9%80%E0%B8%81%E0%B8%A9%E0%B8%A1%E0%B8%9A%E0%B8%B1%E0%B8%93%E0%B8%91%E0%B8%B4%E0%B8%95_%E0%B8%A7%E0%B8%B4%E0%B8%97%E0%B8%A2%E0%B8%B2%E0%B9%80%E0%B8%82%E0%B8%95%E0%B8%A3%E0%B9%88%E0%B8%A1%E0%B9%80%E0%B8%81%E0%B8%A5%E0%B9%89%E0%B8%B2.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "Dharmadana",
+        "pixels": "3968x2976"
+      }
+    ],
+    "colour_sources": [
+      {
+        "url": "https://th.wikipedia.org/wiki/มหาวิทยาลัยเกษมบัณฑิต",
+        "kind": "wikipedia_th_fallback"
+      }
+    ],
+    "confidence": "low",
+    "notes": "kbu.ac.th logo page is image-only; no colour text found."
+  },
+  {
+    "name_th": "มหาวิทยาลัยธนบุรี",
+    "name_en": "Thonburi University",
+    "abbreviation": "มธร. / TRU",
+    "type": "private",
+    "province": "Bangkok",
+    "main_campus": "Nong Khang Phlu, Nong Khaem, Bangkok",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีเหลืองทอง",
+      "names_en": "Golden yellow",
+      "hex": [
+        {
+          "name": "Golden yellow",
+          "hex": "#FFC000",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": null,
+    "photo_candidates": [
+      {
+        "landmark": "University stadium",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:Thonburi_University_Stadium_2017.jpg",
+        "licence": "Copyrighted free use",
+        "author": "Pudt",
+        "pixels": "960x720",
+        "note": "licence tag is \"Copyrighted free use\"; a football ground, weak as a campus identifier"
+      }
+    ],
+    "colour_sources": [
+      {
+        "url": "https://www.thonburi-u.ac.th/tru/abouttru/color",
+        "kind": "official"
+      }
+    ],
+    "confidence": "high",
+    "notes": "CONFLICT resolved: Wikipedia lists แดง-น้ำเงิน-เขียว-เหลือง, which are the emblem colours; the official page says the university colour is สีเหลืองทอง. Hex approximate."
+  },
+  {
+    "name_th": "มหาวิทยาลัยธุรกิจบัณฑิตย์",
+    "name_en": "Dhurakij Pundit University",
+    "abbreviation": "มธบ. / DPU",
+    "type": "private",
+    "province": "Bangkok",
+    "main_campus": "Thung Song Hong, Lak Si, Bangkok",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีม่วงและสีฟ้า",
+      "names_en": "Purple and sky blue",
+      "hex": [
+        {
+          "name": "Purple",
+          "hex": "#691BFF",
+          "hex_source": "approximate"
+        },
+        {
+          "name": "Sky blue",
+          "hex": "#94C8FD",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": "อนุสาวรีย์ผู้ก่อตั้ง",
+        "name_en": "Founders' Monument (Dr. Sawai Sudhipitak and Sanan Ketudat)"
+      },
+      {
+        "name_th": "ศาลาสนั่นคุณานุสรณ์",
+        "name_en": "Sanan Khunanuson Pavilion"
+      },
+      {
+        "name_th": "พระสิทธิธาดา",
+        "name_en": "Phra Sitthithada (emblem deity)",
+        "sensitivity": "religious image: may be inappropriate as a decorative background"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Sanan Khunanuson Pavilion",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:%E0%B8%A8%E0%B8%B2%E0%B8%A5%E0%B8%B2%E0%B8%AA%E0%B8%99%E0%B8%B1%E0%B9%88%E0%B8%99%E0%B8%84%E0%B8%B8%E0%B8%93%E0%B8%B2%E0%B8%99%E0%B8%B8%E0%B8%AA%E0%B8%A3%E0%B8%93%E0%B9%8C.jpg",
+        "licence": "CC BY-SA 3.0",
+        "author": "Mrapisit",
+        "pixels": "1500x994"
+      },
+      {
+        "landmark": "Founders' Monument",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:%E0%B8%AD%E0%B8%99%E0%B8%B8%E0%B8%AA%E0%B8%B2%E0%B8%A7%E0%B8%A3%E0%B8%B5%E0%B8%A2%E0%B9%8C%E0%B8%9C%E0%B8%B9%E0%B9%89%E0%B8%81%E0%B9%88%E0%B8%AD%E0%B8%95%E0%B8%B1%E0%B9%89%E0%B8%87.jpg",
+        "licence": "CC BY-SA 3.0",
+        "author": "Mrapisit",
+        "pixels": "1500x921"
+      },
+      {
+        "landmark": "Campus view",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:%E0%B8%A1%E0%B8%AB%E0%B8%B2%E0%B8%A7%E0%B8%B4%E0%B8%97%E0%B8%A2%E0%B8%B2%E0%B8%A5%E0%B8%B1%E0%B8%A2%E0%B8%98%E0%B8%B8%E0%B8%A3%E0%B8%81%E0%B8%B4%E0%B8%88%E0%B8%9A%E0%B8%B1%E0%B8%93%E0%B8%91%E0%B8%B4%E0%B8%95%E0%B8%A2%E0%B9%8C.jpg",
+        "licence": "CC BY-SA 3.0",
+        "author": "Mrapisit",
+        "pixels": "2395x1597"
+      }
+    ],
+    "colour_sources": [
+      {
+        "url": "https://www.dpu.ac.th/e-regis/upload/content/files/Bachelor%20Program%20for%20student%202567.pdf",
+        "kind": "official student handbook 2567, p.6"
+      },
+      {
+        "url": "https://www.dpu.ac.th/th/announcement/identity",
+        "kind": "official"
+      }
+    ],
+    "confidence": "high",
+    "notes": "The 2568 identity announcement describes the new \"DPU Nopparat\" logo in purple shades only, so current branding leans purple. Hex is the Wikipedia infobox value."
+  },
+  {
+    "name_th": "มหาวิทยาลัยนอร์ทกรุงเทพ",
+    "name_en": "North Bangkok University",
+    "abbreviation": "ม.น.ก. / NBU",
+    "type": "private",
+    "province": "Bangkok",
+    "main_campus": "Saphan Mai campus, Bangkok (Bang Khen / Sai Mai boundary)",
+    "other_campuses_in_region": [
+      "Rangsit campus, Bueng Yitho, Thanyaburi, Pathum Thani"
+    ],
+    "colours": {
+      "names_th": "สีน้ำเงิน-ขาว",
+      "names_en": "Blue and white",
+      "hex": [
+        {
+          "name": "Blue",
+          "hex": "#0000FF",
+          "hex_source": "approximate"
+        },
+        {
+          "name": "White",
+          "hex": "#FFFFFF",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": null,
+    "photo_candidates": null,
+    "colour_sources": [
+      {
+        "url": "https://www.northbkk.ac.th/about.php",
+        "kind": "official"
+      }
+    ],
+    "confidence": "high",
+    "notes": "District conflict: the official page gives แขวงอนุสาวรีย์ (Bang Khen); Thai Wikipedia gives แขวงคลองถนน เขตสายไหม. Only a stadium photo exists on Commons (\"Copyrighted free use\"); not listed as a candidate."
+  },
+  {
+    "name_th": "มหาวิทยาลัยเทคโนโลยีมหานคร",
+    "name_en": "Mahanakorn University of Technology",
+    "abbreviation": "มทม. / MUT",
+    "type": "private",
+    "province": "Bangkok",
+    "main_campus": "Krathum Rai, Nong Chok, Bangkok",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีแดง-เขียว-น้ำเงิน",
+      "names_en": "Red, green and blue",
+      "hex": [
+        {
+          "name": "Red",
+          "hex": "#FF0000",
+          "hex_source": "approximate"
+        },
+        {
+          "name": "Green",
+          "hex": "#008000",
+          "hex_source": "approximate"
+        },
+        {
+          "name": "Blue",
+          "hex": "#0000FF",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": null,
+        "name_en": "Campus view, Nong Chok (as captioned on Commons)"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Campus view",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:%E0%B8%A1%E0%B8%AB%E0%B8%B2%E0%B8%A7%E0%B8%B4%E0%B8%97%E0%B8%A2%E0%B8%B2%E0%B8%A5%E0%B8%B1%E0%B8%A2%E0%B9%80%E0%B8%97%E0%B8%84%E0%B9%82%E0%B8%99%E0%B9%82%E0%B8%A5%E0%B8%A2%E0%B8%B5%E0%B8%A1%E0%B8%AB%E0%B8%B2%E0%B8%99%E0%B8%84%E0%B8%A3_%22Mahanakorn_University_of_Technology%22_(MUT)_-_panoramio.jpg",
+        "licence": "CC BY 3.0",
+        "author": "Thaweesak Churasri",
+        "pixels": "1280x960"
+      }
+    ],
+    "colour_sources": [
+      {
+        "url": "https://th.wikipedia.org/wiki/มหาวิทยาลัยเทคโนโลยีมหานคร",
+        "kind": "wikipedia_th_fallback"
+      }
+    ],
+    "confidence": "low",
+    "notes": "mut.ac.th about page states no colours."
+  },
+  {
+    "name_th": "มหาวิทยาลัยรังสิต",
+    "name_en": "Rangsit University",
+    "abbreviation": "มรส. / RSU",
+    "type": "private",
+    "province": "Pathum Thani",
+    "main_campus": "Lak Hok (Muang Ake), Mueang Pathum Thani, Pathum Thani",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีชมพู (บานเย็น) - สีฟ้า",
+      "names_en": "Magenta pink (ban yen) and sky blue",
+      "hex": [
+        {
+          "name": "Magenta pink (ban yen)",
+          "hex": "#FF1493",
+          "hex_source": "approximate"
+        },
+        {
+          "name": "Sky blue",
+          "hex": "#00BFFF",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": "มณฑปพระศรีศาสดา",
+        "name_en": "Phra Si Satsada Mondop",
+        "sensitivity": "religious image: may be inappropriate as a decorative background"
+      },
+      {
+        "name_th": null,
+        "name_en": "Campus architecture (as captioned on Commons)"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Campus architecture",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:Architecture_of_Rangsit_University.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "VN.NguyenDucDuy",
+        "pixels": "960x1280",
+        "note": "portrait, 960x1280"
+      }
+    ],
+    "colour_sources": [
+      {
+        "url": "https://archives.rsu.ac.th/rsudata_sign.html",
+        "kind": "official_subdomain (University Archives)"
+      }
+    ],
+    "confidence": "high",
+    "notes": "Colour names official; hex approximate. No free photo of the mondop found."
+  },
+  {
+    "name_th": "มหาวิทยาลัยกรุงเทพสุวรรณภูมิ",
+    "name_en": "Bangkok Suvarnabhumi University",
+    "abbreviation": "มกส. / BSU",
+    "type": "private",
+    "province": "Bangkok",
+    "main_campus": "Thap Yao, Lat Krabang, Bangkok",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีแดง-ขาว-ทอง",
+      "names_en": "Red, white and gold",
+      "hex": [
+        {
+          "name": "Red",
+          "hex": "#FF0000",
+          "hex_source": "approximate"
+        },
+        {
+          "name": "White",
+          "hex": "#FFFFFF",
+          "hex_source": "approximate"
+        },
+        {
+          "name": "Gold",
+          "hex": "#FFD700",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": null,
+    "photo_candidates": null,
+    "colour_sources": [
+      {
+        "url": "https://www.bsu.ac.th/About/Symbols",
+        "kind": "official"
+      }
+    ],
+    "confidence": "high",
+    "notes": "Colour names official; hex approximate. No landmark or free photo found."
+  },
+  {
+    "name_th": "สถาบันการจัดการปัญญาภิวัฒน์",
+    "name_en": "Panyapiwat Institute of Management",
+    "abbreviation": "พีไอเอ็ม / PIM",
+    "type": "private",
+    "province": "Nonthaburi",
+    "main_campus": "Bang Talat, Pak Kret, Nonthaburi (Chaeng Watthana)",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีเขียว-ทอง",
+      "names_en": "Green and gold",
+      "hex": [
+        {
+          "name": "Green",
+          "hex": "#006400",
+          "hex_source": "approximate"
+        },
+        {
+          "name": "Gold",
+          "hex": "#FFD700",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": null,
+        "name_en": "Chaeng Watthana campus overview"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Campus overview from the MRT station",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:Panyapiwat_Institute_of_Management_campus_overview.png",
+        "licence": "CC BY 4.0",
+        "author": "Johnny Hellzapoppin",
+        "pixels": "1448x516",
+        "note": "wide 1448x516 crop; weak for portrait use"
+      }
+    ],
+    "colour_sources": [
+      {
+        "url": "https://th.wikipedia.org/wiki/สถาบันการจัดการปัญญาภิวัฒน์",
+        "kind": "wikipedia_th_fallback"
+      }
+    ],
+    "confidence": "low",
+    "notes": "pim.ac.th CI page now redirects to a bare logo image (green shield, gold crown, consistent with the Wikipedia colours); no text or codes seen."
+  },
+  {
+    "name_th": "สถาบันเทคโนโลยีไทย-ญี่ปุ่น",
+    "name_en": "Thai-Nichi Institute of Technology",
+    "abbreviation": "สทญ. / TNI",
+    "type": "private",
+    "province": "Bangkok",
+    "main_campus": "Phatthanakan, Suan Luang, Bangkok",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีน้ำเงิน และสีแดง",
+      "names_en": "Blue and red",
+      "hex": [
+        {
+          "name": "Blue",
+          "hex": "#2D368F",
+          "hex_source": "approximate"
+        },
+        {
+          "name": "Red",
+          "hex": "#ED2224",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": null,
+        "name_en": "Campus building (as captioned on Commons)"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Campus building",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:Thai-Nichi_Institute_of_Technology_(TNI)_,.jpg",
+        "licence": "CC BY-SA 3.0",
+        "author": "Mj-bird",
+        "pixels": "2712x3616",
+        "note": "portrait orientation"
+      }
+    ],
+    "colour_sources": [
+      {
+        "url": "https://www.tni.ac.th/home/history",
+        "kind": "official"
+      }
+    ],
+    "confidence": "high",
+    "notes": "Hex values are from a search snippet of the official corporate-identity page (tni.ac.th/home/corporate_identity), which now returns 404, so they are marked approximate rather than official."
+  },
+  {
+    "name_th": "มหาวิทยาลัยนานาชาติแสตมฟอร์ด",
+    "name_en": "Stamford International University",
+    "abbreviation": "มนชส. / STIU",
+    "type": "private",
+    "province": "Bangkok",
+    "main_campus": "Rama 9 campus, Prawet, Bangkok",
+    "other_campuses_in_region": [
+      "Asoke Learning Centre, Khlong Toei, Bangkok"
+    ],
+    "colours": {
+      "names_th": null,
+      "names_en": null,
+      "hex": null
+    },
+    "landmarks": null,
+    "photo_candidates": null,
+    "colour_sources": [],
+    "confidence": "low",
+    "notes": "No colour statement on stamford.edu. English Wikipedia/aggregators say blue and grey (unverified, not recorded as a value). Commons photos are from 2009 and show a former campus or the Hua Hin campus, so none is listed."
+  },
+  {
+    "name_th": "สถาบันเทคโนโลยีแห่งเอเชีย",
+    "name_en": "Asian Institute of Technology",
+    "abbreviation": "AIT",
+    "type": "international (intergovernmental)",
+    "province": "Pathum Thani",
+    "main_campus": "Khlong Nueng, Khlong Luang, Pathum Thani",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีเขียว",
+      "names_en": "Green (AIT Green)",
+      "hex": [
+        {
+          "name": "AIT Green (Pantone 7743 C per unverified snippet)",
+          "hex": "#3F6433",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": null,
+        "name_en": "Campus buildings and grounds (as captioned on Commons)"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Campus view",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:Asian_Institute_of_Technology,_Pathum_Thani_(2007).jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "Media lib",
+        "pixels": "1600x1200",
+        "note": "2007 photo"
+      },
+      {
+        "landmark": "Campus building",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:Asian_Institute_of_Technology_34.jpg",
+        "licence": "CC BY 3.0",
+        "author": "Seksan Phonsuwan",
+        "pixels": "2592x1944"
+      }
+    ],
+    "colour_sources": [
+      {
+        "url": "https://ait.ac.th/visual-identity/",
+        "kind": "official (seen only as a search snippet; site returned 403)"
+      },
+      {
+        "url": "https://th.wikipedia.org/wiki/สถาบันเทคโนโลยีแห่งเอเชีย",
+        "kind": "wikipedia_th_fallback"
+      }
+    ],
+    "confidence": "low",
+    "notes": "AIT publishes a logo manual (Dec 2023) whose search snippet gives AIT Green #3F6433, Lime #A1BE37, Sage #8DB37F, Dark Grey #494A4B and says no other logo colour combinations are acceptable; the document itself was not opened. Wikipedia gives #006400. Verify before use. Postgraduate institute."
+  },
+  {
+    "name_th": "มหาวิทยาลัยซีเอ็มเคแอล",
+    "name_en": "CMKL University",
+    "abbreviation": "CMKL",
+    "type": "private (foreign high-potential institution)",
+    "province": "Bangkok",
+    "main_campus": "Lat Krabang, Bangkok (on the KMITL campus)",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีส้ม-แดงเลือดหมู",
+      "names_en": "Orange and maroon",
+      "hex": [
+        {
+          "name": "Orange",
+          "hex": "#FF4500",
+          "hex_source": "approximate"
+        },
+        {
+          "name": "Maroon",
+          "hex": "#8B0000",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": null,
+        "name_en": "CMKL building at the KMITL Central Library"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "CMKL building",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:CMKL_Building.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "CMKLUniversity",
+        "pixels": "1108x1478",
+        "note": "uploaded by the university account; portrait"
+      }
+    ],
+    "colour_sources": [
+      {
+        "url": "https://th.wikipedia.org/wiki/มหาวิทยาลัยซีเอ็มเคแอล",
+        "kind": "wikipedia_th_fallback"
+      }
+    ],
+    "confidence": "low",
+    "notes": "cmkl.ac.th is behind a bot check. The university requires PR Unit approval for student use of its logo."
+  },
+  {
+    "name_th": "สถาบันบัณฑิตพัฒนศิลป์",
+    "name_en": "Bunditpatanasilpa Institute of Fine Arts",
+    "abbreviation": "สบศ. / BPI",
+    "type": "public (Ministry of Culture)",
+    "province": "Bangkok",
+    "main_campus": "Phra Nakhon, Bangkok",
+    "other_campuses_in_region": [
+      "Salaya, Nakhon Pathom"
+    ],
+    "colours": {
+      "names_th": "สีเขียว",
+      "names_en": "Green",
+      "hex": [
+        {
+          "name": "Green (website swatch labelled สีประจำสถาบัน)",
+          "hex": "#045928",
+          "hex_source": "official_website_css",
+          "source_url": "https://www.bpi.ac.th/history"
+        }
+      ]
+    },
+    "landmarks": null,
+    "photo_candidates": null,
+    "colour_sources": [
+      {
+        "url": "https://www.bpi.ac.th/upload/media/2021/05/122160a6343a66255.pdf",
+        "kind": "official"
+      },
+      {
+        "url": "https://www.bpi.ac.th/history",
+        "kind": "official"
+      }
+    ],
+    "confidence": "high",
+    "notes": "Hex is the CSS value of the swatch on the official history page, not a CI-manual value. Emblem figure is Ganesha. No free campus photo found."
+  },
+  {
+    "name_th": "สถาบันพระบรมราชชนก",
+    "name_en": "Praboromarajchanok Institute",
+    "abbreviation": "สบช. / PBRI",
+    "type": "public (Ministry of Public Health)",
+    "province": "Nonthaburi",
+    "main_campus": "Talat Khwan, Mueang Nonthaburi, Nonthaburi (HQ; teaching is at nursing and public-health colleges nationwide)",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีฟ้า (สีพื้นตราสัญลักษณ์)",
+      "names_en": "Light blue (emblem ground colour)",
+      "hex": [
+        {
+          "name": "Light blue",
+          "hex": "#87CEEB",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": null,
+    "photo_candidates": null,
+    "colour_sources": [
+      {
+        "url": "https://pi.ac.th/download/article/article_20250826142825.pdf",
+        "kind": "official (Annual Report 2022 p.21: emblem description only)"
+      },
+      {
+        "url": "https://th.wikipedia.org/wiki/สถาบันพระบรมราชชนก",
+        "kind": "wikipedia_th_fallback"
+      }
+    ],
+    "confidence": "medium",
+    "notes": "No explicit institutional-colour designation found; only the emblem is described as on a light-blue ground. A 2567 regulation on the institute's emblems exists and was not read. A network of colleges rather than a single campus, so a campus photo is not meaningful."
+  },
+  {
+    "name_th": "สถาบันการพยาบาลศรีสวรินทิรา สภากาชาดไทย",
+    "name_en": "Srisavarindhira Thai Red Cross Institute of Nursing",
+    "abbreviation": "สพสท. / STIN",
+    "type": "autonomous (Thai Red Cross Society)",
+    "province": "Bangkok",
+    "main_campus": "Pathum Wan, Bangkok",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีแดงชาด",
+      "names_en": "Vermilion (Red Cross red)",
+      "hex": [
+        {
+          "name": "Vermilion",
+          "hex": "#E32636",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": null,
+    "photo_candidates": null,
+    "colour_sources": [
+      {
+        "url": "https://stin.ac.th/สัญลักษณ์สถาบัน/",
+        "kind": "official"
+      }
+    ],
+    "confidence": "high",
+    "notes": "Colour name official; hex approximate. No landmark or free photo found. Note: the red cross emblem itself is legally protected and must not be used decoratively."
+  },
+  {
+    "name_th": "วิทยาลัยเซนต์หลุยส์",
+    "name_en": "Saint Louis College",
+    "abbreviation": "ว.ซล. / SLC",
+    "type": "private (Catholic)",
+    "province": "Bangkok",
+    "main_campus": "Yan Nawa, Sathon, Bangkok",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีน้ำเงิน-ทอง",
+      "names_en": "Blue and gold",
+      "hex": [
+        {
+          "name": "Blue",
+          "hex": "#24338A",
+          "hex_source": "official",
+          "source_url": "https://www.slc.ac.th/slcmain/img/logo-slc/color.png"
+        },
+        {
+          "name": "Gold",
+          "hex": "#FFC63E",
+          "hex_source": "official",
+          "source_url": "https://www.slc.ac.th/slcmain/img/logo-slc/color.png"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": "อาคารราชัยวิถี",
+        "name_en": "Rachaiwithi Building"
+      }
+    ],
+    "photo_candidates": [
+      {
+        "landmark": "Rachaiwithi Building",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:Rachaiwithi_%E0%B8%AD%E0%B8%B2%E0%B8%84%E0%B8%B2%E0%B8%A3%E0%B8%A3%E0%B8%B2%E0%B8%8A%E0%B8%B1%E0%B8%A2%E0%B8%A7%E0%B8%B4%E0%B8%96%E0%B8%B5_%E0%B8%A7%E0%B8%B4%E0%B8%97%E0%B8%A2%E0%B8%B2%E0%B8%A5%E0%B8%B1%E0%B8%A2%E0%B9%80%E0%B8%8B%E0%B8%99%E0%B8%95%E0%B9%8C%E0%B8%AB%E0%B8%A5%E0%B8%B8%E0%B8%A2%E0%B8%AA%E0%B9%8C.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "Chainwit.",
+        "pixels": "3335x3024"
+      },
+      {
+        "landmark": "College at night",
+        "commons_url": "https://commons.wikimedia.org/wiki/File:%E0%B8%A7%E0%B8%B4%E0%B8%97%E0%B8%A2%E0%B8%B2%E0%B8%A5%E0%B8%B1%E0%B8%A2%E0%B9%80%E0%B8%8B%E0%B8%99%E0%B8%95%E0%B9%8C%E0%B8%AB%E0%B8%A5%E0%B8%B8%E0%B8%A2%E0%B8%AA%E0%B9%8C.jpg",
+        "licence": "CC BY-SA 4.0",
+        "author": "Chainwit.",
+        "pixels": "2048x1152"
+      }
+    ],
+    "colour_sources": [
+      {
+        "url": "https://www.slc.ac.th/slcmain/form/logo-slc.php",
+        "kind": "official"
+      },
+      {
+        "url": "https://th.wikipedia.org/wiki/วิทยาลัยเซนต์หลุยส์",
+        "kind": "wikipedia_th_fallback"
+      }
+    ],
+    "confidence": "medium",
+    "notes": "The official page shows two swatches with hex under \"สีประจำสถาบัน\" but does not name the colours; the names น้ำเงิน-ทอง are from Wikipedia."
+  },
+  {
+    "name_th": "วิทยาลัยเทคโนโลยีสยาม",
+    "name_en": "Siam Technology College",
+    "abbreviation": "วทส. / STC",
+    "type": "private",
+    "province": "Bangkok",
+    "main_campus": "Wat Tha Phra, Bangkok Yai, Bangkok",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีน้ำเงิน-เหลือง",
+      "names_en": "Blue and yellow",
+      "hex": [
+        {
+          "name": "Blue",
+          "hex": "#0000FF",
+          "hex_source": "approximate"
+        },
+        {
+          "name": "Yellow",
+          "hex": "#FFFF00",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": [
+      {
+        "name_th": "อาคารเฉลิมพระเกียรติฯ (อาคาร 9)",
+        "name_en": "Chaloem Phrakiat Building (Building 9)"
+      }
+    ],
+    "photo_candidates": null,
+    "colour_sources": [
+      {
+        "url": "https://siamtechno.ac.th/about-college/about-stc/",
+        "kind": "official (read through a reader proxy; direct fetch blocked)"
+      }
+    ],
+    "confidence": "medium",
+    "notes": "No free photo found."
+  },
+  {
+    "name_th": "วิทยาลัยดุสิตธานี",
+    "name_en": "Dusit Thani College",
+    "abbreviation": "วดธ. / DTC",
+    "type": "private",
+    "province": "Bangkok",
+    "main_campus": "Nong Bon, Prawet, Bangkok",
+    "other_campuses_in_region": [],
+    "colours": {
+      "names_th": "สีแดงอมน้ำตาล และสีขาว",
+      "names_en": "Maroon (brownish red) and white",
+      "hex": [
+        {
+          "name": "Maroon",
+          "hex": "#800000",
+          "hex_source": "approximate"
+        },
+        {
+          "name": "White",
+          "hex": "#FFFFFF",
+          "hex_source": "approximate"
+        }
+      ]
+    },
+    "landmarks": null,
+    "photo_candidates": null,
+    "colour_sources": [
+      {
+        "url": "https://dtc.ac.th/wp-content/uploads/2024/10/History-of-Dusit-Thani-College.pdf",
+        "kind": "official, p.5"
+      }
+    ],
+    "confidence": "high",
+    "notes": "Colour names official; hex approximate. Pattaya campus is outside the region. No free photo found."
+  }
+]

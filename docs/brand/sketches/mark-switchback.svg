@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Logo mark: a switchback trail that climbs and finishes as a tick">
+  <!-- The climb: switchbacks, the long way up -->
+  <path d="M10 54l22-6.500L15 39l19-6" stroke="currentColor" stroke-width="7" opacity=".6"/>
+  <!-- The last stretch to the top: the long stroke of a tick -->
+  <path d="M34 33 52 10" stroke="var(--logo-tick, currentColor)" stroke-width="8.400"/>
+</svg>

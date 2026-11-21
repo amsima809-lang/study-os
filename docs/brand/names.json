@@ -1,0 +1,326 @@
+[
+ {
+  "name": "Termtrail",
+  "thai": "",
+  "meaning": "your trail through the term",
+  "verdict": "CAUTION",
+  "label": "Chosen",
+  "pick": true,
+  "found": "No app in either store and no trademark record at any office searched; termtrail.com / .app / .co.th are unregistered. Small uses: TermTrail, an AI workspace for freelancers at <a href=\"https://www.termtrail.online/\">termtrail.online</a> (since Aug 2026); a dormant flashcards project on GitHub (2016–2018); empty X and Instagram handles. “เทอม” is the everyday Thai word for semester; “trail” is easy to mistype as “trial”."
+ },
+ {
+  "name": "Astute",
+  "thai": "",
+  "meaning": "a student, a study; the word means sharp and observant",
+  "verdict": "TAKEN",
+  "label": "Used by a school app",
+  "pick": false,
+  "found": "An app named exactly “Astute” is on Google Play in the Education category (<a href=\"https://play.google.com/store/apps/details?id=com.banglafire.astute\">Banglafire Solution</a>, school management, 10K+ installs, listed in the Thai store; “Astute BFSL” on the App Store). Other education uses: Astutely, AstuteTalk, Astute Academics (US test prep, registered in class 41), Learn Astute (Malaysia, class 41). About 76 live ASTUTE marks worldwide in classes 9, 41 and 42. In Thailand: no education use found; ASTUTE is registered for medical diagnostics (class 9/10); astute.co.th belongs to an industrial company. astute.app is for sale at US$35,000."
+ },
+ {
+  "name": "AstuteU",
+  "thai": "",
+  "meaning": "Astute + U for university",
+  "verdict": "CAUTION",
+  "label": "Reads as Astute + U",
+  "pick": false,
+  "found": "No product, no trademark record at any office searched, and astuteu.com / .app / .co.th are unregistered. But a Google Play search for “astuteu” returns the existing “Astute” school app first, so it inherits the knock-off look and is hard to find."
+ },
+ {
+  "name": "Termleaf",
+  "thai": "",
+  "meaning": "term + leaf",
+  "verdict": "CAUTION",
+  "label": "In use elsewhere",
+  "pick": false,
+  "found": "A live writing tool at <a href=\"https://termleaf.com\">termleaf.com</a> (“Write. Nothing else.”). Same “leaf” association as Upleaf."
+ },
+ {
+  "name": "Upleaf",
+  "thai": "",
+  "meaning": "a page lifting up, like the logo",
+  "verdict": "CAUTION",
+  "label": "Dropped: reads as cannabis",
+  "pick": false,
+  "found": "No study or education product found. A posture-walking app, “Upleaf: Posture Walks” (Health &amp; Fitness), is on the App Store, and a web agency uses <a href=\"https://upleaf.com\">upleaf.com</a>. A wider check also reported an AI studio using the name at upleaf.io (that site would not load when checked directly). upleaf.app does not resolve. Chosen and dropped on the same day: “leaf” reads as cannabis, and the closest US mark, UPLEAF’D, is a cannabis-information site."
+ },
+ {
+  "name": "Termwise",
+  "thai": "",
+  "meaning": "wise about the term",
+  "verdict": "TAKEN",
+  "label": "Used by a school app",
+  "pick": false,
+  "found": "An app named Termwise is on Google Play: school-management software for Nigerian schools (<a href=\"https://termwise.org\">termwise.org</a>, very few downloads). Not on the App Store in the US or Thailand. termwise.com is for sale; termwise.app is an unrelated browser extension."
+ },
+ {
+  "name": "Semstra",
+  "thai": "",
+  "meaning": "from “semester”",
+  "verdict": "CAUTION",
+  "label": "Dropped: looks like a knock-off",
+  "pick": false,
+  "found": "Nothing found under this exact spelling (App Store US and Thailand, Google Play, semstra.com / .app / .co do not resolve). But <strong>Semestra</strong>, one letter longer and said the same way, is two Education apps on the App Store in Thailand and one on Google Play, all semester planners."
+ },
+ {
+  "name": "Gradetick",
+  "thai": "",
+  "meaning": "grade + tick",
+  "verdict": "CLEAR",
+  "label": "No similar product found",
+  "found": "Nothing found anywhere; gradetick.com and .app unregistered. Leans towards grades rather than the whole app.",
+  "pick": false
+ },
+ {
+  "name": "Owntick",
+  "thai": "",
+  "meaning": "the tick is your own",
+  "verdict": "CLEAR",
+  "label": "No similar product found",
+  "found": "No exact use. Sound-alikes: OneTick (market data), Donetick (task app). owntick.com is held.",
+  "pick": false
+ },
+ {
+  "name": "Termtick",
+  "thai": "",
+  "meaning": "term + tick",
+  "verdict": "CLEAR",
+  "label": "No similar product found",
+  "found": "Only a hobby GitHub project of the same name. Sits near the TickTick brand.",
+  "pick": false
+ },
+ {
+  "name": "Heartpen",
+  "thai": "",
+  "meaning": "by heart, with your own pen",
+  "verdict": "CLEAR",
+  "label": "No similar product found",
+  "found": "Only personal social handles. heartpen.com is for sale.",
+  "pick": false
+ },
+ {
+  "name": "Acetick",
+  "thai": "",
+  "meaning": "ace it + tick",
+  "verdict": "CLEAR",
+  "label": "No similar product found",
+  "found": "Only one gamer's handle. Reads like “acetic”.",
+  "pick": false
+ },
+ {
+  "name": "Hearttick",
+  "thai": "",
+  "meaning": "know it by heart, earn the tick",
+  "verdict": "CLEAR",
+  "label": "No similar product found",
+  "found": "Only personal handles. Awkward double t; can read as medical.",
+  "pick": false
+ },
+ {
+  "name": "Semestra",
+  "thai": "",
+  "meaning": "coined English name",
+  "verdict": "TAKEN",
+  "label": "Used by a study app",
+  "pick": false,
+  "found": "Three semester-planner apps, one with quizzes and flashcards."
+ },
+ {
+  "name": "Khuenjai",
+  "thai": "ขึ้นใจ",
+  "meaning": "know it by heart",
+  "verdict": "CLEAR",
+  "label": "No similar product found",
+  "found": "Only other use found: a 2026 pop song of the same name. The simpler spelling Kuenjai is free as well.",
+  "pick": false
+ },
+ {
+  "name": "ThamEng",
+  "thai": "ทำเอง",
+  "meaning": "I do it myself",
+  "verdict": "CLEAR",
+  "label": "No similar product found",
+  "found": "Only use found: a small handmade-crafts Instagram account. Tutors use the phrase in passing.",
+  "pick": false
+ },
+ {
+  "name": "Maenjai",
+  "thai": "แม่นใจ",
+  "meaning": "coined: accurate + confident",
+  "verdict": "CLEAR",
+  "label": "No similar product found",
+  "found": "No product found. The same sounds appear as a phrase in Isan song lyrics; worth asking Thai speakers how that lands.",
+  "pick": false
+ },
+ {
+  "name": "Jammaen",
+  "thai": "จำแม่น",
+  "meaning": "remember accurately",
+  "verdict": "CLEAR",
+  "label": "No similar product found",
+  "found": "No product carries the name, but it is a common descriptive phrase in tutoring adverts, so harder to own.",
+  "pick": false
+ },
+ {
+  "name": "Nuekok",
+  "thai": "นึกออก",
+  "meaning": "it comes back to me",
+  "verdict": "CLEAR",
+  "label": "No similar product found",
+  "found": "Phrase use only. The romanised spelling is the hardest of the five for English speakers.",
+  "pick": false
+ },
+ {
+  "name": "RianRod",
+  "thai": "เรียนรอด",
+  "meaning": "survive your studies",
+  "verdict": "CLEAR",
+  "label": "No similar product found",
+  "found": "No product found. It means “just scrape through”, and also reads as the military cadet course (เรียน รด.).",
+  "pick": false
+ },
+ {
+  "name": "Thuanly",
+  "thai": "ทวน + ly",
+  "meaning": "review",
+  "verdict": "CLEAR",
+  "label": "No similar product found",
+  "found": "No product found, but “Thuan Ly” is a Vietnamese personal name.",
+  "pick": false
+ },
+ {
+  "name": "RooJing",
+  "thai": "รู้จริง",
+  "meaning": "truly know",
+  "verdict": "CAUTION",
+  "label": "In use elsewhere",
+  "found": "A registered company (supplements), a Chinese-teaching Facebook page and a YouTube show use it; a stock phrase in tutor adverts.",
+  "pick": false
+ },
+ {
+  "name": "Thuan",
+  "thai": "ทวน",
+  "meaning": "review",
+  "verdict": "CAUTION",
+  "label": "In use elsewhere",
+  "found": "A common Vietnamese name: store searches return dozens of unrelated apps.",
+  "pick": false
+ },
+ {
+  "name": "Jamdee",
+  "thai": "จำดี",
+  "meaning": "remember well",
+  "verdict": "CAUTION",
+  "label": "In use elsewhere",
+  "found": "A memory-training school uses the same words, and a reminder app is called จำดิ (Jumdi).",
+  "pick": false
+ },
+ {
+  "name": "Fuekfon",
+  "thai": "ฝึกฝน",
+  "meaning": "practise, train",
+  "verdict": "CAUTION",
+  "label": "In use elsewhere",
+  "found": "A practice-loop app carries “ฝึกฝน (Fuek Fon)” in its Thai App Store title; generic in every practice app’s description.",
+  "pick": false
+ },
+ {
+  "name": "Kati",
+  "thai": "หัวกะทิ",
+  "meaning": "top of the class",
+  "verdict": "CAUTION",
+  "label": "In use elsewhere",
+  "found": "หัวกะทิ is already a tutoring brand (about 28,000 Facebook followers) and a tutor centre; Kati alone is a fintech app.",
+  "pick": false
+ },
+ {
+  "name": "Koohoo",
+  "thai": "คู่หู",
+  "meaning": "sidekick",
+  "verdict": "CAUTION",
+  "label": "In use elsewhere",
+  "found": "An AI companion app at koohoo.app and a Thai “Koohoo AI” platform.",
+  "pick": false
+ },
+ {
+  "name": "Lapkom",
+  "thai": "ลับคม",
+  "meaning": "sharpen the blade",
+  "verdict": "CAUTION",
+  "label": "In use elsewhere",
+  "found": "A teacher-exam prep book and tutors use it; also the everyday term for knife sharpening.",
+  "pick": false
+ },
+ {
+  "name": "Kengkuen",
+  "thai": "เก่งขึ้น",
+  "meaning": "getting better",
+  "verdict": "CAUTION",
+  "label": "In use elsewhere",
+  "found": "Close to the online school เก่งได้ อะคาเดมี่; in most tutoring adverts.",
+  "pick": false
+ },
+ {
+  "name": "Jodjam",
+  "thai": "จดจำ",
+  "meaning": "note down and remember",
+  "verdict": "TAKEN",
+  "label": "Used by a study app",
+  "found": "A Thai notes and reminders app on both stores (<a href=\"https://apps.apple.com/th/app/id6778345889\">App Store</a>), and a LINE assistant at <a href=\"https://jodjam.com\">jodjam.com</a>.",
+  "pick": false
+ },
+ {
+  "name": "Tiwdee",
+  "thai": "ติวดี",
+  "meaning": "good tutoring",
+  "verdict": "TAKEN",
+  "label": "Used by a study app",
+  "found": "A paid test-practice product at <a href=\"https://tiwdee.app/\">tiwdee.app</a> and a free exam-practice site at <a href=\"https://www.tiudee.com\">www.tiudee.com</a>.",
+  "pick": false
+ },
+ {
+  "name": "PromSob",
+  "thai": "พร้อมสอบ",
+  "meaning": "exam-ready",
+  "verdict": "TAKEN",
+  "label": "Used by a study app",
+  "found": "An exam-practice site at <a href=\"https://promsob.com/th/\">promsob.com</a> and a series of apps branded พร้อมสอบ.",
+  "pick": false
+ },
+ {
+  "name": "Khaojai",
+  "thai": "เข้าใจ",
+  "meaning": "understand",
+  "verdict": "TAKEN",
+  "label": "Used by a study app",
+  "found": "Four products, including a Thai-learning app at <a href=\"https://khaojai.app/\">khaojai.app</a>.",
+  "pick": false
+ },
+ {
+  "name": "Retainly",
+  "thai": "",
+  "meaning": "coined English name",
+  "verdict": "TAKEN",
+  "label": "Used by a study app",
+  "found": "A spaced-repetition app, a revision tracker and a UK flashcard company all use it.",
+  "pick": false
+ },
+ {
+  "name": "Loopwise",
+  "thai": "",
+  "meaning": "coined English name",
+  "verdict": "TAKEN",
+  "label": "Used by a study app",
+  "found": "An online course platform at <a href=\"https://loopwise.com/\">loopwise.com</a>.",
+  "pick": false
+ },
+ {
+  "name": "Recallo",
+  "thai": "",
+  "meaning": "coined English name",
+  "verdict": "TAKEN",
+  "label": "Used by a study app",
+  "found": "Several flashcard apps, plus a notes-to-quiz product at recallo.io.",
+  "pick": false
+ }
+]

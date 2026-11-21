@@ -1,0 +1,727 @@
+{
+ "source": "https://sub-demo.ru.ac.th/student/ (Ramkhamhaeng \"VOD Subtitle\" lecture video system; needs an e-service student login)",
+ "collected": "2026-11-14",
+ "note": "Links only. Lecture slots without a session were marked cancelled (งดบรรยาย) on the site. Each watch page embeds a timed Thai transcript.",
+ "subjects": [
+  {
+   "subject_id": 15,
+   "label": "ACC1101_ACC1103",
+   "course_codes": [
+    "ACC1101",
+    "ACC1103"
+   ],
+   "name_en": "FINANCIAL ACCOUNTING",
+   "lecture_slots": 10,
+   "subject_url": "https://sub-demo.ru.ac.th/student/subject.php?subject_id=15",
+   "sessions": [
+    {
+     "no": 1,
+     "session_id": 162,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=162"
+    },
+    {
+     "no": 2,
+     "session_id": 200,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=200"
+    },
+    {
+     "no": 3,
+     "session_id": 202,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=202"
+    },
+    {
+     "no": 4,
+     "session_id": 203,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=203"
+    },
+    {
+     "no": 5,
+     "session_id": 204,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=204"
+    },
+    {
+     "no": 6,
+     "session_id": 206,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=206"
+    },
+    {
+     "no": 7,
+     "session_id": 205,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=205"
+    },
+    {
+     "no": 8,
+     "session_id": 222,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=222"
+    },
+    {
+     "no": 9,
+     "session_id": 224,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=224"
+    },
+    {
+     "no": 10,
+     "session_id": 225,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=225"
+    }
+   ]
+  },
+  {
+   "subject_id": 11,
+   "label": "CDM1101",
+   "course_codes": [
+    "CDM1101"
+   ],
+   "name_en": "INTRODUCTION TO COMMUNICATION ARTS AND DIGITAL MEDIA",
+   "lecture_slots": 12,
+   "subject_url": "https://sub-demo.ru.ac.th/student/subject.php?subject_id=11",
+   "sessions": [
+    {
+     "no": 1,
+     "session_id": 187,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=187"
+    },
+    {
+     "no": 2,
+     "session_id": 188,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=188"
+    },
+    {
+     "no": 3,
+     "session_id": 189,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=189"
+    },
+    {
+     "no": 4,
+     "session_id": 208,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=208"
+    },
+    {
+     "no": 5,
+     "session_id": 209,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=209"
+    },
+    {
+     "no": 6,
+     "session_id": 210,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=210"
+    },
+    {
+     "no": 7,
+     "session_id": 211,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=211"
+    },
+    {
+     "no": 8,
+     "session_id": 212,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=212"
+    },
+    {
+     "no": 9,
+     "session_id": 213,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=213"
+    },
+    {
+     "no": 10,
+     "session_id": 214,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=214"
+    },
+    {
+     "no": 11,
+     "session_id": 215,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=215"
+    },
+    {
+     "no": 12,
+     "session_id": 216,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=216"
+    }
+   ]
+  },
+  {
+   "subject_id": 12,
+   "label": "CDM2103_MCS1151",
+   "course_codes": [
+    "CDM2103",
+    "MCS1151"
+   ],
+   "name_en": "COMMUNICATION THEORY",
+   "lecture_slots": 15,
+   "subject_url": "https://sub-demo.ru.ac.th/student/subject.php?subject_id=12",
+   "sessions": [
+    {
+     "no": 1,
+     "session_id": 97,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=97"
+    },
+    {
+     "no": 2,
+     "session_id": 98,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=98"
+    },
+    {
+     "no": 3,
+     "session_id": 99,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=99"
+    },
+    {
+     "no": 5,
+     "session_id": 105,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=105"
+    },
+    {
+     "no": 6,
+     "session_id": 106,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=106"
+    },
+    {
+     "no": 8,
+     "session_id": 112,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=112"
+    },
+    {
+     "no": 11,
+     "session_id": 113,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=113"
+    },
+    {
+     "no": 12,
+     "session_id": 114,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=114"
+    },
+    {
+     "no": 14,
+     "session_id": 115,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=115"
+    },
+    {
+     "no": 15,
+     "session_id": 221,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=221"
+    }
+   ]
+  },
+  {
+   "subject_id": 13,
+   "label": "LAW1001_LAW1101_S1",
+   "course_codes": [
+    "LAW1001",
+    "LAW1101"
+   ],
+   "name_en": "PRINCIPLE OF PUBLIC LAW",
+   "lecture_slots": 16,
+   "subject_url": "https://sub-demo.ru.ac.th/student/subject.php?subject_id=13",
+   "sessions": [
+    {
+     "no": 1,
+     "session_id": 201,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=201"
+    },
+    {
+     "no": 2,
+     "session_id": 148,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=148"
+    },
+    {
+     "no": 3,
+     "session_id": 149,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=149"
+    },
+    {
+     "no": 5,
+     "session_id": 150,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=150"
+    },
+    {
+     "no": 6,
+     "session_id": 151,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=151"
+    },
+    {
+     "no": 8,
+     "session_id": 170,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=170"
+    },
+    {
+     "no": 9,
+     "session_id": 182,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=182"
+    },
+    {
+     "no": 11,
+     "session_id": 185,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=185"
+    },
+    {
+     "no": 12,
+     "session_id": 207,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=207"
+    },
+    {
+     "no": 14,
+     "session_id": 217,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=217"
+    },
+    {
+     "no": 15,
+     "session_id": 218,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=218"
+    },
+    {
+     "no": 16,
+     "session_id": 219,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=219"
+    }
+   ]
+  },
+  {
+   "subject_id": 5,
+   "label": "LAW1002_LAW1102_S1",
+   "course_codes": [
+    "LAW1002",
+    "LAW1102"
+   ],
+   "name_en": "PRINCIPLE OF PRIVATE LAW",
+   "lecture_slots": 16,
+   "subject_url": "https://sub-demo.ru.ac.th/student/subject.php?subject_id=5",
+   "sessions": [
+    {
+     "no": 2,
+     "session_id": 168,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=168"
+    },
+    {
+     "no": 3,
+     "session_id": 169,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=169"
+    },
+    {
+     "no": 4,
+     "session_id": 171,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=171"
+    },
+    {
+     "no": 5,
+     "session_id": 172,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=172"
+    },
+    {
+     "no": 6,
+     "session_id": 173,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=173"
+    },
+    {
+     "no": 7,
+     "session_id": 174,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=174"
+    },
+    {
+     "no": 8,
+     "session_id": 175,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=175"
+    },
+    {
+     "no": 9,
+     "session_id": 176,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=176"
+    },
+    {
+     "no": 10,
+     "session_id": 177,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=177"
+    },
+    {
+     "no": 12,
+     "session_id": 178,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=178"
+    },
+    {
+     "no": 14,
+     "session_id": 179,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=179"
+    },
+    {
+     "no": 15,
+     "session_id": 180,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=180"
+    },
+    {
+     "no": 16,
+     "session_id": 181,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=181"
+    }
+   ]
+  },
+  {
+   "subject_id": 16,
+   "label": "LAW1003_LAW1103_S1",
+   "course_codes": [
+    "LAW1003",
+    "LAW1103"
+   ],
+   "name_en": "CIVIL AND COMMERCIAL CODE: JURISTIC ACTS AND CONTRACTS",
+   "lecture_slots": 2,
+   "subject_url": "https://sub-demo.ru.ac.th/student/subject.php?subject_id=16",
+   "sessions": []
+  },
+  {
+   "subject_id": 17,
+   "label": "LAW2002_LAW2102_S2",
+   "course_codes": [
+    "LAW2002",
+    "LAW2102"
+   ],
+   "name_en": "CIVIL AND COMMERCIAL CODE: OBLIGATION",
+   "lecture_slots": 2,
+   "subject_url": "https://sub-demo.ru.ac.th/student/subject.php?subject_id=17",
+   "sessions": []
+  },
+  {
+   "subject_id": 18,
+   "label": "LAW3001_LAW3101_S2",
+   "course_codes": [
+    "LAW3001",
+    "LAW3101"
+   ],
+   "name_en": "CRIMINAL LAW 3",
+   "lecture_slots": 2,
+   "subject_url": "https://sub-demo.ru.ac.th/student/subject.php?subject_id=18",
+   "sessions": []
+  },
+  {
+   "subject_id": 2,
+   "label": "MGT3204",
+   "course_codes": [
+    "MGT3204"
+   ],
+   "name_en": "CHANGE MANAGEMENT AND ORGANIZATION DEVELOPMENT",
+   "lecture_slots": 12,
+   "subject_url": "https://sub-demo.ru.ac.th/student/subject.php?subject_id=2",
+   "sessions": [
+    {
+     "no": 1,
+     "session_id": 3,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=3"
+    },
+    {
+     "no": 2,
+     "session_id": 152,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=152"
+    },
+    {
+     "no": 3,
+     "session_id": 153,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=153"
+    },
+    {
+     "no": 5,
+     "session_id": 7,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=7"
+    },
+    {
+     "no": 6,
+     "session_id": 160,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=160"
+    },
+    {
+     "no": 7,
+     "session_id": 161,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=161"
+    },
+    {
+     "no": 8,
+     "session_id": 163,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=163"
+    },
+    {
+     "no": 9,
+     "session_id": 164,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=164"
+    },
+    {
+     "no": 10,
+     "session_id": 165,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=165"
+    },
+    {
+     "no": 12,
+     "session_id": 166,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=166"
+    }
+   ]
+  },
+  {
+   "subject_id": 7,
+   "label": "POL1101",
+   "course_codes": [
+    "POL1101"
+   ],
+   "name_en": "THAI POLITICS AND GOVERNMENT",
+   "lecture_slots": 16,
+   "subject_url": "https://sub-demo.ru.ac.th/student/subject.php?subject_id=7",
+   "sessions": [
+    {
+     "no": 1,
+     "session_id": 50,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=50"
+    },
+    {
+     "no": 2,
+     "session_id": 52,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=52"
+    },
+    {
+     "no": 3,
+     "session_id": 54,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=54"
+    },
+    {
+     "no": 4,
+     "session_id": 56,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=56"
+    },
+    {
+     "no": 5,
+     "session_id": 58,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=58"
+    },
+    {
+     "no": 6,
+     "session_id": 62,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=62"
+    },
+    {
+     "no": 7,
+     "session_id": 63,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=63"
+    },
+    {
+     "no": 9,
+     "session_id": 65,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=65"
+    },
+    {
+     "no": 10,
+     "session_id": 66,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=66"
+    },
+    {
+     "no": 12,
+     "session_id": 69,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=69"
+    },
+    {
+     "no": 14,
+     "session_id": 70,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=70"
+    },
+    {
+     "no": 15,
+     "session_id": 71,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=71"
+    },
+    {
+     "no": 16,
+     "session_id": 72,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=72"
+    }
+   ]
+  },
+  {
+   "subject_id": 9,
+   "label": "POL2106",
+   "course_codes": [
+    "POL2106"
+   ],
+   "name_en": "INTRODUCTION TO POLITICAL PHILOSOPHY",
+   "lecture_slots": 11,
+   "subject_url": "https://sub-demo.ru.ac.th/student/subject.php?subject_id=9",
+   "sessions": [
+    {
+     "no": 1,
+     "session_id": 73,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=73"
+    },
+    {
+     "no": 2,
+     "session_id": 74,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=74"
+    },
+    {
+     "no": 3,
+     "session_id": 75,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=75"
+    },
+    {
+     "no": 4,
+     "session_id": 76,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=76"
+    },
+    {
+     "no": 5,
+     "session_id": 220,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=220"
+    },
+    {
+     "no": 6,
+     "session_id": 78,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=78"
+    },
+    {
+     "no": 7,
+     "session_id": 79,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=79"
+    },
+    {
+     "no": 9,
+     "session_id": 81,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=81"
+    },
+    {
+     "no": 10,
+     "session_id": 82,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=82"
+    },
+    {
+     "no": 11,
+     "session_id": 83,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=83"
+    }
+   ]
+  },
+  {
+   "subject_id": 3,
+   "label": "RAM1103",
+   "course_codes": [
+    "RAM1103"
+   ],
+   "name_en": "THAI FOR COMMUNICATION AT WORK",
+   "lecture_slots": 13,
+   "subject_url": "https://sub-demo.ru.ac.th/student/subject.php?subject_id=3",
+   "sessions": [
+    {
+     "no": 1,
+     "session_id": 15,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=15"
+    },
+    {
+     "no": 2,
+     "session_id": 16,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=16"
+    },
+    {
+     "no": 3,
+     "session_id": 17,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=17"
+    },
+    {
+     "no": 5,
+     "session_id": 18,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=18"
+    },
+    {
+     "no": 7,
+     "session_id": 20,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=20"
+    },
+    {
+     "no": 9,
+     "session_id": 22,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=22"
+    },
+    {
+     "no": 10,
+     "session_id": 24,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=24"
+    },
+    {
+     "no": 11,
+     "session_id": 25,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=25"
+    },
+    {
+     "no": 12,
+     "session_id": 26,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=26"
+    },
+    {
+     "no": 13,
+     "session_id": 27,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=27"
+    }
+   ]
+  },
+  {
+   "subject_id": 6,
+   "label": "RAM1132",
+   "course_codes": [
+    "RAM1132"
+   ],
+   "name_en": "INFORMATION LITERACY",
+   "lecture_slots": 12,
+   "subject_url": "https://sub-demo.ru.ac.th/student/subject.php?subject_id=6",
+   "sessions": [
+    {
+     "no": 1,
+     "session_id": 32,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=32"
+    },
+    {
+     "no": 2,
+     "session_id": 33,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=33"
+    },
+    {
+     "no": 3,
+     "session_id": 34,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=34"
+    },
+    {
+     "no": 4,
+     "session_id": 36,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=36"
+    },
+    {
+     "no": 5,
+     "session_id": 37,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=37"
+    },
+    {
+     "no": 6,
+     "session_id": 38,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=38"
+    },
+    {
+     "no": 7,
+     "session_id": 39,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=39"
+    },
+    {
+     "no": 8,
+     "session_id": 40,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=40"
+    },
+    {
+     "no": 9,
+     "session_id": 41,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=41"
+    },
+    {
+     "no": 10,
+     "session_id": 42,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=42"
+    },
+    {
+     "no": 11,
+     "session_id": 43,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=43"
+    },
+    {
+     "no": 12,
+     "session_id": 44,
+     "url": "https://sub-demo.ru.ac.th/student/watch.php?session_id=44"
+    }
+   ]
+  }
+ ]
+}

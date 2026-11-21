@@ -1,65 +1,15 @@
 /**
- * Phase 7 + Phase 14: Degree planner with GPA tracking, graduation pace,
- * and "what if" GPA calculator.
+ * Grades: the student's results term by term, the grade average, the "what if" calculator and
+ * the grade scale. (This file began as the degree planner. The plan to graduate, the verdict on
+ * it and the progress through the curriculum now belong to the trail: trail.ts, trailRoutes.ts.
+ * Results themselves are read and written through results.ts.)
  */
 import { Router } from "express";
 import type { DB } from "./db.js";
 import { getSetting, setSetting } from "./api.js";
+import { courseResults, setResult, type CourseResult } from "./results.js";
 
-const DEFAULT_CATEGORY_REQUIRED: Record<string, number> = {
-  GE: 30,
-  CORE: 42,
-  MAJOR_REQ: 33,
-  MAJOR_ELEC: 21,
-  FREE: 6,
-};
-
-const DEFAULT_TOTAL = 132;
-
-type CreditReqRow = { category: string; required_credits: number };
-
-function getCategoryRequired(db: DB, userId: string): Record<string, number> {
-  const programId = (
-    db.prepare("SELECT program_id FROM user_profiles WHERE user_id = ?").get(userId) as
-      { program_id: string | null } | undefined
-  )?.program_id;
-  if (!programId) return DEFAULT_CATEGORY_REQUIRED;
-
-  const rows = db
-    .prepare("SELECT category, required_credits FROM program_credit_requirements WHERE program_id = ?")
-    .all(programId) as CreditReqRow[];
-  if (rows.length === 0) return DEFAULT_CATEGORY_REQUIRED;
-
-  const map: Record<string, number> = {};
-  for (const r of rows) map[r.category] = r.required_credits;
-  return map;
-}
-
-function getTotalRequired(db: DB, userId: string): number {
-  const row = db
-    .prepare(
-      `SELECT p.total_credits FROM programs p
-       JOIN user_profiles up ON up.program_id = p.id
-       WHERE up.user_id = ?`,
-    )
-    .get(userId) as { total_credits: number } | undefined;
-  return row?.total_credits ?? DEFAULT_TOTAL;
-}
-
-export { DEFAULT_CATEGORY_REQUIRED as CATEGORY_REQUIRED };
-
-type EnrollRow = { course_code: string; status: string; category: string; credits: number; grade: string | null };
 type GradeScale = { grade: string; points: number };
-
-function enrollments(db: DB, userId: string): EnrollRow[] {
-  return db
-    .prepare(
-      `SELECT e.course_code, e.status, c.category, c.credits, e.grade
-       FROM enrollments e JOIN courses c ON c.code = e.course_code
-       WHERE e.user_id = ?`,
-    )
-    .all(userId) as EnrollRow[];
-}
 
 function getGradeScale(db: DB, userId: string): GradeScale[] {
   const raw = getSetting(db, "grade_scale", "[]", userId);
@@ -70,20 +20,16 @@ function getGradeScale(db: DB, userId: string): GradeScale[] {
   }
 }
 
-function gradeToPoints(scale: GradeScale[], grade: string): number | null {
-  const entry = scale.find((s) => s.grade === grade);
-  return entry ? entry.points : null;
-}
+export type GpaResult = { gpa: number | null; totalCredits: number; totalPoints: number; courseCount: number };
 
-type GpaResult = { gpa: number | null; totalCredits: number; totalPoints: number; courseCount: number };
-
-function calculateGpa(courses: Array<{ credits: number; grade: string | null }>, scale: GradeScale[]): GpaResult {
+/** The grade average over the courses that carry a grade on the scale, weighted by credits. */
+export function calculateGpa(courses: Array<{ credits: number; grade: string | null }>, scale: GradeScale[]): GpaResult {
   let totalCredits = 0;
   let totalPoints = 0;
   let courseCount = 0;
   for (const c of courses) {
     if (!c.grade) continue;
-    const pts = gradeToPoints(scale, c.grade);
+    const pts = scale.find((s) => s.grade === c.grade)?.points;
     if (pts == null) continue;
     totalCredits += c.credits;
     totalPoints += c.credits * pts;
@@ -97,213 +43,77 @@ function calculateGpa(courses: Array<{ credits: number; grade: string | null }>,
   };
 }
 
-export type Rule = { id: string; ok: boolean; detail: string };
+const passedWithGrades = (results: CourseResult[]) => results.filter((r) => r.status === "PASSED").map((r) => ({ credits: r.credits, grade: r.grade }));
 
-export function computeInternship(db: DB, userId: string): { eligible: boolean; rules: Rule[] } {
-  const rows = enrollments(db, userId);
-  const passed = rows.filter((r) => r.status === "PASSED");
-  const creditsIn = (cat: string) =>
-    passed.filter((r) => r.category === cat).reduce((s, r) => s + r.credits, 0);
+type Item = {
+  course_code: string | null; placeholder_label: string | null; name_th: string | null; name_en: string | null;
+  credits: number; category: string | null; status: "PLANNED" | "PASSED" | "FAILED" | null; grade: string | null;
+};
 
-  const totalPassed = passed.reduce((s, r) => s + r.credits, 0);
-  const catReq = getCategoryRequired(db, userId);
-  const totalReq = getTotalRequired(db, userId);
+/** What the grades page shows: each term she has courses in, courses passed before the app, and the average. */
+export function gradesFor(db: DB, userId: string) {
+  const results = courseResults(db, userId);
+  const scale = getGradeScale(db, userId);
+  const inTerm = new Map(results.filter((r) => r.term_id).map((r) => [`${r.course_code} ${r.term_id}`, r]));
+  const earlier = results.filter((r) => r.term_id === null);
+  const earlierByCourse = new Map(earlier.map((r) => [r.course_code, r]));
 
-  const rules: Rule[] = [
-    { id: "credits", ok: totalPassed >= totalReq, detail: `${totalPassed}/${totalReq}` },
-    ...Object.entries(catReq).map(([cat, req]) => ({
-      id: cat.toLowerCase(),
-      ok: creditsIn(cat) >= req,
-      detail: `${creditsIn(cat)}/${req}`,
-    })),
-  ];
+  const termRows = db.prepare("SELECT term_id, ord, max_credits FROM plan_terms ORDER BY ord").all() as Array<{ term_id: string; ord: number; max_credits: number }>;
+  const itemStmt = db.prepare(
+    `SELECT pi.course_code, pi.placeholder_label, c.name_th, c.name_en, c.credits, c.category
+     FROM plan_items pi LEFT JOIN courses c ON c.code = pi.course_code
+     WHERE pi.term_id = ? AND pi.user_id = ? ORDER BY pi.id`,
+  );
+  const placed = new Set<string>();
+  const terms = termRows.map((t) => {
+    const items: Item[] = (itemStmt.all(t.term_id, userId) as Array<Omit<Item, "status" | "grade" | "credits"> & { credits: number | null }>).map((it) => {
+      if (it.course_code) placed.add(it.course_code);
+      // The result in THIS term; failing that, a course passed before the app shows as passed.
+      const r = it.course_code ? inTerm.get(`${it.course_code} ${t.term_id}`) ?? earlierByCourse.get(it.course_code) : undefined;
+      return { ...it, credits: it.credits ?? 3, status: it.course_code ? r?.status ?? "PLANNED" : null, grade: r?.grade ?? null };
+    });
+    return {
+      term_id: t.term_id, ord: t.ord, max_credits: t.max_credits,
+      credits: items.reduce((s, it) => s + it.credits, 0),
+      items,
+      gpa: calculateGpa(items.filter((it) => it.status === "PASSED"), scale).gpa,
+    };
+  }).filter((t) => t.items.length > 0);
 
-  return { eligible: rules.every((r) => r.ok), rules };
-}
+  // Passed before she used the app: no term to show them under.
+  const names = db.prepare("SELECT name_th, name_en FROM courses WHERE code = ?");
+  const before = earlier.filter((r) => !placed.has(r.course_code)).sort((a, b) => a.course_code.localeCompare(b.course_code)).map((r) => ({
+    course_code: r.course_code, ...(names.get(r.course_code) as { name_th: string; name_en: string | null }), credits: r.credits, grade: r.grade,
+  }));
 
-function earliestRetakeTerm(db: DB, courseCode: string, userId: string): string | null {
-  const planned = db
-    .prepare(
-      `SELECT MIN(t.ord) AS o FROM plan_items pi JOIN plan_terms t ON t.term_id = pi.term_id
-       WHERE pi.course_code = ? AND pi.user_id = ?`,
-    )
-    .get(courseCode, userId) as { o: number | null };
-  if (planned.o == null) return null;
-  const next = db
-    .prepare("SELECT term_id FROM plan_terms WHERE ord > ? ORDER BY ord LIMIT 1")
-    .get(planned.o) as { term_id: string } | undefined;
-  return next?.term_id ?? null;
+  // A course whose prerequisite she did not pass (only where prerequisites are recorded).
+  const notPassed = new Set(results.filter((r) => r.status === "FAILED").map((r) => r.course_code));
+  for (const r of results) if (r.status === "PASSED") notPassed.delete(r.course_code);
+  const blockedMap = new Map<string, string[]>();
+  for (const p of db.prepare("SELECT course_code, requires_code FROM prerequisites").all() as Array<{ course_code: string; requires_code: string }>) {
+    if (notPassed.has(p.requires_code)) blockedMap.set(p.course_code, [...(blockedMap.get(p.course_code) ?? []), p.requires_code]);
+  }
+  const blocked = [...blockedMap].map(([course_code, dueTo]) => ({
+    course_code, name_th: (names.get(course_code) as { name_th: string } | undefined)?.name_th ?? course_code, dueTo,
+  }));
+
+  return { terms, before, blocked, gpa: calculateGpa(passedWithGrades(results), scale), gradeScale: scale };
 }
 
 export function createPlannerRouter(db: DB): Router {
   const router = Router();
 
-  router.get("/plan", (req, res) => {
-    const userId = req.user!.id;
-    const statusByCourse = new Map<string, string>();
-    const gradeByCourse = new Map<string, string | null>();
-    for (const e of db.prepare("SELECT course_code, status, grade FROM enrollments WHERE user_id = ?").all(userId) as Array<{
-      course_code: string;
-      status: string;
-      grade: string | null;
-    }>) {
-      statusByCourse.set(e.course_code, e.status);
-      gradeByCourse.set(e.course_code, e.grade);
-    }
+  router.get("/plan", (req, res) => res.json(gradesFor(db, req.user!.id)));
 
-    const termRows = db
-      .prepare("SELECT term_id, ord, max_credits FROM plan_terms ORDER BY ord")
-      .all() as Array<{ term_id: string; ord: number; max_credits: number }>;
-    const itemStmt = db.prepare(
-      `SELECT pi.course_code, pi.placeholder_label, c.name_th, c.name_en, c.credits, c.category, c.difficulty
-       FROM plan_items pi LEFT JOIN courses c ON c.code = pi.course_code
-       WHERE pi.term_id = ? AND pi.user_id = ? ORDER BY pi.id`,
-    );
-
-    const scale = getGradeScale(db, userId);
-
-    let running = 0;
-    const terms = termRows.map((t) => {
-      const items = (itemStmt.all(t.term_id, userId) as Array<{
-        course_code: string | null;
-        placeholder_label: string | null;
-        name_th: string | null;
-        name_en: string | null;
-        credits: number | null;
-        category: string | null;
-        difficulty: number | null;
-      }>).map((it) => ({
-        course_code: it.course_code,
-        placeholder_label: it.placeholder_label,
-        name_th: it.name_th,
-        name_en: it.name_en,
-        credits: it.credits ?? 3,
-        category: it.category,
-        difficulty: it.difficulty,
-        status: it.course_code ? statusByCourse.get(it.course_code) ?? "PLANNED" : null,
-        grade: it.course_code ? gradeByCourse.get(it.course_code) ?? null : null,
-      }));
-      const credits = items.reduce((s, it) => s + it.credits, 0);
-      running += credits;
-
-      const termGpa = calculateGpa(
-        items.filter((it) => it.status === "PASSED").map((it) => ({ credits: it.credits, grade: it.grade })),
-        scale,
-      );
-
-      return {
-        term_id: t.term_id,
-        ord: t.ord,
-        max_credits: t.max_credits,
-        credits,
-        runningTotal: running,
-        items,
-        gpa: termGpa.gpa,
-      };
-    });
-
-    const allEnrollments = enrollments(db, userId);
-    const passedByCat = new Map<string, number>();
-    for (const e of allEnrollments) {
-      if (e.status === "PASSED") passedByCat.set(e.category, (passedByCat.get(e.category) ?? 0) + e.credits);
-    }
-    const catReq = getCategoryRequired(db, userId);
-    const totalReq = getTotalRequired(db, userId);
-    const categoryProgress = Object.entries(catReq).map(([category, required]) => ({
-      category,
-      required,
-      passed: passedByCat.get(category) ?? 0,
-    }));
-    const totalPassedCredits = [...passedByCat.values()].reduce((s, n) => s + n, 0);
-
-    const passedWithGrades = allEnrollments
-      .filter((e) => e.status === "PASSED")
-      .map((e) => ({ credits: e.credits, grade: e.grade }));
-    const overallGpa = calculateGpa(passedWithGrades, scale);
-
-    const remainingCredits = Math.max(0, totalReq - totalPassedCredits);
-    const futureTerms = termRows.filter((t) => {
-      const termItems = itemStmt.all(t.term_id, userId) as Array<{ course_code: string | null }>;
-      return termItems.some(
-        (it) => it.course_code && (statusByCourse.get(it.course_code) ?? "PLANNED") === "PLANNED",
-      );
-    });
-    const futureTermCount = Math.max(futureTerms.length, 1);
-    const creditsPerTerm = Math.ceil(remainingCredits / futureTermCount);
-    const paceStatus: "on_track" | "heavy" | "behind" =
-      remainingCredits === 0 ? "on_track" : creditsPerTerm <= 21 ? "on_track" : creditsPerTerm <= 24 ? "heavy" : "behind";
-
-    const prereqs = db.prepare("SELECT course_code, requires_code FROM prerequisites").all() as Array<{
-      course_code: string;
-      requires_code: string;
-    }>;
-    const nameOf = (code: string) =>
-      (db.prepare("SELECT name_th FROM courses WHERE code = ?").get(code) as { name_th: string } | undefined)
-        ?.name_th ?? code;
-
-    const failed: Array<{ course_code: string; name_th: string; retakeTerm: string | null }> = [];
-    const blocked: Array<{ course_code: string; name_th: string; dueTo: string[] }> = [];
-    for (const [code, status] of statusByCourse) {
-      if (status === "FAILED") {
-        failed.push({ course_code: code, name_th: nameOf(code), retakeTerm: earliestRetakeTerm(db, code, userId) });
-      }
-    }
-    const blockedMap = new Map<string, string[]>();
-    for (const p of prereqs) {
-      if (statusByCourse.get(p.requires_code) === "FAILED") {
-        blockedMap.set(p.course_code, [...(blockedMap.get(p.course_code) ?? []), p.requires_code]);
-      }
-    }
-    for (const [code, dueTo] of blockedMap) blocked.push({ course_code: code, name_th: nameOf(code), dueTo });
-
-    res.json({
-      terms,
-      totalPassedCredits,
-      totalPlannedCredits: totalReq,
-      categoryProgress,
-      failed,
-      blocked,
-      internship: computeInternship(db, userId),
-      gpa: overallGpa,
-      gradeScale: scale,
-      pace: {
-        remainingCredits,
-        futureTerms: futureTermCount,
-        creditsPerTerm,
-        status: paceStatus,
-      },
-    });
-  });
-
+  // How a course went: PASSED (with a grade or none yet), FAILED, or PLANNED to clear it.
   router.post("/enrollments", (req, res) => {
-    const userId = req.user!.id;
     const courseCode = String(req.body.course_code || "");
     const status = String(req.body.status || "");
-    const grade: string | null = req.body.grade ?? null;
-    if (!["PASSED", "FAILED", "PLANNED", "ENROLLED", "WITHDRAWN"].includes(status)) {
-      return res.status(400).json({ error: "สถานะไม่ถูกต้อง" });
-    }
-    const planned = db
-      .prepare(
-        `SELECT pi.term_id FROM plan_items pi JOIN plan_terms t ON t.term_id = pi.term_id
-         WHERE pi.course_code = ? AND pi.user_id = ? ORDER BY t.ord LIMIT 1`,
-      )
-      .get(courseCode, userId) as { term_id: string } | undefined;
-    if (!planned) return res.status(404).json({ error: "ไม่พบวิชานี้ในแผน" });
-
-    if (status === "PLANNED") {
-      db.prepare("DELETE FROM enrollments WHERE course_code = ? AND term_id = ? AND user_id = ?").run(
-        courseCode,
-        planned.term_id,
-        userId,
-      );
-    } else {
-      db.prepare(
-        `INSERT INTO enrollments (user_id, course_code, term_id, status, grade)
-         VALUES (@u, @c, @t, @s, @g)
-         ON CONFLICT(course_code, term_id) DO UPDATE SET status = @s, grade = @g`,
-      ).run({ u: userId, c: courseCode, t: planned.term_id, s: status, g: grade });
-    }
+    const grade: string | null | undefined = req.body.grade === undefined ? undefined : req.body.grade === null || req.body.grade === "" ? null : String(req.body.grade).slice(0, 4);
+    const termId: string | undefined = typeof req.body.term_id === "string" ? req.body.term_id : undefined;
+    if (!["PASSED", "FAILED", "PLANNED"].includes(status)) return res.status(400).json({ error: "สถานะไม่ถูกต้อง" });
+    const ok = setResult(db, req.user!.id, courseCode, status === "PLANNED" ? null : (status as "PASSED" | "FAILED"), grade, termId);
+    if (!ok) return res.status(404).json({ error: "ไม่พบวิชานี้" });
     res.json({ ok: true });
   });
 
@@ -313,20 +123,13 @@ export function createPlannerRouter(db: DB): Router {
     if (!Array.isArray(hypothetical)) return res.status(400).json({ error: "courses must be an array" });
 
     const scale = getGradeScale(db, userId);
-    const allEnrollments = enrollments(db, userId);
-
-    const current = allEnrollments
-      .filter((e) => e.status === "PASSED")
-      .map((e) => ({ credits: e.credits, grade: e.grade }));
-
+    const current = passedWithGrades(courseResults(db, userId));
     const currentGpa = calculateGpa(current, scale);
 
     const withHypo = [...current];
     for (const h of hypothetical) {
       const course = db.prepare("SELECT credits FROM courses WHERE code = ?").get(h.course_code) as { credits: number } | undefined;
-      if (course) {
-        withHypo.push({ credits: course.credits, grade: h.grade });
-      }
+      if (course) withHypo.push({ credits: course.credits, grade: h.grade });
     }
     const whatIfGpa = calculateGpa(withHypo, scale);
 

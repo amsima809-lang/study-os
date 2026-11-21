@@ -1,0 +1,15 @@
+{
+  "appId": "com.patrick.termtrail",
+  "appName": "Termtrail",
+  "webDir": "www",
+  "backgroundColor": "#4f46e5",
+  "zoomEnabled": false,
+  "server": {
+    "url": "https://termtrail.com/",
+    "errorPath": "index.html"
+  },
+  "ios": {
+    "contentInset": "never",
+    "preferredContentMode": "mobile"
+  }
+}
