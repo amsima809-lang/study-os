@@ -147,6 +147,15 @@ def read(path):
     return json.loads(path.read_text())
 
 
+# Questions per lecture where a paper is weighted toward the lectures whose content the lecturers flag
+# most for the exam (2026-11-21); every other lecture keeps the even split, and the total is unchanged.
+SPLIT = {
+    "CDM1101": {2: 5, 6: 4, 8: 4, 9: 13, 10: 11, 11: 12},
+    "POL1101": {2: 13, 6: 7, 7: 6, 15: 5},
+    "MGT3204": {1: 9, 8: 9, 10: 12},
+}
+
+
 def group_plan(notes):
     sources = sorted(
         bank.read_sources(notes=notes),
@@ -156,9 +165,16 @@ def group_plan(notes):
         course = [s for s in sources if s["course_code"] == code]
         if not course:
             raise ValueError("missing course: " + code)
+        sizes = [
+            SPLIT.get(code, {}).get(
+                src["session_no"], size // len(course) + (index < size % len(course))
+            )
+            for index, src in enumerate(course)
+        ]
+        if sum(sizes) != size:
+            raise ValueError(f"{code}: lecture split adds up to {sum(sizes)}, not {size}")
         start = 0
-        for index, src in enumerate(course):
-            n = size // len(course) + (index < size % len(course))
+        for src, n in zip(course, sizes):
             kind, count = BLOCKS[code].get(src["session_no"], ("", 0))
             yield src, n, start, kind, count
             start += n
